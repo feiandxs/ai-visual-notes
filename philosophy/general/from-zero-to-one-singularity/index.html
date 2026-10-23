@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>从 0 到 1 的奇点是怎么发生的</title>
+<meta name="description" content="基于知乎问题「哲学上从0到1这个奇点是如何发生的？」下高大早及另一位答主回答的可视化讲解：冯·诺伊曼序数、空集、拉康的自指与主体。">
+<link rel="icon" href="data:,">
+<style>
+/* ================= 设计令牌（与 ai-visual-notes 其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5.2vw,44px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.quote{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--o);background:var(--surface);border-radius:0 10px 10px 0;font-size:14px;color:var(--text)}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:440px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:140px}
+.range output{font-family:var(--mono);color:var(--text);min-width:2.5em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.math{font-family:var(--mono);font-size:14px;background:var(--surface-2);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+.math .hl{color:var(--o);font-weight:700}
+.math .hp{color:var(--p);font-weight:700}
+.math .ht{color:var(--t);font-weight:700}
+
+/* 通用 SVG */
+.ax{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--grid);stroke-width:1}
+.lbl{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)} .c-m{stroke:var(--muted)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)} .f-s{fill:var(--surface)} .f-s2{fill:var(--surface-2)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700} .txt.m{font-family:var(--mono)} .txt.l{text-anchor:start}
+.txt.p{fill:var(--p)} .txt.t{fill:var(--t)} .txt.o{fill:var(--o)} .txt.r{fill:var(--r)}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.edge.k{stroke:var(--muted)}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.dash{stroke-dasharray:5 5}
+.running .dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+
+/* 卡片 / 步骤 */
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.p{border-color:var(--p);background:var(--p-soft)} .card.t{border-color:var(--t);background:var(--t-soft)} .card.o{border-color:var(--o);background:var(--o-soft)} .card.r{border-color:var(--r);background:var(--r-soft)}
+.flow{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.step{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .4s;position:relative}
+.step .ic{font-size:26px;line-height:1;margin-bottom:6px}
+.step h3{font-size:14px}
+.step p{font-size:12px;color:var(--muted);margin-top:4px}
+.step.on{border-color:var(--p);background:var(--p-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+.step .k{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.blk{border-radius:10px;padding:8px 10px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);text-align:center;position:relative}
+.blk.p{background:var(--p-soft);border-color:var(--p)} .blk.t{background:var(--t-soft);border-color:var(--t)} .blk.o{background:var(--o-soft);border-color:var(--o)} .blk.r{background:var(--r-soft);border-color:var(--r)}
+.blk small{display:block;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.arrowd{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .running .pulse,.running .dash.anim{animation:none}
+}
+/* 宽图在窄屏上横向滚动，保证文字可读 */
+.scrollx>svg.wide{min-width:560px}
+.scrollx{border-radius:10px}
+
+/* ================= 本页专用 ================= */
+.nest{width:100%;aspect-ratio:2.2/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.ordrow{display:grid;grid-template-columns:3em 1fr;gap:8px 12px;align-items:center;font-size:14px;margin-top:10px}
+.ordrow .k{font-family:var(--mono);color:var(--p);font-weight:700;text-align:right}
+.ordrow .v{font-family:var(--mono);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;overflow-x:auto;white-space:nowrap;transition:all .3s}
+.ordrow .v.new{border-color:var(--p);background:var(--p-soft)}
+.two{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .two{grid-template-columns:1fr 1fr} }
+.pane{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .35s}
+.pane h3{font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.pane.on{border-color:var(--p);box-shadow:var(--shadow)}
+.pane.dim{opacity:.45}
+.pane ul{margin:0;padding-left:18px;font-size:13px;color:var(--muted)}
+.pane li{margin:4px 0}
+.pane li b{color:var(--text)}
+.chain{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.chain .lnk{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:13.5px;opacity:.35;transform:translateX(-6px);transition:all .45s}
+.chain .lnk.on{opacity:1;transform:none;border-color:var(--p);background:var(--p-soft)}
+.chain .lnk .i{font-family:var(--mono);font-size:12px;color:var(--p);padding-top:2px}
+.chain .lnk b{color:var(--text)}
+.bin{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+@media (min-width:760px){ .bin{grid-template-columns:repeat(3,1fr)} }
+.bin .b{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface-2);cursor:pointer;font-size:13px;transition:all .3s}
+.bin .b .f{font-family:var(--mono);font-size:13px;color:var(--p);margin-bottom:4px}
+.bin .b.on{border-color:var(--o);background:var(--o-soft)}
+.bin .b p{font-size:12px}
+.tiny{font-size:12px;color:var(--muted);margin-top:8px}
+.who{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--t-soft);color:var(--t);margin-bottom:6px}
+.who.b{background:var(--o-soft);color:var(--o)}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">从 0 到 1 的奇点</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 哲学 × 集合论</div>
+  <h1>哲学上从 0 到 1 这个奇点<br>是如何发生的？</h1>
+  <p class="sub">答主「高大早」先用公理化集合论里的<b>冯·诺伊曼序数</b>给出数学的回答，再顺着拉康把它推到主体、精神病和「父姓的功能」。同一问题下另一位答主则反问：<b>为何有 0，而不是连 0 都没有？</b></p>
+  <div class="thesis">核心线索：<b>0 是空集，1 是「装着空集的集合」。但「空集」这个 0 本身来自一次自指——它既在体系之内，也在体系之外。</b></div>
+  <div class="meta">原文：知乎问题「哲学上从0到1这个奇点是如何发生的？」。第 01–05 节来自答主「高大早」（编辑于 2024-12-20）；第 06–07 节来自同一问题下另一位答主的回答（剪藏中未署名）。本页为教学改编，观点归答主。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="数学的答案：套袋子">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>数学的答案：0 是空袋子，1 是装着空袋子的袋子</h2>
+    <p class="lead">高大早：公理化集合论中的冯·诺伊曼序数就解决了这个问题——定义 0 为不包含任何元素的集合（空集），定义 1 为「包含一个空集」的集合。</p>
+  </div>
+  <div class="fig" data-demo="vn">
+    <div class="cap">点「下一步」，看自然数怎样一个接一个地从空集里长出来。规则只有一条：<b>n + 1 := n ∪ {n}</b>（新来的把以前的老东西挨个儿全吃了）。</div>
+  </div>
+  <ul class="notes">
+    <li>0 := ∅；1 := {∅}；2 := {∅, {∅}}；3 := {∅, {∅}, {∅, {∅}}}……每个数都「装着」它前面所有的数。</li>
+    <li>高大早注：这原本被他写成康托尔集合论，「但显然是不对的，评论区有我狡辩的过程」。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c02" data-title="拉康：0 是自指">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>拉康：这个 0 其实是一个自指悖论</h2>
+    <p class="lead">如果没有预先定义的数学体系，0 根本不可能。所以 0 是<b>数学体系本身在其内部的在场</b>——一个「外密性」的规定：既在体系之内，也在体系之外。</p>
+  </div>
+  <div class="fig" data-demo="extimacy">
+    <div class="cap">体系画成一个圈。0 不是圈里普通的一个点，而是圈本身「折进去」的那一点：既在内，又在外。点击「推演」看结论怎么一步步推到「形式体系本质上是自解构的」。</div>
+  </div>
+  <ul class="notes">
+    <li>拉康进一步认为：<b>所有</b>形式体系都是这样被规定出来的，所以都不完备，都有一个外密性的规定（0）。</li>
+    <li>这意味着形式体系本质上是「自解构」的——这就是拉康的解构主义转向。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="主体：朝向 0 的重复">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>主体是一种「运作效果」：朝向 0 的强迫性重复</h2>
+    <p class="lead">语言系统也是一个在内部坍缩、自指的形式体系。这个运动留下一个不可化约的<b>剩余</b>（0 之前的那个东西），而人的自我，就是朝向它的无限递归运动本身。</p>
+  </div>
+  <div class="fig" data-demo="repeat">
+    <div class="cap">小球一次次朝「0 之前的东西」冲去，每次到 0 就被象征律令挡回，于是再来一次。精神分析把这叫作<b>强迫性重复</b>。</div>
+  </div>
+  <ul class="notes">
+    <li>象征（形式体系）是一种<b>律令</b>，它禁止你回到 0 之前的那个东西。</li>
+    <li>所以主体本质上是朝向纯粹否定性的、无法停息的「无-意识」——用时髦的词说，「反物质」或「负空间」。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c04" data-title="正常人与精神病人">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>两个 bug：正常人靠「镜像」回避自指，精神病人少了这一层</h2>
+    <p class="lead">语言系统有「从 0 到 1」这个 bug。所谓正常人，是在 bug 中通过<b>另一个 bug</b>（镜像认同）去误认，从而使自己正常；精神病人缺少第二个 bug，于是产生幻觉和妄想。</p>
+  </div>
+  <div class="fig" data-demo="mirror">
+    <div class="cap">切换两种情形，看同一个「无意识的主体」在语言系统里的不同位置。</div>
+  </div>
+  <ul class="notes">
+    <li><b>神经症</b>（正常人）：经由镜像认同，分裂出一个在语言之内的自己；给自己贴一堆标签，却隐含地认为最本真的自我无法被任何标签定义——这种纯粹否定性反过来定义标签，这就是能动性（agent）的来源。</li>
+    <li><b>精神病</b>：分裂不出镜像自我，无意识的主体直接跌入语言系统，语言系统本身对他「显现在场」——他会发觉「语言系统在对着他说话」，这就是幻觉与幻听的由来。</li>
+    <li>视觉的例子：你不能直接看见物，只能看见「可见之物」，即视觉系统本身。精神病人因为站在语言之外，能「直接看见视觉系统本身」——答主截图中那个人「看见自己的眼睛」，看见的其实是视觉系统。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c05" data-title="父姓的功能">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>人为什么会成为精神病？「父姓的功能」被除权</h2>
+    <p class="lead">一个人能在语言系统中获得自己的位置，很大程度上是接受了「父姓的功能」：你爹和你之间不存在可观测的自然联系，只能通过<b>「赐名」</b>这个行为在语言系统之内建立联系。</p>
+  </div>
+  <div class="fig" data-demo="name">
+    <div class="cap">赐名把主体「拉进」语言系统并诱发分裂；当这个功能出问题（被除权），主体就得不到位置。典型案例：施列博案。</div>
+  </div>
+  <ul class="notes">
+    <li>正是「赐名」这个功能诱发了主体向语言系统内部的分裂过程。</li>
+    <li>所以精神病常和性别认同的错置同时发生——和爹的关系决定了主体在性别认同上的位置。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c06" data-title="另一问：为何有 0？">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>另一位答主：更重要的不是 0 到 1，而是「为何有 0」</h2>
+    <p class="lead">对应到集合论：当什么都没有的时候，凭什么对「空空如也」做一次「套袋儿」是合法的？答案出人意料——<b>空集根本就不「空」</b>。</p>
+  </div>
+  <div class="fig" data-demo="empty">
+    <div class="cap">空集至少有三种构造方式，每一种都把一类「卡 bug 的对象」排除出去。点一下看每个袋子里本来想装什么。</div>
+  </div>
+  <ul class="notes">
+    <li>空集的存在可以直接用<b>空集存在公理</b>保证；也可以先由等式公理暗示「至少存在一个集合 Ω」，再用<b>分离公理</b>构造 {x ∈ Ω | x ≠ x}。</li>
+    <li>从构造方式看，空集是个「垃圾桶」：装着当下公理体系排除在外的对象，但它们在空集内部已经被压平，所有矛盾特性都等价了——抽象地说，可以叫它「不可能性」。</li>
+    <li>如果允许更换公理体系，垃圾桶就变成「回收站 / 黑名单」：换一套公理后，原来被 ban 的对象可能被恢复（例如能讨论真类的 NBG 集合论）。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c07" data-title="两套方案与客体小 a">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>两套造数方案，以及「套袋之前」的那个东西</h2>
+    <p class="lead">公理化集合论「假装自己非常圆满」，并不在乎空集内部的矛盾有多丰富，反而拿空集当根基去造自然数。历史上有两套方案。</p>
+  </div>
+  <div class="fig" data-demo="compare">
+    <div class="cap">左：策梅洛序数——一直复读「套袋儿」，套了几层就代表几。右：冯·诺伊曼序数——后来各种公理化集合论普遍采用的方案。拖动 n 对比两种写法。</div>
+  </div>
+  <ul class="notes">
+    <li><b>策梅洛</b>：0 := ∅，n + 1 := {n}。<b>冯·诺伊曼</b>：0 := ∅，n + 1 := n ∪ {n}。</li>
+    <li>类比到拉康：在空集「套袋」之前那个空空如也的「 」，被称为<b>客体小 a</b>——未被压抑的矛盾集合体、未被锚定为「无」的存在；齐泽克把它本体论化，称作「少于无（Less Than Nothing）」或「den」，作为其本体论的初始对象。</li>
+  </ul>
+  <div class="final">两位答主殊途同归：数学用「空集 → {空集}」造出 0 和 1；而哲学追问的是，把「空空如也」套上袋子的那一下——0 本身——是怎么被允许的。拉康说它是体系的自指，另一位答主说它是把矛盾压平后的「不可能性」。</div>
+</section>
+
+<footer>
+  原文：<a href="https://www.zhihu.com/question/6496308914/answer/57758877081">高大早的回答</a> 及同一问题下另一位答主的回答（知乎）。本页由 Claude Code 基于原文生成，仅供学习；所有观点归原答主。
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mulberry = (seed) => () => { let t = (seed += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+function fitCanvas(c, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, c.clientWidth);
+  const h = aspect ? w / aspect : Math.max(10, c.clientHeight);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const rgba = (hex, a) => { hex = hex.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); const n = parseInt(hex, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', { type: 'button', class: val === cur ? 'on' : '', onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); } }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, step, val, oninput, fmt = (v) => v) => {
+  const out = el('output', {}, fmt(val));
+  const inp = el('input', { type: 'range', min, max, step, value: val });
+  inp.addEventListener('input', () => { out.textContent = fmt(+inp.value); oninput(+inp.value); });
+  return el('label', { class: 'range' }, label, inp, out);
+};
+const loop = (fn) => {
+  let id = 0, last = 0, running = false;
+  const tick = (t) => { if (!running) return; fn(Math.min(50, t - last || 16), t); last = t; id = requestAnimationFrame(tick); };
+  return { start() { if (running) return; running = true; last = performance.now(); id = requestAnimationFrame(tick); }, stop() { running = false; cancelAnimationFrame(id); }, get running() { return running; } };
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+// 宽 SVG：窄屏时横向滚动
+const wide = (s) => { s.classList.add('wide'); return el('div', { class: 'scrollx' }, s); };
+
+/* ===== 序数小工具 ===== */
+const vnStr = (n) => n === 0 ? '∅' : '{' + Array.from({ length: n }, (_, k) => vnStr(k)).join(', ') + '}';
+const vnShort = (n) => n === 0 ? '∅' : '{' + Array.from({ length: n }, (_, k) => k).join(', ') + '}';
+const zStr = (n) => n === 0 ? '∅' : '{' + zStr(n - 1) + '}';
+// 递归布局：把冯·诺伊曼序数 n 画成嵌套的盒子
+const PAD = 8, GAP = 6, LEAF = 22;
+function measure(n) {
+  if (n === 0) return { w: LEAF, h: LEAF };
+  const kids = Array.from({ length: n }, (_, k) => measure(k));
+  const w = kids.reduce((s, k) => s + k.w, 0) + GAP * (n - 1) + PAD * 2;
+  const h = Math.max(...kids.map(k => k.h)) + PAD * 2 + 10;
+  return { w, h, kids };
+}
+function drawOrd(g, n, x, y, depth, opts = {}) {
+  const m = measure(n);
+  const cls = n === 0 ? 'box t' : (depth === 0 ? 'box p' : 'box');
+  g.append(svg('rect', { x, y, width: m.w, height: m.h, rx: 7, class: cls, style: `opacity:${opts.fade ? .9 : 1}` }));
+  g.append(svg('text', { x: x + m.w / 2, y: y + (n === 0 ? m.h / 2 : 9), class: 'txt s m' + (n === 0 ? ' t b' : '') }, n === 0 ? '∅' : String(n)));
+  if (n === 0) return m;
+  let cx = x + PAD;
+  for (let k = 0; k < n; k++) { const km = m.kids[k]; drawOrd(g, k, cx, y + PAD + 10 + (m.h - PAD * 2 - 10 - km.h) / 2, depth + 1, opts); cx += km.w + GAP; }
+  return m;
+}
+function ordSvg(n, W = 560, H = 150) {
+  const m = measure(n);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'nest', style: 'aspect-ratio:auto' });
+  const g = svg('g');
+  const sc = Math.min(1, (W - 20) / m.w, (H - 20) / m.h);
+  g.setAttribute('transform', `translate(${(W - m.w * sc) / 2},${(H - m.h * sc) / 2}) scale(${sc})`);
+  drawOrd(g, n, 0, 0, 0);
+  s.append(g);
+  return s;
+}
+
+/* ===== Hero：0 → 1 → 2 → 3 → 4 循环生长 ===== */
+reg('hero', (root) => {
+  const holder = el('div');
+  const line = el('div', { class: 'math', style: 'margin-top:10px;text-align:center' });
+  root.append(holder, line);
+  let n = 0;
+  const show = () => { holder.replaceChildren(ordSvg(n, 560, 170)); line.innerHTML = `<span class="hp">${n}</span> := ${n === 0 ? '∅' : `${n - 1} ∪ {${n - 1}}`} = <span class="hl">${n <= 4 ? vnStr(n) : vnShort(n)}</span>`; };
+  show();
+  const T = every(RM ? 4000 : 1800, () => { n = (n + 1) % 5; show(); });
+  return T;
+});
+
+/* ===== 01 冯·诺伊曼序数：下一步 ===== */
+reg('vn', (root) => {
+  let n = 0;
+  const pic = el('div');
+  const rows = el('div', { class: 'ordrow' });
+  const stat = el('div', { class: 'kv', style: 'margin-top:8px' }, el('span', {}, '当前 ', el('b', {}, '0')), el('span', {}, '元素个数 ', el('b', {}, '0')), el('span', {}, '嵌套深度 ', el('b', {}, '0')));
+  const [bCur, bCnt, bDep] = stat.querySelectorAll('b');
+  const render = () => {
+    pic.replaceChildren(wide(ordSvg(n, 560, 160)));
+    rows.replaceChildren();
+    for (let k = 0; k <= n; k++) {
+      rows.append(el('div', { class: 'k' }, String(k)), el('div', { class: 'v' + (k === n ? ' new' : '') }, k === 0 ? '∅' : `${k - 1} ∪ {${k - 1}} = ${k <= 4 ? vnStr(k) : vnShort(k)}`));
+    }
+    bCur.textContent = String(n); bCnt.textContent = String(n); bDep.textContent = String(n);
+    next.disabled = n >= 5;
+  };
+  const next = btn('下一步 →', () => { if (n < 5) { n++; render(); } }, 'primary');
+  root.append(el('div', { class: 'ctrl' }, next, btn('重来', () => { n = 0; render(); })), pic, stat, rows,
+    el('p', { class: 'tiny' }, '盒子图最多画到 4；5 以后用数字缩写。深色框 = 当前这个数，浅绿小框 = 空集。'));
+  render();
+});
+
+/* ===== 02 外密性：0 既在内又在外 ===== */
+reg('extimacy', (root) => {
+  const W = 560, H = 230;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const cx = 150, cy = 118, R = 82;
+  s.append(svg('circle', { cx, cy, r: R, class: 'box p', 'stroke-width': 2 }));
+  s.append(svg('text', { x: cx, y: cy - 28, class: 'txt b' }, '数学体系'));
+  s.append(svg('text', { x: cx, y: cy - 10, class: 'txt s' }, '（形式体系）'));
+  // 内部普通元素
+  [[cx - 30, cy + 20], [cx + 10, cy + 34], [cx + 36, cy + 8]].forEach(([x, y], i) => { s.append(svg('circle', { cx: x, cy: y, r: 5, class: 'f-m' })); s.append(svg('text', { x, y: y + 15, class: 'txt s' }, ['1', '2', '3'][i])); });
+  // 边界上的 0：一个折进去的小环
+  const zx = cx + R * Math.cos(-0.6), zy = cy + R * Math.sin(-0.6);
+  const fold = svg('path', { d: `M ${zx - 14} ${zy + 10} C ${zx - 30} ${zy - 6}, ${zx + 18} ${zy - 30}, ${zx + 4} ${zy + 2} S ${zx - 20} ${zy + 20}, ${zx - 14} ${zy + 10}`, class: 'curve c-o dash anim', fill: 'none' });
+  s.append(fold);
+  const zero = svg('circle', { cx: zx, cy: zy, r: 7, class: 'f-o' });
+  s.append(zero);
+  s.append(svg('text', { x: zx + 20, y: zy - 14, class: 'txt b o l' }, '0'));
+  s.append(svg('text', { x: zx + 20, y: zy + 2, class: 'txt s l' }, '既在内，又在外'));
+  s.append(svg('text', { x: cx, y: cy + R + 24, class: 'txt s' }, '0 = 体系本身在其内部的「在场」'));
+  // 右侧：推演链
+  const steps = [
+    ['若没有预先定义的数学体系', '0 根本不可能。'],
+    ['所以 0 是体系本身的自指', '它是一个「外密性」规定：既在体系之内，也在体系之外。'],
+    ['所有形式体系都如此被规定', '于是所有形式体系都不完备，都有一个外密性的 0。'],
+    ['形式体系本质上「自解构」', '这就是拉康的解构主义转向。'],
+  ];
+  const chain = el('div', { class: 'chain' }, steps.map((t, i) => el('div', { class: 'lnk' }, el('span', { class: 'i' }, String(i + 1)), el('span', { html: `<b>${t[0]}</b>——${t[1]}` }))));
+  const links = [...chain.children];
+  let k = -1;
+  const step = () => { k = (k + 1) % (steps.length + 1); links.forEach((l, i) => l.classList.toggle('on', k < steps.length && i <= k)); };
+  const play = every(RM ? 3000 : 1700, step);
+  root.append(el('div', { class: 'ctrl' }, btn('推演', () => { play.stop(); k = -1; step(); play.start(); }, 'primary')), el('div', { class: 'two' }, el('div', {}, wide(s)), chain));
+  return { start() { s.classList.add('running'); play.start(); }, stop() { s.classList.remove('running'); play.stop(); } };
+});
+
+/* ===== 03 强迫性重复 ===== */
+reg('repeat', (root) => {
+  const c = el('canvas', { class: 'nest' });
+  const stat = el('div', { class: 'kv', style: 'margin-top:8px' }, el('span', {}, '冲向 0 的次数 ', el('b', {}, '0')), el('span', {}, '状态 ', el('b', {}, '出发')));
+  const [bN, bS] = stat.querySelectorAll('b');
+  root.append(c, stat);
+  let x = 1, v = 0, n = 0, flash = 0, state = 'go';
+  const L = loop((dt) => {
+    const { ctx, w, h } = fitCanvas(c, 2.2);
+    const bar = w * 0.3, sub = w * 0.82, mid = h / 2;
+    // 背景区域
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = rgba('#e8731f', .14); ctx.fillRect(0, 0, bar, h);
+    ctx.fillStyle = cssVar('--muted'); ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('0 之前的东西', bar / 2, 26); ctx.fillText('不可化约的「剩余」', bar / 2, 42); ctx.fillText('语言 / 象征体系', (bar + w) / 2, 26);
+    // 律令栏
+    ctx.strokeStyle = cssVar('--o'); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(bar, 50); ctx.lineTo(bar, h - 20); ctx.stroke();
+    ctx.fillStyle = cssVar('--o'); ctx.font = 'bold 13px sans-serif'; ctx.fillText('0 · 象征律令', bar, h - 6);
+    // 动力学
+    const dts = Math.min(dt, 40) / 1000;
+    if (!RM) {
+      if (state === 'go') { v -= 1.6 * dts; x += v * dts; if (x <= 0) { x = 0; v = 0.7 + Math.random() * .3; state = 'back'; flash = 1; n++; bN.textContent = String(n); bS.textContent = '被挡回'; } }
+      else { v -= 0.9 * dts; x += v * dts; if (x >= 1) { x = 1; v = 0; } if (v < 0) { state = 'go'; bS.textContent = '再次朝向 0'; } }
+      flash = Math.max(0, flash - 2.5 * dts);
+    } else { x = 0.5; }
+    const px = bar + x * (sub - bar);
+    if (flash > 0) { ctx.fillStyle = rgba('#d64550', flash * .6); ctx.beginPath(); ctx.arc(bar, mid, 18 + (1 - flash) * 30, 0, 7); ctx.fill(); }
+    ctx.strokeStyle = cssVar('--p'); ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(sub, mid); ctx.lineTo(px, mid); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = cssVar('--p'); ctx.beginPath(); ctx.arc(px, mid, 10, 0, 7); ctx.fill();
+    ctx.fillStyle = cssVar('--text'); ctx.font = '12px sans-serif'; ctx.fillText('主体', px, mid - 18);
+    ctx.fillStyle = cssVar('--muted'); ctx.fillText('自我 = 这个无限递归的运动本身', (bar + sub) / 2, h - 28);
+  });
+  return L;
+});
+
+/* ===== 04 镜像认同：神经症 vs 精神病 ===== */
+reg('mirror', (root) => {
+  const W = 560, H = 250;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const lang = svg('rect', { x: 200, y: 30, width: 330, height: 190, rx: 14, class: 'box p', 'stroke-width': 2 });
+  s.append(lang, svg('text', { x: 365, y: 48, class: 'txt b' }, '语言系统'));
+  s.append(svg('text', { x: 95, y: 48, class: 'txt s' }, '语言之外'));
+  const gA = svg('g'), gB = svg('g');
+  // A：神经症
+  gA.append(svg('circle', { cx: 95, cy: 130, r: 16, class: 'f-o' }), svg('text', { x: 95, y: 160, class: 'txt s' }, '无意识的主体'), svg('text', { x: 95, y: 174, class: 'txt s' }, '（纯粹否定性）'));
+  gA.append(svg('line', { x1: 200, y1: 60, x2: 200, y2: 210, class: 'curve c-t', 'stroke-dasharray': '6 4' }), svg('text', { x: 200, y: 228, class: 'txt t s' }, '镜像认同'));
+  gA.append(svg('path', { d: 'M 112 130 L 265 130', class: 'edge k', 'marker-end': 'url(#arr)' }));
+  gA.append(svg('circle', { cx: 285, cy: 130, r: 16, class: 'box o', 'stroke-width': 2 }), svg('text', { x: 285, y: 160, class: 'txt s' }, '语言内的「自我」'));
+  [['学生', 345, 95], ['工程师', 420, 90], ['好人', 470, 130], ['父亲', 430, 175], ['内向', 350, 170]].forEach(([t, x, y]) => { gA.append(svg('rect', { x: x - 26, y: y - 11, width: 52, height: 22, rx: 11, class: 'box' }), svg('text', { x, y, class: 'txt s' }, t)); gA.append(svg('line', { x1: 299, y1: 130, x2: x - 26, y2: y, class: 'edge' })); });
+  gA.append(svg('text', { x: 400, y: 208, class: 'txt s' }, '标签都定义不了「最本真的我」→ 能动性'));
+  // B：精神病
+  gB.append(svg('path', { d: 'M 95 110 C 120 60, 230 50, 300 118', class: 'curve c-r dash anim', 'marker-end': 'url(#arr)' }));
+  gB.append(svg('circle', { cx: 95, cy: 130, r: 16, class: 'f-o', opacity: .35 }), svg('text', { x: 95, y: 160, class: 'txt s' }, '没有镜像可分裂'));
+  gB.append(svg('circle', { cx: 320, cy: 135, r: 16, class: 'f-o' }), svg('text', { x: 320, y: 165, class: 'txt s' }, '无意识主体直接跌入'));
+  [['「你……」', 420, 90], ['「看见了吗」', 460, 140], ['「……说话」', 410, 190]].forEach(([t, x, y], i) => { gB.append(svg('rect', { x: x - 36, y: y - 12, width: 72, height: 24, rx: 12, class: 'box r' }), svg('text', { x, y, class: 'txt s r' }, t)); gB.append(svg('line', { x1: x - 36, y1: y, x2: 338, y2: 135, class: 'edge', 'stroke-dasharray': '3 3' })); });
+  gB.append(svg('text', { x: 365, y: 215, class: 'txt s' }, '语言系统「在对着他说话」→ 幻觉、幻听'));
+  s.append(svg('defs', { html: '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#8a8a95"/></marker>' }), gA, gB);
+  const paneA = el('div', { class: 'pane', html: '<h3><span class="who">神经症（正常人）</span></h3><ul><li>经由<b>镜像认同</b>分裂出一个在语言之内的自己，以此回避自指悖论。</li><li>贴一堆标签，却认为最本真的自我无法被任何标签定义。</li><li>这种纯粹否定性反过来定义标签——<b>能动性</b>由此而来。</li></ul>' });
+  const paneB = el('div', { class: 'pane', html: '<h3><span class="who b">精神病</span></h3><ul><li>分裂不出镜像的自我，<b>无意识直接跌入语言系统</b>。</li><li>语言系统的运作对他「显现在场」：他能直接看见语言 / 视觉系统本身。</li><li>于是出现幻觉与幻听。</li></ul>' });
+  let mode = 'A';
+  const apply = () => { gA.style.opacity = mode === 'A' ? 1 : 0; gB.style.opacity = mode === 'B' ? 1 : 0; paneA.classList.toggle('on', mode === 'A'); paneA.classList.toggle('dim', mode !== 'A'); paneB.classList.toggle('on', mode === 'B'); paneB.classList.toggle('dim', mode !== 'B'); };
+  gA.style.transition = gB.style.transition = 'opacity .4s';
+  root.append(el('div', { class: 'ctrl' }, seg([['A', '神经症（正常人）'], ['B', '精神病']], 'A', (v) => { mode = v; apply(); })), wide(s), el('div', { class: 'two', style: 'margin-top:10px' }, paneA, paneB));
+  apply();
+  return { start() { s.classList.add('running'); }, stop() { s.classList.remove('running'); } };
+});
+
+/* ===== 05 父姓的功能 ===== */
+reg('name', (root) => {
+  const steps = [
+    ['👶', '婴儿与「爹」之间', '不存在任何可被观测的自然联系。'],
+    ['🏷️', '赐名', '只能通过「赐名」这个行为，在语言系统之内产生联系——这就是「父姓的功能」。'],
+    ['🪞', '诱发分裂', '正是这个功能诱发了主体向语言系统内部的分裂过程（镜像自我）。'],
+    ['📍', '获得位置', '于是一个人能在语言系统中获得一个属于自己的位置。'],
+  ];
+  const flow = el('div', { class: 'flow' }, steps.map((t, i) => el('div', { class: 'step' }, el('span', { class: 'k' }, String(i + 1)), el('div', { class: 'ic' }, t[0]), el('h3', {}, t[1]), el('p', {}, t[2]))));
+  const cards = [...flow.children];
+  const out = el('div', { class: 'card', style: 'margin-top:12px;transition:all .3s' });
+  let mode = 'ok', k = -1;
+  const paint = () => {
+    cards.forEach((c, i) => { c.classList.toggle('on', i <= k && (mode === 'ok' || i <= 1)); c.style.opacity = (mode === 'bad' && i >= 2) ? '.35' : ''; });
+    if (mode === 'ok') { out.className = 'card t'; out.innerHTML = '<h3>父姓功能正常</h3><p>主体被「拉进」语言系统，分裂出镜像自我，获得位置——成为所谓正常人（神经症结构）。</p>'; }
+    else { out.className = 'card r'; out.innerHTML = '<h3>父姓功能被「除权」</h3><p>第 2 步失效，后面的分裂与位置都得不到：成为精神病。典型案例：<b>施列博案</b>。答主指出，精神病会和性别认同的错置同时发生，因为和爹的关系决定了主体在性别认同上的位置。</p>'; }
+  };
+  const play = every(RM ? 3000 : 1300, () => { k = (k + 1) % (steps.length + 1); paint(); });
+  root.append(el('div', { class: 'ctrl' }, seg([['ok', '父姓功能正常'], ['bad', '父姓功能被除权']], 'ok', (v) => { mode = v; paint(); })), flow, out);
+  paint();
+  return play;
+});
+
+/* ===== 06 空集不空：三种构造 ===== */
+reg('empty', (root) => {
+  const defs = [
+    ['{ x ∈ Ω | x ≠ x }', '不等于自己的东西', '用同一律（一阶逻辑里叫「等式公理」）先承认至少存在一个集合 Ω，再用分离公理切出这个子集：里面什么都装不下。', ['x≠x', 'y≠y', 'z≠z']],
+    ['{ x ∈ Ω | x ∈ x }', '属于自己的东西', '若它非空，就违反正则公理，可能导致罗素悖论——所以这些对象被「ban」掉，关进空集。', ['x∈x', 'R∈R', 'Ω∈Ω']],
+    ['{ x ∈ Ω | φ(x) ∧ ¬φ(x) }', '在矛盾谓词中横跳的东西', '既满足 φ 又不满足 φ 的对象，也被压平进空集。', ['φ∧¬φ', 'ψ∧¬ψ', 'χ∧¬χ']],
+  ];
+  const W = 560, H = 200;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  // 袋子
+  s.append(svg('path', { d: 'M 230 90 L 220 180 L 340 180 L 330 90 Z', class: 'box o', 'stroke-width': 2 }));
+  s.append(svg('text', { x: 280, y: 196, class: 'txt s' }, '∅ ：「小本本」/ 垃圾桶 / 回收站'));
+  s.append(svg('text', { x: 280, y: 150, class: 'txt s o' }, '压平：所有矛盾都等价'));
+  const items = svg('g'); s.append(items);
+  const title = svg('text', { x: 280, y: 30, class: 'txt b' }, ''); s.append(title);
+  const sub = svg('text', { x: 280, y: 50, class: 'txt s' }, ''); s.append(sub);
+  const bins = el('div', { class: 'bin' });
+  let cur = 0, t0 = 0;
+  const pick = (i) => { cur = i; t0 = performance.now(); [...bins.children].forEach((b, j) => b.classList.toggle('on', j === i)); title.textContent = defs[i][0]; sub.textContent = '想排除的是：' + defs[i][1]; };
+  defs.forEach((d, i) => bins.append(el('div', { class: 'b', onclick: () => pick(i) }, el('div', { class: 'f' }, d[0]), el('p', {}, d[2]))));
+  const L = loop(() => {
+    const T = RM ? 1200 : (performance.now() - t0);
+    items.replaceChildren();
+    defs[cur][3].forEach((lab, j) => {
+      const p = clamp((T - j * 300) / 900, 0, 1);
+      const y = 62 + p * 78, x = 280 + (j - 1) * 40 * (1 - p * .6);
+      const sq = 1 - p * .85;
+      items.append(svg('rect', { x: x - 16, y: y - 10 * sq, width: 32, height: 20 * sq, rx: 5, class: 'box r', opacity: 1 - p * .5 }));
+      if (sq > .5) items.append(svg('text', { x, y, class: 'txt s r m' }, lab));
+    });
+  });
+  root.append(el('div', { class: 'ctrl' }, btn('再扔一次', () => { t0 = performance.now(); })), wide(s), bins,
+    el('p', { class: 'tiny' }, '两条路线都能保证空集存在：直接用「空集存在公理」；或先由等式公理暗示「至少存在一个集合 Ω」，再用「分离公理（子集公理）」构造 { x ∈ Ω | x ≠ x }。'));
+  pick(0);
+  return L;
+});
+
+/* ===== 07 策梅洛 vs 冯·诺伊曼 ===== */
+reg('compare', (root) => {
+  let n = 3;
+  const zPic = el('div'), vPic = el('div');
+  const zTxt = el('div', { class: 'math', style: 'margin-top:8px' }), vTxt = el('div', { class: 'math', style: 'margin-top:8px' });
+  const zKv = el('div', { class: 'kv', style: 'margin-top:6px' }), vKv = el('div', { class: 'kv', style: 'margin-top:6px' });
+  const zSvg = (k) => { // 嵌套 k 层
+    const W = 260, H = 130, s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'nest', style: 'aspect-ratio:auto' });
+    const size = Math.min(110, 20 + k * 18); const step = k ? (size - 20) / (2 * k) : 0;
+    for (let i = 0; i <= k; i++) { const sz = size - 2 * step * i; s.append(svg('rect', { x: W / 2 - sz / 2, y: H / 2 - sz / 2, width: sz, height: sz, rx: 6, class: i === 0 ? 'box p' : (i === k ? 'box t' : 'box') })); }
+    s.append(svg('text', { x: W / 2, y: H / 2, class: 'txt s t b' }, '∅'));
+    return s;
+  };
+  const render = () => {
+    zPic.replaceChildren(zSvg(n)); vPic.replaceChildren(ordSvg(n, 260, 130));
+    zTxt.innerHTML = `<span class="hp">${n}</span> := <span class="hl">${zStr(n)}</span>`;
+    vTxt.innerHTML = `<span class="hp">${n}</span> := <span class="hl">${n <= 4 ? vnStr(n) : vnShort(n)}</span>`;
+    zKv.innerHTML = `<span>嵌套层数 <b>${n}</b></span><span>元素个数 <b>${n ? 1 : 0}</b></span>`;
+    vKv.innerHTML = `<span>嵌套层数 <b>${n}</b></span><span>元素个数 <b>${n}</b></span>`;
+  };
+  root.append(el('div', { class: 'ctrl' }, range('n =', 0, 5, 1, n, (v) => { n = v; render(); })),
+    el('div', { class: 'two' },
+      el('div', { class: 'pane on' }, el('h3', {}, el('span', { class: 'tag p' }, '策梅洛序数'), 'n + 1 := {n}'), zPic, zTxt, zKv, el('p', { class: 'tiny' }, '一直复读「套袋儿」，套了几层袋子就代表几。')),
+      el('div', { class: 'pane on' }, el('h3', {}, el('span', { class: 'tag t' }, '冯·诺伊曼序数'), 'n + 1 := n ∪ {n}'), vPic, vTxt, vKv, el('p', { class: 'tiny' }, '「新来的把以前的老东西挨个儿全吃了」——后来各种公理化集合论普遍采用。'))));
+  render();
+});
+
+/* ===== 启动：导航、进度条、视口触发 ===== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

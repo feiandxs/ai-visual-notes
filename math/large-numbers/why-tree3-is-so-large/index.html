@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>TREE(3) 为什么这么大</title>
+<meta name="description" content="知乎问题「TREE(3) 的规则那么简单，可为什么它的值那么离谱的大？」回答的可视化讲解：TREE 游戏与树的嵌入、良拟序、以及 HypCos 用 JavaScript 大数高尔夫展示「多简单的规则能产生多大的数」。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ---- 页面专用 ---- */
+.nc0{fill:var(--r)} .nc1{fill:var(--t)} .nc2{fill:var(--p)}
+.ne{stroke:var(--muted);stroke-width:2;fill:none}
+.tree-g .hl circle{stroke:var(--y);stroke-width:4}
+.tree-g .dim{opacity:.25}
+.tree-g .victim circle{stroke:var(--r);stroke-width:4;stroke-dasharray:4 3}
+.rulecards{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:12px}
+@media (min-width:700px){ .rulecards{grid-template-columns:repeat(3,1fr)} }
+.rulecards .card b{display:block;font-size:15px;margin-bottom:4px;color:var(--text)}
+.rulecards .card .k{display:block;margin-bottom:4px}
+.ops{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.ops .op{border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;background:var(--surface-2);transition:background .3s,border-color .3s}
+.ops .op.on{background:var(--y-soft);border-color:var(--y)}
+.status{font-size:14px;margin-top:8px;min-height:1.6em}
+.status .ok{color:var(--t);font-weight:700}
+.status .bad{color:var(--r);font-weight:700}
+.enum-log{font-family:var(--mono);font-size:13px;line-height:1.9;margin-top:6px;min-height:3.8em;color:var(--muted)}
+.enum-log .ok{color:var(--t)} .enum-log .bad{color:var(--r)} .enum-log .cur{color:var(--text);font-weight:700}
+.adj{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:700px){ .adj{grid-template-columns:repeat(3,1fr)} }
+.adj .card .big{font-family:var(--mono);font-size:18px;color:var(--p);margin-bottom:4px}
+.ladder-wrap{display:grid;grid-template-columns:1fr;gap:14px}
+.ladder-svg .step{cursor:pointer}
+.ladder-svg .step rect{fill:var(--surface-2);stroke:var(--line);transition:fill .3s}
+.ladder-svg .step:hover rect{fill:var(--p-soft)}
+.ladder-svg .step.on rect{fill:var(--p);stroke:var(--p)}
+.ladder-svg .step.on text{fill:#fff}
+.ladder-svg .step.side rect{fill:var(--o-soft);stroke:var(--o)}
+.ladder-svg .step.side.on rect{fill:var(--o);stroke:var(--o)}
+.ladder-svg .step text{font-size:11px;font-family:var(--mono);fill:var(--text);pointer-events:none}
+.detail{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);min-height:150px}
+.detail .ch-range{font-family:var(--mono);font-size:12px;color:var(--p)}
+.detail h3{font-size:17px;margin:4px 0 8px}
+.detail pre{font-family:var(--mono);font-size:12.5px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;margin:0 0 8px;white-space:pre}
+.detail .rate{font-size:14px;margin:6px 0}
+.detail .rate b{font-family:var(--mono);color:var(--o)}
+.detail p{font-size:13.5px;color:var(--muted)}
+.fgh-row{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.fgh-row .bar{display:grid;grid-template-columns:74px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px}
+.fgh-row .bar .nm{font-family:var(--mono);color:var(--p)}
+.fgh-row .bar .b{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--p),var(--t));width:0;transition:width 1.2s ease}
+.fgh-row .bar .v{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.fgh-def{font-family:var(--mono);font-size:13px;line-height:1.9;background:var(--surface-2);border-radius:10px;padding:8px 12px;margin-top:8px}
+.unroll{min-height:150px}
+.unroll .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0;font-family:var(--mono);font-size:13px}
+.unroll .box{border:1px solid var(--line);border-radius:8px;padding:4px 8px;background:var(--surface-2);opacity:0;transform:scale(.8);transition:opacity .3s,transform .3s}
+.unroll .box.in{opacity:1;transform:none}
+.unroll .box.r{background:var(--p-soft);border-color:var(--p);color:var(--p);font-weight:700}
+.unroll .lbl2{color:var(--muted);font-size:12px;width:100%}
+.grid-enc{display:grid;gap:3px;margin-top:8px}
+.grid-enc .cell{aspect-ratio:1.6;border-radius:6px;background:var(--surface-2);font-family:var(--mono);font-size:clamp(7.5px,2.4vw,11px);display:flex;align-items:center;justify-content:center;border:1px solid var(--line);cursor:default;transition:background .2s}
+.grid-enc .cell.hd{background:transparent;border:0;color:var(--muted)}
+.grid-enc .cell.c0{background:var(--surface-2)}
+.grid-enc .cell.c1{background:var(--p-soft)}
+.grid-enc .cell.c2{background:var(--t-soft)}
+.grid-enc .cell.c3{background:var(--o-soft)}
+.grid-enc .cell.c4{background:var(--y-soft)}
+.grid-enc .cell:hover{outline:2px solid var(--p)}
+.enc-readout{font-family:var(--mono);font-size:13px;margin-top:8px;color:var(--text);min-height:1.5em}
+.numline{position:relative;height:84px;margin-top:10px}
+.numline .tick{position:absolute;top:0;width:1px;height:18px;background:var(--line)}
+.numline .y{position:absolute;top:20px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--muted)}
+.numline .o{position:absolute;top:44px;transform:translateX(-50%);font-family:var(--mono);font-size:12px;color:var(--p);white-space:nowrap}
+.numline .base{position:absolute;top:18px;left:0;right:0;height:2px;background:var(--line)}
+.tower{display:flex;flex-direction:column-reverse;gap:6px;margin-top:8px}
+.tower .rung{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:7px 12px;background:var(--surface-2);opacity:.35;transform:translateX(-8px);transition:opacity .4s,transform .4s,border-color .4s}
+.tower .rung.in{opacity:1;transform:none}
+.tower .rung.now{border-color:var(--p);background:var(--p-soft)}
+.tower .rung .ord{font-family:var(--mono);font-size:15px;color:var(--p);min-width:4.2em}
+.tower .rung .what{font-size:13px}
+.tower .rung .what small{display:block;color:var(--muted)}
+.tower .rung .chs{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+.tower .rung.side{border-style:dashed;border-color:var(--o)}
+.tower .rung.side .ord{color:var(--o)}
+.cmp{position:relative;padding:10px 0}
+.cmp .rung2{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;align-items:center;padding:8px 0;border-top:1px dashed var(--line)}
+.cmp .rung2 .o2{font-family:var(--mono);color:var(--p);font-size:14px}
+.cmp .rung2 .m{display:flex;gap:8px;flex-wrap:wrap}
+.cmp .mark{border-radius:999px;padding:4px 12px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s}
+.cmp .mark.in{opacity:1;transform:none}
+.cmp .mark.g{background:var(--y-soft);border-color:var(--y)}
+.cmp .mark.t{background:var(--t-soft);border-color:var(--t)}
+.cmp .mark.c{background:var(--p-soft);border-color:var(--p)}
+.cmp .mark.q{background:var(--surface);border-style:dashed}
+.chain{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:760px){ .chain{grid-template-columns:repeat(4,1fr)} }
+.chain .step{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);transition:border-color .3s,background .3s}
+.chain .step.on{border-color:var(--p);background:var(--p-soft)}
+.chain .step .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+.chain .step h3{font-size:14px;margin:4px 0}
+.chain .step p{font-size:12.5px;color:var(--muted)}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <a class="back" href="../../../README.md">← ai-visual-notes</a>
+  <div class="brand">TREE(3) 为什么这么大</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 大数数学</div>
+  <h1>TREE(3) 的规则那么简单，<br>为什么它的值那么离谱的大？</h1>
+  <p class="sub">两位答主给了两个方向的回答：大老李一句话点出 TREE 函数有限的根源——「良拟序」；HypCos 则反过来说：TREE 的规则其实并不简单，真正简单的规则——几十个字符的 JavaScript——就能造出远超想象的大数。本页先讲 TREE 游戏本身，再沿着 HypCos 的「大数高尔夫」阶梯一路往上爬。</p>
+  <div class="thesis">一句话：<b>衡量大数不能靠写出来比，只能比「增长率的层级」</b>——这把尺子叫快速增长层级（FGH），刻度是序数。</div>
+  <div class="authors">
+    <span class="au"><i style="background:var(--o)">李</i>大老李 <span class="tag">仅存一句</span></span>
+    <span class="au"><i style="background:var(--p)">H</i>HypCos <span class="tag">完整回答</span></span>
+  </div>
+  <div class="meta">来源：知乎问题 517846877（剪藏于 2025-11-08）。剪藏文件里大老李的回答只剩摘要一句；完整保留的是 HypCos（Googologist）的回答。TREE 游戏的规则与 TREE(1)、TREE(2) 的穷举是教学补充，页面已标注。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="rules" data-title="TREE 游戏的规则">
+  <div class="ch-head"><span class="num">01</span><span class="who">教学补充（标准表述）</span>
+    <h2>TREE 游戏：一棵一棵画树，不许「嵌入」</h2>
+    <p class="lead">用 n 种颜色给顶点上色，画一串树 T₁, T₂, T₃…：第 i 棵最多 i 个顶点，而且前面任何一棵都不能「嵌入」后面的树。TREE(n) 就是这串树最多能画多长。</p>
+  </div>
+  <div class="rulecards">
+    <div class="card"><span class="k">规则 ①</span><b>颜色只有 n 种</b><p>TREE(3) 就是 3 种颜色。</p></div>
+    <div class="card"><span class="k">规则 ②</span><b>第 i 棵树 ≤ i 个顶点</b><p>越往后允许越大，但一开始很小。</p></div>
+    <div class="card"><span class="k">规则 ③</span><b>前面的树不能嵌入后面的</b><p>一旦某棵新树「含有」前面任一棵，游戏结束。</p></div>
+  </div>
+  <div class="fig">
+    <div class="cap">一段合法的 3 色序列。进入视口后逐棵出现，并对每一对（前,后）做检查：<b>✓ 没嵌入</b>。顶点数 1、2、3、4、5 各不超过序号。</div>
+    <div class="scrollx" data-demo="seq"></div>
+  </div>
+  <ul class="notes">
+    <li><b>直觉</b>：顶点上限随序号增长，可选的树越来越多；但「不许嵌入前面任何一棵」的限制也越积越多。TREE(n) 问的是：两股力量拉扯之下，最多能撑多少步。</li>
+    <li><b>原文没有展开定义</b>——两位答主都默认读者知道规则。本节是教学补充。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="embed" data-title="什么叫「嵌入」">
+  <div class="ch-head"><span class="num">02</span><span class="who">答主：HypCos（定义）</span>
+    <h2>什么叫「嵌入」：删点删出来的</h2>
+    <p class="lead">HypCos 的说法：表达树的嵌入，至少要用到「删除子顶点数为 0 或 1 的顶点」这一系列操作的闭包。也就是说，能靠反复删叶子、删单链点把大树削成小树，小树就嵌入了大树。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左边是大树 B，右边是目标 A。点「下一步」看每次删掉哪个顶点（红色虚线圈）。切换目标：同一棵 B，对 A₁ 削得出来（<b>✓ 嵌入</b>），对 A₂ 削不出来（<b>✗ 不嵌入</b>）。</div>
+    <div data-demo="embed"></div>
+  </div>
+  <ul class="notes">
+    <li><b>删叶子</b>（0 个子顶点）：直接去掉。<b>删单链点</b>（恰好 1 个子顶点）：去掉它，把它的孩子接到它的父亲上。有 2 个以上孩子的点不能删。</li>
+    <li><b>为什么 A₂ 不行</b>：A₂ 要求两个绿点直接挂在红点下，但 B 里两个绿点的公共祖先是蓝点，蓝点有两个孩子删不掉。这就是 HypCos 说「规则算不上简单」的地方——嵌入不是「子图」那么直白。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="small" data-title="TREE(1)=1，TREE(2)=3">
+  <div class="ch-head"><span class="num">03</span><span class="who">教学补充</span>
+    <h2>先算小的：TREE(1) = 1，TREE(2) = 3</h2>
+    <p class="lead">1 种颜色时，第一棵树是一个点，之后任何树都含有这个点，游戏立刻结束。2 种颜色时最多走 3 步。然后 3 种颜色——突然爆炸。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「播放」逐步穷举。每一步先列出候选，<b>✗</b> 表示含有前面的树，被淘汰。</div>
+    <div data-demo="enum"></div>
+  </div>
+  <ul class="notes">
+    <li><b>TREE(2) 的最优走法</b>：红点 → 绿绿（两点链）→ 单个绿点。第 4 棵树无论含红还是含绿都会嵌入前面的树。</li>
+    <li><b>然后是 TREE(3)</b>：题目里说的「离谱的大」就从这里开始。但它仍然是<em>有限</em>的——为什么？看大老李那一句。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="wqo" data-title="良拟序：游戏必定结束">
+  <div class="ch-head"><span class="num">04</span><span class="who">答主：大老李</span>
+    <h2>大老李的一句话：良拟序</h2>
+    <p class="lead">「TREE(3) 利用了『良拟序』的一个性质：其中没有无穷递降链和无穷不可比链。」——剪藏里大老李的回答只剩这一句，但它正是 TREE(n) 有限的根源。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">在「嵌入」这个序关系下，有限树构成良拟序：左边两种无穷序列都<b>不存在</b>；于是任何无穷长的树序列里，迟早会出现前面的树嵌入后面的树（右边）——游戏必须终止，TREE(3) 是个有限数。</div>
+    <div class="scrollx" data-demo="wqo"></div>
+  </div>
+  <ul class="notes">
+    <li><b>无穷递降链</b>：一个比一个「小」、永远降不到底的序列。<b>无穷不可比链</b>：两两互不嵌入、能无限列下去的序列。良拟序禁止这两者。</li>
+    <li><b>教学补充</b>：这个结论是 Kruskal 树定理。它只保证「有限」，完全不告诉你有多大——而 TREE(3) 大到任何常规记号都写不下。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="golf" data-title="规则简单能有多简单">
+  <div class="ch-head"><span class="num">05</span><span class="who">答主：HypCos</span>
+    <h2>反问：TREE 的规则真的简单吗？</h2>
+    <p class="lead">HypCos 的观点：用很简明的规则就能得到极其巨大的数；相比之下，TREE 函数的规则算不上简单。为了说明「规则能有多简洁」，他列出了 JavaScript 大数高尔夫的成果。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>JavaScript 大数高尔夫</b>：用尽可能少的字符，在 JavaScript 里输出尽可能大的数。结果来自 googology discord 讨论群。语言做了三处调整：</div>
+    <div class="adj">
+      <div class="card"><div class="big">① 精确数值不封顶</div><p>不再局限于 ±(2⁵³−1)，足够大，足以让代码不溢出。</p></div>
+      <div class="card"><div class="big">② 位运算不封顶</div><p>不再局限于 int32。</p></div>
+      <div class="card"><div class="big">③ x&gt;&gt;y，y 为负数</div><p>相当于右移一个很大的数，把 x 的所有有效数位抹掉。换成左移是未定义行为。</p></div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li><b>比赛的尺子</b>：字符数。每多一个字符，能到达的数有多大的跃升？下一节的阶梯就是答案。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="ladder" data-title="字符数阶梯">
+  <div class="ch-head"><span class="num">06</span><span class="who">答主：HypCos</span>
+    <h2>从 1 个字符到 114+ 个字符的阶梯</h2>
+    <p class="lead">每一级台阶是原文的一个小节：字符数区间、代表性代码、以及它达到的增长率。点击台阶查看代码。橙色台阶是「允许浮点数」的支线。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">横轴：代码字符数；越往右台阶越高。进入视口会自动从左往右点亮一遍。</div>
+    <div class="ladder-wrap">
+      <div class="scrollx" data-demo="ladder"></div>
+      <div class="detail" id="ladderDetail"></div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li><b>19 个字符</b>（9**9**9**9**9**9e99）时，原文说「天文学、宇宙学、量子物理上已经没有什么可以与之比拟的数了」。后面的一百个字符，每一级都把前一级当作零。</li>
+    <li><b>增长率的写法</b>：FGH 表示快速增长层级，HH 表示 Hardy 层级，刻度都是序数（ω、ω²、ε₀、Γ₀…）。下一节解释这把尺子。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="fgh" data-title="尺子：快速增长层级">
+  <div class="ch-head"><span class="num">07</span><span class="who">教学补充（原文默认读者知道）</span>
+    <h2>尺子：快速增长层级 FGH</h2>
+    <p class="lead">f₀ 是「加一」，之后每升一级就把上一级「迭代 n 次」。到了无穷序数 ω，就沿对角线取 f_n(n)。原文所有「相当于 FGH 中的 ω+1」之类的话，都在说代码的增长率落在这把尺子的哪一格。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">拖动 n，看前几级在 n 处的取值。条长按「对数的对数」压缩，否则 f₃ 就已经画不下。</div>
+    <div data-demo="fgh"></div>
+  </div>
+  <ul class="notes">
+    <li><b>f₁(n)=2n，f₂(n)=2ⁿ·n，f₃ 已是指数塔</b>；f_ω(n)=f_n(n) 把下标也变成变量，再往上 f_{ω+1} 把 f_ω 迭代 n 次——原文说这「就是葛立恒函数的增长率」。</li>
+    <li><b>Hardy 层级 HH</b>是另一把等价的尺子，刻度略有错位（原文在五级运算与 Goodstein 处用的是它）。</li>
+  </ul>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="anatomy" data-title="解剖 33 个字符">
+  <div class="ch-head"><span class="num">08</span><span class="who">答主：HypCos</span>
+    <h2>解剖 33 个字符：超运算是怎么长出来的</h2>
+    <p class="lead">n=y=&gt;x=x--*y?n(y)*n(y-1):9;n(x=9)。全局变量 x 是底数，局部变量 y 是「迭代的层级」：n(0) 是常数 9，n(1) 乘 x 遍得到 9ˣ，n(2) 迭代 x 遍指数得到 9↑↑x……y 每加一，就是 FGH 里的 f_{1+y}。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一个 y，看 n(y) 展开成多少个 n(y−1) 的乘积（示意，x 取 4）。</div>
+    <div data-demo="unroll"></div>
+  </div>
+  <ul class="notes">
+    <li><b>x 的两种用法</b>：在 n(y)*n(y−1) 的连续调用之间，x 单纯递减，这相当于把「调用开始前的那个 x」当作迭代次数。</li>
+    <li><b>再往上</b>：39～41 字的版本把「无限的序数编码成有限的整数 y」，于是 y 本身可以越过 ω。</li>
+  </ul>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="encode" data-title="用整数编码序数">
+  <div class="ch-head"><span class="num">09</span><span class="who">答主：HypCos</span>
+    <h2>用一个整数 y 编码一个序数</h2>
+    <p class="lead">41 字代码：y=99 相当于 ω，y=98 是 ω+1……y=1 是 ω+98；y=0 得常数，y=−1、−2 则是有限层级 2、3。42～51 字更进一步：用「y 除以 a 的余数」编码 ω 的倍数，用商编码后面的 +k。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>41 字方案</b>：一条数轴，正数一侧倒着数到 ω+98，负数一侧是有限层级。</div>
+    <div data-demo="numline"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>42～51 字方案</b>（以 a=9 为例）：网格每一列是一个余数 r，对应 ω·r；每一行是商，对应 +k。把鼠标放到格子上看它编码的 y 值。</div>
+    <div data-demo="encgrid"></div>
+  </div>
+  <ul class="notes">
+    <li><b>余数为什么要保留</b>：代码里 n(y)+n(…) 中间必须是加法而非乘法，y&lt;0 时用 x−~y = x+y+1 让余数加 1，进入前一个「ω 的多少倍」区域的迭代。</li>
+    <li><b>52 字以后</b>：偶数 y 减半、奇数 y 跳区域，编码到 ω²·k；57 字起用「k 阶数」（费马素数等）编码，一路到 ω^ω——并且撞上一个未解决的数论问题：内层结果 x 的「阶」到底有多高。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="tower" data-title="更高的序数塔">
+  <div class="ch-head"><span class="num">10</span><span class="who">答主：HypCos</span>
+    <h2>更高的塔：ε₀、φ、Γ₀、ψ(Ω_ω)</h2>
+    <p class="lead">68 字之后不再手工编码序数，而是直接实现已知的大数结构：Primitive sequence、Goodstein 函数、Difference sequence、Bashicu 矩阵。每换一种结构，增长率就跃上一个新的序数台阶。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">从下往上点亮。虚线橙色一级是原文更新补充的支线：如果允许浮点数，32～36 字的「假燃烧数」就能到 ε₀。</div>
+    <div data-demo="tower"></div>
+  </div>
+  <ul class="notes">
+    <li><b>Bashicu 矩阵第 1 版（96～100 字）</b>是不良序系统，原文说「我们只能从下方接近，却不能超越它」。</li>
+    <li><b>101～113 字</b>的 P 函数展开「middle-growing hierarchy 应用到序数」的记号，理论上和实际上都达到 ψ(Ω_ω)，即 Π¹₁-CA₀ 的增长率极限。原文引用的详解标题是「Golf a number bigger than TREE(3)」。</li>
+    <li><b>114 字以上</b>用距离记法的 Bashicu 矩阵，增长率介于 Π¹₂-CA₀ 的极限与二阶算术的极限之间。</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section class="ch" id="compare" data-title="葛立恒数、TREE(3)、代码">
+  <div class="ch-head"><span class="num">11</span><span class="who">综合</span>
+    <h2>葛立恒数、TREE(3) 和几十个字符，怎么比？</h2>
+    <p class="lead">不能写出来比，只能看落在尺子的哪一格。原文给出的锚点：n(2)（39 字）相当于 ω+1，「也就是葛立恒函数的增长率」；101 字代码对应的详解标题自称已超过 TREE(3)。TREE(3) 的精确位置原文没有给，这里不替答主下结论。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">尺子从下往上。每一格里，上一格的数都近似于零。</div>
+    <div data-demo="compare"></div>
+  </div>
+  <ul class="notes">
+    <li><b>所以题目问反了</b>（按 HypCos 的意思）：不是「规则简单却值很大」很奇怪，而是「几十个字符就能超过 TREE(3)」才是常态；TREE 的规则反倒不算简单。</li>
+    <li><b>但 TREE(3) 为什么有限</b>仍要靠大老李那句良拟序——两位答主各答了问题的一半。</li>
+  </ul>
+</section>
+
+<!-- 12 -->
+<section class="ch" id="summary" data-title="总结">
+  <div class="ch-head"><span class="num">12</span>
+    <h2>总结</h2>
+    <p class="lead">四步看完这个问题。</p>
+  </div>
+  <div class="fig">
+    <div class="chain" data-demo="chain">
+      <div class="step"><span class="k">1</span><h3>游戏规则</h3><p>n 色、第 i 棵 ≤ i 点、不许嵌入前面任一棵。嵌入 = 反复删叶子与单链点。</p></div>
+      <div class="step"><span class="k">2</span><h3>为什么有限</h3><p>良拟序：没有无穷递降链和无穷不可比链，序列必定在某步出现嵌入。</p></div>
+      <div class="step"><span class="k">3</span><h3>为什么离谱</h3><p>「有限」不等于「可写」；衡量大数要用序数刻度的 FGH 尺子。</p></div>
+      <div class="step"><span class="k">4</span><h3>规则其实不简单</h3><p>几十个字符的代码就能一路爬到 ψ(Ω_ω) 乃至更高；TREE 的嵌入规则反而更复杂。</p></div>
+    </div>
+  </div>
+  <div class="final">TREE(3) 大，不是因为规则简单；而是因为「有限」和「可想象」之间的距离，远比我们以为的大。</div>
+</section>
+
+<footer>
+  <div><b>来源</b></div>
+  <ul>
+    <li>知乎问题《TREE(3) 的规则那么简单，可为什么它的值那么离谱的大？》：<a href="https://www.zhihu.com/question/517846877">zhihu.com/question/517846877</a></li>
+    <li>大老李的回答：<a href="https://www.zhihu.com/question/517846877/answer/2645637423">answer/2645637423</a>（本地剪藏只保留了摘要一句）。HypCos（Googologist）的回答：完整保留，第 05～11 节据此制作；其中列出的结果来自 googology discord 讨论群的「Constructor Lower Bounds」列表。剪藏作者栏还列有「怀旧软件攻城狮」，但正文未抓到其内容。</li>
+    <li>第 01、03、04、07 节标注「教学补充」的内容（TREE 游戏规则、TREE(1)/TREE(2) 穷举、Kruskal 树定理、FGH 定义）为标准表述，非原文。</li>
+  </ul>
+  <div style="margin-top:10px">本页由 Claude Code 基于原文生成，仅供学习。</div>
+</footer>
+
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+
+/* ======================================================================
+   树的工具：数据结构 {c:颜色0/1/2, k:[子树]}，布局、绘制
+   ====================================================================== */
+const T = (c, ...k) => ({ c, k });
+const layout = (t) => {
+  const nodes = []; let cursor = 0;
+  const rec = (n, d, p) => {
+    const i = nodes.length; nodes.push({ c: n.c, d, p, x: 0 });
+    const kids = n.k || [];
+    if (!kids.length) { nodes[i].x = cursor++; }
+    else { const xs = kids.map(k => rec(k, d + 1, i)); nodes[i].x = (xs[0] + xs[xs.length - 1]) / 2; }
+    return nodes[i].x;
+  };
+  rec(t, 0, -1);
+  return { nodes, w: cursor, h: Math.max(...nodes.map(n => n.d)) + 1 };
+};
+/* 在 g 里画一棵树；返回 {g, nodes, w, h, gs:[每个顶点的 <g>]} */
+const drawTree = (parent, tree, x0, y0, sx = 28, sy = 30, r = 8) => {
+  const L = layout(tree);
+  const g = svg('g', { class: 'tree-g', transform: `translate(${x0},${y0})` });
+  const pos = L.nodes.map(n => [n.x * sx + sx / 2, n.d * sy + r + 2]);
+  L.nodes.forEach((n, i) => { if (n.p >= 0) g.append(svg('line', { class: 'ne', x1: pos[n.p][0], y1: pos[n.p][1], x2: pos[i][0], y2: pos[i][1] })); });
+  const gs = L.nodes.map((n, i) => { const gg = svg('g', {}, svg('circle', { class: 'nc' + n.c, cx: pos[i][0], cy: pos[i][1], r })); g.append(gg); return gg; });
+  parent.append(g);
+  return { g, nodes: L.nodes, pos, gs, w: L.w * sx, h: (L.h - 1) * sy + 2 * r + 4 };
+};
+const count = (t) => 1 + (t.k || []).reduce((s, k) => s + count(k), 0);
+/* 删除第 idx 个顶点（先序编号），仅允许 0 或 1 个孩子 */
+const clone = (t) => ({ c: t.c, k: (t.k || []).map(clone) });
+const deleteNode = (tree, idx) => {
+  const t = clone(tree); let n = 0; let done = false;
+  const rec = (node, parent, ci) => {
+    const me = n++;
+    if (me === idx) {
+      if (!parent) return;
+      const kids = node.k || [];
+      if (kids.length === 0) parent.k.splice(ci, 1);
+      else if (kids.length === 1) parent.k.splice(ci, 1, kids[0]);
+      done = true; return;
+    }
+    for (let i = 0; i < (node.k || []).length && !done; i++) rec(node.k[i], node, i);
+  };
+  rec(t, null, -1); return t;
+};
+
+/* ======================================================================
+   Hero：越来越大的树一棵棵出现
+   ====================================================================== */
+reg('hero', (root) => {
+  const W = 760, H = 200;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' }); root.append(s);
+  const txt = svg('text', { class: 'lbl big', x: 14, y: 24 }, ''); s.append(txt);
+  const sub = svg('text', { class: 'lbl', x: 14, y: 44 }, '第 i 棵树最多 i 个顶点，而且前面任何一棵都不能嵌入它'); s.append(sub);
+  const area = svg('g'); s.append(area);
+  const rnd = (n) => Math.floor(Math.random() * n);
+  const randTree = (size) => { // 随机生成 size 个顶点的树
+    const root = T(rnd(3)); const all = [root];
+    for (let i = 1; i < size; i++) { const p = all[rnd(all.length)]; const c = T(rnd(3)); p.k.push(c); all.push(c); }
+    return root;
+  };
+  let i = 0, x = 14, trees = [];
+  const step = () => {
+    i++;
+    if (i > 14 || x > W - 80) { i = 1; x = 14; area.innerHTML = ''; trees = []; }
+    const size = Math.min(i, 1 + rnd(i));
+    const tr = randTree(size);
+    const d = drawTree(area, tr, x, 62, 16, 22, 5);
+    d.g.style.opacity = 0; d.g.style.transition = 'opacity .5s'; requestAnimationFrame(() => d.g.style.opacity = 1);
+    area.append(svg('text', { class: 'lbl m', x: x + d.w / 2, y: 188, 'text-anchor': 'middle' }, 'T' + i));
+    x += Math.max(d.w, 24) + 22;
+    txt.textContent = `TREE 游戏：第 ${i} 棵树`;
+  };
+  return every(RM ? 100000 : 700, step);
+});
+
+/* ======================================================================
+   01 合法序列 + 两两检查
+   ====================================================================== */
+reg('seq', (root) => {
+  const seqTrees = [T(2), T(0, T(0)), T(0, T(1), T(1)), T(0, T(1, T(1, T(1)))), T(1, T(1, T(1)), T(1), T(1))];
+  const W = 700, H = 215;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto;min-width:560px' }); root.append(s);
+  const arcs = svg('g'); s.append(arcs);
+  let x = 30; const centers = [];
+  const drawn = seqTrees.map((t, i) => {
+    const d = drawTree(s, t, x, 78, 30, 32, 9);
+    const cx = x + d.w / 2; centers.push(cx);
+    s.append(svg('text', { class: 'lbl big', x: cx, y: 68, 'text-anchor': 'middle' }, `T${i + 1}`));
+    s.append(svg('text', { class: 'lbl m', x: cx, y: 208, 'text-anchor': 'middle' }, `${count(t)} 个点 ≤ ${i + 1}`));
+    d.g.style.opacity = 0; d.g.style.transition = 'opacity .5s';
+    x += d.w + 60; return d;
+  });
+  const status = el('div', { class: 'status' }); root.append(status);
+  let timer = 0;
+  const start = () => {
+    stop(); let k = 0; const pairs = [];
+    for (let j = 1; j < 5; j++) for (let i = 0; i < j; i++) pairs.push([i, j]);
+    const tick = () => {
+      if (k < 5) { drawn[k].g.style.opacity = 1; status.textContent = `画第 ${k + 1} 棵树`; }
+      else if (k - 5 < pairs.length) {
+        const [i, j] = pairs[k - 5]; const x1 = centers[i], x2 = centers[j];
+        const p = svg('path', { d: `M${x1} 52 Q${(x1 + x2) / 2} ${52 - Math.min(46, (x2 - x1) * .16)} ${x2} 52`, fill: 'none', stroke: 'var(--t)', 'stroke-width': 1.5, opacity: 0 });
+        p.style.transition = 'opacity .4s'; arcs.append(p); requestAnimationFrame(() => p.style.opacity = .8);
+        status.innerHTML = `检查 T${i + 1} 能否嵌入 T${j + 1}：<span class="ok">✓ 不能</span>（合法）`;
+      } else { status.innerHTML = '5 棵树全部合法。<span class="ok">能画多长？这就是 TREE(3)。</span>'; return; }
+      k++; timer = setTimeout(tick, RM ? 0 : 650);
+    };
+    tick();
+  };
+  const stop = () => { clearTimeout(timer); };
+  root.append(el('div', { class: 'ctrl' }, el('button', { class: 'btn', onclick: () => { arcs.innerHTML = ''; drawn.forEach(d => d.g.style.opacity = 0); start(); } }, '重放')));
+  return { start, stop };
+});
+
+/* ======================================================================
+   02 嵌入 = 删点的闭包
+   ====================================================================== */
+reg('embed', (root) => {
+  const B = T(0, T(2, T(1), T(1)), T(1));
+  const targets = [
+    { name: 'A₁', tree: T(0, T(1)), ok: true, steps: [4, 3, 1], // 先序编号：0 r,1 b,2 g,3 g,4 g(根的叶子)
+      msgs: ['删掉根下面那个绿叶子（0 个孩子）', '删掉蓝点下的一个绿叶子（0 个孩子）', '蓝点现在只有 1 个孩子：删掉它，把绿点接到红点上', '得到 A₁：红—绿。'] },
+    { name: 'A₂', tree: T(0, T(1), T(1)), ok: false, steps: [4, 1],
+      msgs: ['删掉根下面那个绿叶子', '想删蓝点——它有 2 个孩子，不允许删', '无论怎么删，两个绿点要么少一个，要么公共祖先仍是蓝点。削不出 A₂。'] },
+  ];
+  const W = 560, H = 190;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' });
+  const gB = svg('g'), gA = svg('g'); s.append(gB, gA);
+  s.append(svg('text', { class: 'lbl big', x: 110, y: 20, 'text-anchor': 'middle' }, '大树 B（逐步削）'));
+  s.append(svg('text', { class: 'lbl big', x: 420, y: 20, 'text-anchor': 'middle' }, '目标 A'));
+  s.append(svg('text', { class: 'lbl', x: 270, y: 100, 'text-anchor': 'middle', 'font-size': 26 }, '→'));
+  const opsBox = el('div', { class: 'ops' }, el('span', { class: 'op', id: 'op0' }, '删叶子（0 个孩子）'), el('span', { class: 'op', id: 'op1' }, '删单链点（1 个孩子）'), el('span', { class: 'op', id: 'op2' }, '2 个以上孩子：不能删'));
+  const status = el('div', { class: 'status' });
+  let cur = B, ti = 0, si = 0, victim = null;
+  const render = () => {
+    gB.innerHTML = ''; gA.innerHTML = '';
+    const d = drawTree(gB, cur, 110 - layout(cur).w * 17, 40, 34, 40, 10);
+    if (victim != null && d.gs[victim]) d.gs[victim].classList.add('victim');
+    const a = targets[ti].tree; drawTree(gA, a, 420 - layout(a).w * 17, 40, 34, 40, 10);
+  };
+  const reset = () => { cur = B; si = 0; victim = null; opsBox.querySelectorAll('.op').forEach(o => o.classList.remove('on')); status.textContent = '点「下一步」开始削树。'; render(); };
+  const next = () => {
+    const tg = targets[ti];
+    opsBox.querySelectorAll('.op').forEach(o => o.classList.remove('on'));
+    if (victim != null) { // 执行删除
+      const kids = (findNode(cur, victim).k || []).length;
+      if (kids <= 1) cur = deleteNode(cur, victim);
+      victim = null; render();
+      if (si >= tg.steps.length) { status.innerHTML = tg.msgs[si] + (tg.ok ? ' <span class="ok">✓ A₁ 嵌入 B</span>' : ' <span class="bad">✗ A₂ 不嵌入 B</span>'); return; }
+      status.textContent = '已删除。再点「下一步」。'; return;
+    }
+    if (si >= tg.steps.length) { status.innerHTML = tg.msgs[si] + (tg.ok ? ' <span class="ok">✓ 嵌入</span>' : ' <span class="bad">✗ 不嵌入</span>'); return; }
+    victim = tg.steps[si]; const kids = (findNode(cur, victim).k || []).length;
+    opsBox.querySelector('#op' + Math.min(kids, 2)).classList.add('on');
+    status.textContent = tg.msgs[si]; si++; render();
+  };
+  function findNode(t, idx) { let n = 0, found = null; const rec = (x) => { if (found) return; if (n++ === idx) { found = x; return; } (x.k || []).forEach(rec); }; rec(t); return found; }
+  root.append(el('div', { class: 'ctrl' }, seg(['目标 A₁（能）', '目标 A₂（不能）'], (i) => { ti = i; reset(); }), el('button', { class: 'btn primary', onclick: next }, '下一步 →'), el('button', { class: 'btn', onclick: reset }, '重来')), s, opsBox, status);
+  reset();
+  return {};
+});
+
+/* ======================================================================
+   03 穷举 TREE(1)、TREE(2)
+   ====================================================================== */
+reg('enum', (root) => {
+  const W = 620, H = 150;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' });
+  const log = el('div', { class: 'enum-log' });
+  const title = svg('text', { class: 'lbl big', x: 12, y: 22 }, ''); s.append(title);
+  const area = svg('g'); s.append(area);
+  let mode = 0, timer = 0;
+  const scripts = [
+    [ // TREE(1)
+      { t: 'TREE(1)：只有 1 种颜色', add: T(0), msg: 'T₁ = 一个红点' },
+      { cand: T(0), msg: '候选 T₂ = 红点 → 含有 T₁', bad: true },
+      { cand: T(0, T(0)), msg: '候选 T₂ = 红—红 → 含有 T₁', bad: true },
+      { msg: '任何树都含有一个红点。TREE(1) = 1', end: true },
+    ],
+    [ // TREE(2)
+      { t: 'TREE(2)：红、绿两种颜色', add: T(0), msg: 'T₁ = 一个红点' },
+      { cand: T(1), msg: '候选 T₂ = 绿点？合法，但之后 T₃ 含绿或含红都不行，只能走 2 步', bad: true },
+      { add: T(1, T(1)), msg: 'T₂ = 绿—绿（2 个点，不含红点）' },
+      { cand: T(1, T(1), T(1)), msg: '候选 T₃ = 绿{绿,绿}？删一个叶子就得到绿—绿 → 含有 T₂', bad: true },
+      { add: T(1), msg: 'T₃ = 单个绿点（绿—绿有 2 个点，嵌不进 1 个点）' },
+      { cand: T(1, T(1)), msg: '候选 T₄ 含绿点 → 含有 T₃', bad: true },
+      { cand: T(0, T(1)), msg: '候选 T₄ 含红点 → 含有 T₁', bad: true },
+      { msg: '没有候选了。TREE(2) = 3', end: true },
+    ],
+  ];
+  let x = 12, k = 0, candG = null;
+  const reset = () => { clearTimeout(timer); area.innerHTML = ''; log.innerHTML = ''; x = 12; k = 0; title.textContent = scripts[mode][0].t; };
+  const tick = () => {
+    const sc = scripts[mode]; if (k >= sc.length) return;
+    const st = sc[k];
+    if (candG) { candG.remove(); candG = null; }
+    if (st.add) { const d = drawTree(area, st.add, x, 46, 30, 34, 9); area.append(svg('text', { class: 'lbl m', x: x + d.w / 2, y: 140, 'text-anchor': 'middle' }, 'T' + (area.querySelectorAll('.tree-g').length))); x += d.w + 50; log.append(el('div', { class: 'ok' }, '✓ ' + st.msg)); }
+    else if (st.cand) { const d = drawTree(area, st.cand, x, 46, 30, 34, 9); d.g.classList.add('dim'); candG = d.g; const q = svg('text', { class: 'lbl m', x: x + d.w / 2, y: 140, 'text-anchor': 'middle', fill: 'var(--r)' }, '✗'); area.append(q); setTimeout(() => q.remove(), RM ? 0 : 1100); log.append(el('div', { class: 'bad' }, '✗ ' + st.msg)); }
+    else { log.append(el('div', { class: 'cur' }, st.msg)); }
+    k++; if (k < sc.length) timer = setTimeout(tick, RM ? 0 : 1250);
+  };
+  const play = () => { reset(); tick(); };
+  root.append(el('div', { class: 'ctrl' }, seg(['TREE(1)', 'TREE(2)'], (i) => { mode = i; play(); }), el('button', { class: 'btn primary', onclick: play }, '播放')), s, log);
+  reset();
+  return { start: play, stop: () => clearTimeout(timer) };
+});
+
+/* ======================================================================
+   04 良拟序
+   ====================================================================== */
+reg('wqo', (root) => {
+  const W = 760, H = 230;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto;min-width:620px' }); root.append(s);
+  const panel = (x, w, title) => { s.append(svg('rect', { x, y: 8, width: w, height: H - 16, rx: 12, fill: 'var(--surface-2)' })); s.append(svg('text', { class: 'lbl big', x: x + w / 2, y: 32, 'text-anchor': 'middle' }, title)); };
+  panel(6, 230, '无穷递降链 ✗'); panel(246, 230, '无穷不可比链 ✗'); panel(486, 268, '⇒ 必有 Tᵢ ≤ Tⱼ（i<j）');
+  // 左：越来越小的树一路往下
+  const left = svg('g'); s.append(left);
+  const chainTrees = [T(0, T(1, T(2), T(1)), T(2)), T(0, T(1, T(2)), T(2)), T(0, T(1), T(2)), T(0, T(1))];
+  chainTrees.forEach((t, i) => { const d = drawTree(left, t, 30 + i * 52, 60 + i * 24, 16, 22, 5); d.g.classList.add('dim'); if (i) left.append(svg('text', { class: 'lbl', x: 22 + i * 52, y: 80 + i * 24 }, '>')); });
+  left.append(svg('text', { class: 'lbl', x: 150, y: 190 }, '… 总会降到底'));
+  // 中：两两不可比
+  const mid = svg('g'); s.append(mid);
+  const anti = [T(0), T(1, T(1)), T(2, T(2), T(2)), T(1, T(0, T(0)))];
+  anti.forEach((t, i) => { const d = drawTree(mid, t, 262 + i * 56, 70, 16, 22, 5); d.g.classList.add('dim'); });
+  mid.append(svg('text', { class: 'lbl', x: 361, y: 190, 'text-anchor': 'middle' }, '… 列不到无穷长'));
+  [[0, 1], [1, 2], [2, 3], [0, 2]].forEach(([a, b]) => mid.append(svg('path', { d: `M${290 + a * 56} 150 Q${290 + (a + b) * 28} ${165 + (b - a) * 8} ${290 + b * 56} 150`, fill: 'none', stroke: 'var(--r)', 'stroke-dasharray': '3 3' })));
+  s.append(svg('line', { x1: 60, y1: 60, x2: 220, y2: 180, stroke: 'var(--r)', 'stroke-width': 4, opacity: .6 }));
+  s.append(svg('line', { x1: 300, y1: 60, x2: 460, y2: 180, stroke: 'var(--r)', 'stroke-width': 4, opacity: .6 }));
+  // 右：序列里迟早出现嵌入
+  const right = svg('g'); s.append(right);
+  const seq = [T(2), T(0, T(0)), T(1, T(2)), T(0, T(1), T(0)), T(1, T(2, T(0)), T(1))];
+  const arc = svg('path', { d: 'M520 70 Q600 20 690 70', fill: 'none', stroke: 'var(--t)', 'stroke-width': 3, opacity: 0 });
+  const lab = svg('text', { class: 'lbl big', x: 605, y: 205, 'text-anchor': 'middle', fill: 'var(--t)', opacity: 0 }, '嵌入！游戏结束');
+  const gs = seq.map((t, i) => { const d = drawTree(right, t, 500 + i * 50, 80, 14, 22, 5); d.g.style.opacity = 0; d.g.style.transition = 'opacity .4s'; return d.g; });
+  right.append(arc, lab);
+  let timer = 0;
+  const start = () => {
+    stop(); gs.forEach(g => g.style.opacity = 0); arc.style.opacity = 0; lab.style.opacity = 0; let k = 0;
+    const tick = () => { if (k < gs.length) { gs[k].style.opacity = 1; k++; timer = setTimeout(tick, RM ? 0 : 500); } else { arc.style.transition = 'opacity .5s'; lab.style.transition = 'opacity .5s'; arc.style.opacity = 1; lab.style.opacity = 1; } };
+    tick();
+  };
+  const stop = () => clearTimeout(timer);
+  return { start, stop };
+});
+
+/* ======================================================================
+   06 阶梯
+   ====================================================================== */
+const LADDER = [
+  { ch: '1~5', name: '简单表达', code: '9\n99\n9e9\n9e99\n9e999', rate: '常数', note: '即便是 9e999 也能正常运行。' },
+  { ch: '6~19', name: '乘方 / 迭代乘方', code: '9**9e999\n9**9**9**9**9**9e99', rate: '指数塔', note: '以 9 为底比以 2 为底的左移更强；JS 乘方右结合，可以直接堆塔。至此天文学、宇宙学、量子物理上已经没有什么可以与之比拟的数了。' },
+  { ch: '20~30', name: '四级运算（迭代乘方）', code: 'for(a=i=9e999;i--;)a**=a\nf=x=>x&&9**f(x-1);f(f(f(9e9)))', rate: '四级运算，再迭代', note: 'for(a;b;c)d 的输出是最后一次 d 的值。25～30 字把四级运算本身又迭代了。' },
+  { ch: '31~32', name: '五级运算', code: 'for(j=a=i=9;j=j-1||a*i--;)a**=a', rate: 'HH ω³·i + ω²·j', note: 'i、j 跟踪迭代层级：j 每减一迭代一次乘方，i 每减一迭代一次四级运算。' },
+  { ch: '33~38', name: '超运算', code: 'n=y=>x=x--*y?n(y)*n(y-1):9;n(x=9**9e9)', rate: 'f₁₊ᵧ（FGH）', note: 'x 是底数，y 是层级：n(0)=9，n(1)=9ˣ，n(2)=9↑↑x……' },
+  { ch: '39~41', name: '超越葛立恒函数', code: 'n=y=>x=x--&&y-9?n(y)*n(y-1||x):9;n(x=8)\nn=y=>x=x--*y?n(y)*n(y-99?y+1:~x):9;n(x=1)', rate: 'ω+7 → ω+98', note: '把无限序数编码成整数 y。y=1 相当于 ω；n(2) 相当于 ω+1，也就是葛立恒函数的增长率。41 字版本只改 99 就能更大。' },
+  { ch: '42~51', name: '康威链式箭号', code: 'n=y=>x=x--*y?n(y)+n(y<0?x-~y:y-a):a=9e999;n(x=1)', rate: 'ω·(a−1)+1', note: 'y 除以 a 的余数编码「ω 的多少倍」，商编码后面的 +k。中间必须是加法以保留余数。' },
+  { ch: '52~53', name: 'ω²·2', code: 'n=y=>x=x--*~y?n(y)*n(y-9?y%2?y+2<<x:y/2:~x):9;n(x=8)', rate: 'ω²+ω·4+3（53 字：ω²+ω·49+3）', note: '偶数 y 减半得到迭代；非 9 的奇数 y 跳进前一个「ω 的多少倍」区域；y=9 相当于 ω²。' },
+  { ch: '54~56', name: 'ω² 的更高倍数', code: 'n=y=>x=x--*~y?n(y)*n(y%2?y<0?y-~x:y-98<<x:y/2):99;n(x=8)', rate: 'ω²·48+ω+3', note: '「除以 8 的余数」改成「除以 98 的余数」。负奇数 y 调用 n(y−~x)，余数 7、5、3、1 对应 ω² 的 0、1、2、3 倍。' },
+  { ch: '57~67', name: '疑难数论问题', code: 'n=y=>x+=x--*~y&&n(y%++s?-s:y/s--*s**x,n(y),s=1);n(n(n(x=8,s=7)))', rate: 'ω^ω（每层近似 ω^ω·2？）', note: '引入「k 阶数」：2 是 1 阶，费马素数是 2 阶，7 是最小 3 阶素数……用素因子的阶编码 ω 的幂。嵌套调用后遇到未解决的数论问题：内层结果 x 的阶有多高？' },
+  { ch: '68~73', name: '走向 ε₀', code: "for(a=b='9876543210';a=a.slice(1).replace(a[0]-1,'$&$`$&'.repeat(++b));)b", rate: 'HH ω^ω^…（每种新数字加一层）', note: 'Primitive sequence。数字串 10 是 ω，210 是 ω^ω，3210 是 ω^ω^ω……' },
+  { ch: '74~76', name: 'ε₀', code: 'for(b=i=0;i=b>9e9?B(i)-1:9<<i;B=(y,x=0)=>y&&y%b*(b+1)**B(x)+B(y/b|0,x+1))++b', rate: 'HH ε₀', note: 'Goodstein 函数：B(y) 把 y 写成以 b 为底的遗传记法，再把所有 b 换成 b+1。' },
+  { ch: '77~95', name: 'φ(ω,0) → φ(ω,ω)', code: 'for(i=a=[b=9,1];i--?1:r=f=-a.shift(d=i=b);d<0?a=[a[r]+~d,...a]:d=a[++r]+f)++b\nfor(i=a=[],a[b=9]=b;a+a;i--?d<b>>f?a=[f?a[r]+~d:b,...a]:d=a[++r]+f:r=f=-a.shift(d=i=b++))b', rate: 'HH φ(ω,0)、φ(ω,0)·ω、φ(ω,n)·ω²、φ(ω,ω)', note: 'Difference sequence number（左右反向）。85 字起利用 NaN。原文说这一段看似没有达到最优化。' },
+  { ch: '96~100', name: 'Γ₀', code: 'for(i=a=[b=99,9,7,5,2];i--?1:r=f=-a.shift(d=i=b);(d|~f)&d<f%2?a=[a[r]-f%2*~d,...a]:d=a[++r]+f)++b', rate: 'f_Γ₀(65)、f_Γω(65)…', note: 'Bashicu 矩阵第 1 版，不良序系统；只能从下方接近，不能超越。' },
+  { ch: '101~113', name: 'Π¹₁-CA₀ 极限', code: 's=JSON.stringify;for(a=b=0;a=b>9?P(a):[a];P=([y,z])=>y?eval((k=s([P(y),z])).replaceAll(s(z),k)):z)++b', rate: 'ψ(Ω_ω)', note: 'P 函数展开「middle-growing hierarchy 应用到序数」的记号；理论与实际都达到 ψ(Ω_ω)。原文引用的详解标题：Golf a number bigger than TREE(3)。113 字再加一层迭代，约 f_{ψ(Ω_ω)+1}(10)。' },
+  { ch: '114+', name: 'Bashicu 矩阵', code: 'for(a=[Array(9e9).fill(i=1),r=[]];i>r?r=(c=a.shift(i=0)).pop():a=[Object.assign(a[r-1].map(e=>e>i?e+r:e),i++||c),...a];)r', rate: 'Π¹₂-CA₀ 极限 ~ 二阶算术极限之间', note: '距离记法的 Bashicu 矩阵：每个元素记「往右数几列到父元素」。' },
+  { side: true, ch: '32~36', name: '假燃烧数（允许浮点数）', code: 'm=x=>x<0?-x:m(x-m(x-1))/2;9/m(9e999)', rate: 'ε₀', note: '原文更新：燃烧数的一个下界。1/m(x) 的增长率与燃烧数相同，都是 ε₀。' },
+  { side: true, ch: '37~62', name: '假燃烧数扩展', code: 'm=x=>x<0?-x:(f=y=>y?m(x-f(y-1)):1)(99)/99;9/m(99)\nfor(a=b=9;b--;)a/=(m=x=>x<0?-x:(f=y=>y?m(x-f(y-1)):1)(a)/a)(a)', rate: 'φ(n−1,0)，再「多走几步」', note: '一族函数 mₙ，1/mₙ(x) 的增长率达到 φ(n−1,0)。' },
+];
+reg('ladder', (root) => {
+  const main = LADDER.filter(x => !x.side), side = LADDER.filter(x => x.side);
+  const W = 720, H = 300, bw = 40, gap = 3;
+  const s = svg('svg', { class: 'ladder-svg', viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto;min-width:640px' }); root.append(s);
+  const detail = document.getElementById('ladderDetail');
+  const steps = [];
+  const show = (d) => {
+    steps.forEach(st => st.g.classList.toggle('on', st.d === d));
+    detail.innerHTML = '';
+    detail.append(el('div', { class: 'ch-range' }, (d.side ? '支线 · ' : '') + d.ch + ' 字'), el('h3', {}, d.name), el('pre', {}, d.code), el('div', { class: 'rate', html: '增长率：<b></b>' }), el('p', {}, d.note));
+    detail.querySelector('.rate b').textContent = d.rate;
+  };
+  main.forEach((d, i) => {
+    const h = 40 + i * 14, x = 10 + i * (bw + gap), y = H - 30 - h;
+    const g = svg('g', { class: 'step' }, svg('rect', { x, y, width: bw, height: h, rx: 5 }), svg('text', { x: x + bw / 2, y: y + 14, 'text-anchor': 'middle' }, d.ch));
+    g.addEventListener('click', () => show(d)); s.append(g); steps.push({ g, d });
+  });
+  s.append(svg('text', { class: 'lbl', x: 10, y: H - 8 }, '字符数 →'));
+  s.append(svg('text', { class: 'lbl', x: W - 10, y: 16, 'text-anchor': 'end' }, '增长率层级 ↑'));
+  side.forEach((d, i) => {
+    const x = 10 + (5 + i * 4) * (bw + gap), y = 20 + i * 2, h = 26;
+    const g = svg('g', { class: 'step side' }, svg('rect', { x, y, width: bw * 2, height: h, rx: 5 }), svg('text', { x: x + bw, y: y + 17, 'text-anchor': 'middle' }, '浮点 ' + d.ch));
+    g.addEventListener('click', () => show(d)); s.append(g); steps.push({ g, d });
+  });
+  show(main[0]);
+  let timer = 0, played = false;
+  const start = () => { if (played) return; played = true; let k = 0; const tick = () => { if (k < main.length) { show(main[k++]); timer = setTimeout(tick, RM ? 0 : 900); } }; tick(); };
+  return { start, stop: () => clearTimeout(timer) };
+});
+
+/* ======================================================================
+   07 FGH
+   ====================================================================== */
+reg('fgh', (root) => {
+  const rows = el('div', { class: 'fgh-row' });
+  const names = ['f₀(n)=n+1', 'f₁(n)=2n', 'f₂(n)=2ⁿ·n', 'f₃(n)', 'f_ω(n)=f_n(n)'];
+  const bars = names.map(nm => { const b = el('div', { class: 'b' }), v = el('span', { class: 'v' }); rows.append(el('div', { class: 'bar' }, el('span', { class: 'nm' }, nm.split('(')[0]), b, v)); return { b, v }; });
+  const f2 = (n) => n * Math.pow(2, n);
+  const log10 = Math.log10;
+  const calc = (n) => {
+    // 用 log10 近似：f3(n) = f2 迭代 n 次
+    const f0 = n + 1, f1 = 2 * n, v2 = f2(n);
+    let l = log10(v2); // f3：迭代 log10：log10(f2(m)) ≈ m·log10 2 + log10 m，m 很大时用 l 表示 log10 m，则 log10 f2 ≈ 10^l·0.301
+    let desc3; { let L = l; for (let i = 1; i < n; i++) { L = Math.pow(10, L) * 0.30103 + L; if (!isFinite(L)) { L = Infinity; break; } } desc3 = L; }
+    return [{ v: f0, t: String(f0) }, { v: f1, t: String(f1) }, { v: v2, t: v2.toLocaleString('en-US') }, { v: null, t: isFinite(desc3) ? (desc3 > 1e6 ? `≈ 10^(${desc3.toExponential(1)})` : `≈ 10^${Math.round(desc3)}`) : '10 的指数塔，写不下', l: desc3 }, { v: null, t: n <= 3 ? `= f${n}(${n})` : `= f${n}(${n})，比 f₃ 高 ${n - 3} 级`, l: desc3 }];
+  };
+  const upd = (n) => {
+    const r = calc(n);
+    const ll = (L) => clamp(Math.log10(1 + L) * 55, 2, 100) + '%';   // L = log10(数值)
+    bars[0].b.style.width = ll(Math.log10(r[0].v)); bars[1].b.style.width = ll(Math.log10(r[1].v)); bars[2].b.style.width = ll(Math.log10(r[2].v));
+    const L3 = r[3].l; bars[3].b.style.width = isFinite(L3) ? ll(L3) : '100%';
+    bars[4].b.style.width = n <= 3 ? (isFinite(L3) ? ll(L3) : '100%') : '100%';
+    r.forEach((x, i) => bars[i].v.textContent = x.t);
+  };
+  const rg = range('n =', 2, 8, 3, 1, upd);
+  root.append(rg, rows, el('div', { class: 'fgh-def', html: 'f₀(n) = n+1<br>f<sub>α+1</sub>(n) = f<sub>α</sub>(f<sub>α</sub>(…f<sub>α</sub>(n)…))　（迭代 n 次）<br>f<sub>λ</sub>(n) = f<sub>λ[n]</sub>(n)　（极限序数取第 n 个逼近，如 f<sub>ω</sub>(n)=f<sub>n</sub>(n)）<br><span style="color:var(--o)">ω+1 ≈ 葛立恒函数</span>　ω·k ≈ 康威链式箭号　ε₀ ≈ Goodstein 函数' }));
+  upd(3);
+  return { start: () => upd(+rg.input.value) };
+});
+
+/* ======================================================================
+   08 展开 n(y)
+   ====================================================================== */
+reg('unroll', (root) => {
+  const X = 4;
+  const box = el('div', { class: 'unroll' });
+  const tex = ['9（常数）', '9 × 9 × 9 × 9 = 9ˣ', '9^9^9^9 = 9↑↑x', '9↑↑9↑↑9↑↑9 = 9↑↑↑x'];
+  const ops = ['', '×', '^', '↑↑'];
+  let timer = 0, cur = 1;
+  const show = (y) => {
+    cur = y; clearTimeout(timer); box.innerHTML = '';
+    const r0 = el('div', { class: 'row' }, el('span', { class: 'box r in' }, `n(${y})`), el('span', {}, '='));
+    box.append(r0);
+    if (y === 0) { r0.append(el('span', { class: 'box in' }, '9')); box.append(el('div', { class: 'lbl2' }, '常数，不依赖 x。')); return; }
+    const items = [];
+    for (let i = 0; i < X; i++) { const b = el('span', { class: 'box' }, `n(${y - 1})`); items.push(b); r0.append(b); if (i < X - 1) r0.append(el('span', {}, ops[y] || '…')); }
+    box.append(el('div', { class: 'lbl2' }, `「调用 n(${y - 1})，然后把结果${y === 1 ? '乘到上次结果里' : '当作下一次的输入'}」重复 x 遍（这里 x=4）`), el('div', { class: 'lbl2', style: 'color:var(--p);font-weight:600' }, '结果：' + tex[y] + `　→ FGH 中的 f${['₁', '₂', '₃', '₄'][y - 1]}`));
+    let k = 0; const tick = () => { if (k < items.length) { items[k++].classList.add('in'); timer = setTimeout(tick, RM ? 0 : 300); } }; tick();
+  };
+  root.append(el('div', { class: 'ctrl' }, seg(['y = 0', 'y = 1', 'y = 2', 'y = 3'], (i) => show(i), 1)), box);
+  show(1);
+  return { start: () => show(cur), stop: () => clearTimeout(timer) };
+});
+
+/* ======================================================================
+   09 数轴 + 网格编码
+   ====================================================================== */
+reg('numline', (root) => {
+  const box = el('div', { class: 'numline' }); root.append(box);
+  box.append(el('div', { class: 'base' }));
+  const pts = [[-3, '4'], [-2, '3'], [-1, '2'], [0, '常数'], [1, 'ω+98'], [2, 'ω+97'], [3, 'ω+96'], [null, '…'], [97, 'ω+2'], [98, 'ω+1'], [99, 'ω']];
+  pts.forEach(([y, o], i) => { const px = (4 + i * 9.2) + '%'; box.append(el('div', { class: 'tick', style: `left:${px}` }), el('div', { class: 'y', style: `left:${px}` }, y == null ? '…' : 'y=' + y), el('div', { class: 'o', style: `left:${px};top:${i % 2 ? 62 : 44}px` }, o)); });
+  root.append(el('div', { class: 'src' }, '41 字：n=y=>x=x--*y?n(y)*n(y-99?y+1:~x):9;n(x=1)。y=99 时调用 n(~x)，~x = −1−x，于是从 ω 跳回有限层级做对角化。'));
+  return {};
+});
+reg('encgrid', (root) => {
+  const a = 9, rowsN = 5;
+  const grid = el('div', { class: 'grid-enc', style: `grid-template-columns:repeat(${a + 1},minmax(0,1fr))` });
+  const read = el('div', { class: 'enc-readout' }, '把鼠标放到格子上。');
+  grid.append(el('div', { class: 'cell hd' }, 'q \\ r'));
+  for (let r = 0; r < a; r++) grid.append(el('div', { class: 'cell hd' }, 'r=' + r));
+  const ordOf = (r, q) => r === 0 ? (q === 0 ? '常数' : String(q + 1)) : `ω${r > 1 ? '·' + r : ''}${q ? '+' + q : ''}`;
+  for (let q = 0; q < rowsN; q++) {
+    grid.append(el('div', { class: 'cell hd' }, 'q=' + q));
+    for (let r = 0; r < a; r++) {
+      const y = q * a - r; const o = ordOf(r, q);
+      const c = el('div', { class: 'cell c' + Math.min(4, r), onmouseenter: () => { read.textContent = `y = ${y}（${q}·${a} − ${r}）  →  FGH ${o}`; } }, o);
+      grid.append(c);
+    }
+  }
+  root.append(grid, read, el('div', { class: 'src' }, '原文：y=0 得常数；y=a 相当于 2，y=2a 相当于 3……；y=−1 相当于 ω，y=a−1 相当于 ω+1；y=−2 相当于 ω·2……直到 y=−(a−1) 相当于 ω·(a−1)。'));
+  return {};
+});
+
+/* ======================================================================
+   10 序数塔
+   ====================================================================== */
+reg('tower', (root) => {
+  const rungs = [
+    { o: 'ω', w: '超运算（对角化）', s: '33～38 字', c: '' },
+    { o: 'ω+1', w: '葛立恒函数的增长率', s: '39 字 n(2)', c: '' },
+    { o: 'ω·k', w: '康威链式箭号', s: '42～51 字', c: '' },
+    { o: 'ω²·k', w: '余数/奇偶编码', s: '52～56 字', c: '' },
+    { o: 'ω^ω', w: 'k 阶数编码（含未解数论问题）', s: '57～67 字', c: '' },
+    { o: 'ε₀', w: 'Primitive sequence → Goodstein 函数', s: '68～76 字', c: '' },
+    { o: 'ε₀', w: '假燃烧数：允许浮点数的支线', s: '32～36 字', c: 'side' },
+    { o: 'φ(ω,0)～φ(ω,ω)', w: 'Difference sequence number', s: '77～95 字', c: '' },
+    { o: 'Γ₀', w: 'Bashicu 矩阵第 1 版（不良序，只能从下方接近）', s: '96～100 字', c: '' },
+    { o: 'ψ(Ω_ω)', w: 'Π¹₁-CA₀ 的增长率极限', s: '101～113 字', c: '' },
+    { o: '≥ Π¹₂-CA₀', w: 'Bashicu 矩阵（距离记法），直到二阶算术极限之间', s: '114+ 字', c: '' },
+  ];
+  const box = el('div', { class: 'tower' }); root.append(box);
+  const els = rungs.map(r => { const d = el('div', { class: 'rung ' + r.c }, el('span', { class: 'ord' }, r.o), el('span', { class: 'what', html: r.w }), el('span', { class: 'chs' }, r.s)); box.append(d); return d; });
+  let timer = 0;
+  const start = () => { stop(); els.forEach(e => e.classList.remove('in', 'now')); let k = 0; const tick = () => { if (k < els.length) { els.forEach(e => e.classList.remove('now')); els[k].classList.add('in', 'now'); k++; timer = setTimeout(tick, RM ? 0 : 550); } else els.forEach(e => e.classList.remove('now')); }; tick(); };
+  const stop = () => clearTimeout(timer);
+  return { start, stop };
+});
+
+/* ======================================================================
+   11 比较
+   ====================================================================== */
+reg('compare', (root) => {
+  const rows = [
+    { o: 'Π¹₂-CA₀ …', m: [['c', '114+ 字 Bashicu 矩阵']] },
+    { o: 'ψ(Ω_ω)', m: [['c', '101 字代码'], ['q', '详解标题：bigger than TREE(3)']] },
+    { o: 'Γ₀', m: [['c', '96 字代码']] },
+    { o: 'ε₀', m: [['c', '74 字代码'], ['c', '浮点 32 字']] },
+    { o: 'ω^ω', m: [['c', '57 字代码']] },
+    { o: 'ω·k', m: [['c', '42 字代码']] },
+    { o: 'ω+1', m: [['g', '葛立恒数（原文：葛立恒函数的增长率）'], ['c', '39 字 n(2)']] },
+    { o: 'ω', m: [['c', '33 字超运算']] },
+    { o: '有限层级 f₃', m: [['c', '19 字 9**9**…'], ['q', '可观测宇宙的一切计数']] },
+  ];
+  const box = el('div', { class: 'cmp' }); root.append(box);
+  const marks = [];
+  rows.forEach(r => { const m = el('div', { class: 'm' }); r.m.forEach(([k, t]) => { const x = el('span', { class: 'mark ' + k }, t); m.append(x); marks.push(x); }); box.append(el('div', { class: 'rung2' }, el('span', { class: 'o2' }, r.o), m)); });
+  box.append(el('div', { class: 'src' }, '「TREE(3)」本身没有画在尺子上：原文没有给出它的精确位置，只引用了一篇标题为「Golf a number bigger than TREE(3)」的详解，对应 101～113 字这一级。葛立恒数的位置来自原文「n(2) 相当于 ω+1，也就是葛立恒函数的增长率」。'));
+  let timer = 0;
+  const start = () => { stop(); marks.forEach(m => m.classList.remove('in')); let k = marks.length - 1; const tick = () => { if (k >= 0) { marks[k--].classList.add('in'); timer = setTimeout(tick, RM ? 0 : 220); } }; tick(); };
+  const stop = () => clearTimeout(timer);
+  return { start, stop };
+});
+
+/* ======================================================================
+   12 链条
+   ====================================================================== */
+reg('chain', (root) => {
+  const steps = [...root.querySelectorAll('.step')];
+  let i = 0;
+  return every(1600, () => { steps.forEach((s, j) => s.classList.toggle('on', j === i % steps.length)); i++; });
+});
+
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

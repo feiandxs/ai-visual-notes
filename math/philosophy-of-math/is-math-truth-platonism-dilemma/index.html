@@ -1,0 +1,1035 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>数学是真理吗？古典柏拉图主义的困境 · 可视化讲解</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f6f4ef;--bg2:#ffffff;--bg3:#efece4;--fg:#1d1c1a;--fg2:#5a5752;--fg3:#8a867f;
+  --line:#dedad0;--accent:#4f46e5;--accent2:#0f9b8e;--warn:#e07b1a;--pink:#d6336c;--ok:#2f9e44;
+  --accent-soft:#e8e6fb;--accent2-soft:#d9f3ef;--warn-soft:#fdebd3;--pink-soft:#fde0ea;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",Roboto,sans-serif;
+  --r:14px;--shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -12px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.92em}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:50;transition:width .1s linear}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:0;max-width:1180px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 16px 28px 20px;border-right:1px solid var(--line);font-size:13px}
+nav.toc .brand{font-weight:700;font-size:13px;color:var(--fg2);margin-bottom:14px;letter-spacing:.02em}
+nav.toc a{display:block;color:var(--fg2);text-decoration:none;padding:5px 8px;border-radius:8px;margin-bottom:2px;line-height:1.35}
+nav.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.toc a .n{display:inline-block;width:1.6em;color:var(--fg3);font-family:var(--mono);font-size:11px}
+main{padding:0 32px 80px;min-width:0}
+.hero{padding:72px 0 36px}
+.hero .kicker{color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,4.2vw,44px);line-height:1.2;margin:10px 0 14px;letter-spacing:-.01em}
+.hero p{font-size:17px;color:var(--fg2);max-width:62ch;margin:0 0 10px}
+.hero .meta{font-size:13px;color:var(--fg3);margin-top:16px}
+.notice{background:var(--warn-soft);border-left:3px solid var(--warn);padding:10px 14px;border-radius:8px;font-size:13.5px;color:var(--fg2);margin-top:18px}
+section.ch{padding:56px 0 24px;border-top:1px solid var(--line)}
+section.ch .num{display:inline-block;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;margin-bottom:10px}
+section.ch h2{font-size:clamp(22px,3vw,30px);line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}
+section.ch .lead{font-size:17px;color:var(--fg2);margin:0 0 20px;max-width:70ch}
+.fig{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 18px 14px;margin:0 0 18px}
+.fig .cap{font-size:13px;color:var(--fg3);margin:10px 0 0;line-height:1.5}
+.fig .hint{font-size:13px;color:var(--fg2);margin:0 0 10px}
+.fig svg,.fig canvas{display:block;max-width:100%;height:auto}
+.fig .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig .scroll > svg{min-width:560px}
+.notes{margin:0;padding-left:1.2em;color:var(--fg2);font-size:14.5px}
+.notes li{margin:4px 0}
+.notes b{color:var(--fg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--bg3);border-radius:12px;padding:14px 16px;font-size:14px}
+.card h4{margin:0 0 6px;font-size:14.5px}
+.card p{margin:0;color:var(--fg2);line-height:1.5}
+.card.ac{border-left:3px solid var(--accent)}
+.card.ac2{border-left:3px solid var(--accent2)}
+.card.wa{border-left:3px solid var(--warn)}
+.card.pk{border-left:3px solid var(--pink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--bg3);color:var(--fg);padding:7px 14px;border-radius:999px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translateY(1px)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg2);padding:7px 14px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--accent);color:#fff}
+.range{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2)}
+.range input{accent-color:var(--accent)}
+.formula{font-family:var(--mono);background:var(--bg3);border-radius:10px;padding:10px 14px;font-size:14px;overflow-x:auto;white-space:nowrap}
+.formula .k{color:var(--accent);font-weight:600}
+.quote{border-left:3px solid var(--accent2);padding:6px 14px;color:var(--fg2);font-size:15px;margin:0 0 14px;background:var(--accent2-soft);border-radius:0 10px 10px 0}
+.quote .who{display:block;font-size:12px;color:var(--fg3);margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--bg3);color:var(--fg3);vertical-align:middle;margin-left:6px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow .step{flex:1 1 120px;background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:13.5px;text-align:center;position:relative;opacity:.45;transition:opacity .4s,background .4s}
+.flow .step.lit{opacity:1;background:var(--accent-soft)}
+.flow .step b{display:block;font-size:14px}
+.flow .arrow{align-self:center;color:var(--fg3);padding:0 6px;font-size:18px}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--fg3);font-size:13px}
+footer a{color:var(--fg2)}
+#tocBtn{display:none;position:fixed;right:16px;bottom:16px;z-index:60;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
+@media (max-width:860px){
+  .layout{display:block}
+  nav.toc{position:fixed;inset:0;height:auto;z-index:55;background:var(--bg2);transform:translateX(-100%);transition:transform .25s;border-right:0;padding-top:48px}
+  nav.toc.open{transform:none}
+  #tocBtn{display:block}
+  main{padding:0 16px 80px}
+  .hero{padding:48px 0 24px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .fig{padding:14px 12px 12px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .pulse{animation:none}
+  *{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+/* ===== page-specific additions (math philosophy series) ===== */
+.hero .quote{margin-top:18px}
+.hero .quote .en{font-style:italic;color:var(--fg3);font-size:13.5px;display:block;margin-bottom:4px}
+.series{display:inline-block;font-size:12px;background:var(--accent2-soft);color:var(--accent2);padding:2px 10px;border-radius:999px;margin-left:8px;vertical-align:middle;font-weight:600}
+.fig svg text{font-family:var(--sans);fill:var(--fg)}
+.fig svg .mut{fill:var(--fg2)}
+.fig svg .mut3{fill:var(--fg3)}
+.fig svg .mono{font-family:var(--mono)}
+.fig svg .ln{stroke:var(--line);fill:none}
+.fig svg .ac{stroke:var(--accent)}
+.fig svg .ac2{stroke:var(--accent2)}
+.fig svg .box{fill:var(--bg3);stroke:var(--line)}
+.fig svg .box.on{fill:var(--accent-soft);stroke:var(--accent)}
+.fig svg .box.on2{fill:var(--accent2-soft);stroke:var(--accent2)}
+.fig svg .box.warn{fill:var(--warn-soft);stroke:var(--warn)}
+.fig svg .box.pk{fill:var(--pink-soft);stroke:var(--pink)}
+.fig svg .fade{opacity:.3}
+.fig svg .hidden{opacity:0}
+.fig svg .t{transition:opacity .5s,fill .4s,stroke .4s,transform .6s}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cmp .col{background:var(--bg3);border-radius:12px;padding:12px 14px}
+.cmp .col h4{margin:0 0 8px;font-size:14.5px;display:flex;align-items:center;gap:8px}
+.cmp .col h4 .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.cmp .row{font-size:13.5px;color:var(--fg2);padding:6px 0;border-top:1px dashed var(--line);opacity:.25;transition:opacity .5s}
+.cmp .row.lit{opacity:1}
+.cmp .row b{color:var(--fg);display:block;font-size:12px;letter-spacing:.04em}
+@media (max-width:600px){.cmp{grid-template-columns:1fr}}
+.tl{position:relative;padding-left:22px;border-left:2px solid var(--line);margin:4px 0 4px 8px}
+.tl .ev{position:relative;padding:4px 0 14px;font-size:14px;color:var(--fg2);opacity:.3;transition:opacity .5s}
+.tl .ev.lit{opacity:1}
+.tl .ev::before{content:"";position:absolute;left:-28px;top:10px;width:10px;height:10px;border-radius:50%;background:var(--line);border:2px solid var(--bg2)}
+.tl .ev.lit::before{background:var(--accent)}
+.tl .ev b{color:var(--fg);display:block}
+.tl .ev .yr{font-family:var(--mono);font-size:11px;color:var(--fg3)}
+.steps{display:grid;gap:8px}
+.steps .st{background:var(--bg3);border-radius:10px;padding:9px 12px;font-size:14px;opacity:.3;transition:opacity .4s,background .4s;display:grid;grid-template-columns:28px 1fr;gap:8px;align-items:start}
+.steps .st.lit{opacity:1;background:var(--accent-soft)}
+.steps .st .k{font-family:var(--mono);font-size:12px;color:var(--accent);padding-top:2px}
+.steps .st.bad.lit{background:var(--pink-soft)}
+.steps .st.bad .k{color:var(--pink)}
+.bigq{font-size:clamp(18px,3vw,24px);font-weight:600;text-align:center;padding:18px 10px;color:var(--fg);line-height:1.4}
+.bigq small{display:block;font-size:13px;color:var(--fg3);font-weight:400;margin-top:6px}
+.kpi{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--fg2);margin-top:8px}
+.kpi b{font-family:var(--mono);font-size:18px;color:var(--fg);display:block}
+.pill{display:inline-block;font-size:12px;padding:2px 9px;border-radius:999px;background:var(--bg3);color:var(--fg2);margin:2px 4px 2px 0;border:1px solid var(--line)}
+.pill.on{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.pill.on2{background:var(--accent2-soft);color:var(--accent2);border-color:transparent}
+.pill.wa{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.words{font-family:var(--mono);font-size:13px;background:var(--bg3);border-radius:10px;padding:10px 12px;line-height:1.6;min-height:3.2em;white-space:pre-wrap;word-break:break-all}
+.words .hl{color:var(--accent);font-weight:700}
+.words .hl2{color:var(--accent2);font-weight:700}
+.words .bad{color:var(--pink);font-weight:700}
+.syl{display:grid;gap:6px}
+.syl .line{display:grid;grid-template-columns:5.5em 1fr;gap:10px;align-items:center;font-size:15px;background:var(--bg3);border-radius:10px;padding:8px 12px}
+.syl .line .lab{font-size:12px;color:var(--fg3)}
+.syl .line .slot{display:inline-block;padding:0 6px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-weight:600;transition:background .3s,color .3s}
+.syl .line .slot.b{background:var(--accent2-soft);color:var(--accent2)}
+.syl .line .slot.c{background:var(--warn-soft);color:var(--warn)}
+.pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pillars .pl{background:var(--bg3);border-radius:12px;padding:14px;font-size:13.5px;border-top:4px solid var(--line);transition:border-color .4s,transform .4s}
+.pillars .pl.lit{border-top-color:var(--accent);transform:translateY(-3px)}
+.pillars .pl h4{margin:0 0 6px;font-size:15px}
+.pillars .pl .claim{color:var(--fg);margin:0 0 8px}
+.pillars .pl .crack{color:var(--pink);font-size:13px;margin:0;padding-top:8px;border-top:1px dashed var(--line)}
+@media (max-width:700px){.pillars{grid-template-columns:1fr}}
+.levels{display:flex;flex-direction:column-reverse;gap:6px}
+.levels .lv{background:var(--bg3);border-radius:10px;padding:8px 12px;font-size:13.5px;display:flex;justify-content:space-between;align-items:center;gap:10px;opacity:.3;transition:opacity .4s}
+.levels .lv.lit{opacity:1}
+.levels .lv .n{font-family:var(--mono);font-size:11px;color:var(--accent)}
+.levels .lv.forbid{background:var(--pink-soft);opacity:1}
+.hotel{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+.hotel .rm{aspect-ratio:1;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:12px;position:relative;font-family:var(--mono);color:var(--fg3);border:1px solid var(--line)}
+.hotel .rm .g{position:absolute;inset:4px;border-radius:6px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;transition:transform .7s cubic-bezier(.2,.8,.2,1),background .4s}
+.hotel .rm .g.new{background:var(--warn)}
+.hotel .rm.empty .g{opacity:0}
+.hotel .more{grid-column:span 1;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:18px}
+.sets{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.sets .set{border:2px dashed var(--line);border-radius:14px;padding:10px 12px;min-width:120px;text-align:center;font-size:13px;transition:border-color .5s,background .5s}
+.sets .set .nm{font-size:12px;color:var(--fg3);margin-bottom:6px}
+.sets .set .el{display:inline-block;width:26px;height:26px;border-radius:50%;background:var(--bg3);margin:2px;line-height:26px;font-size:12px}
+.sets .set.lit{border-color:var(--accent);background:var(--accent-soft)}
+.three{border:2px solid var(--accent);border-radius:18px;padding:14px;position:relative;margin-top:12px;transition:opacity .6s,transform .6s;opacity:0;transform:scale(.96)}
+.three.in{opacity:1;transform:none}
+.three .lab{position:absolute;top:-12px;left:16px;background:var(--bg2);padding:0 8px;font-weight:700;color:var(--accent);font-size:14px}
+.defchain{font-family:var(--mono);font-size:15px;display:grid;gap:6px}
+.defchain .d{background:var(--bg3);border-radius:8px;padding:7px 12px;opacity:.25;transition:opacity .4s}
+.defchain .d.lit{opacity:1}
+.defchain .d.final{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.chk{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chk .c{width:22px;height:22px;border-radius:6px;background:var(--bg3);border:1px solid var(--line);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--fg3);transition:background .2s}
+.chk .c.ok{background:var(--ok);color:#fff;border-color:transparent}
+.chk .c.no{background:var(--pink);color:#fff;border-color:transparent}
+.chk .c.dots{background:transparent;border:0;width:auto}
+.verdict{margin-top:10px;font-size:14px;padding:8px 12px;border-radius:10px;background:var(--bg3)}
+.verdict.ok{background:var(--accent2-soft);color:var(--accent2)}
+.verdict.no{background:var(--pink-soft);color:var(--pink)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+@media (max-width:700px){.row2{grid-template-columns:1fr}}
+.wordvs{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:600px){.wordvs{grid-template-columns:1fr}}
+.wordvs .wb{background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.55;min-height:120px;color:var(--fg2)}
+.wordvs .wb h5{margin:0 0 6px;font-size:13px;color:var(--fg)}
+.wordvs .wb .cnt{font-family:var(--mono);font-size:11px;color:var(--fg3);display:block;margin-top:6px}
+.wordvs .wb.sym{font-family:var(--mono);font-size:14px;color:var(--fg)}
+
+@media (max-width:600px){.fig .scroll::before{content:"← 图可左右滑动 →";display:block;font-size:11px;color:var(--fg3);margin-bottom:4px}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<button id="tocBtn" aria-label="目录">目录</button>
+<div class="layout">
+<nav class="toc"><div class="brand">数学是真理吗？古典柏拉图主义的困境 · 可视化讲解</div><div class="list"></div></nav>
+<main>
+<div class="hero">
+  <div class="kicker">数学哲学 · 系列第 7 篇<span class="series">贾明子「何为现实？」专栏</span></div>
+  <h1>数学是真理吗？古典柏拉图主义的困境</h1>
+  <p>两千多年来，人们相信数学是永恒不变、独立于人的绝对真理。这一篇讲这个信念从哪里来，又是怎样一点点被无理数、无穷、虚数和非欧几何动摇的。</p>
+  <div class="quote"><span class="en">"God made the natural numbers, all else is the work of man."</span>"自然数是上帝的造物，其余一切皆出于人手。"<span class="who">—— Leopold Kronecker（原文题记）</span></div>
+  <div class="meta">原文：贾明子《7. 数学是真理吗？古典柏拉图主义的困境》，知乎专栏「何为现实？拉普拉斯之妖与薛定谔猫之决战」· 本页为可视化讲解，观点均来自原文</div>
+</div>
+
+<section class="ch" id="s1" data-title="数学不是科学">
+  <div class="num">01</div>
+  <h2>数学和科学很像，但不是科学</h2>
+  <p class="lead">科学以实证为准则；数学研究的对象不在时空里，也从不靠观察来验证。原文列了五个方面的不同。</p>
+  <div class="fig reveal" data-demo="cmp">
+    <p class="hint">两列对照，进入视口后逐行点亮。</p>
+    <div class="cmp" id="cmpBox">
+      <div class="col"><h4><span class="dot" style="background:var(--accent2)"></span>自然科学</h4>
+        <div class="row"><b>本体论</b>研究时空中的具体事物：天体、生物、粒子</div>
+        <div class="row"><b>认识论</b>靠实验和观测判定真假，只能是"偶然真"</div>
+        <div class="row"><b>方法论</b>归纳法：总结、推广过往经验</div>
+        <div class="row"><b>直觉</b>定律随观察而修正</div>
+        <div class="row"><b>有效性</b>几乎每条定律都用数学写成</div>
+      </div>
+      <div class="col"><h4><span class="dot" style="background:var(--accent)"></span>数学</h4>
+        <div class="row"><b>本体论</b>对象纯抽象：函数、没有宽度的直线、不占空间的点</div>
+        <div class="row"><b>认识论</b>无法实证，却被判定为"必然真"</div>
+        <div class="row"><b>方法论</b>演绎法：从公理出发层层推演，不完全归纳在数学里没地位</div>
+        <div class="row"><b>直觉</b>公理为何可靠？是逻辑要求、人为规定，还是先天框架？</div>
+        <div class="row"><b>有效性</b>为何能在科学中丝丝入扣？</div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="fig reveal" data-demo="nec">
+      <p class="hint">点"再观察一次"。能量守恒永远可能在下一次实验里出错（逻辑上可能），2+3=5 却无法想象会错。</p>
+      <div class="controls"><button class="btn primary" id="necBtn">再观察一次 →</button><span class="mono" id="necN" style="font-size:12px;color:var(--fg3)">第 0 次</span></div>
+      <svg id="necS" viewBox="0 0 520 150"></svg>
+      <p class="cap">偶然真（contingently true）vs 必然真（necessarily true）。右边不必真的去数，就知道一定是五个。</p>
+    </div>
+    <div class="card ac" style="align-self:start">
+      <h4>这些就是数学哲学的问题</h4>
+      <p>数学对象是什么、独立于我们而存在吗？不能实证，凭什么判真假？公理的可靠性从哪来？数学和逻辑、和思维是什么关系？数学为何在科学里如此有效？——"几千年来一直在探寻而终难解惑的迷思"。</p>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="s2" data-title="柏拉图的两个世界">
+  <div class="num">02</div>
+  <h2>柏拉图的答案：数学住在理念世界</h2>
+  <p class="lead">现象世界是理念世界投在感官里的影子；数学是理念世界的秩序，人靠"回忆"认出它。你的小学数学老师说的就是这个。</p>
+  <div class="fig reveal" data-demo="cave">
+    <p class="hint">上层是理念世界里完美的圆与三角形，下层是它们在现象世界里歪歪扭扭的投影。灵魂通过"回忆"看回上层。</p>
+    <div class="scroll"><svg id="caveS" viewBox="0 0 640 300"></svg></div>
+    <p class="cap">"他们所看到的不是所画的图形，而是绝对的正方形、以及绝对的直径等等……这只有用心灵之眼才能看到。"——《理想国》</p>
+  </div>
+  <div class="grid2">
+    <div class="card ac"><h4>古典柏拉图主义的核心</h4><p>① 数学是永恒不变、确定的抽象存在；② 数学独立于人类而真实存在；③ 数学是自然界的最高秩序；④ 人类可以认知它（通过"回忆"还是"直觉"有分歧）。</p></div>
+    <div class="card ac2"><h4>哲人王</h4><p>《理想国》里理想国度的最高领袖是有着理念世界美德和智慧的"哲人王"。从智慧一面讲，哲人王必然是伟大的数学家。</p></div>
+  </div>
+</section>
+
+<section class="ch" id="s3" data-title="毕达哥拉斯与 √2">
+  <div class="num">03</div>
+  <h2>古希腊人把数学当真理，不当技术</h2>
+  <p class="lead">上古印度、埃及、两河、中国的实用数学都很发达，但只有古希腊人执着于数学的基础和哲学含义。毕达哥拉斯学派把数字上升为信仰，直到 √2 出现。</p>
+  <div class="grid2">
+    <div class="fig reveal" data-demo="quad">
+      <p class="hint">毕达哥拉斯学派的"四大学科"，自他们起直至中世纪一直在学院中教授。</p>
+      <svg id="quadS" viewBox="0 0 420 200"></svg>
+      <p class="cap">天文中日月星辰的周期、音乐中和弦的共鸣，都被看作数字之美的体现。有理数被认为包含了自然的一切奥秘。</p>
+    </div>
+    <div class="fig reveal" data-demo="sqrt2">
+      <p class="hint">边长为 1 的正方形，对角线是 √2。按"反证"逐步看为什么它不可能是两个自然数之比。</p>
+      <div class="controls"><button class="btn primary" id="sqBtn">下一步 →</button><button class="btn" id="sqReset">重来</button></div>
+      <div class="row2">
+        <svg id="sqS" viewBox="0 0 200 200" style="max-width:180px;margin:0 auto"></svg>
+        <div class="steps" id="sqSteps">
+          <div class="st"><span class="k">设</span><span>√2 = a/b，a、b 是自然数且没有公约数（已约到最简）</span></div>
+          <div class="st"><span class="k">⇒</span><span>a² = 2b²，所以 a² 是偶数，a 也必为偶数（奇数的平方不可能是偶数）</span></div>
+          <div class="st"><span class="k">记</span><span>a = 2c，则 a² = 4c²，于是 b² = 2c²，b 也是偶数</span></div>
+          <div class="st bad"><span class="k">矛盾</span><span>a、b 都是偶数，与"没有公约数"矛盾</span></div>
+          <div class="st"><span class="k">∴</span><span>不存在这样的 a、b。√2 必为无理数</span></div>
+        </div>
+      </div>
+      <p class="cap">传说中首先泄露无理数存在的希帕索斯被抛入海中淹死——"人被淹死了，问题却留下来了"。</p>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="s4" data-title="亚里士多德：三段论与公理">
+  <div class="num">04</div>
+  <h2>亚里士多德：真理不靠回忆，靠演绎</h2>
+  <p class="lead">他认为绝对的数学真理必须通过严谨的逻辑演绎获得。追问"为什么"不能无限递归，总要停在不证自明的公理上。</p>
+  <div class="grid2">
+    <div class="fig reveal" data-demo="syl">
+      <p class="hint">三段论：大前提 → 小前提 → 结论。切换原文的两个例子。</p>
+      <div class="controls"><div class="seg" id="sylSeg"><button class="on" data-v="dog">旺财</button><button data-v="tri">三角形</button></div></div>
+      <div class="syl" id="sylBox">
+        <div class="line"><span class="lab">大前提</span><span id="syl1"></span></div>
+        <div class="line"><span class="lab">小前提</span><span id="syl2"></span></div>
+        <div class="line"><span class="lab">所以</span><span id="syl3"></span></div>
+      </div>
+    </div>
+    <div class="fig reveal" data-demo="regress">
+      <p class="hint">每条结论都要问"凭什么"。一路向上追问，必须有一个起点。</p>
+      <svg id="regS" viewBox="0 0 420 240"></svg>
+      <p class="cap"><b>公理</b>：直觉上绝对可靠，普适于一切领域（如五个一般信念）。<b>公设</b>：某一领域内不证自明的起点，不必一望即知（如五大公设）。</p>
+    </div>
+  </div>
+  <ul class="notes">
+    <li><b>柏拉图像数学家，亚里士多德像科学家</b>：亚氏认为数学概念是对可感知事物的理想化抽象，物理学才是研究自然的基本学科，数学只提供形式化描述。</li>
+    <li>他关于公理、公设、"公设不必一望即知"的看法，<b>超前了两千多年</b>，在 20 世纪的数学危机中爆发式地体现出来。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s5" data-title="欧几里得：从十条出发">
+  <div class="num">05</div>
+  <h2>欧几里得：区区十条，撑起整个几何</h2>
+  <p class="lead">五个一般信念加五大公设，层层严密推理，建起宏大的几何体系。人们从未对自己知识的基础如此自信。</p>
+  <div class="fig reveal" data-demo="euclid">
+    <p class="hint">底座是十条公理/公设，点任意一块看原文；上面的定理逐层"长"出来。注意第五公设被标了颜色——它后面会出大事。</p>
+    <div class="scroll"><svg id="eucS" viewBox="0 0 640 330"></svg></div>
+    <p class="cap" id="eucCap">点一块底座方块查看内容。</p>
+  </div>
+  <ul class="notes">
+    <li>这些公理如此符合直觉，"以至于人们无法想象它们如果是错误的将会怎样"。</li>
+    <li>几何实体（点、线、面）和数字一样是<b>抽象的</b>：感官体验不到，只能用直觉想象。这进一步加固了柏拉图主义的信念。</li>
+    <li>原文脚注：你们的几何课本把公设叫"基本事实"，作者持保留态度——"基本事实"暗示可以经验验证，而公设是不证自明的假定。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s6" data-title="从理念到上帝的语言">
+  <div class="num">06</div>
+  <h2>千年之后：数学变成上帝的语言</h2>
+  <p class="lead">古希腊文明被毁，火种在拜占庭蛰伏，文艺复兴后重新燃起——但换了一副面孔："自然依数学设计"变成了"上帝就是设计的作者"。</p>
+  <div class="grid2">
+    <div class="fig reveal" data-demo="tl1">
+      <p class="hint">进入视口后按时间逐段点亮。</p>
+      <div class="tl" id="tl1">
+        <div class="ev"><b>古希腊</b>数学是真理而非技术；欧氏几何登顶</div>
+        <div class="ev"><b>文明覆灭</b>罗马、埃及、穆斯林先后冲击；残存文献被付之一炬："可兰经里也有则不必读，反对可兰经则不准读"</div>
+        <div class="ev"><b>中世纪欧洲</b>好奇心转向神学；对数学真理几乎毫无成果</div>
+        <div class="ev"><b>拜占庭</b>典籍相对安全，蛰伏下来，保留火种</div>
+        <div class="ev"><b>文艺复兴</b>土耳其征服东罗马，学者携典籍西逃；"薪尽火传"</div>
+        <div class="ev"><b>上帝的秩序</b>数学成了上帝创世的语言，像《圣经》一样不可侵犯；笛卡尔、莱布尼兹、牛顿的终极动力皆源于此</div>
+      </div>
+      <p class="cap">这其实是柏拉图主义的延展：从"抽象世界中的独立存在"变成"高于人类的上帝手中的秩序"。</p>
+    </div>
+    <div class="fig reveal" data-demo="epi">
+      <p class="hint">讽刺的是，对教会的最大反叛——日心说——正是这种柏拉图信念的直接结果：因为它的数学形式更简洁、更"接近上帝的语言"。</p>
+      <div class="controls"><div class="seg" id="epiSeg"><button class="on" data-v="geo">托勒密地心说</button><button data-v="helio">哥白尼日心说</button></div></div>
+      <canvas id="epiC" width="420" height="260"></canvas>
+      <p class="cap" id="epiCap">本轮绕均轮转、星球绕本轮转，多圆嵌套。到日心说诞生时已需要 77 个圆，"已经到了令人难堪的地步"。</p>
+    </div>
+  </div>
+  <div class="formula" style="margin-top:14px">开普勒、牛顿把天文学简化成一个方程：　<span class="k">F = G·Mm / R²</span>　——数学之美又一次淋漓尽致</div>
+  <ul class="notes" style="margin-top:12px">
+    <li><b>科学的数学化</b>：伽利略坚定地认为自然奥秘是从"自然这本书"里读出来的，不来自理念世界；但把数学用于描述自然，反过来更坚定了人们对数学真理的信念。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s7" data-title="微积分：不合逻辑地发展">
+  <div class="num">07</div>
+  <h2>微积分：一门逻辑学科不合逻辑地发展</h2>
+  <p class="lead">瞬时速度要算"0 除以 0"。早期微积分靠一个说不清是不是零的"无穷小"蒙混过关，却成功得惊人。</p>
+  <div class="fig reveal" data-demo="dt">
+    <p class="hint">自由落体 L = 5t²。拖动 Δt，看平均速度 = 10t + 5Δt 里那个多出来的 5Δt。它是 0 吗？是 0 就不能约分；不是 0 就不能舍去。</p>
+    <div class="controls">
+      <label class="range">Δt <input type="range" id="dtR" min="1" max="100" value="60"> <output id="dtO">0.60</output> s</label>
+      <span class="mono" style="font-size:12px;color:var(--fg3)">t = 1 s</span>
+    </div>
+    <div class="scroll"><svg id="dtS" viewBox="0 0 640 240"></svg></div>
+    <div class="formula" id="dtF">v̄ = ΔL/Δt = (10t·Δt + 5Δt²)/Δt = <span class="k">10t + 5Δt</span></div>
+    <p class="cap">莱布尼兹说无穷小"不是真实的数，而是假想数"；伯努利说这"与其说是一个解释，不如说是一个谜"。积分里"无穷多个无穷小相加"更是陷阱重重，当时连收敛性都没人意识到。</p>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="fig reveal" data-demo="eps">
+      <p class="hint">200 多年后的解法：无穷小不是真的无穷小，而是"任意小"。你随便说一个误差 ε，我总能找到对应的 Δt。</p>
+      <div class="controls"><button class="btn primary" id="epsBtn">你说一个更小的误差 →</button></div>
+      <div class="words" id="epsW">误差要求：0.1　→　只要 Δt &lt; 0.02 就行</div>
+      <p class="cap">"说吧，你既然觉得瞬时速度不等于 10t，那么偏差有多少？不管你说多小，偏差总是小于它！"存在一个极限 10t，可以"任意地"靠近它。</p>
+    </div>
+    <div class="fig reveal" data-demo="half">
+      <p class="hint">1/2 + 1/4 + 1/8 + … 用正方形填充：每次填剩下的一半，剩余可以任意小。极限是 1。</p>
+      <div class="controls"><button class="btn primary" id="halfBtn">再加一项 →</button><button class="btn" id="halfReset">重来</button></div>
+      <svg id="halfS" viewBox="0 0 320 200"></svg>
+      <p class="cap" id="halfCap">S = 0，剩余 1</p>
+    </div>
+  </div>
+  <ul class="notes" style="margin-top:12px">
+    <li>科学家们兴高采烈地用微积分攻城略地，"有用而且好用，这就足够了"；数学家们的忧虑却与日俱增：<b>数学的牢固基础在哪里？</b></li>
+    <li>温伯格："数学家从来没有帮助、而是一直在掣肘科学的发展。"——"数学家 vs 科学家"的段子直到今天还在流传。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s8" data-title="潜无穷与实无穷">
+  <div class="num">08</div>
+  <h2>绕开无穷：潜无穷 vs 实无穷</h2>
+  <p class="lead">极限的办法其实是绕开了"无穷"：谈"无论多小的数"在逻辑上和谈"无穷小"完全不同——前者永远是有限的数。</p>
+  <div class="fig reveal" data-demo="inf">
+    <p class="hint">左：潜无穷，"总可以再加 1"，永远完不成。右：实无穷，把全体自然数当作一个已经完成的集合。</p>
+    <div class="scroll"><svg id="infS" viewBox="0 0 640 220"></svg></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="quote">"我是如此赞成实无穷，乃至于我不像一般人那样认为自然厌恶无穷，而是认为自然无所不在地使用它，更加有效地展示着造物主的完美。"<span class="who">—— 莱布尼兹（少见的赞成实无穷者）</span></div>
+    <div class="quote" style="border-color:var(--warn);background:var(--warn-soft)">"无限只是一种言说方式罢了，它实际指的是我们可以随心所欲地靠近一个极限。"<span class="who">—— 高斯（绝大多数数学家的立场）</span></div>
+  </div>
+  <ul class="notes" style="margin-top:12px">
+    <li>潜无穷的说法最早起源于亚里士多德，它在有限智慧与外部无穷之间架了一座桥。</li>
+    <li>你不能说"无穷多个 0 之后跟着一个 1"：有终结就不可能是无穷多。神学家宣称已完成的无限只能是上帝的特性。</li>
+    <li>微积分找到了合理的基础，却带来了新的困扰——无穷的问题。<b>先按下不表。</b></li>
+  </ul>
+</section>
+
+<section class="ch" id="s9" data-title="数的扩张与流沙">
+  <div class="num">09</div>
+  <h2>数在扩张，基础却越来越像流沙</h2>
+  <p class="lead">古希腊把自然数当作几何的"尺子"，有理数自然衍生，但无理数无处安放。印度、阿拉伯人毫不在意基础、野蛮生长；到了虚数，干脆是"人为规定"。</p>
+  <div class="fig reveal" data-demo="rings">
+    <p class="hint">点击各层看它的"身世"。越往外，逻辑基础越薄。</p>
+    <div class="row2">
+      <svg id="ringS" viewBox="0 0 320 320" style="max-width:320px;margin:0 auto"></svg>
+      <div>
+        <div class="card ac" id="ringCard" style="min-height:150px"><h4 id="ringT">自然数</h4><p id="ringP">古希腊人眼中自然数是几何中的长度单位，是度量事物的一把"尺子"；整个算术建立在欧氏几何的公理之上。</p></div>
+        <div class="kpi"><div><b id="ringK">牢靠</b>逻辑基础（示意）</div></div>
+      </div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li><b>代数与几何分道扬镳</b>：丢番图之后著作散佚；印度数学被史学家称为"粪土和珍珠的混合物"，却发展出十进制、零和负数（原文脚注：中国提出零和负数比印度早上千年）。</li>
+    <li><b>无理数到底是什么？</b>按潜无穷，"无限不循环小数"永远只是任意长的序列，可以任意接近那个无理数，但它不是那个无理数。直到一百多年前人们才发现，直尺上大多数点根本不能靠任意细分切到。</li>
+    <li><b>虚数</b>的出现"近乎儿戏"，几百年被吐槽不能；却在高次方程、微分方程、傅里叶变换、电路里越来越好用，最后在量子力学中成了"实实在在的理论砖石"。<b>一个绝对真理，可以开这种玩笑吗？</b></li>
+  </ul>
+</section>
+
+<section class="ch" id="s10" data-title="第五公设与非欧几何">
+  <div class="num">10</div>
+  <h2>第五公设：牢固的几何也不牢固</h2>
+  <p class="lead">人们想把那条啰嗦的平行公设从公理里"证明"出来。两千年努力的结果却是：否定它，照样得到完全自洽的几何——而且有无穷多种。</p>
+  <div class="fig reveal" data-demo="noneuc">
+    <p class="hint">同一个三角形放在三种空间里，内角和不同。切换看看。</p>
+    <div class="controls"><div class="seg" id="geoSeg"><button class="on" data-v="flat">欧氏（平面）</button><button data-v="sph">黎曼（球面）</button><button data-v="hyp">罗巴切夫斯基（双曲）</button></div></div>
+    <div class="scroll"><svg id="geoS" viewBox="0 0 640 260"></svg></div>
+    <p class="cap" id="geoCap">过直线外一点，有且仅有一条平行线。三角形内角和 = 180°。</p>
+  </div>
+  <div class="fig reveal" data-demo="tl2" style="margin-top:14px">
+    <div class="tl" id="tl2">
+      <div class="ev"><b>欧几里得</b>第五公设叙述复杂，但小心避开了"无限长"直线</div>
+      <div class="ev"><span class="yr">18 世纪</span><b>萨谢利</b>用归谬法推出一堆"荒谬"结论，以为证完了——其实那些结论只是违反常识，并没有矛盾</div>
+      <div class="ev"><b>高斯、罗巴切夫斯基、鲍耶</b>各自独立发现：否定第五公设，找不到任何矛盾。高斯："我们的几何的必要性是无法证实的"</div>
+      <div class="ev"><b>传说高斯测了三座山峰</b>构成的三角形：180°15′——但远低于测量误差，说明不了问题</div>
+      <div class="ev"><b>黎曼</b>创立平行线不存在的黎曼几何，并证明存在无穷多种非欧几何，同样结构严谨、逻辑自洽</div>
+      <div class="ev"><b>当时的普遍态度</b>："承认非欧几何自洽，但真正的物理空间必然是欧氏的，非欧几何只是数学游戏"——和当初对虚数的态度何其相似</div>
+    </div>
+  </div>
+  <div class="bigq">既然两者逻辑上都无懈可击，凭什么认为欧氏几何是真理、其它只是游戏？<small>如果能用实验判断空间是哪种几何，那数学就和科学一样可证伪；如果不能，两者平权——那是否根本不存在数学真理？上帝把数学抛弃了？</small></div>
+  <ul class="notes">
+    <li>原文脚注：后来爱因斯坦的广义相对论正是建立在非欧几何之上——我们的物理空间似乎真的不是欧氏空间。</li>
+    <li>原文脚注：用激光测三座山峰并不纯粹，因为它预设了"光走直线"这个非数学前提。光在引力场中弯曲（欧氏视角）和空间弯曲、光走直线（非欧视角）是同一回事的两种说法。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s11" data-title="风暴前夜">
+  <div class="num">11</div>
+  <h2>19 世纪初：风暴露出端倪</h2>
+  <p class="lead">实数、虚数、非欧几何、实无穷，一系列问题接踵而至，大大动摇了对数学作为明确无误真理的柏拉图式信念。</p>
+  <div class="fig reveal" data-demo="pillar">
+    <p class="hint">四个问题依次敲在"数学 = 绝对真理"这根柱子上。</p>
+    <div class="scroll"><svg id="pilS" viewBox="0 0 640 300"></svg></div>
+  </div>
+  <div class="grid2">
+    <div class="card wa"><h4>古典柏拉图主义到此为止</h4><p>它给了数学两千年的自信：抽象、永恒、独立于人、自然的最高秩序。但它解释不了：无理数是什么、无穷能不能完成、虚数这种"人为规定"凭什么有效、几何到底哪一种才是真的。</p></div>
+    <div class="card ac2"><h4>欲知后事如何</h4><p>下一章：《8、数学的三个纲领：逻辑、形式语言、以及直觉》——数学家们将尝试用形式逻辑和集合论重建基础，并分裂为逻辑主义、形式主义、直觉主义三条路。</p></div>
+  </div>
+</section>
+
+<footer>本页基于贾明子《7. 数学是真理吗？古典柏拉图主义的困境》（知乎专栏，2020 年）制作，仅供学习。图示与动画为讲解示意，所有观点、引文与史实均出自原文。</footer>
+
+</main>
+</div>
+<script>
+/* shared runtime: progress bar, TOC, reveal + demo triggers, helpers */
+window.RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+window.DEMOS = {};
+window.$ = (s, r) => (r || document).querySelector(s);
+window.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+window.css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+window.seg = function (el, cb) {
+  const bs = $$('button', el);
+  bs.forEach((b) => b.addEventListener('click', () => {
+    bs.forEach((x) => x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v, b);
+  }));
+  return { set(v) { const b = bs.find((x) => x.dataset.v === v); if (b) b.click(); }, get() { const b = bs.find((x) => x.classList.contains('on')); return b ? b.dataset.v : null; } };
+};
+/* canvas with devicePixelRatio */
+window.canvas2d = function (c, w, h) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = w * dpr; c.height = h * dpr; c.style.width = '100%'; c.style.aspectRatio = w + '/' + h;
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return ctx;
+};
+/* raf loop with visibility pause */
+window.loop = function (fn) {
+  let on = false, id = 0, t0 = 0;
+  function frame(t) { if (!on) return; fn((t - t0) / 1000); id = requestAnimationFrame(frame); }
+  return {
+    start() { if (on) return; on = true; t0 = performance.now(); id = requestAnimationFrame(frame); },
+    stop() { on = false; cancelAnimationFrame(id); },
+    get running() { return on; }
+  };
+};
+window.flowCycle = function (el, ms) {
+  const steps = $$('.step', el); let i = 0, timer = 0;
+  function tick() { steps.forEach((s, k) => s.classList.toggle('lit', k === i)); i = (i + 1) % steps.length; }
+  return {
+    start() { if (timer) return; tick(); timer = setInterval(tick, ms || 1400); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const secs = $$('section.ch');
+  const toc = $('nav.toc .list');
+  secs.forEach((s, i) => {
+    const a = document.createElement('a'); a.href = '#' + s.id;
+    a.innerHTML = '<span class="n">' + String(i + 1).padStart(2, '0') + '</span>' + s.dataset.title;
+    toc.appendChild(a);
+    a.addEventListener('click', () => $('nav.toc').classList.remove('open'));
+  });
+  const links = $$('nav.toc a');
+  const pb = $('#progress');
+  function onScroll() {
+    const h = document.documentElement; pb.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    let cur = -1; secs.forEach((s, i) => { if (s.getBoundingClientRect().top < innerHeight * 0.4) cur = i; });
+    links.forEach((l, i) => l.classList.toggle('active', i === cur));
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  $('#tocBtn').addEventListener('click', () => $('nav.toc').classList.toggle('open'));
+  /* reveal + demo lifecycle */
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      const el = e.target;
+      if (e.isIntersecting) {
+        el.classList.add('in');
+        const d = el.dataset.demo; if (d && DEMOS[d]) { if (!el._inited) { el._inited = true; el._demo = DEMOS[d](el) || {}; } if (el._demo.start) el._demo.start(); }
+      } else if (el._demo && el._demo.stop) el._demo.stop();
+    });
+  }, { threshold: 0.18 });
+  $$('.reveal,[data-demo]').forEach((el) => io.observe(el));
+});
+
+</script>
+<script>
+/* ===== page 7 demos ===== */
+const NS = 'http://www.w3.org/2000/svg';
+function S(tag, attrs, parent, text) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  if (parent) parent.appendChild(e);
+  return e;
+}
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+function seqLight(items, ms, loopIt) {
+  let i = 0, timer = 0;
+  function tick() {
+    if (i < items.length) { items[i].classList.add('lit'); i++; }
+    else if (loopIt) { items.forEach(x => x.classList.remove('lit')); i = 0; }
+    else { clearInterval(timer); timer = 0; }
+  }
+  return {
+    start() { if (timer) return; if (RM) { items.forEach(x => x.classList.add('lit')); return; } tick(); timer = setInterval(tick, ms); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+}
+
+/* 01 comparison rows */
+DEMOS.cmp = (el) => {
+  const cols = $$('.col', el);
+  const rows = []; const n = $$('.row', cols[0]).length;
+  for (let i = 0; i < n; i++) { rows.push($$('.row', cols[0])[i]); rows.push($$('.row', cols[1])[i]); }
+  return seqLight(rows, 420, false);
+};
+
+/* 01 necessary vs contingent */
+DEMOS.nec = (el) => {
+  const svg = $('#necS', el); let n = 0;
+  function draw(flash) {
+    clear(svg);
+    // left: experiment
+    S('rect', { x: 10, y: 10, width: 240, height: 130, rx: 12, class: 'box' }, svg);
+    S('text', { x: 130, y: 34, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700 }, svg, '能量守恒？（科学）');
+    for (let i = 0; i < 12; i++) {
+      const ok = !(flash && i === 11);
+      S('circle', { cx: 40 + i * 18, cy: 70, r: 7, fill: ok ? css('--accent2') : css('--pink') }, svg);
+    }
+    S('text', { x: 130, y: 105, 'text-anchor': 'middle', 'font-size': 12, class: 'mut' }, svg, flash ? '下一次……逻辑上完全可能出错' : '从未发现不守恒的现象');
+    S('text', { x: 130, y: 126, 'text-anchor': 'middle', 'font-size': 12, fill: css('--warn'), 'font-weight': 600 }, svg, '偶然真：靠经验，可以再检验');
+    // right: 2+3=5
+    S('rect', { x: 270, y: 10, width: 240, height: 130, rx: 12, class: 'box on' }, svg);
+    S('text', { x: 390, y: 34, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700 }, svg, '2 + 3 = 5（数学）');
+    const g = S('g', {}, svg);
+    for (let i = 0; i < 2; i++) S('circle', { cx: 300 + i * 20, cy: 70, r: 8, fill: css('--accent') }, g);
+    S('text', { x: 345, y: 75, 'text-anchor': 'middle', 'font-size': 16 }, g, '+');
+    for (let i = 0; i < 3; i++) S('circle', { cx: 365 + i * 20, cy: 70, r: 8, fill: css('--accent') }, g);
+    S('text', { x: 425, y: 75, 'text-anchor': 'middle', 'font-size': 16 }, g, '=');
+    S('text', { x: 460, y: 77, 'text-anchor': 'middle', 'font-size': 22, 'font-weight': 700, fill: css('--accent') }, g, '5');
+    S('text', { x: 390, y: 105, 'text-anchor': 'middle', 'font-size': 12, class: 'mut' }, svg, '不必真的去数，就知道一定是五个');
+    S('text', { x: 390, y: 126, 'text-anchor': 'middle', 'font-size': 12, fill: css('--accent'), 'font-weight': 600 }, svg, '必然真：无法想象它会错');
+  }
+  draw(false);
+  $('#necBtn', el).addEventListener('click', () => { n++; $('#necN', el).textContent = '第 ' + n + ' 次'; draw(n % 4 === 0); });
+  return {};
+};
+
+/* 02 cave / two worlds */
+DEMOS.cave = (el) => {
+  const svg = $('#caveS', el); clear(svg);
+  S('rect', { x: 0, y: 0, width: 640, height: 135, fill: css('--accent-soft'), rx: 12 }, svg);
+  S('rect', { x: 0, y: 165, width: 640, height: 135, fill: css('--bg3'), rx: 12 }, svg);
+  S('text', { x: 16, y: 24, 'font-size': 13, 'font-weight': 700, fill: css('--accent') }, svg, '理念世界　普遍 · 永恒不变 · 完美 · 抽象');
+  S('text', { x: 16, y: 190, 'font-size': 13, 'font-weight': 700, class: 'mut' }, svg, '现象世界　偶然 · 不断变化 · 有缺陷 · 具体');
+  // perfect shapes
+  const ideal = S('g', {}, svg);
+  S('circle', { cx: 180, cy: 82, r: 32, fill: 'none', stroke: css('--accent'), 'stroke-width': 2.5 }, ideal);
+  S('polygon', { points: '300,114 332,50 364,114', fill: 'none', stroke: css('--accent'), 'stroke-width': 2.5 }, ideal);
+  S('rect', { x: 440, y: 50, width: 64, height: 64, fill: 'none', stroke: css('--accent'), 'stroke-width': 2.5 }, ideal);
+  S('text', { x: 180, y: 128, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '绝对的圆');
+  S('text', { x: 332, y: 128, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '内角和 180°');
+  S('text', { x: 472, y: 128, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '绝对的正方形');
+  // projection lines
+  const proj = S('g', { class: 't' }, svg);
+  [[180, 114, 180, 220], [332, 114, 332, 220], [472, 114, 472, 220]].forEach(p => S('line', { x1: p[0], y1: p[1], x2: p[2], y2: p[3], stroke: css('--accent'), 'stroke-dasharray': '4 4', opacity: .5 }, proj));
+  // wobbly shadows
+  const sh = S('g', {}, svg);
+  const wob = (cx, cy, r, k) => { let d = ''; for (let i = 0; i <= 36; i++) { const a = i / 36 * Math.PI * 2; const rr = r * (1 + 0.08 * Math.sin(a * 3 + k) + 0.05 * Math.cos(a * 5)); d += (i ? 'L' : 'M') + (cx + rr * Math.cos(a)).toFixed(1) + ',' + (cy + rr * Math.sin(a)).toFixed(1); } return d + 'Z'; };
+  const shadowCol = css('--fg3');
+  const c1 = S('path', { d: wob(180, 250, 30, 0), fill: shadowCol, opacity: .5 }, sh);
+  const c2 = S('polygon', { points: '304,278 330,222 366,280', fill: shadowCol, opacity: .5 }, sh);
+  const c3 = S('path', { d: 'M442,224 L506,228 L502,284 L446,280 Z', fill: shadowCol, opacity: .5 }, sh);
+  // soul + recollection arrow
+  S('circle', { cx: 60, cy: 250, r: 16, fill: css('--accent2') }, svg);
+  S('text', { x: 60, y: 254, 'text-anchor': 'middle', 'font-size': 11, fill: '#fff' }, svg, '我');
+  const arr = S('path', { d: 'M60,230 C60,150 90,110 130,90', fill: 'none', stroke: css('--accent2'), 'stroke-width': 2.5, 'stroke-dasharray': '6 5' }, svg);
+  S('text', { x: 72, y: 160, 'font-size': 12, fill: css('--accent2'), 'font-weight': 600 }, svg, '"回忆"');
+  S('text', { x: 60, y: 285, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '心灵之眼');
+  let t = 0;
+  const lp = loop((dt) => {
+    t += 0.016;
+    c1.setAttribute('d', wob(180, 250, 30, t));
+    c2.setAttribute('transform', 'translate(' + (Math.sin(t) * 3).toFixed(1) + ',0) skewX(' + (Math.sin(t * .7) * 4).toFixed(1) + ')');
+    c3.setAttribute('transform', 'rotate(' + (Math.sin(t * .9) * 3).toFixed(1) + ' 474 254)');
+    arr.setAttribute('stroke-dashoffset', (-t * 20).toFixed(1));
+  });
+  return RM ? {} : lp;
+};
+
+/* 03 quadrivium */
+DEMOS.quad = (el) => {
+  const svg = $('#quadS', el); clear(svg);
+  const items = [['算术', '数本身'], ['几何', '空间中的数'], ['天文', '运动中的数'], ['音乐', '时间中的数']];
+  S('circle', { cx: 210, cy: 100, r: 34, fill: css('--accent'), opacity: .9 }, svg);
+  S('text', { x: 210, y: 97, 'text-anchor': 'middle', 'font-size': 12, fill: '#fff', 'font-weight': 700 }, svg, '数字');
+  S('text', { x: 210, y: 112, 'text-anchor': 'middle', 'font-size': 10, fill: '#fff' }, svg, '永恒的真理');
+  const gs = items.map((it, i) => {
+    const a = -Math.PI / 2 + i * Math.PI / 2; const x = 210 + Math.cos(a) * 125, y = 100 + Math.sin(a) * 68;
+    const g = S('g', { class: 't', opacity: 0 }, svg);
+    S('line', { x1: 210 + Math.cos(a) * 36, y1: 100 + Math.sin(a) * 36, x2: x - Math.cos(a) * 40, y2: y - Math.sin(a) * 20, class: 'ln' }, g);
+    S('rect', { x: x - 44, y: y - 18, width: 88, height: 36, rx: 8, class: 'box on' }, g);
+    S('text', { x: x, y: y - 2, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700 }, g, it[0]);
+    S('text', { x: x, y: y + 12, 'text-anchor': 'middle', 'font-size': 9.5, class: 'mut' }, g, it[1]);
+    return g;
+  });
+  let timer = 0;
+  return {
+    start() { if (timer) return; let i = 0; if (RM) { gs.forEach(g => g.setAttribute('opacity', 1)); return; } timer = setInterval(() => { if (i < gs.length) gs[i++].setAttribute('opacity', 1); else { clearInterval(timer); timer = 0; } }, 450); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+
+/* 03 sqrt2 proof */
+DEMOS.sqrt2 = (el) => {
+  const svg = $('#sqS', el); clear(svg);
+  S('rect', { x: 30, y: 30, width: 140, height: 140, class: 'box' }, svg);
+  const diag = S('line', { x1: 30, y1: 170, x2: 170, y2: 30, stroke: css('--accent'), 'stroke-width': 3 }, svg);
+  S('text', { x: 100, y: 188, 'text-anchor': 'middle', 'font-size': 12, class: 'mut' }, svg, '1');
+  S('text', { x: 18, y: 104, 'text-anchor': 'middle', 'font-size': 12, class: 'mut' }, svg, '1');
+  const lab = S('text', { x: 112, y: 92, 'font-size': 15, fill: css('--accent'), 'font-weight': 700 }, svg, '√2');
+  const steps = $$('.st', el); let i = 0;
+  function show() { steps.forEach((s, k) => s.classList.toggle('lit', k < i)); if (i >= steps.length) { diag.setAttribute('stroke', css('--pink')); lab.setAttribute('fill', css('--pink')); lab.textContent = '√2 ≠ a/b'; } else { diag.setAttribute('stroke', css('--accent')); lab.setAttribute('fill', css('--accent')); lab.textContent = i ? '√2 = a/b ?' : '√2'; } }
+  $('#sqBtn', el).addEventListener('click', () => { if (i < steps.length) i++; show(); });
+  $('#sqReset', el).addEventListener('click', () => { i = 0; show(); });
+  show();
+  return {};
+};
+
+/* 04 syllogism */
+DEMOS.syl = (el) => {
+  const data = {
+    dog: ['所有的<span class="slot">狗狗</span>都会<span class="slot b">汪汪叫</span>', '<span class="slot c">旺财</span>是一只<span class="slot">狗狗</span>', '<span class="slot c">旺财</span>会<span class="slot b">汪汪叫</span>'],
+    tri: ['所有的<span class="slot">三角形</span>内角和为<span class="slot b">180°</span>', '<span class="slot c">△ABC</span>是<span class="slot">三角形</span>', '<span class="slot c">△ABC</span>的内角和为<span class="slot b">180°</span>']
+  };
+  function set(v) { ['#syl1', '#syl2', '#syl3'].forEach((id, k) => { $(id, el).innerHTML = data[v][k]; }); }
+  seg($('#sylSeg', el), set); set('dog');
+  return {};
+};
+
+/* 04 regress */
+DEMOS.regress = (el) => {
+  const svg = $('#regS', el); clear(svg);
+  const rows = [['定理', '△ABC 内角和 180°'], ['凭什么？', '平行线同位角相等'], ['凭什么？', '…'], ['凭什么？', '…']];
+  const gs = [];
+  rows.forEach((r, i) => {
+    const y = 210 - i * 44;
+    const g = S('g', { class: 't', opacity: 0 }, svg);
+    S('rect', { x: 120, y: y - 16, width: 200, height: 32, rx: 8, class: 'box' }, g);
+    S('text', { x: 220, y: y + 5, 'text-anchor': 'middle', 'font-size': 12 }, g, r[1]);
+    S('text', { x: 100, y: y + 4, 'text-anchor': 'end', 'font-size': 11, class: 'mut3' }, g, r[0]);
+    if (i) S('path', { d: 'M220,' + (y + 44 - 16) + ' L220,' + (y + 18), stroke: css('--fg3'), 'marker-end': 'url(#arrR)' }, g);
+    gs.push(g);
+  });
+  const defs = S('defs', {}, svg); const m = S('marker', { id: 'arrR', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, defs); S('path', { d: 'M0,0 L10,5 L0,10 Z', fill: css('--fg3') }, m);
+  const top = S('g', { class: 't', opacity: 0 }, svg);
+  S('rect', { x: 100, y: 10, width: 240, height: 40, rx: 10, class: 'box on' }, top);
+  S('text', { x: 220, y: 28, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700, fill: css('--accent') }, top, '公理 / 公设：不证自明');
+  S('text', { x: 220, y: 43, 'text-anchor': 'middle', 'font-size': 10.5, class: 'mut' }, top, '追问到此为止，否则无限递归、永远没有起点');
+  S('path', { d: 'M220,66 L220,56', stroke: css('--accent'), 'marker-end': 'url(#arrR)' }, top);
+  const stop = S('text', { x: 350, y: 95, 'font-size': 20, fill: css('--pink'), opacity: 0, class: 't' }, svg, '✕ ∞');
+  let timer = 0;
+  return {
+    start() { if (timer) return; let i = 0; const all = gs.concat([top]); if (RM) { all.forEach(g => g.setAttribute('opacity', 1)); return; } timer = setInterval(() => { if (i < all.length) { all[i].setAttribute('opacity', 1); if (i === 3) stop.setAttribute('opacity', 1); if (i === 4) stop.setAttribute('opacity', 0); i++; } else { clearInterval(timer); timer = 0; } }, 550); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+
+/* 05 euclid tower */
+DEMOS.euclid = (el) => {
+  const svg = $('#eucS', el); clear(svg); const cap = $('#eucCap', el);
+  const cn = ['与同一事物相等的事物相等', '相等的事物加上相等的事物仍然相等', '相等的事物减去相等的事物仍然相等', '一个事物与另一事物重合，则它们相等', '整体大于局部'];
+  const ax = ['从一点向另一点可以引一条直线', '任意线段能任意延伸成一条直线', '给定任意线段，可以其一端为圆心、该线段为半径作圆', '所有直角都相等', '若两条直线都与第三条直线相交，并且在同一边的内角之和小于两个直角，则这两条直线在这一边充分延伸后必定相交'];
+  S('text', { x: 16, y: 318, 'font-size': 11, class: 'mut3' }, svg, '五个一般信念（公理）');
+  S('text', { x: 336, y: 318, 'font-size': 11, class: 'mut3' }, svg, '五大公设');
+  const base = [];
+  for (let i = 0; i < 10; i++) {
+    const x = 16 + i * 62 + (i >= 5 ? 10 : 0); const fifth = i === 9;
+    const g = S('g', { style: 'cursor:pointer' }, svg);
+    S('rect', { x, y: 262, width: 56, height: 40, rx: 6, class: 'box ' + (fifth ? 'warn' : (i < 5 ? 'on' : 'on2')) }, g);
+    S('text', { x: x + 28, y: 280, 'text-anchor': 'middle', 'font-size': 10, class: 'mut' }, g, i < 5 ? '信念' : '公设');
+    S('text', { x: x + 28, y: 295, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700 }, g, String((i % 5) + 1));
+    g.addEventListener('click', () => { cap.innerHTML = '<b>' + (i < 5 ? '一般信念 ' : '公设 ') + ((i % 5) + 1) + '</b>：' + (i < 5 ? cn[i] : ax[i - 5]) + (fifth ? '　<span style="color:var(--warn)">←"陈述过于复杂，很难从直觉中直接想象"</span>' : ''); });
+    base.push(g);
+  }
+  // theorems rows
+  const rowsDef = [[6, 230], [4, 190], [3, 150], [2, 110], [1, 70]];
+  const labels = ['三角形全等', '平行线性质', '内角和 180°', '毕达哥拉斯定理', '…整个几何体系'];
+  const ths = [];
+  rowsDef.forEach((r, ri) => {
+    const n = r[0], y = r[1]; const w = 560 / n - 8;
+    for (let k = 0; k < n; k++) {
+      const x = 40 + k * (560 / n) + 4;
+      const g = S('g', { class: 't', opacity: 0 }, svg);
+      S('rect', { x, y, width: w, height: 30, rx: 6, class: 'box' }, g);
+      if (k === 0) S('text', { x: x + 8, y: y + 19, 'font-size': 11, class: 'mut' }, g, labels[ri]);
+      else S('text', { x: x + w / 2, y: y + 19, 'text-anchor': 'middle', 'font-size': 11, class: 'mut3' }, g, '定理');
+      ths.push(g);
+    }
+  });
+  S('text', { x: 320, y: 40, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700, fill: css('--accent') }, svg, '严谨 · 简洁 · 确定 · 无可怀疑');
+  let timer = 0;
+  return {
+    start() { if (timer) return; let i = 0; if (RM) { ths.forEach(g => g.setAttribute('opacity', 1)); return; } timer = setInterval(() => { if (i < ths.length) ths[i++].setAttribute('opacity', 1); else { clearInterval(timer); timer = 0; } }, 110); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+
+/* 06 timeline */
+DEMOS.tl1 = (el) => seqLight($$('.ev', el), 700, false);
+DEMOS.tl2 = (el) => seqLight($$('.ev', el), 800, false);
+
+/* 06 epicycles */
+DEMOS.epi = (el) => {
+  const c = $('#epiC', el); const ctx = canvas2d(c, 420, 260); const cap = $('#epiCap', el);
+  let mode = 'geo', t = 0;
+  seg($('#epiSeg', el), (v) => { mode = v; cap.textContent = v === 'geo' ? '本轮绕均轮转、星球绕本轮转，多圆嵌套。到日心说诞生时已需要 77 个圆，"已经到了令人难堪的地步"。' : '日心说最初的动机就是数学形式得到极大简化——更美妙、更接近"上帝的语言"。'; });
+  function draw() {
+    ctx.clearRect(0, 0, 420, 260);
+    const cx = 210, cy = 130; ctx.lineWidth = 1;
+    const lineC = css('--line'), fg3 = css('--fg3'), acc = css('--accent'), warn = css('--warn'), acc2 = css('--accent2');
+    if (mode === 'geo') {
+      ctx.fillStyle = acc2; ctx.beginPath(); ctx.arc(cx, cy, 9, 0, 7); ctx.fill();
+      ctx.fillStyle = fg3; ctx.font = '11px sans-serif'; ctx.fillText('地球', cx - 11, cy + 24);
+      const planets = [[50, 14, 1, 5], [78, 18, .6, 7], [105, 22, .4, 9]];
+      planets.forEach((p, i) => {
+        const [R, r, w, w2] = p; const a = t * w; const px = cx + R * Math.cos(a), py = cy + R * Math.sin(a) * .85;
+        ctx.strokeStyle = lineC; ctx.beginPath(); ctx.ellipse(cx, cy, R, R * .85, 0, 0, 7); ctx.stroke();
+        ctx.strokeStyle = fg3; ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.arc(px, py, r, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+        const b = t * w2; const qx = px + r * Math.cos(b), qy = py + r * Math.sin(b);
+        const r2 = r * .45; ctx.strokeStyle = lineC; ctx.beginPath(); ctx.arc(qx, qy, r2, 0, 7); ctx.stroke();
+        const g = t * w2 * 2.3; const sx = qx + r2 * Math.cos(g), sy = qy + r2 * Math.sin(g);
+        ctx.fillStyle = i === 1 ? warn : acc; ctx.beginPath(); ctx.arc(sx, sy, 4, 0, 7); ctx.fill();
+      });
+      ctx.fillStyle = fg3; ctx.fillText('均轮 → 本轮 → 小本轮 …… 直到 77 个圆', 120, 250);
+    } else {
+      ctx.fillStyle = warn; ctx.beginPath(); ctx.arc(cx, cy, 12, 0, 7); ctx.fill();
+      ctx.fillStyle = fg3; ctx.font = '11px sans-serif'; ctx.fillText('太阳', cx - 11, cy + 28);
+      [[45, 1.6], [70, 1], [100, .6]].forEach((p, i) => {
+        ctx.strokeStyle = lineC; ctx.beginPath(); ctx.ellipse(cx, cy, p[0], p[0] * .85, 0, 0, 7); ctx.stroke();
+        const a = t * p[1]; ctx.fillStyle = i === 1 ? acc2 : acc; ctx.beginPath(); ctx.arc(cx + p[0] * Math.cos(a), cy + p[0] * .85 * Math.sin(a), i === 1 ? 6 : 4, 0, 7); ctx.fill();
+      });
+      ctx.fillStyle = fg3; ctx.fillText('每颗行星一个圆，简洁得多', 150, 250);
+    }
+  }
+  draw();
+  const lp = loop((dt) => { t = dt; draw(); });
+  return RM ? {} : lp;
+};
+
+/* 07 delta-t */
+DEMOS.dt = (el) => {
+  const svg = $('#dtS', el); const r = $('#dtR', el), o = $('#dtO', el), f = $('#dtF', el);
+  function draw() {
+    const dt = r.value / 100; o.textContent = dt.toFixed(2);
+    clear(svg);
+    const X = (t) => 60 + t * 230, Y = (L) => 200 - L * 9;
+    S('line', { x1: 60, y1: 200, x2: 600, y2: 200, class: 'ln' }, svg); S('line', { x1: 60, y1: 200, x2: 60, y2: 20, class: 'ln' }, svg);
+    S('text', { x: 600, y: 215, 'text-anchor': 'end', 'font-size': 11, class: 'mut3' }, svg, 't (s)'); S('text', { x: 40, y: 24, 'font-size': 11, class: 'mut3' }, svg, 'L = 5t²');
+    let d = ''; for (let t = 0; t <= 2.2; t += 0.05) d += (t ? 'L' : 'M') + X(t) + ',' + Y(5 * t * t);
+    S('path', { d, fill: 'none', stroke: css('--fg3'), 'stroke-width': 2 }, svg);
+    const t0 = 1, t1 = 1 + dt;
+    S('line', { x1: X(t0), y1: Y(5), x2: X(t1), y2: Y(5 * t1 * t1), stroke: css('--accent'), 'stroke-width': 2.5 }, svg);
+    S('circle', { cx: X(t0), cy: Y(5), r: 5, fill: css('--accent') }, svg); S('circle', { cx: X(t1), cy: Y(5 * t1 * t1), r: 5, fill: css('--accent') }, svg);
+    S('line', { x1: X(t0), y1: Y(5), x2: X(t1), y2: Y(5), class: 'ln', 'stroke-dasharray': '3 3' }, svg);
+    S('line', { x1: X(t1), y1: Y(5), x2: X(t1), y2: Y(5 * t1 * t1), class: 'ln', 'stroke-dasharray': '3 3' }, svg);
+    S('text', { x: (X(t0) + X(t1)) / 2, y: Y(5) + 14, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, 'Δt = ' + dt.toFixed(2));
+    // tangent
+    const k = 10; S('line', { x1: X(0.5), y1: Y(5 - k * .5), x2: X(1.8), y2: Y(5 + k * .8), stroke: css('--accent2'), 'stroke-dasharray': '6 4' }, svg);
+    S('text', { x: X(1.8) + 4, y: Y(5 + k * .8), 'font-size': 11, fill: css('--accent2') }, svg, '瞬时 v = 10t');
+    const vbar = 10 + 5 * dt;
+    S('text', { x: 400, y: 50, 'font-size': 13, 'font-weight': 700, fill: css('--accent') }, svg, '平均速度 v̄ = ' + vbar.toFixed(2) + ' m/s');
+    S('text', { x: 400, y: 70, 'font-size': 12, fill: css('--warn') }, svg, '多出来的 5Δt = ' + (5 * dt).toFixed(2));
+    f.innerHTML = 'v̄ = ΔL/Δt = (10t·Δt + 5Δt²)/Δt = <span class="k">10t + 5Δt</span> = 10 + ' + (5 * dt).toFixed(2) + '　← 当 Δt "无穷小"时把它当 0 舍去？';
+  }
+  r.addEventListener('input', draw); draw();
+  return {};
+};
+
+/* 07 epsilon game */
+DEMOS.eps = (el) => {
+  const w = $('#epsW', el); let e = 0.1;
+  $('#epsBtn', el).addEventListener('click', () => {
+    e = e / 10; if (e < 1e-9) e = 0.1;
+    const dtv = e / 5;
+    w.innerHTML = '误差要求：<span class="hl">' + e.toExponential(0).replace('e-', ' × 10⁻') + '</span>　→　只要 Δt &lt; <span class="hl2">' + dtv.toExponential(0).replace('e-', ' × 10⁻') + '</span> 就行\n不论你要求多小，总能找到对应的 Δt';
+  });
+  return {};
+};
+
+/* 07 half filling */
+DEMOS.half = (el) => {
+  const svg = $('#halfS', el); const cap = $('#halfCap', el); let n = 0;
+  function draw() {
+    clear(svg);
+    S('rect', { x: 60, y: 20, width: 160, height: 160, class: 'box' }, svg);
+    let x = 60, y = 20, w = 160, h = 160, sum = 0;
+    for (let i = 0; i < n; i++) {
+      const vert = i % 2 === 0;
+      const r = vert ? { x, y, width: w / 2, height: h } : { x, y, width: w, height: h / 2 };
+      S('rect', Object.assign({ fill: css('--accent'), opacity: 0.35 + 0.6 * (i % 2 ? .5 : 1) / (i + 1) + .2, stroke: css('--bg2') }, r), svg);
+      if (i < 5) S('text', { x: r.x + r.width / 2, y: r.y + r.height / 2 + 4, 'text-anchor': 'middle', 'font-size': 11, fill: '#fff' }, svg, '1/' + Math.pow(2, i + 1));
+      if (vert) { x += w / 2; w /= 2; } else { y += h / 2; h /= 2; }
+      sum += 1 / Math.pow(2, i + 1);
+    }
+    S('text', { x: 240, y: 60, 'font-size': 12, class: 'mut' }, svg, 'n = ' + n);
+    S('text', { x: 240, y: 84, 'font-size': 12, class: 'mut' }, svg, 'S = ' + sum.toFixed(n > 10 ? 6 : 4));
+    S('text', { x: 240, y: 108, 'font-size': 12, fill: css('--warn') }, svg, '剩余 = ' + (1 - sum).toExponential(1));
+    cap.textContent = n === 0 ? 'S = 0，剩余 1' : ('加到第 ' + n + ' 项，S 与 1 的偏差是 ' + (1 - sum).toExponential(1) + '。你想要多小都行，但永远不是"无限加和"。');
+  }
+  $('#halfBtn', el).addEventListener('click', () => { if (n < 20) n++; draw(); });
+  $('#halfReset', el).addEventListener('click', () => { n = 0; draw(); });
+  draw(); return {};
+};
+
+/* 08 potential vs actual infinity */
+DEMOS.inf = (el) => {
+  const svg = $('#infS', el); clear(svg);
+  S('text', { x: 20, y: 28, 'font-size': 13, 'font-weight': 700, fill: css('--accent2') }, svg, '潜无穷：不可能完成');
+  S('text', { x: 340, y: 28, 'font-size': 13, 'font-weight': 700, fill: css('--accent') }, svg, '实无穷：已经完成');
+  S('line', { x1: 20, y1: 110, x2: 300, y2: 110, class: 'ln', 'stroke-width': 2 }, svg);
+  const g = S('g', {}, svg);
+  const cnt = S('text', { x: 160, y: 160, 'text-anchor': 'middle', 'font-size': 14, fill: css('--accent2'), 'font-weight': 700 }, svg, 'n = 0　总可以再 +1');
+  S('text', { x: 160, y: 190, 'text-anchor': 'middle', 'font-size': 11.5, class: 'mut' }, svg, '每一个都是有限的数，可以放心运算');
+  // right: completed set box
+  S('rect', { x: 340, y: 50, width: 280, height: 110, rx: 14, class: 'box on' }, svg);
+  S('text', { x: 480, y: 95, 'text-anchor': 'middle', 'font-size': 16, class: 'mono', fill: css('--accent') }, svg, 'ℕ = { 0, 1, 2, 3, 4, … }');
+  S('text', { x: 480, y: 125, 'text-anchor': 'middle', 'font-size': 12, class: 'mut' }, svg, '把"全体自然数"当作一个整体来谈论');
+  S('text', { x: 480, y: 190, 'text-anchor': 'middle', 'font-size': 11.5, class: 'mut' }, svg, '难以理喻、不可言说？人类有限智慧真能把握？');
+  let n = 0, timer = 0;
+  function tick() {
+    n++; const i = n % 9;
+    if (i === 0) clear(g);
+    S('circle', { cx: 30 + i * 32, cy: 110, r: 7, fill: css('--accent2') }, g);
+    S('text', { x: 30 + i * 32, y: 135, 'text-anchor': 'middle', 'font-size': 10, class: 'mono mut3' }, g, String(n));
+    cnt.textContent = 'n = ' + n + '　总可以再 +1';
+  }
+  return {
+    start() { if (timer || RM) return; timer = setInterval(tick, 600); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+
+/* 09 number rings */
+DEMOS.rings = (el) => {
+  const svg = $('#ringS', el); clear(svg);
+  const data = [
+    ['自然数', '古希腊人眼中自然数是几何中的长度单位，是度量事物的一把"尺子"；整个算术建立在欧氏几何的公理之上。', '牢靠', 'accent'],
+    ['有理数', '《几何原本》里，整体可以由多个单元构成，两整数之比自然衍生出有理数。这个体系里没有无理数的余地。', '牢靠', 'accent'],
+    ['无理数', '√2 还能找到几何依据（平方=面积、立方=体积的叫法由此而来），高次方根、指数、对数则"完全在迷雾当中"。直到 17 世纪仍有大量反对声音。', '薄弱', 'warn'],
+    ['虚数', '只因 √−1 没有实数意义，就人为规定一个"虚幻的数字"硬加上去，近乎儿戏。却在微分方程、傅里叶变换、电路乃至量子力学中成了必需品。', '"儿戏"', 'pink']
+  ];
+  const rs = [60, 95, 125, 150]; let cur = 0;
+  const rings = [];
+  for (let i = 3; i >= 0; i--) {
+    const d = data[i];
+    rings[i] = S('circle', { cx: 160, cy: 160, r: rs[i], fill: css('--' + d[3] + '-soft'), stroke: css('--' + d[3]), 'stroke-width': 1.5, style: 'cursor:pointer', class: 't' }, svg);
+  }
+  // labels
+  const ly = [160, 160 - 78, 160 - 110, 160 - 138];
+  data.forEach((d, i) => S('text', { x: 160, y: ly[i] + 4, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, 'pointer-events': 'none' }, svg, d[0]));
+  function sel(i) {
+    cur = i; rings.forEach((r, k) => r.setAttribute('stroke-width', k === i ? 4 : 1.5));
+    $('#ringT', el).textContent = data[i][0]; $('#ringP', el).textContent = data[i][1]; $('#ringK', el).textContent = data[i][2];
+    $('#ringK', el).style.color = css('--' + data[i][3]);
+  }
+  rings.forEach((r, i) => r.addEventListener('click', () => sel(i)));
+  sel(0);
+  let timer = 0;
+  return { start() { if (timer || RM) return; let i = 0; timer = setInterval(() => { i++; if (i < 4) sel(i); else { clearInterval(timer); timer = 0; } }, 1800); }, stop() { clearInterval(timer); timer = 0; } };
+};
+
+/* 10 non-euclidean */
+DEMOS.noneuc = (el) => {
+  const svg = $('#geoS', el); const cap = $('#geoCap', el);
+  function draw(mode) {
+    clear(svg);
+    const cx = 200, cy = 130;
+    if (mode === 'flat') {
+      S('rect', { x: 60, y: 30, width: 280, height: 200, class: 'box', rx: 8 }, svg);
+      for (let i = 1; i < 7; i++) { S('line', { x1: 60 + i * 40, y1: 30, x2: 60 + i * 40, y2: 230, class: 'ln', opacity: .5 }, svg); }
+      for (let i = 1; i < 5; i++) { S('line', { x1: 60, y1: 30 + i * 40, x2: 340, y2: 30 + i * 40, class: 'ln', opacity: .5 }, svg); }
+      S('polygon', { points: '120,200 280,200 200,70', fill: css('--accent-soft'), stroke: css('--accent'), 'stroke-width': 2.5 }, svg);
+      S('line', { x1: 70, y1: 50, x2: 330, y2: 50, stroke: css('--accent2'), 'stroke-width': 2 }, svg);
+      S('line', { x1: 70, y1: 215, x2: 330, y2: 215, stroke: css('--accent2'), 'stroke-width': 2, 'stroke-dasharray': '6 4' }, svg);
+      S('text', { x: 200, y: 160, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: css('--accent') }, svg, '= 180°');
+      S('text', { x: 345, y: 55, 'font-size': 11, fill: css('--accent2') }, svg, '唯一的平行线');
+    } else if (mode === 'sph') {
+      S('circle', { cx, cy, r: 100, fill: css('--bg3'), stroke: css('--line') }, svg);
+      S('ellipse', { cx, cy, rx: 100, ry: 30, fill: 'none', class: 'ln' }, svg);
+      S('ellipse', { cx, cy, rx: 100, ry: 65, fill: 'none', class: 'ln' }, svg);
+      S('ellipse', { cx, cy, rx: 35, ry: 100, fill: 'none', class: 'ln' }, svg);
+      S('path', { d: 'M150,180 Q200,150 250,180 Q235,110 200,60 Q165,110 150,180 Z', fill: css('--accent-soft'), stroke: css('--accent'), 'stroke-width': 2.5 }, svg);
+      S('text', { x: 200, y: 150, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: css('--accent') }, svg, '> 180°');
+      S('text', { x: 345, y: 60, 'font-size': 11, fill: css('--accent2') }, svg, '任意两条"直线"（大圆）');
+      S('text', { x: 345, y: 76, 'font-size': 11, fill: css('--accent2') }, svg, '都必然相交：没有平行线');
+    } else {
+      S('circle', { cx, cy, r: 100, fill: css('--bg3'), stroke: css('--line') }, svg);
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; S('path', { d: 'M' + (cx + 100 * Math.cos(a)) + ',' + (cy + 100 * Math.sin(a)) + ' Q' + (cx + 40 * Math.cos(a + 1.2)) + ',' + (cy + 40 * Math.sin(a + 1.2)) + ' ' + (cx + 100 * Math.cos(a + 2.4)) + ',' + (cy + 100 * Math.sin(a + 2.4)), fill: 'none', class: 'ln', opacity: .7 }, svg); }
+      S('path', { d: 'M140,185 Q200,165 260,185 Q215,130 200,70 Q185,130 140,185 Z', fill: css('--accent-soft'), stroke: css('--accent'), 'stroke-width': 2.5 }, svg);
+      S('text', { x: 200, y: 150, 'text-anchor': 'middle', 'font-size': 20, 'font-weight': 700, fill: css('--accent') }, svg, '< 180°');
+      S('text', { x: 345, y: 60, 'font-size': 11, fill: css('--accent2') }, svg, '过直线外一点，平行线不止一条');
+    }
+    S('text', { x: 345, y: 110, 'font-size': 12.5, 'font-weight': 700 }, svg, mode === 'flat' ? '欧氏几何' : (mode === 'sph' ? '黎曼几何' : '罗巴切夫斯基几何'));
+    S('text', { x: 345, y: 132, 'font-size': 11.5, class: 'mut' }, svg, mode === 'flat' ? '两千年来的"真理典范"' : '"看似荒谬的前提，却完全自洽"');
+    S('text', { x: 345, y: 150, 'font-size': 11.5, class: 'mut' }, svg, mode === 'flat' ? '第五公设成立' : '否定第五公设，找不到任何矛盾');
+    cap.textContent = mode === 'flat' ? '过直线外一点，有且仅有一条平行线。三角形内角和 = 180°。' : (mode === 'sph' ? '黎曼几何：平行线不存在，任意两条直线必相交。高斯传说中测三座山峰，就是想看内角和是否大于 180°。' : '罗巴切夫斯基、鲍耶的几何：平行线不止一条。结论和欧氏不同，但没有矛盾。');
+  }
+  seg($('#geoSeg', el), draw); draw('flat');
+  return {};
+};
+
+/* 11 pillar */
+DEMOS.pillar = (el) => {
+  const svg = $('#pilS', el); clear(svg);
+  S('rect', { x: 270, y: 40, width: 100, height: 220, rx: 6, fill: css('--accent-soft'), stroke: css('--accent'), 'stroke-width': 2 }, svg);
+  S('rect', { x: 250, y: 24, width: 140, height: 18, rx: 4, fill: css('--accent') }, svg);
+  S('rect', { x: 250, y: 258, width: 140, height: 18, rx: 4, fill: css('--accent') }, svg);
+  const t1 = S('text', { x: 320, y: 110, 'text-anchor': 'middle', 'font-size': 14, 'font-weight': 700, fill: css('--accent') }, svg, '数学');
+  S('text', { x: 320, y: 132, 'text-anchor': 'middle', 'font-size': 12, fill: css('--accent') }, svg, '= 绝对真理');
+  S('text', { x: 320, y: 160, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '永恒 · 确定');
+  S('text', { x: 320, y: 178, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '独立于人');
+  S('text', { x: 320, y: 196, 'text-anchor': 'middle', 'font-size': 11, class: 'mut' }, svg, '自然的最高秩序');
+  const hits = [['无理数 / 实数', '"无限不循环"按潜无穷永远完不成；直尺上大多数点切不到', 20, 70, true], ['实无穷', '极限绕开了无穷，无穷本身仍是谜', 20, 190, true], ['虚数', '人为规定的"游戏"，却成了量子力学的砖石', 420, 70, false], ['非欧几何', '无穷多种自洽的几何，凭什么偏爱欧氏？', 420, 190, false]];
+  const cracks = [S('path', { d: 'M275,90 l12,10 l-6,12 l14,8', class: 'ln t', stroke: css('--pink'), 'stroke-width': 2, opacity: 0 }, svg), S('path', { d: 'M365,210 l-10,8 l8,12 l-12,6', class: 'ln t', stroke: css('--pink'), 'stroke-width': 2, opacity: 0 }, svg), S('path', { d: 'M366,80 l-10,12 l6,10 l-14,10', class: 'ln t', stroke: css('--pink'), 'stroke-width': 2, opacity: 0 }, svg), S('path', { d: 'M274,200 l14,8 l-6,10 l12,10', class: 'ln t', stroke: css('--pink'), 'stroke-width': 2, opacity: 0 }, svg)];
+  const gs = hits.map((h, i) => {
+    const g = S('g', { class: 't', opacity: 0 }, svg);
+    S('rect', { x: h[2], y: h[3], width: 200, height: 62, rx: 10, class: 'box pk' }, g);
+    S('text', { x: h[2] + 12, y: h[3] + 22, 'font-size': 13, 'font-weight': 700, fill: css('--pink') }, g, h[0]);
+    const tx = S('text', { x: h[2] + 12, y: h[3] + 40, 'font-size': 10.5, class: 'mut' }, g, '');
+    const words = h[1]; const mid = Math.ceil(words.length / 2);
+    S('tspan', { x: h[2] + 12, dy: 0 }, tx, words.slice(0, mid)); S('tspan', { x: h[2] + 12, dy: 14 }, tx, words.slice(mid));
+    S('path', { d: h[4] ? 'M' + (h[2] + 200) + ',' + (h[3] + 31) + ' L268,' + (h[3] + 31) : 'M' + h[2] + ',' + (h[3] + 31) + ' L372,' + (h[3] + 31), stroke: css('--pink'), 'stroke-width': 2, 'marker-end': 'url(#arrP)' }, g);
+    return g;
+  });
+  const defs = S('defs', {}, svg); const m = S('marker', { id: 'arrP', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto' }, defs); S('path', { d: 'M0,0 L10,5 L0,10 Z', fill: css('--pink') }, m);
+  let timer = 0;
+  return {
+    start() { if (timer) return; let i = 0; if (RM) { gs.forEach(g => g.setAttribute('opacity', 1)); cracks.forEach(c => c.setAttribute('opacity', 1)); return; } timer = setInterval(() => { if (i < gs.length) { gs[i].setAttribute('opacity', 1); cracks[i].setAttribute('opacity', 1); i++; } else { clearInterval(timer); timer = 0; } }, 900); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+
+</script>
+</body>
+</html>

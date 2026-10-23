@@ -2,7 +2,7 @@
 
 # ai-visual-notes
 
-Illustrated, animated visual explainers of articles, made for beginners. Content is not limited to AI; it also includes personal study notes on physics and more. One subdirectory per article, each a single HTML file you can open directly in a browser.
+Illustrated, animated visual explainers of articles, made for beginners. Content is not limited to AI; it covers personal study notes on AI, physics, mathematics, philosophy, design and more. One subdirectory per article, each a single HTML file you can open directly in a browser.
 
 ## Index
 
@@ -15,6 +15,7 @@ Illustrated, animated visual explainers of articles, made for beginners. Content
 | Inside Cline + DeepSeek R1: How Autonomous Coding Actually Works | Heycc, Heycc's blog (2025-02-11) | [`ai/deepseek-r1-cline-autonomous-coding/`](ai/deepseek-r1-cline-autonomous-coding/index.html) | Proxying every prompt Cline sends to DeepSeek R1 and dissecting a real coding task round by round. |
 | Building Effective Claude Agents with Code, MCP, and Skills (Anthropic Podcast) | Anthropic Podcast, Alex Albert in conversation with Erik Schluntz; Chinese write-up: 莫尔索随笔 (2025-11-04) | [`ai/anthropic-podcast-building-agents/`](ai/anthropic-podcast-building-agents/index.html) | From “coding is the core agent skill” to “tools should mirror the UI, not the API”: agent architecture evolution and three best practices. |
 | What AI Applications Teach Us About Engineering Cognition | Li Peigen (Academician, Chinese Academy of Engineering; Huazhong University of Science and Technology), Research in Higher Education of Engineering | [`ai/li-peigen-ai-engineering-cognition/`](ai/li-peigen-ai-engineering-cognition/index.html) | Kant's thing-in-itself, tacit and dark knowledge, process view, chain-of-thought and the objective paradox: how AI reshapes engineering cognition. |
+| There Are No Tokens in the Semantic Computer | 孔某人, WeChat account 「孔某人的低维认知」 (2025-01) | [`ai/semantic-computer-no-token/`](ai/semantic-computer-no-token/index.html) | Just as C has no registers: the context as a semantic program and the LLM as the computer that runs it, covering test-time compute, reward design and A*-like exploration. |
 
 ### Physics · Astrophysics (`physics/astrophysics/`)
 
@@ -35,6 +36,42 @@ Illustrated, animated visual explainers of articles, made for beginners. Content
 | Norton's Dome: Can Newtonian Mechanics Be Indeterministic? | 东方既白, Zhihu column 「数理灵感笔记」 | [`physics/theoretical/nortons-dome/`](physics/theoretical/nortons-dome/index.html) | A dome where Newton's equation admits multiple solutions, and why uniqueness fails. |
 | Why Generalized Coordinates Are Not Functions of Time | Zhihu answerers 東雲正樹, Skadiologist | [`physics/theoretical/generalized-coordinates-lagrangian/`](physics/theoretical/generalized-coordinates-lagrangian/index.html) | Coordinates on state space vs functions along a path: q, q̇, the action principle, partial vs total derivatives. |
 | Atoms Aren't Conscious, So Why Are We? | Zhihu answerer 清人 and another answer to the same question | [`physics/theoretical/consciousness-from-atoms/`](physics/theoretical/consciousness-from-atoms/index.html) | The free-energy principle as a framework for consciousness, plus panpsychism vs emergence and attention-schema theory. |
+
+### Mathematics (`math/`)
+
+#### Philosophy of Mathematics (`math/philosophy-of-math/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| Is Mathematics Truth? The Dilemma of Classical Platonism (Part 7) | 贾明子, Zhihu column《何为现实？拉普拉斯之妖与薛定谔猫之决战》 | [`math/philosophy-of-math/is-math-truth-platonism-dilemma/`](math/philosophy-of-math/is-math-truth-platonism-dilemma/index.html) | From Pythagoras, Plato and Euclid to calculus, infinity, imaginary numbers and non-Euclidean geometry: how the belief that mathematics is absolute truth was built, then shaken. |
+| Three Programs for Mathematics: Logic, Formal Language, and Intuition (Part 8) | Same as above | [`math/philosophy-of-math/three-programs-logic-formalism-intuition/`](math/philosophy-of-math/three-programs-logic-formalism-intuition/index.html) | Logicism, formalism and intuitionism each hit their own wall: Russell's paradox, Gödel's incompleteness, and an "embarrassing" reconstruction. |
+| Is Mathematics Real or a Tool? Platonist on Weekdays, Formalist on Weekends (Part 9) | Same as above | [`math/philosophy-of-math/platonist-weekdays-formalist-weekends/`](math/philosophy-of-math/platonist-weekdays-formalist-weekends/index.html) | From "discovered or invented" to mathematical platonism via the Mandelbrot set, Frege and Gödel, and its two big objections. |
+| Is Mathematics the Only Possible Objective Universe? (Part 10) | Same as above | [`math/philosophy-of-math/is-the-universe-mathematics/`](math/philosophy-of-math/is-the-universe-mathematics/index.html) | Structuralism, one melody in many carriers, one flower in five realities, up to Tegmark's Mathematical Universe Hypothesis, and back to the Dao and Kant. |
+
+#### Large Numbers (`math/large-numbers/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| Why Is TREE(3) So Absurdly Large? | Zhihu answerers HypCos (primary), 大老李 | [`math/large-numbers/why-tree3-is-so-large/`](math/large-numbers/why-tree3-is-so-large/index.html) | From the TREE game and well-quasi-ordering to a JavaScript big-number golf ladder climbing past ε₀, Γ₀ and ψ(Ω_ω). |
+
+#### General (`math/general/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| Primes in Higher Dimensions: The Langlands Program | Zhihu answerers 清人 (primary), lliog, 南方 | [`math/general/primes-in-higher-dimensions-langlands/`](math/general/primes-in-higher-dimensions-langlands/index.html) | The Langlands program lifts primes into infinite-dimensional symmetry: Galois and automorphic representations as two sides of one coin. |
+| Grothendieck Universes and Motives: Grothendieck's Dream | Compiled by Zhihu column 「缘法无情」; includes excerpts translated from Colin McLarty (2010) and a Chinese translation of J. S. Milne, "Motives: Grothendieck's Dream" | [`math/general/grothendieck-universes/`](math/general/grothendieck-universes/index.html) | Why a Grothendieck universe is far stronger than a ZFC model, then Milne's survey of motives: Conjectures C and D, the Weil conjectures, modularity and BSD. |
+
+### Philosophy (`philosophy/general/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| How Does the Leap from 0 to 1 Happen? | Zhihu answerer 高大早, and another answer to the same question | [`philosophy/general/from-zero-to-one-singularity/`](philosophy/general/from-zero-to-one-singularity/index.html) | Von Neumann ordinals build 0 and 1 from the empty set; Lacan reads 0 as the system's self-reference. |
+
+### Design (`design/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| What Font Do Calculators Use? Segment Display Fonts | oooooohmygosh, Zhihu Daily (upgraded from 微梨's "Let's Play with Segment Fonts") | [`design/segment-display-fonts/`](design/segment-display-fonts/index.html) | From Nixie tubes to 7-, 9-, 16- and 22-segment displays: interactive displays explain the BEGHILOSZ puzzle, pager-speak and the art of segment fonts. |
 
 ---
 

@@ -1,0 +1,1174 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>数学是实在还是工具</title>
+<meta name="description" content="贾明子《数学是实在还是工具？工作日的柏拉图主义和周末的形式主义》的可视化讲解：发现还是发明、三个纲领的困境、数学柏拉图主义、Mandelbrot 集、弗雷格与哥德尔的论证、认识论问题与奎因、同一性问题与纯血柏拉图主义。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ---- 通用 SVG 样式（补回） ---- */
+.gridline{stroke:var(--grid);stroke-width:1}
+.pt{fill:var(--ink)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+.dash{stroke-dasharray:5 5}
+.dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+@media (prefers-reduced-motion: reduce){ .running .pulse,.dash.anim{animation:none} }
+/* ---- 页面专用：第 9 篇 ---- */
+.hero h1 .sub-h{display:block;font-size:.62em;font-weight:600;color:var(--muted);margin-top:6px}
+
+/* hero：一周条 */
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.wk .d{border:1px solid var(--line);border-radius:10px;padding:10px 4px;text-align:center;font-size:12px;color:var(--muted);background:var(--surface-2);transition:all .4s}
+.wk .d b{display:block;font-size:14px;color:var(--text)}
+.wk .d.we{border-style:dashed}
+.wk .d.on{background:var(--p-soft);border-color:var(--p);color:var(--p);transform:translateY(-3px)}
+.wk .d.on.we{background:var(--o-soft);border-color:var(--o);color:var(--o)}
+.wk-cap{margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wk-cap .c{border-radius:10px;padding:10px 12px;font-size:13px;border:1px solid var(--line);opacity:.45;transition:all .4s}
+.wk-cap .c.on{opacity:1;box-shadow:var(--shadow)}
+.wk-cap .c.wd.on{background:var(--p-soft);border-color:var(--p)}
+.wk-cap .c.we.on{background:var(--o-soft);border-color:var(--o)}
+.wk-cap .c b{display:block;font-size:14px;margin-bottom:2px}
+@media (max-width:480px){ .wk .d{padding:8px 2px;font-size:10px} .wk .d b{font-size:12px} }
+
+/* 01 时间线 + 问题云 */
+.tl{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:14px}
+@media (min-width:760px){ .tl{grid-template-columns:repeat(4,1fr)} }
+.tl .ev{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2);font-size:12.5px;color:var(--muted);position:relative;opacity:0;transform:translateX(-8px);transition:all .5s}
+.tl .ev.on{opacity:1;transform:none}
+.tl .ev b{display:block;color:var(--text);font-size:13px}
+.tl .ev.bad.on{background:var(--r-soft);border-color:var(--r)}
+.tl .ev.bad b{color:var(--r)}
+.qcloud text.q{font-size:11.5px;fill:var(--text);font-family:var(--font)}
+.qcloud .bub{opacity:0;transition:opacity .5s,transform .5s;transform:scale(.9);transform-origin:center;transform-box:fill-box}
+.qcloud .bub.on{opacity:1;transform:none}
+
+/* 02 分类 */
+.sort{display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative}
+.sort .col{border-radius:12px;padding:10px;min-height:150px;border:1px dashed var(--line)}
+.sort .col h3{font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.sort .col.a{background:var(--p-soft)} .sort .col.b{background:var(--o-soft)}
+.sort .col.a h3{color:var(--p)} .sort .col.b h3{color:var(--o)}
+.sort .col .def{font-size:12px;color:var(--muted);margin-bottom:8px}
+.scard{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;margin:4px 0;opacity:0;transform:translateY(10px);transition:opacity .4s,transform .4s}
+.scard.on{opacity:1;transform:none}
+.scard b{font-weight:600}
+.scard small{color:var(--muted);display:block;font-size:11.5px}
+.sort .amb{grid-column:1/-1;border:1px dashed var(--line);border-radius:12px;padding:8px 10px;font-size:13px;color:var(--muted);background:var(--surface-2)}
+.sort .amb .scard{display:inline-block;margin-right:6px}
+@media (max-width:480px){ .sort{grid-template-columns:1fr} }
+
+/* 03 工作日/周末 */
+.weekbox{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .weekbox{grid-template-columns:1fr 1fr} }
+.wkp{border-radius:12px;border:1px solid var(--line);padding:12px;background:var(--surface-2);transition:all .5s;opacity:.5;transform:scale(.98)}
+.wkp.on{opacity:1;transform:none;box-shadow:var(--shadow)}
+.wkp.wd.on{border-color:var(--p);background:var(--p-soft)}
+.wkp.we.on{border-color:var(--o);background:var(--o-soft)}
+.wkp h3{font-size:15px;margin-bottom:4px}
+.wkp .role{font-size:12px;color:var(--muted);margin-bottom:8px}
+.wkp .scene{height:170px;border-radius:10px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.wkp .say{margin-top:8px;font-size:13px;line-height:1.5}
+.wkp .say b{display:block}
+.phys{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);align-items:center}
+.phys .tag{transition:all .4s;opacity:.5}
+.phys .tag.on{opacity:1}
+.objs text{font-family:var(--font);font-size:13px;fill:var(--text);text-anchor:middle;dominant-baseline:middle}
+.objs .ob{transition:all .6s}
+.objs .ob rect{fill:var(--p-soft);stroke:var(--p);stroke-width:1.5;transition:all .6s}
+.objs.we .ob rect{fill:none;stroke:var(--o);stroke-dasharray:4 3}
+.objs .cloud{fill:var(--surface-2);stroke:var(--line);transition:all .6s}
+.objs.we .cloud{opacity:.25}
+.objs .lab{font-size:10.5px;fill:var(--muted)}
+.objs .think{opacity:0;transition:opacity .6s}
+.objs.we .think{opacity:1}
+
+/* 04 维恩 */
+.venn text{font-family:var(--font);fill:var(--text);font-size:11.5px}
+.venn .circ{fill-opacity:.18;stroke-width:1.6;transition:transform .8s ease}
+.venn .qrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.qrow .q{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 12px;font-size:12.5px}
+.qrow .q b{font-family:var(--mono);color:var(--p);margin-right:4px}
+
+/* 05 三纲领 */
+.prog{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:860px){ .prog{grid-template-columns:repeat(3,1fr)} }
+.pcard{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);cursor:pointer;transition:border-color .3s}
+.pcard:hover{border-color:var(--p)}
+.pcard h3{font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.pcard h3 .tag{font-weight:400}
+.pcard .claim{font-size:13px;margin:6px 0 8px}
+.pcard .claim b{color:var(--p)}
+.pcard .art{height:150px;border-radius:10px;background:var(--surface);border:1px solid var(--line);overflow:hidden}
+.pcard .flaw{font-size:12.5px;color:var(--r);margin-top:8px;padding-left:8px;border-left:3px solid var(--r)}
+.pcard svg text{font-family:var(--font);font-size:10.5px;fill:var(--muted);text-anchor:middle}
+.pcard .blk{transition:all .9s}
+.pcard.play .blk{fill:#a37c3a;opacity:.0;transform:translateY(40px)}
+.pcard .seed{transform-origin:center;transform-box:fill-box}
+.pcard.play .seed{animation:seedpulse 1.2s ease-in-out 3}
+@keyframes seedpulse{50%{transform:scale(1.6)}}
+.pcard .crack{stroke-dasharray:200;stroke-dashoffset:200;transition:stroke-dashoffset 1.2s ease .3s}
+.pcard.play .crack{stroke-dashoffset:0}
+.pcard .gprop{opacity:0;transition:opacity .6s 1.2s}
+.pcard.play .gprop{opacity:1}
+.pcard .shrink{transition:width 1.4s ease .3s}
+.pcard.play .shrink{width:42%!important}
+.pcard .lost{opacity:0;transition:opacity .5s 1.4s}
+.pcard.play .lost{opacity:1}
+
+/* 06 Mandelbrot */
+.mz{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:760px){ .mz{grid-template-columns:1.25fr 1fr;align-items:start} }
+.mz canvas{width:100%;aspect-ratio:4/3;border-radius:10px;border:1px solid var(--line);background:#000;image-rendering:auto}
+.mz .zoom{font-family:var(--mono);font-size:13px;color:var(--muted);margin-top:6px}
+.mz .zoom b{color:var(--o);font-size:16px}
+.chk{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.chk li{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;background:var(--surface-2);opacity:.4;transition:all .5s;display:grid;grid-template-columns:1.6em 1fr;gap:6px;align-items:start}
+.chk li.on{opacity:1}
+.chk li .m{font-family:var(--mono);font-weight:700;color:var(--muted)}
+.chk li.yes.on{border-color:var(--t);background:var(--t-soft)} .chk li.yes .m{color:var(--t)}
+.chk li.no.on{border-color:var(--r);background:var(--r-soft)} .chk li.no .m{color:var(--r)}
+.chk li b{display:block;font-size:13.5px}
+.chk li span{color:var(--muted);font-size:12px}
+.chk .sum{grid-template-columns:1fr;background:linear-gradient(135deg,var(--p-soft),var(--t-soft));border-color:transparent;font-weight:600}
+
+/* 07 弗雷格 */
+.fr{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:760px){ .fr{grid-template-columns:1.1fr 1fr} }
+.chain{display:grid;gap:6px}
+.chain .st{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface-2);font-size:13.5px;opacity:.35;transition:all .5s;display:grid;grid-template-columns:1.8em 1fr;gap:8px;align-items:start}
+.chain .st .k{font-family:var(--mono);color:var(--p);font-weight:700}
+.chain .st.on{opacity:1;border-color:var(--p);background:var(--p-soft)}
+.chain .st.fin.on{background:var(--t-soft);border-color:var(--t)}
+.chain .st.fin .k{color:var(--t)}
+.chain .st small{display:block;color:var(--muted);font-size:11.5px}
+.chain .arr{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.jokes{display:grid;gap:8px}
+.jk{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2);font-size:13px;position:relative;transition:all .5s}
+.jk .q{display:block;font-style:italic}
+.jk .a{display:block;font-size:12px;color:var(--muted);margin-top:3px}
+.jk.x .q{text-decoration:line-through;color:var(--muted)}
+.jk.x{border-color:var(--r)}
+.jk .mark{position:absolute;right:10px;top:6px;color:var(--r);font-weight:700;opacity:0;transition:opacity .4s}
+.jk.x .mark{opacity:1}
+.jk-sum{margin-top:6px;font-size:13px;font-weight:600;padding:8px 10px;border-radius:10px;background:var(--t-soft);color:var(--t);opacity:0;transition:opacity .5s}
+.jk-sum.on{opacity:1}
+
+/* 08 来源 / 直觉 / Weil */
+.src3 text{font-family:var(--font);fill:var(--text);font-size:12px;text-anchor:middle}
+.src3 .pil{transition:all .6s}
+.src3 .fade{opacity:.35}
+.quote{font-size:clamp(15px,2.4vw,19px);line-height:1.7;padding:14px 16px;border-radius:12px;background:var(--surface-2);border-left:4px solid var(--p);font-style:italic;transition:all .4s}
+.quote .zh{font-style:normal;font-size:14px;color:var(--muted);display:block;margin-top:6px}
+.quote.alt{border-color:var(--t);background:var(--t-soft);font-style:normal}
+.quote b{color:var(--o)}
+.dich{display:grid;gap:8px}
+.dich .o{border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;background:var(--surface-2);opacity:.5;transition:all .5s}
+.dich .o.on{opacity:1;border-color:var(--t);background:var(--t-soft)}
+.dich .o b{display:block}
+.dich .o.r.on{border-color:var(--o);background:var(--o-soft)}
+.para{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+.para .row{display:grid;grid-template-columns:5em 1fr 6em;align-items:center;gap:6px;font-size:13px}
+.para .row .ln{height:2px;background:linear-gradient(90deg,transparent,var(--p),transparent);position:relative;border-radius:2px}
+.para .row .ln::after{content:attr(data-l);position:absolute;left:50%;top:-16px;transform:translateX(-50%);font-size:11px;color:var(--p);white-space:nowrap}
+.para .row.t .ln{background:linear-gradient(90deg,transparent,var(--t),transparent)}
+.para .row.t .ln::after{color:var(--t)}
+.para .row .r{text-align:right}
+
+/* 09 认识论 */
+.ep{display:grid;gap:14px}
+.causal text{font-family:var(--font);fill:var(--text);font-size:11.5px;text-anchor:middle}
+.causal .ball{fill:var(--o)}
+.match text{font-family:var(--font);fill:var(--text);font-size:11px;text-anchor:middle;dominant-baseline:middle}
+.match .stick{stroke:var(--muted);stroke-width:2;transition:all .8s}
+.match .nd{transition:transform 1s cubic-bezier(.5,0,.9,.6),opacity .8s}
+.match.fall .nd.dep{transform:translateY(130px) rotate(12deg);opacity:0}
+.match.fall .stick{opacity:0}
+.match .core{transition:opacity .5s}
+.match.fall .core{opacity:0}
+.brain{border:1px dashed var(--o);border-radius:12px;padding:10px 12px;font-size:13px;background:var(--o-soft)}
+.brain b{color:var(--o)}
+
+/* 10 同一性 */
+.idn{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .idn{grid-template-columns:1fr 1fr} }
+.setbox{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--surface-2)}
+.setbox h3{font-size:14px;margin-bottom:4px}
+.setbox .f{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin-bottom:8px;word-break:break-all}
+.nest{display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-family:var(--mono);font-size:12px}
+.nest .s{display:inline-flex;align-items:center;gap:3px;border:1.5px solid var(--p);border-radius:8px;padding:3px 5px;background:var(--surface)}
+.nest .s .e{color:var(--muted)}
+.nest.z .s{border-color:var(--o)}
+.worlds{margin-top:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.worlds .w{min-height:54px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);text-align:center;padding:4px;opacity:.3;transform:scale(.9);transition:all .5s}
+.worlds .w.on{opacity:1;transform:none}
+.worlds .w.vn.on{background:var(--p-soft);border-color:var(--p);color:var(--p)}
+.worlds .w.ze.on{background:var(--o-soft);border-color:var(--o);color:var(--o)}
+.worlds .w.x{text-decoration:line-through}
+.verdict{margin-top:10px;font-size:13px;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);transition:all .4s}
+.verdict.fbp{background:var(--t-soft);border-color:var(--t)}
+.verdict b{display:block}
+
+/* 11 地图 */
+.axis{position:relative;height:120px;margin:10px 0 6px}
+.axis .ln{position:absolute;left:0;right:0;top:60px;height:3px;background:linear-gradient(90deg,var(--p),var(--surface-2) 50%,var(--o));border-radius:2px}
+.axis .end{position:absolute;top:70px;font-size:12px;color:var(--muted)}
+.axis .end.l{left:0} .axis .end.r{right:0}
+.axis .pin{position:absolute;top:60px;transform:translate(-50%,-50%);width:16px;height:16px;border-radius:50%;background:var(--surface);border:3px solid var(--p);cursor:pointer;transition:all .3s}
+.axis .pin::after{content:attr(data-l);position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:11.5px;color:var(--text);top:-24px}
+.axis .pin.dn::after{top:auto;bottom:-24px}
+.axis .pin.on{background:var(--p);transform:translate(-50%,-50%) scale(1.3)}
+.axis .pin.on::after{font-weight:700;color:var(--p)}
+.posinfo{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);display:grid;gap:6px;font-size:13.5px;min-height:120px}
+.posinfo h3{font-size:16px}
+.posinfo .row{display:grid;grid-template-columns:6.5em 1fr;gap:8px}
+.posinfo .row .k{color:var(--muted);font-size:12.5px}
+.posinfo .row.bad .v{color:var(--r)}
+@media (max-width:600px){ .axis{height:150px} .axis .pin::after{font-size:10px} }
+
+.swipe{display:none;font-size:11px;color:var(--muted);margin-top:4px;text-align:center}
+@media (max-width:759px){ .swipe{display:block} }
+@media (max-width:600px){ .axis .pin::after{content:attr(data-s)} }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <a class="back" href="../../../README.md">← ai-visual-notes</a>
+  <div class="brand">数学是实在还是工具</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 数学哲学 · 系列第 9 篇</div>
+  <h1>数学是实在还是工具？<br><span class="sub-h">工作日的柏拉图主义和周末的形式主义</span></h1>
+  <p class="sub">数学基础终于严密了，但“什么是数学”反而更糊涂。这一篇用 11 个画面讲清：数学家为什么在工作日相信数学对象真实存在、在周末又觉得它只是符号游戏，以及当代“数学柏拉图主义”如何回答——又如何被诘难。</p>
+  <div class="thesis">开篇题词：<b>“Either mathematics is too big for us or the human mind is more than a machine.”</b>——哥德尔。要么数学对我们来说太难了，要么我们的意识不仅仅是一台机器。</div>
+  <div class="meta">原文：贾明子，知乎专栏《何为现实？拉普拉斯之妖与薛定谔猫之决战》第 9 篇（编辑于 2020-07-23）。本页为教学改编，图示中标注“示意”的内容为说明用。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="puzzle" data-title="越严密，越糊涂">
+  <div class="ch-head"><span class="num">01</span>
+    <h2>数学越严密，“什么是数学”越糊涂</h2>
+    <p class="lead">19 世纪末到 20 世纪初，数字系统终于建立在严谨公理之上，欧氏与非欧几何统一在射影几何之下。可人们对“数学到底是什么”却更加糊涂了。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>上：</b>数学基础严密化的时间线。<b>下：</b>原文抛出的一连串问题，围绕着一个最简单的事实。</div>
+    <div data-demo="puzzle"></div>
+  </div>
+  <ul class="notes">
+    <li><b>如果数学真实存在</b>：它存身何处？我们通过什么手段获取它的知识？</li>
+    <li><b>如果数学是人造的</b>：为何不同种族、性别、年龄、地域的人都各自独立地坚信 2+3=5？客观性和必然性何来？</li>
+    <li><b>如果数学像自然科学一样依附于具体事物</b>：为何它看起来必然为真、不能被经验证伪？数论这种没有自然科学对应物的理论又有何意义？</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="discover" data-title="发现还是发明">
+  <div class="ch-head"><span class="num">02</span>
+    <h2>一个先问你的问题：数学是被发现的，还是被发明的？</h2>
+    <p class="lead">人们说毕达哥拉斯“发现”了勾股定理，却说牛顿和莱布尼兹“发明”了微积分。措辞里藏着一种无意识的立场。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文举的例子会自动归到两边。<b>发现</b>隐含“它已经在那儿，人们把它揭示出来”；<b>发明</b>隐含“它本来不存在，人们把它创造出来”。</div>
+    <div data-demo="sorter"></div>
+  </div>
+  <ul class="notes">
+    <li><b>规律</b>：陈述数学事实的判断（定理）叫“发现”；一种方法或一个体系叫“发明”，因为达到同一目标可以有不同方法。</li>
+    <li><b>潜台词</b>：数学实体和定理是真实存在，人们通过创造性工作去发现它——这有明显的<b>柏拉图主义</b>痕迹。</li>
+    <li><b>更谨慎的措辞</b>是“建立”“证明”：它们在本体论上更含糊。证明出来的东西“真实”吗？who cares。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="week" data-title="工作日与周末">
+  <div class="ch-head"><span class="num">03</span>
+    <h2>“典型的数学家在工作日是柏拉图主义者，在周末是形式主义者”</h2>
+    <p class="lead">Phillip Davis 的这句话，说的是一种很矛盾、却很普遍的状态。切换看看同一个数学家两种时刻的脑内。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">自动在两种状态间切换，也可以手动点。注意：两种状态下，数学家面对的是<b>同一批对象</b>。</div>
+    <div data-demo="week"></div>
+  </div>
+  <ul class="notes">
+    <li><b>工作日</b>：忙于具体问题，对数学对象的看法是下意识的、直觉的。数字、集合、向量、函数都实实在在存在——只是位于时空之外的“抽象世界”。定理有客观真假，取决于它是否与抽象世界相符。这就是<b>柏拉图主义</b>。</li>
+    <li><b>周末</b>：葛优瘫着喝茶，思绪飘远，开始剖析：“抽象实在”是什么？“真”是与真实相符，还是仅仅在框架内可证？抛开这些，数学就是一种形式语言而已。这就是<b>形式主义</b>。</li>
+    <li><b>原文皮一下的类比</b>：物理学家在工作日是实在论者，在周末则是实证主义者。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="classic" data-title="柏拉图与康德">
+  <div class="ch-head"><span class="num">04</span>
+    <h2>三个问题，两个古典回答</h2>
+    <p class="lead">数学实体存在吗、存身何处？“真”“假”是什么意思？我们如何获得数学知识？柏拉图和康德都答得很明确，而且有共同点。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">两人的回答画成一张交集图。<b>共同点</b>：都认为数学是先验的；康德的物自体世界和柏拉图的理念世界也颇为类似。</div>
+    <div data-demo="classic"></div>
+  </div>
+  <ul class="notes">
+    <li><b>柏拉图</b>：数学实体存在于理念世界，刻印在灵魂中，可以被灵魂“回忆”起来。现代哲学已几乎无人支持这种纯粹观点。</li>
+    <li><b>康德</b>：数学是先验综合判断，是智慧的先天基本形式，存在于人的意识中。人类认识不了物自体，但思维框架本身产生了数学直觉。</li>
+    <li><b>现代注脚</b>：这个框架如何产生、如何在个体间保持客观，可以用大脑结构和神经元网络运算来解释。人用自身的思维框架去“框”物自体——所以自然规律是数学的。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="programs" data-title="三个纲领的困境">
+  <div class="ch-head"><span class="num">05</span>
+    <h2>20 世纪初的三个纲领，各有各的缺陷</h2>
+    <p class="lead">逻辑主义说数学就是逻辑；形式主义说数学是符号游戏；直觉主义说数学建立在直觉之上。三者对“真”的定义不同，困难也不同。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">每张卡的小图对应原文的比喻或论证。点卡片可重放动画。</div>
+    <div data-demo="programs"></div>
+  </div>
+  <ul class="notes">
+    <li><b>逻辑主义</b>：以为数学是建在逻辑土壤上的建筑，拆到底全是土壤。结果发现数学更像一棵大树——营养来自土壤，但它终究需要一颗种子，种子不是土壤。</li>
+    <li><b>形式主义</b>：“真”就是规则范围内可证明，客观性体现在规则的自洽。哥德尔不完备定理证明：包含算术的体系既无法保证自洽，体系内又总有不可证命题——按形式主义就是非真非假。</li>
+    <li><b>直觉主义</b>：有鲜明的康德痕迹，一切归结为直觉；无法构建的实体既非真又非假，排中律必须抛弃。像休谟的经验主义一样难以反驳，但毫无进取之力：恪守它就意味着放弃大半数学成就。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="platonism" data-title="数学柏拉图主义与分形">
+  <div class="ch-head"><span class="num">06</span>
+    <h2>数学柏拉图主义（小写 p）：看看 Mandelbrot 集</h2>
+    <p class="lead">三个纲领的困难迫使数学家重新审视柏拉图主义。它的核心思想被传承下来：数学对象真实存在、不依赖人类、是一种抽象存在。彭罗斯最爱用的例证是 Mandelbrot 集。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">这是在浏览器里<b>实时计算</b>的 Mandelbrot 集。点“放大”，或让它自动放大。每放大一次，右边的问题就对照着答一个。</div>
+    <div data-demo="mandel"></div>
+  </div>
+  <ul class="notes">
+    <li><b>Platonism vs platonism</b>：大写 P 是古典的哲学意义上的柏拉图主义，小写 p 是数学柏拉图主义。两者只差一个字母的大小写。</li>
+    <li><b>原文的追问</b>：这个集合真实存在吗？否认它存在未免太傻。它客观吗？无论谁来放大，看到的结构都一样。它在哪里？不在画中（任何画都画不出无穷精细），不在意识中（有限的意识装不下无限结构），不在时空中，也不随时间变化。</li>
+    <li><b>注意</b>：原文提到可以放大到 10<sup>227</sup> 倍。本页受浮点精度限制，放大到约 10<sup>10</sup> 倍就停了，这是<b>示意</b>。例证不是证据——严肃的论证来自弗雷格和哥德尔。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="frege" data-title="弗雷格的论证">
+  <div class="ch-head"><span class="num">07</span>
+    <h2>弗雷格：定理为真，所以自然数存在</h2>
+    <p class="lead">剥离了语义学和语言哲学的严谨外衣，弗雷格的论证只有四步。它其实是在追问：说一个句子“为真”到底是什么意思。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>左：</b>四步论证逐步点亮。<b>右：</b>既然存在，为什么必须是“抽象”的存在——原文的三个段子。</div>
+    <div data-demo="frege"></div>
+  </div>
+  <ul class="notes">
+    <li><b>直观版本</b>：数学定理绝大多数长这样——“存在一个数学对象 P，使得……”或“所有数学对象 P，……”。无论哪种，都在肯定 P 的存在；对象不存在，定理就失去了真假。</li>
+    <li><b>独立于个人</b>：定理的真假不依赖于个人，所以数学对象的存在也独立于个人。</li>
+    <li><b>反驳自然主义</b>：若数字 3 只在指“3 本书、3 个人”时才有意义，那么“有无穷多个自然数”指代这个有限宇宙中的什么？“存在一个空集”又有何具体意义？具体化的空集直接就是逻辑矛盾。所以数学实在必须是抽象的。</li>
+  </ul>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="godel" data-title="哥德尔与直觉">
+  <div class="ch-head"><span class="num">08</span>
+    <h2>哥德尔：数学直觉不可消去</h2>
+    <p class="lead">不完备定理给了形式主义 100 点暴击，却给了数学柏拉图主义一道曙光：总有些东西既不来自证明、也不来自经验，而来自直觉。那直觉从哪来？</p>
+  </div>
+  <div class="grid2">
+    <div class="fig">
+      <div class="cap"><b>知识的三个来源</b>：逻辑主义只认“逻辑自明”，哥德尔指出必然存在“直觉自明”——它无法被证明，也无法继续穷根究底。</div>
+      <div data-demo="sources"></div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>直觉是什么</b>：两种截然不同的回答。哥德尔断然选择后者。</div>
+      <div data-demo="intuition"></div>
+    </div>
+  </div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">André Weil 对不完备定理的评论。Weil 本人没有宗教信仰，“上帝”只是一种表达方式（像爱因斯坦说“上帝不掷骰子”）。点按钮看原文怎么翻译它。</div>
+    <div data-demo="weil"></div>
+  </div>
+  <ul class="notes">
+    <li><b>形式主义的两难</b>：要么存在既非真又非假的命题（真＝可证，违背排中律）；要么存在不可证的真命题，于是“真”必然不等于可证。</li>
+    <li><b>曙光</b>：不完备定理让希尔伯特愤怒又无奈，数学不再是可以完全确定、被完美证明的学科。但这意味着：数学像自然科学一样，是对客观现实的探索过程。自然科学以实证探索物理世界，数学以直觉探索柏拉图世界。</li>
+    <li><b>双刃剑</b>：成也直觉败也直觉。这个神秘的直觉到底是什么？它如何可靠地感知柏拉图世界？这是最难回答的诘难——下一节。</li>
+  </ul>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="epistemic" data-title="认识论问题与奎因">
+  <div class="ch-head"><span class="num">09</span>
+    <h2>诘难一：认识论问题——没有因果链，哪来的渠道？</h2>
+    <p class="lead">对物理世界的认识来自感官，这要求对象能与我们发生因果关系。抽象的数学实体不在时空中，不能与我们相互作用，那它的知识怎么到达我们？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>上：</b>物理认知有完整的因果链；抽象世界到我们之间却是断的。<b>下：</b>奎因的回答——“不可分割性”，用电磁场做类比。点“抽掉电磁场”试试。</div>
+    <div data-demo="epistemic"></div>
+  </div>
+  <ul class="notes">
+    <li><b>为什么只有数学柏拉图主义怕这个问题</b>：古典柏拉图主义有灵魂带入知识；“数学是人造”的观点、逻辑主义、形式主义都不存在渠道问题；自然主义说数学和自然科学一样靠感官认知。只有“外部的、抽象的数学实在”同时需要一条渠道、又不可能有因果链。</li>
+    <li><b>奎因</b>：知识体系相互渗透、一荣俱荣一损俱损。自然科学建立在数学之上，承认自然科学对象的实在性，就必须同样承认数学对象的实在性——正如电磁场看不见摸不着，但抽掉它整个物理学就坍塌，所以它必须存在。</li>
+    <li><b>新矛盾</b>：按奎因，数学应该能被实证；但从数学实践看，数学是先验知识——不必数遍天下事物就知道 2+3=5。</li>
+    <li><b>作者本人的脑洞（原文特别声明非奎因观点）</b>：物理现实打着数学的烙印，感官观察到的现象里承载着数学现实的编码，数学直觉就是对这种编码的解码。现象可实证，其中超越时空的数学编码却不变。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="identity" data-title="同一性问题与 FBP">
+  <div class="ch-head"><span class="num">10</span>
+    <h2>诘难二：同一性问题——两个“3”，哪个才是真的？</h2>
+    <p class="lead">自然数 3 可以用冯诺依曼的方法定义，也可以用策梅洛的方法定义。算术上完全等效，集合上却不是同一种东西。若存在唯一的数学现实，总有一个是错的。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左右是两种定义画成的嵌套盒子。切换到 <b>FBP</b>（完全柏拉图主义 / 纯血柏拉图主义），看它如何一劳永逸地解决问题。</div>
+    <div data-demo="identity"></div>
+  </div>
+  <ul class="notes">
+    <li><b>FBP</b>（plenitudinous / full-blooded platonism）：并非只有一种数学实在，<b>一切可能存在的，在现实中必然全都存在</b>。两种定义都逻辑可能，因而都是数学现实，各自对应柏拉图世界的不同领域，并不冲突。</li>
+    <li><b>附带解决认识论问题</b>：既然一切可能的都是现实，就不必有从柏拉图世界到认知的渠道——我们能想到的所有逻辑自洽的数学理论，都是真的。</li>
+    <li><b>同类理论</b>：模态逻辑的模态现实、量子力学的多世界、宇宙学的多重宇宙。它们面临同一种诘难，不是逻辑或实证上的，而是接受上的：<b>古怪</b>。</li>
+    <li>注：原文写出的冯诺依曼集合按标准定义多了一层（对应的是 4），本页按标准定义画 3；两种定义的对比关系不受影响。</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section class="ch" id="summary" data-title="立场地图">
+  <div class="ch-head"><span class="num">11</span>
+    <h2>一张地图：实在，还是工具？</h2>
+    <p class="lead">把这一篇出现过的立场摆在一条“实在 ↔ 工具”的轴上。点任何一个，看它对“数学是什么”“真是什么”的回答，以及它的困难。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">轴上的位置是本页的粗略排列（<b>示意</b>），不是原文给出的坐标。下一篇将讲数学柏拉图主义的另一支：结构主义。</div>
+    <div data-demo="map"></div>
+  </div>
+  <div class="final">原文对这些“古怪”理论的态度：在后面的章节会陆续体验它们，并在充分理解之后由衷赞叹——不是因为它们正确或最合理，而是因为它们的<b>逻辑简洁和想象力的天马行空</b>。</div>
+</section>
+
+<footer>
+  <div><b>来源</b></div>
+  <ul>
+    <li>贾明子，《9、数学是实在还是工具？工作日的柏拉图主义和周末的形式主义》，知乎专栏《何为现实？拉普拉斯之妖与薛定谔猫之决战》：<a href="https://zhuanlan.zhihu.com/p/47212248">zhuanlan.zhihu.com/p/47212248</a>（编辑于 2020-07-23）。</li>
+    <li>上一篇：《8、数学的三个纲领：逻辑、形式语言、以及直觉》；下一篇：《10、客观宇宙的唯一可能是数学？》。</li>
+    <li>原文引用：Phillip Davis 关于工作日与周末的说法；André Weil 对哥德尔不完备定理的评论；彭罗斯以 Mandelbrot 集为例。原文的 Mandelbrot 放大图取自 YouTube 视频，本页改为浏览器实时计算。</li>
+  </ul>
+  <div style="margin-top:10px">本页由 Claude Code 基于原文生成，仅供学习。</div>
+</footer>
+
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+/* 宽 SVG 在窄屏下可横向滑动 */
+const scrollWrap = (node, minW = 560) => { node.style.minWidth = minW + 'px'; const w = el('div', { class: 'scrollx' }, node); const box = el('div', {}, w, el('div', { class: 'swipe' }, '← 图可左右滑动 →')); return box; };
+
+/* ======================================================================
+   第 9 篇：数学是实在还是工具？——演示模块
+   ====================================================================== */
+
+/* ---------- Hero：一周条 ---------- */
+reg('hero', (root) => {
+  const days = ['一', '二', '三', '四', '五', '六', '日'];
+  const strip = el('div', { class: 'wk' });
+  const cells = days.map((d, i) => el('div', { class: 'd' + (i >= 5 ? ' we' : '') }, el('b', {}, '周' + d), i >= 5 ? '葛优瘫' : '做数学'));
+  strip.append(...cells);
+  const cwd = el('div', { class: 'c wd' }, el('b', {}, '工作日：柏拉图主义者'), '数字、集合、函数都实实在在地存在，定理有客观真假。');
+  const cwe = el('div', { class: 'c we' }, el('b', {}, '周末：形式主义者'), '“抽象实在”是什么？抛开这些，数学不过是一种形式语言。');
+  root.append(strip, el('div', { class: 'wk-cap' }, cwd, cwe));
+  let i = 0;
+  const paint = () => {
+    cells.forEach((c, k) => c.classList.toggle('on', k === i));
+    cwd.classList.toggle('on', i < 5); cwe.classList.toggle('on', i >= 5);
+  };
+  paint();
+  if (RM) return {};
+  return every(900, () => { i = (i + 1) % 7; paint(); });
+});
+
+/* ---------- 01：时间线 + 问题云 ---------- */
+reg('puzzle', (root) => {
+  const evs = [
+    ['几千年', '一直在用数字系统，却不知道它是什么'],
+    ['19 世纪末 – 20 世纪初', '数学基础严密化取得突破，数字建立在严谨公理之上'],
+    ['同一时期', '欧氏几何与非欧几何统一在射影几何的整体框架下'],
+    ['结果', '“什么是数学”却更加糊涂了', 'bad'],
+  ];
+  const tl = el('div', { class: 'tl' });
+  const evEls = evs.map(([t, d, c]) => el('div', { class: 'ev ' + (c || '') }, el('b', {}, t), d));
+  tl.append(...evEls);
+  const W = 640, H = 300;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'qcloud', style: 'width:100%' });
+  s.append(svg('rect', { x: W / 2 - 70, y: H / 2 - 24, width: 140, height: 48, rx: 12, class: 'box p' }));
+  s.append(svg('text', { x: W / 2, y: H / 2, class: 'txt b', style: 'font-size:22px;font-family:var(--mono)' }, '2 + 3 = 5'));
+  const qs = [
+    [110, 50, '没有人类，它还正确吗？'],
+    [530, 50, '费马大定理客观存在吗？'],
+    [80, 150, '外星文明也有素数吗？'],
+    [560, 150, '它存身何处？如何获知？'],
+    [120, 255, '若是人造，为何人人独立坚信？'],
+    [520, 255, '为何必然真、不可证伪？'],
+  ];
+  const bubs = qs.map(([x, y, t]) => {
+    const w = t.length * 11.5 + 20;
+    const g = svg('g', { class: 'bub' },
+      svg('line', { x1: x, y1: y, x2: W / 2 + (x < W / 2 ? -70 : 70), y2: H / 2 + (y < H / 2 ? -10 : 10), class: 'edge dash' }),
+      svg('rect', { x: x - w / 2, y: y - 16, width: w, height: 32, rx: 16, class: 'box' }),
+      svg('text', { x, y: y + 4, class: 'q', 'text-anchor': 'middle' }, t));
+    s.append(g); return g;
+  });
+  root.append(tl, scrollWrap(s));
+  let step = 0; const total = evEls.length + bubs.length;
+  const paint = () => { evEls.forEach((e, k) => e.classList.toggle('on', k < step)); bubs.forEach((b, k) => b.classList.toggle('on', k + evEls.length < step)); };
+  if (RM) { step = total; paint(); return {}; }
+  const t = every(650, () => { step = step >= total ? (step > total + 3 ? 0 : step + 1) : step + 1; paint(); });
+  return { start() { step = 0; paint(); t.start(); }, stop: t.stop };
+});
+
+/* ---------- 02：发现 / 发明 ---------- */
+reg('sorter', (root) => {
+  const A = [['毕达哥拉斯', '直角边平方和等于斜边平方'], ['希帕索斯', '无理数的存在'], ['伽罗华', '五次方程的解（原文如此）'], ['哥德尔', '不完备定理']];
+  const B = [['牛顿、莱布尼兹', '微积分'], ['布尔', '第一套完整的形式逻辑符号系统'], ['人们', '偏微分方程的有限元数值解法']];
+  const colA = el('div', { class: 'col a' }, el('h3', {}, '发现', el('span', { class: 'tag p' }, '它已经在那儿')), el('div', { class: 'def' }, '陈述数学事实的判断（定理）'));
+  const colB = el('div', { class: 'col b' }, el('h3', {}, '发明', el('span', { class: 'tag o' }, '它本来不存在')), el('div', { class: 'def' }, '一种方法、一个体系'));
+  const mk = ([w, t]) => el('div', { class: 'scard' }, el('b', {}, w), ' ', t.includes('（') ? el('small', {}, t) : el('small', {}, t));
+  const ca = A.map(mk), cb = B.map(mk);
+  colA.append(...ca); colB.append(...cb);
+  const amb = el('div', { class: 'amb' }, '更谨慎的措辞：', el('span', { class: 'scard on', style: 'display:inline-block' }, el('b', {}, '建立')), el('span', { class: 'scard on', style: 'display:inline-block' }, el('b', {}, '证明')), ' —— 它是“真实”的吗？who cares。本体论上更含糊。');
+  const box = el('div', { class: 'sort' }, colA, colB, amb);
+  const ctrl = el('div', { class: 'ctrl' });
+  root.append(box, ctrl);
+  const order = [ca[0], cb[0], ca[1], cb[1], ca[2], cb[2], ca[3]];
+  let i = 0, timer = 0;
+  const run = () => { clearInterval(timer); i = 0; order.forEach(c => c.classList.remove('on')); timer = setInterval(() => { if (i >= order.length) { clearInterval(timer); return; } order[i++].classList.add('on'); }, RM ? 0 : 500); };
+  ctrl.append(el('button', { class: 'btn', type: 'button', onclick: run }, '重播'));
+  return { start() { if (i === 0) run(); }, stop() { clearInterval(timer); } };
+});
+
+/* ---------- 03：工作日 / 周末 ---------- */
+reg('week', (root) => {
+  const scene = (we) => {
+    const W = 320, H = 170;
+    const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'objs' + (we ? ' we' : ''), style: 'width:100%;height:100%' });
+    s.append(svg('ellipse', { cx: 200, cy: 85, rx: 110, ry: 62, class: 'cloud' }));
+    s.append(svg('text', { x: 200, y: 32, class: 'lab' }, we ? '“抽象世界”？虚无缥缈' : '抽象世界（真实存在，但不在空间中）'));
+    const objs = [['数字 3', 150, 70], ['集合 {∅}', 240, 62], ['向量 v', 160, 110], ['函数 f', 245, 108]];
+    objs.forEach(([t, x, y]) => s.append(svg('g', { class: 'ob' }, svg('rect', { x: x - 34, y: y - 13, width: 68, height: 26, rx: 7 }), svg('text', { x, y }, t))));
+    // 人
+    s.append(svg('circle', { cx: 50, cy: we ? 110 : 70, r: 13, class: 'node' }));
+    s.append(svg('path', { d: we ? 'M30 150 Q45 118 70 128 L95 150' : 'M40 84 L40 125 M40 95 L62 102', class: 'edge', style: 'stroke:var(--muted);stroke-width:2' }));
+    s.append(svg('text', { x: 50, y: 160, class: 'lab' }, we ? '周末：喝茶' : '工作日：做题'));
+    if (we) s.append(svg('g', { class: 'think' }, svg('circle', { cx: 75, cy: 95, r: 3, class: 'f-m' }), svg('circle', { cx: 85, cy: 82, r: 4.5, class: 'f-m' })));
+    else s.append(svg('path', { d: 'M62 102 L110 92', class: 'edge dash anim', style: 'stroke:var(--p);stroke-width:1.5' }));
+    return s;
+  };
+  const wd = el('div', { class: 'wkp wd on' }, el('h3', {}, '工作日'), el('div', { class: 'role' }, '柏拉图主义者 · 看法是下意识的、直觉的'), el('div', { class: 'scene' }, scene(false)), el('div', { class: 'say' }, el('b', {}, '“这些对象都实实在在存在。”'), '定理是对抽象世界的描述，要么真要么假，取决于是否与它相符，不因人而异。'));
+  const we = el('div', { class: 'wkp we' }, el('h3', {}, '周末'), el('div', { class: 'role' }, '形式主义者 · 看法是思辨式的'), el('div', { class: 'scene' }, scene(true)), el('div', { class: 'say' }, el('b', {}, '“‘抽象实在’是什么？”'), '“真”是与真实相符，还是仅仅在框架内可证？抛开这些，数学就是一种形式语言而已。'));
+  const box = el('div', { class: 'weekbox' }, wd, we);
+  const tRe = el('span', { class: 'tag p on' }, '实在论者'), tPo = el('span', { class: 'tag o' }, '实证主义者');
+  const phys = el('div', { class: 'phys' }, '类比：物理学家在工作日是', tRe, '，在周末则是', tPo, '。');
+  let cur = 0;
+  const paint = () => { wd.classList.toggle('on', cur === 0); we.classList.toggle('on', cur === 1); tRe.classList.toggle('on', cur === 0); tPo.classList.toggle('on', cur === 1); };
+  const sg = seg(['工作日', '周末'], (i) => { cur = i; paint(); hold = 6; });
+  let hold = 0;
+  root.append(el('div', { class: 'ctrl' }, sg), box, phys);
+  if (RM) return {};
+  const t = every(2600, () => { if (hold > 0) { hold--; return; } cur = 1 - cur; paint(); sg.querySelectorAll('button').forEach((b, j) => b.classList.toggle('on', j === cur)); });
+  return t;
+});
+
+/* ---------- 04：柏拉图 vs 康德 ---------- */
+reg('classic', (root) => {
+  const qrow = el('div', { class: 'qrow' }, ...['数学实体存在吗？存身何处？', '“真”“假”是什么含义？', '我们如何认识数学知识？'].map((q, i) => el('span', { class: 'q' }, el('b', {}, 'Q' + (i + 1)), q)));
+  const W = 640, H = 300;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'venn', style: 'width:100%' });
+  const c1 = svg('circle', { cx: 230, cy: 150, r: 130, class: 'circ', style: 'fill:var(--p);stroke:var(--p);transform:translateX(-80px)' });
+  const c2 = svg('circle', { cx: 410, cy: 150, r: 130, class: 'circ', style: 'fill:var(--o);stroke:var(--o);transform:translateX(80px)' });
+  s.append(c1, c2);
+  const txt = (x, y, lines, cls = '') => lines.forEach((l, i) => s.append(svg('text', { x, y: y + i * 15, 'text-anchor': 'middle', class: cls }, l)));
+  txt(150, 60, ['柏拉图'], 'b'); s.lastChild.style.cssText = 'font-size:15px;font-weight:700;fill:var(--p)';
+  txt(150, 110, ['Q1 存在于理念世界', 'Q2 真 = 与理念相符', 'Q3 知识刻在灵魂中，', '靠灵魂“回忆”', '', '现代已几乎无人支持']);
+  txt(490, 60, ['康德']); s.lastChild.style.cssText = 'font-size:15px;font-weight:700;fill:var(--o)';
+  txt(490, 110, ['Q1 存在于人的意识中', 'Q2 先验综合判断', 'Q3 思维框架本身', '产生数学直觉', '', '现代注脚：大脑结构、', '神经元网络']);
+  txt(320, 120, ['共同点', '数学是先验的', '', '物自体世界 ≈', '理念世界']);
+  s.querySelectorAll('text').forEach(t => { if (t.textContent === '共同点') t.style.cssText = 'font-weight:700'; });
+  root.append(qrow, scrollWrap(s));
+  let on = false;
+  const show = () => { c1.style.transform = 'none'; c2.style.transform = 'none'; on = true; };
+  if (RM) { show(); return {}; }
+  return { start() { setTimeout(show, 200); }, stop() {} };
+});
+
+/* ---------- 05：三个纲领 ---------- */
+reg('programs', (root) => {
+  const artLogic = () => {
+    const s = svg('svg', { viewBox: '0 0 300 150', style: 'width:100%;height:100%' });
+    s.append(svg('rect', { x: 0, y: 118, width: 300, height: 32, fill: '#a37c3a', opacity: .55 }));
+    s.append(svg('text', { x: 150, y: 142 }, '逻辑（土壤）'));
+    // 建筑
+    [[20, 90], [52, 90], [84, 90], [36, 62], [68, 62], [52, 34]].forEach(([x, y]) => s.append(svg('rect', { x, y, width: 28, height: 24, rx: 3, class: 'blk', fill: 'var(--p)', opacity: .8 })));
+    s.append(svg('text', { x: 66, y: 24 }, '数学 = 建筑？'));
+    s.append(svg('text', { x: 66, y: 110, class: 'gprop' }, '拆到底全是土壤'));
+    // 树
+    s.append(svg('path', { d: 'M230 118 L230 70', stroke: '#6b4a2b', 'stroke-width': 6, 'stroke-linecap': 'round' }));
+    s.append(svg('circle', { cx: 230, cy: 52, r: 30, fill: 'var(--t)', opacity: .75 }));
+    s.append(svg('circle', { cx: 230, cy: 112, r: 5, fill: 'var(--o)', class: 'seed' }));
+    s.append(svg('text', { x: 230, y: 24 }, '数学 = 大树'));
+    s.append(svg('text', { x: 230, y: 100, class: 'gprop', style: 'fill:var(--o)' }, '终究需要一颗种子'));
+    return s;
+  };
+  const artFormal = () => {
+    const s = svg('svg', { viewBox: '0 0 300 150', style: 'width:100%;height:100%' });
+    s.append(svg('rect', { x: 30, y: 20, width: 240, height: 110, rx: 10, class: 'box p' }));
+    s.append(svg('text', { x: 150, y: 36 }, '规则体系（公理 + 推导规则）'));
+    ['A→B', '¬¬A', '∀x P(x)', 'S(n)'].forEach((t, i) => s.append(svg('text', { x: 70 + i * 50, y: 70, style: 'font-family:var(--mono);fill:var(--text);font-size:12px' }, t)));
+    s.append(svg('text', { x: 150, y: 95 }, '真 = 体系内可证'));
+    s.append(svg('path', { d: 'M150 0 L140 40 L160 75 L148 130', class: 'crack', stroke: 'var(--r)', 'stroke-width': 2.5, fill: 'none' }));
+    s.append(svg('g', { class: 'gprop' }, svg('rect', { x: 200, y: 100, width: 70, height: 22, rx: 11, fill: 'var(--r-soft)', stroke: 'var(--r)' }), svg('text', { x: 235, y: 115, style: 'fill:var(--r)' }, 'G：不可证')));
+    s.append(svg('text', { x: 150, y: 145, class: 'gprop', style: 'fill:var(--r)' }, '哥德尔：无法自证自洽，且总有不可证命题'));
+    return s;
+  };
+  const artIntu = () => {
+    const w = el('div', { style: 'padding:12px;height:100%;display:flex;flex-direction:column;justify-content:center;gap:8px' });
+    const bar = el('div', { style: 'flex:none;height:26px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;position:relative' });
+    const fill = el('div', { class: 'shrink', style: 'height:100%;width:100%;background:var(--t);border-radius:8px' });
+    bar.append(fill);
+    w.append(el('div', { style: 'font-size:12px;color:var(--muted)' }, '已取得的数学成就'), bar,
+      el('div', { class: 'lost', style: 'font-size:12px;color:var(--r)' }, '恪守直觉主义 → 无法构建的实体既非真又非假，排中律被抛弃，大半成就要放弃'),
+      el('div', { style: 'font-size:12px;color:var(--muted)' }, '像休谟的经验主义：难以反驳，也毫无进取之力'));
+    return w;
+  };
+  const cards = [
+    ['逻辑主义', '数学就是逻辑', '真 = 逻辑自洽', artLogic, '总有逻辑定律之外的“纯数学”公理基础'],
+    ['形式主义', '数学是规则下的形式语言，一种符号游戏', '真 = 体系内可证明', artFormal, '哥德尔不完备定理：非真非假的命题出现了'],
+    ['直觉主义', '数学是数学家在直觉基础上构建的', '真 = 可归于直觉', artIntu, '极端保守：要放弃大半已取得的数学成就'],
+  ].map(([n, c, t, art, flaw]) => {
+    const card = el('div', { class: 'pcard' }, el('h3', {}, n, el('span', { class: 'tag' }, t)), el('div', { class: 'claim' }, c), el('div', { class: 'art' }, art()), el('div', { class: 'flaw' }, flaw));
+    card.addEventListener('click', () => { card.classList.remove('play'); void card.offsetWidth; card.classList.add('play'); });
+    return card;
+  });
+  root.append(el('div', { class: 'prog' }, ...cards));
+  return { start() { cards.forEach((c, i) => setTimeout(() => c.classList.add('play'), RM ? 0 : 300 + i * 500)); }, stop() {} };
+});
+
+/* ---------- 06：Mandelbrot ---------- */
+reg('mandel', (root) => {
+  const cv = el('canvas');
+  const zoomLbl = el('div', { class: 'zoom' });
+  const left = el('div', {}, cv, zoomLbl);
+  const items = [
+    ['yes', '真实存在吗？', '否认它存在是个很傻的观点。精细结构一直就在集合内部某处，等着我们放大到可以看见它。'],
+    ['yes', '客观吗？', '不同层面看到的结构绝对不以人的意志为转移。谁来看都一样。'],
+    ['no', '在这幅画中吗？', '图形只是表达手段，任何一幅画都画不出无穷精细的东西。'],
+    ['no', '在人的意识中吗？', '一个有限的意识如何容纳无限的结构？'],
+    ['no', '在时空中吗？会变化吗？', '迭代规则确定时它就完全确定了，直至宇宙灭亡，永恒不变。'],
+  ];
+  const lis = items.map(([c, q, a]) => el('li', { class: c }, el('span', { class: 'm' }, c === 'yes' ? '✓' : '✗'), el('div', {}, el('b', {}, q), el('span', {}, a))));
+  const sum = el('li', { class: 'sum' }, '它是真实的，但不是具体的、不是主观的、不在时空中，却又不依赖人的意识：真实地存在于一个不依赖人类的抽象世界中。');
+  const chk = el('ul', { class: 'chk' }, ...lis, sum);
+  root.append(el('div', { class: 'mz' }, left, chk));
+  const ctrl = el('div', { class: 'ctrl' });
+  left.append(ctrl);
+
+  // 渲染
+  const CX = -0.743643887037151, CY = 0.131825904205330;
+  const W = 320, H = 240;
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  const img = ctx.createImageData(W, H);
+  const pal = (() => { // 预计算调色板
+    const cols = [[20, 24, 60], [79, 70, 229], [51, 210, 186], [255, 240, 200], [232, 115, 31], [20, 24, 60]];
+    const out = [];
+    for (let i = 0; i < 256; i++) { const t = i / 256 * (cols.length - 1), k = Math.floor(t), f = t - k; const a = cols[k], b = cols[Math.min(k + 1, cols.length - 1)]; out.push([a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]); }
+    return out;
+  })();
+  let zoom = 1, cx = -0.6, cy = 0;
+  const render = () => {
+    const scale = 3.2 / zoom; // 横向宽度
+    const maxIt = Math.min(700, Math.round(80 + 60 * Math.log10(zoom + 1) * 1.6));
+    const d = img.data;
+    for (let py = 0; py < H; py++) {
+      const y0 = cy + (py - H / 2) / W * scale;
+      for (let px = 0; px < W; px++) {
+        const x0 = cx + (px - W / 2) / W * scale;
+        let x = 0, y = 0, it = 0, xx = 0, yy = 0;
+        while (xx + yy <= 16 && it < maxIt) { y = 2 * x * y + y0; x = xx - yy + x0; xx = x * x; yy = y * y; it++; }
+        const o = (py * W + px) * 4;
+        if (it >= maxIt) { d[o] = 8; d[o + 1] = 8; d[o + 2] = 20; }
+        else { const nu = it + 1 - Math.log(Math.log(Math.sqrt(xx + yy))) / Math.LN2; const c = pal[Math.floor((nu * 9) % 256)]; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; }
+        d[o + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    zoomLbl.innerHTML = `放大倍数 <b>×${zoom >= 1e4 ? zoom.toExponential(1).replace('e+', '×10^') : Math.round(zoom)}</b> · 迭代上限 ${maxIt}`;
+    const lvl = Math.log10(zoom);
+    lis.forEach((li, i) => li.classList.toggle('on', lvl >= i * 1.8 + .5));
+    sum.classList.toggle('on', lvl >= 9);
+  };
+  const MAX = 1e10;
+  const step = () => { if (zoom >= MAX) return false; zoom = Math.min(MAX, zoom * 1.7); const t = Math.min(1, Math.log10(zoom) / 2); cx = -0.6 + (CX + 0.6) * t; cy = CY * t; render(); return true; };
+  const reset = () => { zoom = 1; cx = -0.6; cy = 0; render(); };
+  let auto = null;
+  const stopAuto = () => { if (auto) { clearInterval(auto); auto = null; btnAuto.textContent = '自动放大'; } };
+  const btnAuto = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (auto) { stopAuto(); return; } btnAuto.textContent = '暂停'; auto = setInterval(() => { if (!step()) stopAuto(); }, 420); } }, '自动放大');
+  ctrl.append(el('button', { class: 'btn', type: 'button', onclick: () => { stopAuto(); step(); } }, '放大 ×1.7'), btnAuto, el('button', { class: 'btn', type: 'button', onclick: () => { stopAuto(); reset(); } }, '重来'));
+  reset();
+  let started = false;
+  return { start() { if (!started && !RM) { started = true; btnAuto.click(); } }, stop() { stopAuto(); } };
+});
+
+/* ---------- 07：弗雷格 ---------- */
+reg('frege', (root) => {
+  const steps = [
+    ['1', '数学定理为真。', ''],
+    ['2', '大量数学定理涉及指代自然数的单称词（singular term）。', '即作为个体出现的“那个数”'],
+    ['3', '语义学要求：只有当一个句子所指代（reference）的事物存在时，它才可能为真。', ''],
+    ['∴', '所以，自然数存在。', '而且定理真假不依赖个人，所以这种存在独立于个人'],
+  ];
+  const sts = steps.map(([k, t, sm], i) => el('div', { class: 'st' + (i === 3 ? ' fin' : '') }, el('span', { class: 'k' }, k), el('div', {}, t, sm ? el('small', {}, sm) : null)));
+  const chain = el('div', { class: 'chain' });
+  sts.forEach((s, i) => { chain.append(s); if (i < 3) chain.append(el('div', { class: 'arr' }, '↓')); });
+  const jokes = [
+    ['“天上有个自然数集。”', '它不在空间某处'],
+    ['“实数集出现在 12 点整。”', '它不随时间变化'],
+    ['“我被 Mandelbrot 集砸了一下脑袋。”', '它不与我们发生因果关系'],
+  ].map(([q, a]) => el('div', { class: 'jk' }, el('span', { class: 'mark' }, '✗ 只能当段子听'), el('span', { class: 'q' }, q), el('span', { class: 'a' }, a)));
+  const jsum = el('div', { class: 'jk-sum' }, '所以这种存在只能是抽象的：不在空间、不随时间、无因果。');
+  const right = el('div', { class: 'jokes' }, el('div', { class: 'cap' }, '既然存在，它是哪种存在？'), ...jokes, jsum);
+  root.append(el('div', { class: 'fr' }, el('div', {}, chain, el('div', { class: 'ctrl' }, el('button', { class: 'btn', type: 'button', onclick: () => run() }, '重播'))), right));
+  let timer = 0;
+  const run = () => {
+    clearInterval(timer); let i = 0;
+    sts.forEach(s => s.classList.remove('on')); jokes.forEach(j => j.classList.remove('x')); jsum.classList.remove('on');
+    timer = setInterval(() => {
+      if (i < 4) sts[i].classList.add('on'); else if (i < 7) jokes[i - 4].classList.add('x'); else if (i === 7) jsum.classList.add('on'); else { clearInterval(timer); return; }
+      i++;
+    }, RM ? 0 : 700);
+  };
+  let started = false;
+  return { start() { if (!started) { started = true; run(); } }, stop() { clearInterval(timer); } };
+});
+
+/* ---------- 08a：知识来源 ---------- */
+reg('sources', (root) => {
+  const W = 320, H = 210;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'src3', style: 'width:100%' });
+  s.append(svg('rect', { x: 100, y: 150, width: 120, height: 40, rx: 10, class: 'box' }), svg('text', { x: 160, y: 175 }, '数学知识'));
+  const pills = [['严格证明', 50, 'p'], ['观察经验', 160, 't'], ['直觉', 270, 'o']].map(([t, x, c]) => {
+    const g = svg('g', { class: 'pil' }, svg('rect', { x: x - 42, y: 30, width: 84, height: 32, rx: 16, class: 'box ' + c }), svg('text', { x, y: 50 }, t), svg('path', { d: `M${x} 62 L${160 + (x - 160) * .3} 150`, class: 'edge' }));
+    s.append(g); return g;
+  });
+  const note = svg('text', { x: 270, y: 90, style: 'fill:var(--o);font-weight:700;opacity:0;transition:opacity .6s' }, '不可消去');
+  const note2 = svg('text', { x: 270, y: 106, style: 'fill:var(--muted);font-size:10.5px;opacity:0;transition:opacity .6s' }, '无法证明，无法再追问');
+  const note3 = svg('text', { x: 50, y: 90, style: 'fill:var(--muted);font-size:10.5px;opacity:0;transition:opacity .6s' }, '逻辑主义：只认这一个');
+  const note4 = svg('text', { x: 50, y: 104, style: 'fill:var(--muted);font-size:10.5px;opacity:0;transition:opacity .6s' }, '（先验只能是分析的）');
+  s.append(note, note2, note3, note4);
+  root.append(s);
+  let phase = 0;
+  const paint = () => {
+    pills.forEach((p, i) => p.classList.toggle('fade', phase === 1 && i !== 0 || phase === 2 && i !== 2));
+    [note, note2].forEach(n => n.style.opacity = phase === 2 ? 1 : 0);
+    [note3, note4].forEach(n => n.style.opacity = phase === 1 ? 1 : 0);
+  };
+  paint();
+  if (RM) { phase = 2; paint(); return {}; }
+  return every(1800, () => { phase = (phase + 1) % 3; paint(); });
+});
+
+/* ---------- 08b：直觉是什么 ---------- */
+reg('intuition', (root) => {
+  const o1 = el('div', { class: 'o r' }, el('b', {}, '直觉主义：直觉是主观的'), '是人们创造数学的基础。哥德尔不接受，因为这意味着要抛弃一大半数学。');
+  const o2 = el('div', { class: 'o' }, el('b', {}, '哥德尔：直觉是感知的手段'), '数学是独立于任何智慧的客观存在，直觉是人们接触、认识抽象领域数学实体的手段。');
+  const para = el('div', { class: 'para' },
+    el('div', { class: 'row' }, el('span', {}, '自然科学'), el('span', { class: 'ln', 'data-l': '实证（感官）' }), el('span', { class: 'r' }, '物理世界')),
+    el('div', { class: 'row t' }, el('span', {}, '数学'), el('span', { class: 'ln', 'data-l': '直觉' }), el('span', { class: 'r' }, '柏拉图世界')));
+  root.append(el('div', { class: 'dich' }, o1, o2), para);
+  let k = 0;
+  const paint = () => { o1.classList.toggle('on', k === 0); o2.classList.toggle('on', k === 1); };
+  paint();
+  if (RM) { k = 1; paint(); return {}; }
+  return every(2200, () => { k = 1 - k; paint(); });
+});
+
+/* ---------- 08c：Weil 引言 ---------- */
+reg('weil', (root) => {
+  const q = el('div', { class: 'quote' });
+  const EN = () => { q.className = 'quote'; q.innerHTML = '“God exists since mathematics is consistent, and the Devil exists since we cannot prove it.”<span class="zh">上帝是存在的，因为数学显然是自洽的；但魔鬼也是存在的，因为我们无法证明这种自洽。——André Weil</span>'; };
+  const ZH = () => { q.className = 'quote alt'; q.innerHTML = '“<b>数学真理</b>是存在的，因为数学显然是自洽的；但<b>数学直觉</b>也是存在的，因为我们无法证明这种自洽。”<span class="zh">原文把这句话改写成的版本：我们有把握在无法证明时相信数学自洽，所以数学必然真实客观存在；但数学必然要有一部分依赖直觉，因为我们不能证明一切。</span>'; };
+  EN();
+  root.append(q, el('div', { class: 'ctrl' }, seg(['Weil 原话', '原文的改写'], (i) => i ? ZH() : EN())));
+  return {};
+});
+
+/* ---------- 09：认识论问题 + 奎因 ---------- */
+reg('epistemic', (root) => {
+  // 因果链
+  const W = 640, H = 150;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'causal', style: 'width:100%' });
+  const nodes = [['事物', 60], ['光子', 190], ['眼睛', 320], ['神经系统', 450], ['意识', 580]];
+  nodes.forEach(([t, x]) => { s.append(svg('rect', { x: x - 42, y: 20, width: 84, height: 30, rx: 8, class: 'box t' }), svg('text', { x, y: 39 }, t)); });
+  for (let i = 0; i < 4; i++) s.append(svg('path', { d: `M${nodes[i][1] + 42} 35 L${nodes[i + 1][1] - 42} 35`, class: 'edge' }));
+  const ball = svg('circle', { cx: 102, cy: 35, r: 5, class: 'ball' }); s.append(ball);
+  s.append(svg('text', { x: 60, y: 70, style: 'font-size:10.5px;fill:var(--muted)' }, '物理世界：有因果链'));
+  // 抽象
+  s.append(svg('rect', { x: 18, y: 95, width: 84, height: 30, rx: 8, class: 'box p' }), svg('text', { x: 60, y: 114 }, '抽象数学实体'));
+  s.append(svg('path', { d: 'M102 110 L300 110', class: 'edge dash' }), svg('text', { x: 300, y: 114, style: 'fill:var(--r);font-weight:700;font-size:16px' }, '?'));
+  s.append(svg('path', { d: 'M320 110 L538 110', class: 'edge dash' }));
+  s.append(svg('rect', { x: 538, y: 95, width: 84, height: 30, rx: 8, class: 'box' }), svg('text', { x: 580, y: 114 }, '意识'));
+  s.append(svg('text', { x: 300, y: 140, style: 'font-size:10.5px;fill:var(--r)' }, '不在时空中，不能相互作用 → 没有因果链 → 哪来的渠道？'));
+  // 火柴棍结构
+  const W2 = 640, H2 = 230;
+  const m = svg('svg', { viewBox: `0 0 ${W2} ${H2}`, class: 'match', style: 'width:100%' });
+  const core = [320, 110];
+  const deps = [['力学', 120, 50], ['光学', 320, 30], ['电路', 520, 50], ['量子理论', 120, 180], ['相对论', 320, 195], ['热学', 520, 180]];
+  deps.forEach(([t, x, y]) => m.append(svg('line', { x1: x, y1: y, x2: core[0], y2: core[1], class: 'stick' })));
+  // 相互支撑
+  [[0, 1], [1, 2], [3, 4], [4, 5], [0, 3], [2, 5]].forEach(([a, b]) => m.append(svg('line', { x1: deps[a][1], y1: deps[a][2], x2: deps[b][1], y2: deps[b][2], class: 'stick', style: 'stroke:var(--line)' })));
+  deps.forEach(([t, x, y]) => m.append(svg('g', { class: 'nd dep' }, svg('rect', { x: x - 36, y: y - 13, width: 72, height: 26, rx: 8, class: 'box' }), svg('text', { x, y }, t))));
+  const coreG = svg('g', { class: 'core' }, svg('circle', { cx: core[0], cy: core[1], r: 30, class: 'box o' }), svg('text', { x: core[0], y: core[1], style: 'font-weight:700' }, '电磁场'));
+  m.append(coreG);
+  const lbl = svg('text', { x: 320, y: 222, style: 'font-size:11px;fill:var(--muted)' }, '看不见摸不着，只能通过间接效应体现；但抽掉它，互相支撑的火柴棍就全塌了');
+  m.append(lbl);
+  const btn1 = el('button', { class: 'btn', type: 'button', onclick: () => { m.classList.add('fall'); lbl.textContent = '一切坍塌 → 所以必须认为电磁场存在。数学同理：抽掉数学，自然科学就完全不是现在这个样子。'; } }, '抽掉电磁场');
+  const btn2 = el('button', { class: 'btn', type: 'button', onclick: () => { m.classList.remove('fall'); lbl.textContent = '看不见摸不着，只能通过间接效应体现；但抽掉它，互相支撑的火柴棍就全塌了'; } }, '放回去');
+  const brain = el('div', { class: 'brain' }, el('b', {}, '作者本人的脑洞（原文声明：非奎因观点，不是严谨引申）'), '　物理现象打着数学的烙印，感官看到的现象里承载着数学现实的编码；数学直觉 = 对这种编码的解码。现象可实证，其中超越时空的数学编码却不变。');
+  root.append(el('div', { class: 'ep' }, scrollWrap(s), el('div', {}, el('div', { class: 'cap' }, '奎因的“不可分割性”：电磁场类比'), scrollWrap(m), el('div', { class: 'ctrl' }, btn1, btn2)), brain));
+  let t0 = 0;
+  const lp = loop((t) => { const u = (t * .35) % 1; const seg_ = Math.min(3, Math.floor(u * 4)); const f = u * 4 - seg_; ball.setAttribute('cx', lerp(nodes[seg_][1] + 42, nodes[seg_ + 1][1] - 42, f)); });
+  return lp;
+});
+
+/* ---------- 10：同一性问题 + FBP ---------- */
+reg('identity', (root) => {
+  const nestVN = () => { // 3 = {∅,{∅},{∅,{∅}}}
+    const E = () => el('span', { class: 'e' }, '∅');
+    const S = (...k) => el('span', { class: 's' }, '{', ...k.flatMap((x, i) => i ? [',', x] : [x]), '}');
+    return el('div', { class: 'nest' }, S(E(), S(E()), S(E(), S(E()))));
+  };
+  const nestZ = () => { const E = () => el('span', { class: 'e' }, '∅'); const S = (k) => el('span', { class: 's' }, '{', k, '}'); return el('div', { class: 'nest z' }, S(S(S(E())))); };
+  const b1 = el('div', { class: 'setbox' }, el('h3', {}, '冯诺依曼的 3'), el('div', { class: 'f' }, '{ ∅, {∅}, {∅,{∅}} }　每个数 = 之前所有数的集合'), nestVN());
+  const b2 = el('div', { class: 'setbox' }, el('h3', {}, '策梅洛的 3'), el('div', { class: 'f' }, '{{{∅}}}　每个数 = 前一个数的单元集'), nestZ());
+  const verdict = el('div', { class: 'verdict' }, el('b', {}, '单一现实：必有一个是错的'), '算术上完全等效，能建立相同的算术系统；集合上却不是同一种东西。若存在唯一的数学现实，两者不可能都为真——可数学实践中它们不分彼此。');
+  const worlds = el('div', { class: 'worlds' });
+  const ws = [['冯诺依曼的世界', 'vn'], ['策梅洛的世界', 'ze'], ['…', ''], ['…', ''], ['每一个逻辑自洽的理论', ''], ['都是一个数学现实', ''], ['…', ''], ['…', '']].map(([t, c]) => el('div', { class: 'w ' + c }, t));
+  worlds.append(...ws);
+  const sg = seg(['单一现实', 'FBP：一切可能都存在'], (i) => paint(i));
+  root.append(el('div', { class: 'ctrl' }, sg), el('div', { class: 'idn' }, b1, b2), verdict, worlds);
+  const paint = (mode) => {
+    verdict.classList.toggle('fbp', mode === 1);
+    if (mode === 1) { verdict.innerHTML = '<b>FBP：它们同时为真</b>现实是多重的，一切可能存在的在现实中必然全都存在。两种定义各自对应柏拉图世界的不同领域，并不冲突。认识论问题也顺带解决：不需要渠道，能想到的所有逻辑自洽的数学理论都是真的。一劳永逸。'; ws.forEach((w, i) => setTimeout(() => w.classList.add('on'), RM ? 0 : i * 120)); }
+    else { verdict.innerHTML = '<b>单一现实：必有一个是错的</b>算术上完全等效，能建立相同的算术系统；集合上却不是同一种东西。若存在唯一的数学现实，两者不可能都为真——可数学实践中它们不分彼此。'; ws.forEach((w, i) => w.classList.toggle('on', i === 0)); ws[0].classList.add('on'); }
+  };
+  paint(0);
+  return {};
+});
+
+/* ---------- 11：立场地图 ---------- */
+reg('map', (root) => {
+  const P = [
+    ['古典柏拉图主义', 6, '数学实体存在于理念世界', '与理念相符', '灵魂“回忆”', '现代哲学几乎无人支持纯粹版本', 'up'],
+    ['数学柏拉图主义（小写 p）', 18, '真实、独立于人类、抽象的存在', '与抽象世界相符', '数学直觉', '认识论问题、同一性问题', 'dn'],
+    ['FBP 纯血柏拉图主义', 30, '一切逻辑可能的数学现实全都存在', '逻辑自洽即真', '不需要渠道', '古怪', 'up'],
+    ['康德主义', 46, '先验综合判断，智慧的先天形式', '先验', '思维框架产生直觉', '物自体不可认识', 'dn'],
+    ['逻辑主义', 62, '数学就是逻辑', '逻辑自洽', '逻辑自明', '总需要逻辑之外的公理（种子）', 'up'],
+    ['直觉主义', 78, '在直觉基础上构建', '可归于直觉', '直觉（主观）', '要放弃大半数学成就', 'dn'],
+    ['形式主义', 94, '规则下的符号游戏', '体系内可证', '不需要', '哥德尔：非真非假的命题', 'up'],
+  ];
+  const axis = el('div', { class: 'axis' }, el('div', { class: 'ln' }), el('span', { class: 'end l' }, '实在'), el('span', { class: 'end r' }, '工具'));
+  const info = el('div', { class: 'posinfo' });
+  const SHORT = ['古典', '数学 p', 'FBP', '康德', '逻辑', '直觉', '形式'];
+  const pins = P.map((p, i) => el('button', { class: 'pin ' + p[6], type: 'button', 'data-l': p[0], 'data-s': SHORT[i], style: `left:${p[1]}%`, 'aria-label': p[0], onclick: () => show(i) }));
+  axis.append(...pins);
+  const show = (i) => {
+    pins.forEach((b, k) => b.classList.toggle('on', k === i));
+    const p = P[i];
+    info.innerHTML = '';
+    info.append(el('h3', {}, p[0]), ...[['数学是什么', p[2]], ['“真”是什么', p[3]], ['知识从哪来', p[4]], ['困难', p[5], 'bad']].map(([k, v, c]) => el('div', { class: 'row ' + (c || '') }, el('span', { class: 'k' }, k), el('span', { class: 'v' }, v))));
+  };
+  root.append(axis, info);
+  show(1);
+  let i = 1, hold = 0;
+  pins.forEach(b => b.addEventListener('click', () => { hold = 5; }));
+  if (RM) return {};
+  return every(2600, () => { if (hold > 0) { hold--; return; } i = (i + 1) % P.length; show(i); });
+});
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>

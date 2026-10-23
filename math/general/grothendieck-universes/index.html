@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>格罗腾迪克与格罗腾迪克宇宙</title>
+<meta name="description" content="基于知乎专栏文章《格罗腾迪克与格罗腾迪克宇宙》（含 McLarty 论格罗腾迪克宇宙的摘译与 Milne《母题——Grothendieck 的梦想》译文）的可视化讲解。">
+<link rel="icon" href="data:,">
+<style>
+/* ================= 设计令牌（与 ai-visual-notes 其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5.2vw,44px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.quote{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--o);background:var(--surface);border-radius:0 10px 10px 0;font-size:14px;color:var(--text)}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:440px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:140px}
+.range output{font-family:var(--mono);color:var(--text);min-width:2.5em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.math{font-family:var(--mono);font-size:14px;background:var(--surface-2);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+.math .hl{color:var(--o);font-weight:700}
+.math .hp{color:var(--p);font-weight:700}
+.math .ht{color:var(--t);font-weight:700}
+
+/* 通用 SVG */
+.ax{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--grid);stroke-width:1}
+.lbl{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)} .c-m{stroke:var(--muted)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)} .f-s{fill:var(--surface)} .f-s2{fill:var(--surface-2)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700} .txt.m{font-family:var(--mono)} .txt.l{text-anchor:start}
+.txt.p{fill:var(--p)} .txt.t{fill:var(--t)} .txt.o{fill:var(--o)} .txt.r{fill:var(--r)}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.edge.k{stroke:var(--muted)}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.dash{stroke-dasharray:5 5}
+.running .dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+
+/* 卡片 / 步骤 */
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.p{border-color:var(--p);background:var(--p-soft)} .card.t{border-color:var(--t);background:var(--t-soft)} .card.o{border-color:var(--o);background:var(--o-soft)} .card.r{border-color:var(--r);background:var(--r-soft)}
+.flow{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.step{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .4s;position:relative}
+.step .ic{font-size:26px;line-height:1;margin-bottom:6px}
+.step h3{font-size:14px}
+.step p{font-size:12px;color:var(--muted);margin-top:4px}
+.step.on{border-color:var(--p);background:var(--p-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+.step .k{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.blk{border-radius:10px;padding:8px 10px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);text-align:center;position:relative}
+.blk.p{background:var(--p-soft);border-color:var(--p)} .blk.t{background:var(--t-soft);border-color:var(--t)} .blk.o{background:var(--o-soft);border-color:var(--o)} .blk.r{background:var(--r-soft);border-color:var(--r)}
+.blk small{display:block;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.arrowd{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .running .pulse,.running .dash.anim{animation:none}
+}
+/* 宽图在窄屏上横向滚动，保证文字可读 */
+.scrollx>svg.wide{min-width:560px}
+.scrollx{border-radius:10px}
+
+/* ================= 本页专用 ================= */
+.two{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .two{grid-template-columns:1fr 1fr} }
+.pane{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .35s}
+.pane h3{font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pane.on{border-color:var(--p);box-shadow:var(--shadow)}
+.pane.dim{opacity:.45}
+.pane ul{margin:0;padding-left:18px;font-size:13px;color:var(--muted)}
+.pane li{margin:4px 0}
+.pane li b{color:var(--text)}
+.pane .math{margin-top:8px;white-space:normal}
+.checks{display:grid;gap:6px;margin-top:10px}
+.checks .c{display:grid;grid-template-columns:24px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:13.5px;transition:all .4s}
+.checks .c .m{font-family:var(--mono);color:var(--muted);font-size:14px}
+.checks .c.on{border-color:var(--t);background:var(--t-soft)}
+.checks .c.on .m{color:var(--t);font-weight:700}
+.checks .c.bad{border-color:var(--r);background:var(--r-soft)}
+.checks .c.bad .m{color:var(--r);font-weight:700}
+.checks .c b{color:var(--text)}
+.chain{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.chain .lnk{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:13.5px;opacity:.35;transform:translateX(-6px);transition:all .45s}
+.chain .lnk.on{opacity:1;transform:none;border-color:var(--p);background:var(--p-soft)}
+.chain .lnk .i{font-family:var(--mono);font-size:12px;color:var(--p);padding-top:2px}
+.chain .lnk b{color:var(--text)}
+.tiny{font-size:12px;color:var(--muted);margin-top:8px}
+.tl{position:relative;padding:6px 0 0}
+.tl .ev{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:start;padding:6px 0;opacity:.25;transition:opacity .5s;font-size:13px}
+.tl .ev.on{opacity:1}
+.tl .ev .y{font-family:var(--mono);color:var(--p);font-weight:700;text-align:right}
+.tl .ev .t b{color:var(--text)}
+.cols{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+@media (min-width:760px){ .cols{grid-template-columns:repeat(4,1fr)} }
+.col{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface-2);font-size:12.5px;transition:all .3s}
+.col h4{margin:0 0 6px;font-size:13px}
+.col .f{font-family:var(--mono);color:var(--p);font-size:12px}
+.col.on{border-color:var(--o);background:var(--o-soft)}
+.col.ok{border-color:var(--t);background:var(--t-soft)}
+.col.no{border-color:var(--r);background:var(--r-soft)}
+.cv{width:100%;aspect-ratio:2/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.stepper{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.stepper button{border:1px solid var(--line);border-radius:999px;padding:6px 12px;background:var(--surface-2);cursor:pointer;font-size:13px}
+.stepper button.on{background:var(--p);border-color:var(--p);color:#fff}
+.bigq{font-size:clamp(14px,2.2vw,16px);padding:12px 16px;border-left:3px solid var(--o);background:var(--surface-2);border-radius:0 10px 10px 0;margin-top:10px}
+.bigq small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+.mathblock{font-family:var(--mono);font-size:13.5px;background:var(--surface-2);border-radius:8px;padding:10px 12px;overflow-x:auto;white-space:nowrap;margin-top:8px;line-height:1.9}
+.mathblock .hl{color:var(--o);font-weight:700}.mathblock .hp{color:var(--p);font-weight:700}.mathblock .ht{color:var(--t);font-weight:700}.mathblock .hr{color:var(--r);font-weight:700}
+.sq{display:grid;gap:2px;margin:10px auto 0;width:min(100%,300px)}
+.sq i{display:block;aspect-ratio:1;background:var(--p);border-radius:1px;opacity:0;transition:opacity .2s}
+.sq i.on{opacity:.85}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">格罗腾迪克宇宙与母题</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎专栏 · 集合论 × 代数几何</div>
+  <h1>格罗腾迪克<br>与格罗腾迪克宇宙</h1>
+  <p class="sub">这篇专栏把两篇译文放在一起：前半段是 Colin McLarty 对<b>「格罗腾迪克宇宙」</b>定义的一小段摘译；后半段是 James S. Milne 的报告<b>《母题——Grothendieck 的梦想》</b>全文。两者都在回答同一个问题：Grothendieck 为代数几何搭的那套「大到不可思议」的脚手架，究竟是什么。</p>
+  <div class="thesis">两条主线：<b>宇宙</b>是一个足够大的集合 U，让所有集合论构造「在 U 里做」和「在外面做」结果一样；<b>母题</b>是 Grothendieck 梦想中的「泛上同调」——所有上同调理论都应该从它分解出来。</div>
+  <div class="meta">原文：知乎专栏「格罗腾迪克与格罗腾迪克宇宙」（作者缘法无情，2024-03-08）。第一部分译自 The Bulletin of Symbolic Logic 16 (2010) No.3 p.359–377，Colin McLarty《What does it take to prove Fermat's last theorem? Grothendieck and the logic of number theory》；第二部分为 J. S. Milne《母题——Grothendieck 的梦想》（部分翻译：徐克舰，校对：付保华；部分翻译：星智）。本页为教学改编，数学内容极度压缩，请以原文为准。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="什么是格罗腾迪克宇宙">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>宇宙：一个把自己「封闭」起来的大集合 U</h2>
+    <p class="lead">在 ZFC 的基础上，全域（universe，也常称 Grothendieck 全域）是一个<b>不可数的传递集合 U</b>，使得 (U, ∈) 以「最好的方式」满足 ZFC 公理。</p>
+  </div>
+  <div class="fig" data-demo="universe">
+    <div class="cap">U 画成一个大圈。点按钮，对 U 里的集合做各种构造：结果总还在 U 里——这就是「封闭」。</div>
+  </div>
+  <ul class="notes">
+    <li><b>传递</b>：U 的元素的元素，仍是 U 的元素。</li>
+    <li><b>幂集</b>：U 包含它每个元素的幂集（powerset）。</li>
+    <li><b>值域</b>：对任何从 U 的一个元素到 U 的函数，其值域仍是 U 的一个元素。</li>
+    <li>原文称这「容易引起莫名争议」——因为它比普通的 ZFC 模型要求得多，见下一节。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c02" data-title="比相对化 ZFC 强得多">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>关键的一笔：「在 U 里看」和「在外面看」必须一样</h2>
+    <p class="lead">这比「(U, ∈) 满足 ZFC」强得多。普通说法只要求：把所有量词限制到 U 里时，幂集公理为真。而宇宙要求：对每个 x ∈ U，x 的幂集——<b>按外面大集合论域的定义</b>——仍在 U 中。</p>
+  </div>
+  <div class="fig" data-demo="relative">
+    <div class="cap">切换「内部视角 / 外部视角」。弱条件允许 U 里的「幂集」漏掉外面才看得见的子集；宇宙的强条件把这些漏网之鱼全部堵上。</div>
+  </div>
+  <ul class="notes">
+    <li>幂集条件里<b>没有一个量词是相对于 U 的</b>：看起来像「x 在 U 内部的幂集」的东西，必须在更大的集合环境中看起来也是 x 的幂集。</li>
+    <li>函数像集条件同理，比 (U, ∈) 满足相对化的替代公理范式更强：只要一个从 U 的元素到 U 的函数在更大的域里存在，它本身就是 U 的一个元素。</li>
+    <li>这份附加强度保证：应用于 U 中集合的<b>任何</b>集合论构造，无论在 U 内部还是在更大的域里做，都将……（原文摘录在此处截断）。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="这段摘录从哪来">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>这段定义的出处：证明费马大定理到底「用了多少」？</h2>
+    <p class="lead">摘录来自 Colin McLarty 2010 年的论文，题目本身就是问题：<b>证明费马大定理需要什么？</b>——Grothendieck 与数论的逻辑。</p>
+  </div>
+  <div class="fig" data-demo="source">
+    <div class="cap">McLarty 是 Case Western Reserve 大学哲学系与数学系教授。脚注指向 Grothendieck [1971] 和 Artin 等 [1972, vol. I, p.185–217]。下面这条链是本页把两部分译文「接」起来的方式，原文摘录没有展开。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：范畴论要把「所有集合」「所有簇」当作一个范畴来谈，就会碰到「所有集合的集合」这种麻烦。宇宙 U 的作用是提供一个本身是集合、又足够封闭的「舞台」，让这些大范畴都能在 U 里安放。McLarty 论文讨论的正是：Wiles 的证明表面上依赖这些大工具，实际需要多强的集合论。原文摘录止于定义，未给出结论。</div>
+</section>
+
+<section class="ch" id="c04" data-title="拓扑中的上同调">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>先在拓扑里看：上同调群是什么样子</h2>
+    <p class="lead">设 X 是实 2n 维紧流形，则有上同调群 H⁰(X, Q), …, H²ⁿ(X, Q)：它们是 Q 上有限维向量空间，满足 <b>Poincaré 对偶</b>（Hⁱ 对偶于 H²ⁿ⁻ⁱ）、Lefschetz 不动点公式等等。</p>
+  </div>
+  <div class="fig" data-demo="topo">
+    <div class="cap">拖动 n，看 2n 维流形的 2n+1 个上同调群如何两两配对。多种定义方法（奇异链、Čech、导出函子）给出<b>相同</b>的群——只要满足 Eilenberg–Steenrod 公理。</div>
+  </div>
+  <ul class="notes">
+    <li>当 X 是复解析流形，还有 de Rham 上同调 Hⁱ_dR(X)，是 C 上向量空间，但不给出新的群：Hⁱ_dR(X) ≃ Hⁱ(X, Q) ⊗_Q C。</li>
+    <li>当 X 是 Kähler 流形时，de Rham 群有 Hodge 分解，提供更多信息。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c05" data-title="代数几何：上同调太多了">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>换到代数几何：问题变成「上同调理论太多了」</h2>
+    <p class="lead">Weil 发现：有限域上方程的解的个数，似乎由相应复簇的 Betti 数控制。要证明这类猜想，需要一个系数在 Q 里的好上同调理论——<b>但这种理论并不存在</b>。60 年代 Grothendieck 定义了 Étale 上同调和晶体上同调，于是我们有了太多理论。</p>
+  </div>
+  <div class="fig" data-demo="many">
+    <div class="cap">左：Weil 的不等式——亏格 g 的曲线在 F_p 上的点数，离 p + 1 不会超过 2g√p。拖动 p、g 看允许的范围。右：各种上同调理论取值在完全不同的域里，却共享同一个有理数「迹」。</div>
+  </div>
+  <ul class="notes">
+    <li>对每个不同于 k 的特征的素数 ℓ，Étale 上同调给出 Q_ℓ 上的 H⁰(X, Q_ℓ), …, H²ⁿ(X, Q_ℓ)，满足 Poincaré 对偶、Lefschetz 不动点公式等。Q_ℓ 是 Q 按 ℓ-adic 赋值完备化得到的域。</li>
+    <li>de Rham 群 Hⁱ_dR(X) 是 k 上向量空间；特征 p ≠ 0 时还有晶体上同调群，取值在 k 上 Witt 向量环的分式域（特征 0）上。</li>
+    <li>它们不可能相同（不同的域），但也不是不相关联：正则映射 α: X → X 诱导的 αⁱ 的<b>迹</b>是一个与理论无关的有理数。于是「似乎存在」代数定义的 Hⁱ(X, Q) 使得 Hⁱ_et(X, Q_ℓ) ≃ Hⁱ(X, Q) ⊗ Q_ℓ——事实却并非如此。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c06" data-title="为什么没有 Q-上同调">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>为什么不存在代数定义的 Q-上同调？两种解释</h2>
+    <p class="lead">第一种解释靠<b>数数</b>：无限 Galois 群是不可数的，而 Hⁱ(X, Q) 是可数的。第二种解释靠<b>椭圆曲线</b>：它的自同态代数可能是 4 维除代数，装不进 2 维的 H¹。</p>
+  </div>
+  <div class="fig" data-demo="noq">
+    <div class="cap">切换两种解释。</div>
+  </div>
+  <ul class="notes">
+    <li><b>解释一</b>：特征 0 时每个嵌入 k ↪ C 在上同调群上定义一个 Q-结构，但不同嵌入可以给出完全不同的 Q-结构。X 只有有限个系数，故在子域 k₀ 上有模型 X₀，Γ = Gal(k/k₀) 作用在 Hⁱ_et(X, Q_ℓ) 上。若所有嵌入给出同一个 Hⁱ(X(C), Q)，Γ 的作用就会固定它；但 Γ 不可数而 Hⁱ(X, Q) 可数，这意味着作用通过 Γ 的一个有限商群——这一般是不对的。</li>
+    <li><b>解释二</b>：椭圆曲线 E 在 C 上同构于 C/Λ（环面）。End(E)_Q 等于 Q，或 Q 的 2 次扩域 K。H¹(X(C), Q) 是 2 维 Q-空间，在第二种情形是 1 维 K-空间。特征 p ≠ 0 时还有第三种可能：End(E)_Q 是 Q 上 4 次除代数，它能作用的最小 Q-向量空间是 4 维的。</li>
+    <li>那么「种种迹象显示它似乎存在」该怎么解释？Grothendieck 的回答是<b>母题理论</b>。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c07" data-title="代数链与对应">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>造母题的原料：代数链、相交、对应</h2>
+    <p class="lead">X 上的素链是不可约闭子簇；余维数 r 的代数链群 Cʳ(X) 是素链生成的自由 Abel 群。两条链「真相交」时可以作交积，余维数相加。</p>
+  </div>
+  <div class="fig" data-demo="cycles">
+    <div class="cap">上：两条曲线横截相交 γ₁·γ₂ = P₁ + P₂ + P₃；相切时 γ₁·γ₂ = 2P。下：有理等价——把一条链沿 P¹ 从纤维 0「滑」到纤维 1。</div>
+  </div>
+  <ul class="notes">
+    <li><b>有理等价</b>是能在等价类上定义交积的最细等价关系，商群 C*_rat(X) = ⊕ Cʳ_rat(X) 是 Q-代数，称为 <b>Chow 环</b>。<b>数值等价</b>（对所有补维数的链 δ，γ·δ = γ'·δ）是最粗的，C*_num 是 Chow 环的商环。</li>
+    <li>例子：P² 上余维 1 的素链是不可约齐次多项式定义的曲线，两条链有理等价当且仅当次数相同，故 C¹_rat(P²) ≃ Z，以任一直线为基；C¹_rat(P¹×P¹) ≃ Z×Z，以 {0}×P¹ 和 P¹×{0} 为基，对角线 Δ ~ {0}×P¹ + P¹×{0}。</li>
+    <li><b>链类映射</b> cl: C*_rat(X)_Q → H*(X) 把次数加倍、交积映为杯积。</li>
+    <li>簇之间的正则映射太少，所以用<b>对应</b>（多值映射）代替：Corrʳ(X, Y) = C^{dim X + r}(X × Y)。映射 f: Y → X 的图 Γ_f 是从 X 到 Y 的 0 次对应（方向反过来，为与 Grothendieck 保持一致）。0 次对应 γ 在上同调上作用为 x ↦ q_*(p^*x ∪ cl(γ))。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c08" data-title="母题的定义：三次迭代">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>母题的定义：初论、再论、三论</h2>
+    <p class="lead">Grothendieck 的想法：应该存在一个取值于「母题范畴」M(k) 的<b>泛上同调理论</b> X ↝ hX，每个好的上同调理论都唯一地通过它分解。定义分三步逼近。</p>
+  </div>
+  <div class="fig" data-demo="motive">
+    <div class="cap">点三个阶段，看对象和态射如何一步步扩充。例子：P¹ 的母题分解成 1 ⊕ L。</div>
+  </div>
+  <div class="bigq">我称为 k 上的「母题」的，是指像 k 上代数概型的 ℓ-adic 上同调群一样的东西，但却认为其与 ℓ 无关，并由代数链理论导出……令人悲观的事实是，尽管对此范畴我正在形成非常缜密的哲学，但是，我暂时还不知道该如何去定义这个由母题构成的 Abel 范畴。<small>—— Grothendieck 给 Serre 的信，1964 年 8 月 16 日</small></div>
+  <ul class="notes">
+    <li>M(k) 应该像有限维 Q-向量空间范畴 Vec_Q：Hom 是 Q-向量空间，M(k) 是 Abel 范畴，进而是 Q 上的 Tannaka 范畴。</li>
+    <li>~ 取 rat 时叫 <b>Chow 母题范畴</b> M_rat(k)；取 num 时叫 <b>Grothendieck（数值）母题范畴</b> M_num(k)。</li>
+    <li>「母题（Motive）」据说借自塞尚描述其绘画方法的术语——先选一个母题，再把对它不断变化的感受画到画布上。（译注）</li>
+  </ul>
+</section>
+
+<section class="ch" id="c09" data-title="已知性质与猜想 C、D">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>我们知道什么、还缺什么：猜想 C 与猜想 D</h2>
+    <p class="lead">母题范畴的许多性质已经证明了。但要让它成为真正的「泛上同调」，还差两个关于<b>代数链存在性</b>的猜想——而我们尚无方法证明代数链的存在性。</p>
+  </div>
+  <div class="fig" data-demo="conj">
+    <div class="cap">左：已知性质逐条打勾。右：猜想 C 把对角线 Δ_X 典范地拆成幂等元之和，于是 hX 分解为 h⁰X ⊕ h¹X ⊕ … ⊕ h²ⁿX，每一块有自己的「权」。</div>
+  </div>
+  <ul class="notes">
+    <li><b>猜想 D</b>：如果一个代数链数值等价于零，则其上同调类也是零。只有满足它，好的上同调理论才能通过 M_num(k) 分解。特征零时对 Abel 簇成立，可由 Hodge 猜想推出。</li>
+    <li><b>猜想 C</b>（Grothendieck 提出）：在 End(hX) 中，Δ_X = π₀ + ⋯ + π_{2 dim X}，给出 hX = ⊕ hⁱX，且对每个好的上同调理论诱导 H*(X) = ⊕ Hⁱ(X)。对有限域上的非奇异射影簇和特征零的 Abel 簇已知成立。</li>
+    <li>假如猜想 C 成立，就可以谈母题的<b>权</b>：hⁱX 的权为 i，h(X, πᵢ, m) 的权为 i − 2m；单一权的母题叫<b>纯粹的</b>。</li>
+    <li>原文：「只有证明了猜想 C 和猜想 D，Grothendieck 的梦想才能得以实现。」Murre 猜测分解即使在 C_rat 中也存在，已证明它等价于 Beilinson 和 Bloch 关于 Chow 群上滤链的猜想。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c10" data-title="Tannaka 范畴与一个负号">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>M_num(k) 是 Tannaka 范畴吗？差一个负号</h2>
+    <p class="lead">Tannaka 范畴可以理解为「没有指定遗忘函子的仿射群表示范畴」——正如向量空间是「没有指定基的 kⁿ」。M_num(k) 本来不是：因为恒等映射的迹会算出<b>负数</b>。</p>
+  </div>
+  <div class="fig" data-demo="tannaka">
+    <div class="cap">拖动曲线的亏格 g。在带张量积与对偶的 Abel 范畴里，Tr(恒等 | hX) 应等于某个向量空间的维数，必须是非负整数；可它等于 Euler–Poincaré 特征 2 − 2g。</div>
+  </div>
+  <ul class="notes">
+    <li>Q 上仿射群 G 的有限维表示构成带张量积和对偶的 Abel 范畴 Rep_Q(G)，遗忘函子是保持张量积的忠实函子。<b>中性 Tannaka 范畴</b>就是这种范畴的抽象形式：选定一个纤维函子 ω 就给出等价 T → Rep_Q(G)。</li>
+    <li>修正办法：假设猜想 C 成立，当 ij 为奇数时，把「典范」同构 hⁱX ⊗ hʲX ≃ hʲX ⊗ hⁱX 改一个负号，Tr 就变成 Betti 数之和而非交错和。这样 M_num(k) 就成为 Tannaka 范畴（k 特征零时为中性）。</li>
+    <li>因此当 k 是有限域的代数扩张时，M_num(k) 是非中性的 Tannaka 范畴——但由于猜想 D 未证实，我们不知道标准上同调是否可通过它分解。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c11" data-title="Weil 猜想与 Zeta 函数">
+  <div class="ch-head">
+    <span class="num">11</span>
+    <h2>重温 Weil 猜想：数点、Zeta 函数与 Frobenius</h2>
+    <p class="lead">F_p 上的簇 X，在每个 pᵐ 元域上数一遍点，把点数打包进一个母函数——Zeta 函数。Weil 在 40 年代对曲线证明了它的形状，并对高维提出猜想。</p>
+  </div>
+  <div class="fig" data-demo="zeta">
+    <div class="cap">上：换 p，看 P⁰ 和 P¹ 的点数与 Zeta 函数。下：Frobenius 映射 π 把坐标都取 p 次方，πᵐ 的不动点恰是 X(F_{pᵐ}) 的点（示意网格）。</div>
+  </div>
+  <ul class="notes">
+    <li>定义：log Z(X, t) = Σ_{m≥1} |X(F_{pᵐ})| tᵐ / m。P⁰（单点）给出 Z = 1/(1−t)；P¹ 有 1 + pᵐ 个点，Z = 1/((1−t)(1−pt))。</li>
+    <li><b>Weil（40 年代）</b>：亏格 g 的曲线 Z(X, t) = P₁(t)/((1−t)(1−pt))，P₁(t) = (1−α₁t)⋯(1−α_{2g}t) ∈ Z[t]，|αᵢ| = p^{1/2}。于是 |X(F_p)| = 1 + p − Σαᵢ，推出 | |X(F_p)| − p − 1 | ≤ 2g√p。证明用到曲线的 Jacobi 簇 J(X) = Ω¹(X)^∨/Λ——为此 Weil 不得不先重写代数几何的基础。</li>
+    <li><b>Weil 猜想</b>：n 维非奇异射影簇 Z(X, t) = P₁⋯P_{2n−1} / ((1−t)P₂⋯P_{2n−2}(1−pⁿt))，Pᵢ ∈ Z[t]，根的绝对值 |α_ij| = p^{i/2}；若 X 来自 Q 上簇的模 p 约化，deg Pᵢ 应是 X(C) 的 Betti 数。</li>
+    <li>Grothendieck 用 Étale 上同调证明了不动点定理，得到上述形式，但 Pᵢ 的系数只知道在 Q_ℓ 中、可能依赖 ℓ。<b>1968 年</b>他提出 Lefschetz 与 Hodge 两个<b>标准猜想</b>：若成立，就能用母题替代 Jacobi 簇，把 Weil 的曲线证明推广到任意维。Deligne 用巧妙的办法证明了 Weil 猜想而不用标准猜想；但 Grothendieck 的话——「标准猜想的证明连同奇异消解问题……似乎是代数几何中最紧迫的任务」——至今依然正确。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c12" data-title="母题的 Zeta、模性与费马">
+  <div class="ch-head">
+    <span class="num">12</span>
+    <h2>母题的 Zeta 函数、模性猜想，与费马大定理</h2>
+    <p class="lead">把所有「好」素数 p 的 Z(X_p, p^{−s}) 乘起来，得到 Q 上簇的 Zeta 函数。单点给出 Riemann ζ(s)；椭圆曲线给出 ζ(s)ζ(s−1)/L(E, s)。母题也有自己的 Zeta 函数，而<b>模性猜想</b>把它接到完全不同的世界——自守形式。</p>
+  </div>
+  <div class="fig" data-demo="modular">
+    <div class="cap">从簇到母题，再到 L-函数，最后到 Wiles 和费马大定理。点击「播放」看链条点亮。</div>
+  </div>
+  <ul class="notes">
+    <li>F_p 上权为 i 的纯粹母题 M：Z(M, t) 定义为 Frobenius 在 Tannaka 范畴里的特征多项式（i 奇）或其倒数（i 偶）；有相同权的母题 Z(M₁ ⊕ M₂) = Z(M₁)Z(M₂)。假设猜想 D，就有 Z(X, t) = Z(hX, t)。</li>
+    <li>Q 上的母题由 (射影光滑簇 X, X×X 上的代数链 γ, 整数 m) 刻画，ζ(M, s) = ∏_{好的 p} Z(M_p, p^{−s})。例：ζ(h⁰P¹) = ζ(s)，ζ(h²P¹) = ζ(s−1)；hE = h⁰E ⊕ h¹E ⊕ h²E 给出 ζ(hE, s) = ζ(s)·L(E, s)^{−1}·ζ(s−1)。</li>
+    <li>这样得到的叫<b>母题 L-函数</b>；另一边从模形式、自守表示构造的叫<b>自守 L-函数</b>，定义不用代数几何。Langlands 纲领的基本原则——<b>模性大猜想</b>：每个母题 L-函数都是自守 L-函数的交错积。</li>
+    <li><b>模性（小）猜想</b>：对 Q 上椭圆曲线 E，ζ(h¹E, s) 是模形式的 Mellin 变换。Wiles（等人）对此猜想的证明是费马大定理证明中的主要步骤。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c13" data-title="BSD 猜想与神秘的平方">
+  <div class="ch-head">
+    <span class="num">13</span>
+    <h2>Birch–Swinnerton-Dyer 猜想，和一些神秘的平方数</h2>
+    <p class="lead">大约从 1960 年起，Birch 和 Swinnerton-Dyer 用早期计算机 <b>EDSAC 2</b> 研究 L(E, s) 在 s = 1 附近的行为，算出了著名猜想：首项系数 = {已知项} × {神秘项}。神秘项被猜想是 Tate–Shafarevich 群的阶数，已知（若有限）是平方数。</p>
+  </div>
+  <div class="fig" data-demo="bsd">
+    <div class="cap">他们同时研究了 L₃(E, s) 在 s = 2 附近，发现 L₃(E, 1)* = {已知项} × {神秘平方}，这个平方可以很大，例如 2401。点「拼一拼」看它是谁的平方。</div>
+  </div>
+  <ul class="notes">
+    <li>L₃(E, s) = ∏_p 1/((1 − α_p³ p^{−s})(1 − ᾱ_p³ p^{−s}))。</li>
+    <li>由于 L(E, s)^{−1} = ζ(h¹E, s)，BSD 猜想可以看作关于 h¹E 的断言，并已推广到 Q 上所有母题。存在母题 M 使得 h¹E ⊗ h¹E ⊗ h¹E = 3·h¹(E, Δ_E, −1) ⊕ M，且 ζ(M, s) = L₃(E, s)^{−1}——于是那个神秘的平方被猜想是母题 M 的「Tate–Shafarevich 群」。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c14" data-title="后注：纯粹与混合母题">
+  <div class="ch-head">
+    <span class="num">14</span>
+    <h2>后注：纯粹母题之外，还有混合母题</h2>
+    <p class="lead">严格地讲，M(k) 应该叫<b>纯粹母题</b>范畴，对应非奇异射影簇。Grothendieck 还预言了对应 k 上<b>所有</b>簇的<b>混合母题</b>范畴——目前连猜想性的定义都没有。</p>
+  </div>
+  <div class="fig" data-demo="mixed">
+    <div class="cap">混合母题范畴不再半单，但每个混合母题应有一条滤链，其因子皆为纯粹母题。数学家构造了一些三角化范畴作为「混合母题的导出范畴」的候选，还需在其上定义一个 t-结构，使其中心正是混合母题范畴。</div>
+  </div>
+  <ul class="notes">
+    <li>Grothendieck 自己没有发表任何关于母题的文章；它们出现在他未发表的手稿和与 Serre 的通信中。最早的解释是 Demazure 和 Kleiman 的文章；1991 年 Seattle 会议论文集综述了当时的进展；André 2004 年的书是目前最好的一般性导引。</li>
+  </ul>
+  <div class="final">从宇宙到母题，Grothendieck 做的是同一件事：先把「舞台」搭到足够大（一个封闭的 U，一个泛上同调 M(k)），再让具体的定理（Weil 猜想、模性、费马）在舞台上自然落地。梦想的最后一块——猜想 C 与猜想 D——仍未证明。</div>
+</section>
+
+<footer>
+  原文：知乎专栏 <a href="https://zhuanlan.zhihu.com/p/686033872">《格罗腾迪克与格罗腾迪克宇宙》</a>（缘法无情整理）。第一部分译自 Colin McLarty, Bull. Symbolic Logic 16 (2010)；第二部分为 J. S. Milne《母题——Grothendieck 的梦想》中译（徐克舰译、付保华校；星智译）。本页由 Claude Code 基于原文生成，仅供学习；数学细节以原文为准。
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mulberry = (seed) => () => { let t = (seed += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+function fitCanvas(c, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, c.clientWidth);
+  const h = aspect ? w / aspect : Math.max(10, c.clientHeight);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const rgba = (hex, a) => { hex = hex.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); const n = parseInt(hex, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', { type: 'button', class: val === cur ? 'on' : '', onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); } }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, step, val, oninput, fmt = (v) => v) => {
+  const out = el('output', {}, fmt(val));
+  const inp = el('input', { type: 'range', min, max, step, value: val });
+  inp.addEventListener('input', () => { out.textContent = fmt(+inp.value); oninput(+inp.value); });
+  return el('label', { class: 'range' }, label, inp, out);
+};
+const loop = (fn) => {
+  let id = 0, last = 0, running = false;
+  const tick = (t) => { if (!running) return; fn(Math.min(50, t - last || 16), t); last = t; id = requestAnimationFrame(tick); };
+  return { start() { if (running) return; running = true; last = performance.now(); id = requestAnimationFrame(tick); }, stop() { running = false; cancelAnimationFrame(id); }, get running() { return running; } };
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+// 宽 SVG：窄屏时横向滚动
+const wide = (s) => { s.classList.add('wide'); return el('div', { class: 'scrollx' }, s); };
+
+/* ===== Hero：原文出现过的年份 ===== */
+reg('hero', (root) => {
+  const ev = [
+    ['1940 年代', '<b>Weil</b> 对有限域上的曲线证明 Zeta 函数的形状；为此先重写代数几何基础、在任意域上发展 Jacobi 簇。'],
+    ['1949', 'Weil《Numbers of solutions of equations in finite fields》；Weil 猜想由此而来。'],
+    ['约 1960', '<b>Birch 与 Swinnerton-Dyer</b> 用早期计算机 EDSAC 2 计算 L(E, s)，提出 BSD 猜想。'],
+    ['1960 年代', '<b>Grothendieck</b> 定义 Étale 上同调与晶体上同调——「我们有太多的上同调理论！」'],
+    ['1964-08-16', 'Grothendieck 给 Serre 的信：引入「母题（Motive）」。'],
+    ['1968', 'Grothendieck 提出 Lefschetz 与 Hodge 两个<b>标准猜想</b>（Bombay）。'],
+    ['1971–72', 'Grothendieck [1971]、Artin 等 [1972]：「宇宙」的原始出处（McLarty 脚注）。'],
+    ['1974', '<b>Deligne</b> 不用标准猜想，完成 Weil 猜想的证明。'],
+    ['1991', 'Seattle 母题会议：综述到那时为止的所知。'],
+    ['2004', 'André《Une introduction aux motifs》：目前最好的一般性导引。'],
+    ['2010', 'McLarty《证明费马大定理需要什么？》——本篇「宇宙」摘录的出处。'],
+  ];
+  const tl = el('div', { class: 'tl' }, ev.map(e => el('div', { class: 'ev' }, el('div', { class: 'y' }, e[0]), el('div', { class: 't', html: e[1] }))));
+  const rows = [...tl.children];
+  let k = -1;
+  const T = every(RM ? 2500 : 1100, () => { k = (k + 1) % (ev.length + 2); rows.forEach((r, i) => r.classList.toggle('on', i <= k)); });
+  root.append(el('div', { class: 'cap' }, '原文里出现的时间点（只列文章提到的）'), tl);
+  return T;
+});
+
+/* ===== 01 宇宙的封闭性 ===== */
+reg('universe', (root) => {
+  const W = 560, H = 290;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  s.append(svg('rect', { x: 4, y: 4, width: W - 8, height: H - 8, rx: 14, class: 'box', 'stroke-dasharray': '6 5' }));
+  s.append(svg('text', { x: 470, y: 24, class: 'txt s' }, '更大的集合论域（ZFC）'));
+  const cx = 200, cy = 150, R = 118;
+  s.append(svg('circle', { cx, cy, r: R, class: 'box p', 'stroke-width': 2.5 }));
+  s.append(svg('text', { x: cx, y: cy - R + 22, class: 'txt b p' }, 'U：宇宙'));
+  const blobs = svg('g'); s.append(blobs);
+  const checks = el('div', { class: 'checks' },
+    el('div', { class: 'c' }, el('span', { class: 'm' }, '○'), el('span', { html: '<b>传递</b>：x ∈ U 且 a ∈ x ⇒ a ∈ U' })),
+    el('div', { class: 'c' }, el('span', { class: 'm' }, '○'), el('span', { html: '<b>幂集</b>：x ∈ U ⇒ P(x) ∈ U' })),
+    el('div', { class: 'c' }, el('span', { class: 'm' }, '○'), el('span', { html: '<b>值域</b>：f : x → U，x ∈ U ⇒ f 的值域 ∈ U' })),
+    el('div', { class: 'c' }, el('span', { class: 'm' }, '○'), el('span', { html: '<b>不可数</b>：U 本身是不可数集合' })));
+  const cs = [...checks.children];
+  const mark = (i) => { cs[i].classList.add('on'); cs[i].querySelector('.m').textContent = '✓'; };
+  let items = [];
+  const add = (label, x, y, cls, extra) => { items.push({ label, x, y, cls, extra, t: performance.now() }); draw(); };
+  const draw = () => {
+    blobs.replaceChildren();
+    for (const it of items) {
+      const g = svg('g', { style: `transform-origin:${it.x}px ${it.y}px;transition:transform .4s;` });
+      g.append(svg('circle', { cx: it.x, cy: it.y, r: it.r || 20, class: 'box ' + it.cls, 'stroke-width': 1.6 }));
+      g.append(svg('text', { x: it.x, y: it.y, class: 'txt m' + (it.cls ? ' b' : '') }, it.label));
+      if (it.extra) g.append(svg('text', { x: it.x, y: it.y + (it.r || 20) + 12, class: 'txt s' }, it.extra));
+      if (it.edge) g.append(svg('path', { d: it.edge, class: 'edge k', 'marker-end': 'url(#arrU)' }));
+      blobs.append(g);
+    }
+  };
+  s.append(svg('defs', { html: '<marker id="arrU" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a8a95"/></marker>' }));
+  const reset = () => { items = []; cs.forEach(c => { c.classList.remove('on'); c.querySelector('.m').textContent = '○'; }); add('x', cx - 40, cy + 10, '', '一个集合'); add('y', cx + 50, cy + 40, '', ''); };
+  const bPow = btn('取幂集 P(x)', () => { if (!items.find(i => i.label === 'P(x)')) { add('P(x)', cx - 10, cy - 50, 't', '仍在 U 里'); items[items.length - 1].edge = `M ${cx - 40} ${cy - 10} L ${cx - 16} ${cy - 32}`; draw(); mark(1); } }, 'primary');
+  const bEl = btn('取 x 的元素', () => { if (!items.find(i => i.label === 'a')) { add('a', cx - 85, cy + 60, 'o', 'a ∈ x，也 ∈ U'); items[items.length - 1].r = 14; draw(); mark(0); } });
+  const bFn = btn('函数 f : x → U 的值域', () => { if (!items.find(i => i.label === 'f(x)')) { add('f(x)', cx + 60, cy - 40, 'p', '值域 ∈ U'); items[items.length - 1].edge = `M ${cx - 20} ${cy + 4} L ${cx + 38} ${cy - 30}`; draw(); mark(2); } });
+  root.append(el('div', { class: 'ctrl' }, bPow, bEl, bFn, btn('重来', reset)), el('div', { class: 'two' }, wide(s), checks));
+  reset(); mark(3);
+});
+
+/* ===== 02 内部视角 vs 外部视角 ===== */
+reg('relative', (root) => {
+  const W = 560, H = 260;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  s.append(svg('rect', { x: 4, y: 4, width: W - 8, height: H - 8, rx: 14, class: 'box', 'stroke-dasharray': '6 5' }), svg('text', { x: 475, y: 24, class: 'txt s' }, '外面：大集合论域'));
+  s.append(svg('rect', { x: 20, y: 40, width: 330, height: 200, rx: 14, class: 'box p', 'stroke-width': 2.2 }), svg('text', { x: 60, y: 60, class: 'txt b p' }, 'U'));
+  // x = {a, b}
+  s.append(svg('circle', { cx: 80, cy: 140, r: 34, class: 'box', 'stroke-width': 1.6 }), svg('text', { x: 80, y: 112, class: 'txt s' }, 'x = {a, b}'), svg('text', { x: 68, y: 140, class: 'txt m' }, 'a'), svg('text', { x: 94, y: 140, class: 'txt m' }, 'b'));
+  s.append(svg('text', { x: 240, y: 86, class: 'txt b' }, '「x 的幂集」'));
+  const subs = ['∅', '{a}', '{b}', '{a,b}'];
+  const cells = subs.map((t, i) => { const g = svg('g'); const x = 170 + (i % 2) * 80, y = 110 + Math.floor(i / 2) * 50; g.append(svg('rect', { x: x - 30, y: y - 16, width: 60, height: 32, rx: 8, class: 'box t' }), svg('text', { x, y, class: 'txt m' }, t)); g.style.transition = 'transform .5s, opacity .5s'; s.append(g); return { g, x, y }; });
+  const ghostLbl = svg('text', { x: 455, y: 150, class: 'txt s r' }, ''); s.append(ghostLbl);
+  const ghostLbl2 = svg('text', { x: 455, y: 166, class: 'txt s r' }, ''); s.append(ghostLbl2);
+  const okLbl = svg('text', { x: 240, y: 212, class: 'txt s t' }, ''); s.append(okLbl);
+  s.append(svg('path', { d: 'M 116 130 L 136 120', class: 'edge k' }));
+  const paneA = el('div', { class: 'pane', html: '<h3><span class="tag">弱条件</span>(U, ∈) 相对化地满足 ZFC</h3><ul><li>只要求：把量词限制到 U 里之后，「每个集合有幂集」为真。</li><li>于是 U 里的「P(x)」可能<b>漏掉</b>那些只有在外面才看得见的子集。</li></ul>' });
+  const paneB = el('div', { class: 'pane', html: '<h3><span class="tag p">宇宙条件</span>强得多</h3><ul><li>要求：对每个 x ∈ U，x 的幂集<b>按外面的定义</b>仍在 U 中——定义里没有任何量词相对于 U。</li><li>同理：任何从 U 的元素到 U 的函数，只要在外面存在，它本身就是 U 的元素。</li><li>结论：对 U 中集合做的任何集合论构造，在 U 内外结果一致。</li></ul>' });
+  let mode = 'weak';
+  const apply = () => {
+    const weak = mode === 'weak';
+    cells.forEach((c, i) => { const leak = weak && (i === 1 || i === 3); c.g.style.opacity = leak ? .45 : 1; c.g.style.transform = leak ? `translate(${260}px, ${(i === 1 ? -10 : 40)}px)` : 'none'; });
+    ghostLbl.textContent = weak ? '这些子集在外面存在，' : ''; ghostLbl2.textContent = weak ? '但 U 里的「幂集」看不见它们' : '';
+    okLbl.textContent = weak ? '' : '外面看到的 P(x) 整个都在 U 里 ✓';
+    paneA.classList.toggle('on', weak); paneA.classList.toggle('dim', !weak); paneB.classList.toggle('on', !weak); paneB.classList.toggle('dim', weak);
+  };
+  root.append(el('div', { class: 'ctrl' }, seg([['weak', '弱条件：相对化 ZFC'], ['strong', '宇宙条件']], 'weak', (v) => { mode = v; apply(); })), wide(s), el('div', { class: 'two', style: 'margin-top:10px' }, paneA, paneB));
+  apply();
+});
+
+/* ===== 03 出处与链条 ===== */
+reg('source', (root) => {
+  const steps = [
+    ['费马大定理', 'Wiles（等人）的证明，主要步骤是证明椭圆曲线的模性（小）猜想。'],
+    ['模性猜想', 'ζ(h¹E, s) 是模形式的 Mellin 变换——母题 L-函数与自守 L-函数相遇（见第 12 节）。'],
+    ['Grothendieck 的工具', 'Étale 上同调、母题、标准猜想……以及支撑它们的范畴论语言。'],
+    ['集合论基础：宇宙', 'Grothendieck [1971]、Artin 等 [1972] 引入的全域 U，让「所有簇」「所有层」这类大范畴有地方安放。'],
+    ['McLarty 的问题', '证明费马大定理「到底需要」多强的集合论？——本篇摘录止于宇宙的定义，未给出答案。'],
+  ];
+  const chain = el('div', { class: 'chain' }, steps.map((t, i) => el('div', { class: 'lnk' }, el('span', { class: 'i' }, String(i + 1)), el('span', { html: `<b>${t[0]}</b>——${t[1]}` }))));
+  const links = [...chain.children];
+  let k = -1;
+  const play = every(RM ? 3000 : 1500, () => { k = (k + 1) % (steps.length + 1); links.forEach((l, i) => l.classList.toggle('on', k < steps.length && i <= k)); });
+  const card = el('div', { class: 'pane on', html: '<h3>摘录出处</h3><ul><li><b>Colin McLarty</b>，<i>What does it take to prove Fermat\'s last theorem? Grothendieck and the logic of number theory</i></li><li>The Bulletin of Symbolic Logic, Vol. 16 (2010), No. 3, p. 359–377</li><li>© 2010 the Association for Symbolic Logic；符号逻辑学会与作者授予译文出版许可</li><li>脚注 [1]：参阅 Grothendieck [1971] 以及更完整的叙述 Artin et al. [1972, vol. I, p.185–217]</li></ul>' });
+  root.append(el('div', { class: 'two' }, card, chain));
+  return play;
+});
+
+/* ===== 04 拓扑中的上同调：Poincaré 对偶 ===== */
+reg('topo', (root) => {
+  let n = 2;
+  const holder = el('div');
+  const render = () => {
+    const N = 2 * n, W = 560, H = 190;
+    const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+    const bw = Math.min(70, (W - 40) / (N + 1) - 8), x0 = (W - (N + 1) * (bw + 8)) / 2 + 4;
+    const pos = (i) => x0 + i * (bw + 8) + bw / 2;
+    for (let i = 0; i <= N; i++) {
+      const j = N - i; const x = pos(i);
+      const cls = i === j ? 'box o' : (i < j ? 'box p' : 'box t');
+      s.append(svg('rect', { x: x - bw / 2, y: 110, width: bw, height: 40, rx: 8, class: cls }));
+      s.append(svg('text', { x, y: 130, class: 'txt m b' }, `H${'⁰¹²³⁴⁵⁶⁷⁸⁹'[i] || i}`));
+      s.append(svg('text', { x, y: 166, class: 'txt s' }, i === j ? '中间维' : ''));
+      if (i < j) {
+        const d = `M ${x} 108 Q ${(x + pos(j)) / 2} ${108 - 18 - (j - i) * 14} ${pos(j)} 108`;
+        s.append(svg('path', { d, class: 'curve c-p dash anim', 'stroke-width': 1.8, fill: 'none' }));
+      }
+    }
+    s.append(svg('text', { x: W / 2, y: 22, class: 'txt b' }, `X：实 ${N} 维紧流形 → ${N + 1} 个上同调群，Hⁱ 对偶于 H^{${N}−i}`));
+    s.append(svg('text', { x: W / 2, y: 42, class: 'txt s' }, '每个群都是 Q 上有限维向量空间；对偶配对由 Poincaré 对偶给出'));
+    holder.replaceChildren(wide(s));
+    holder.querySelector('svg').classList.add('running');
+  };
+  const chips = el('div', { class: 'cols', style: 'margin-top:8px' },
+    el('div', { class: 'col ok', html: '<h4>奇异链</h4>一种定义' }), el('div', { class: 'col ok', html: '<h4>Čech 上同调</h4>另一种定义' }), el('div', { class: 'col ok', html: '<h4>导出函子</h4>再一种定义' }), el('div', { class: 'col on', html: '<h4>同一组群</h4>只要满足 Eilenberg–Steenrod 公理' }));
+  root.append(el('div', { class: 'ctrl' }, range('n（流形是 2n 维）=', 1, 4, 1, n, (v) => { n = v; render(); })), holder, chips,
+    el('div', { class: 'mathblock' }, 'X 复解析流形：H', el('sup', {}, 'i'), '_dR(X) ≃ H', el('sup', {}, 'i'), '(X, Q) ⊗', el('sub', {}, 'Q'), ' C   （de Rham 不给出新的群；Kähler 时才多出 Hodge 分解）'));
+  render();
+});
+
+/* ===== 05 Weil 不等式 + 太多上同调 ===== */
+reg('many', (root) => {
+  const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23];
+  let pi = 2, g = 1;
+  const c = el('canvas', { class: 'cv' });
+  const info = el('div', { class: 'kv', style: 'margin-top:6px' });
+  const draw = () => {
+    const p = primes[pi];
+    const { ctx, w, h } = fitCanvas(c, 2);
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    const center = p + 1, half = 2 * g * Math.sqrt(p);
+    const lo = Math.max(0, center - half * 1.6), hi = center + half * 1.6;
+    const X = (v) => 30 + (v - lo) / (hi - lo) * (w - 60);
+    const y = h * .58;
+    ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(20, y); ctx.lineTo(w - 20, y); ctx.stroke();
+    ctx.fillStyle = rgba('#0f9d8a', .22); ctx.fillRect(X(center - half), y - 34, X(center + half) - X(center - half), 68);
+    ctx.strokeStyle = cssVar('--t'); ctx.lineWidth = 2; ctx.strokeRect(X(center - half), y - 34, X(center + half) - X(center - half), 68);
+    ctx.fillStyle = cssVar('--o'); ctx.beginPath(); ctx.arc(X(center), y, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = cssVar('--text'); ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`p + 1 = ${center}`, X(center), y - 44);
+    ctx.fillStyle = cssVar('--t'); ctx.fillText(`−2g√p`, X(center - half), y + 46); ctx.fillText(`+2g√p`, X(center + half), y + 46);
+    ctx.fillStyle = cssVar('--muted'); ctx.font = '11px sans-serif';
+    ctx.fillText(`|X(F_${p})| 只能落在绿色带内：${(center - half).toFixed(1)} … ${(center + half).toFixed(1)}`, w / 2, 22);
+    if (w >= 500) ctx.fillText('亏格 g 的曲线：| |X(F_p)| − p − 1 | < 2g√p', w / 2, h - 10);
+    info.innerHTML = `<span>p <b>${p}</b></span><span>g <b>${g}</b></span><span>带宽 2·2g√p <b>${(2 * half).toFixed(2)}</b></span>`;
+  };
+  const left = el('div', { class: 'pane on' }, el('h3', {}, el('span', { class: 'tag t' }, 'Weil'), '点数被 Betti 数控制'), el('div', { class: 'ctrl' }, range('p =', 0, primes.length - 1, 1, pi, (v) => { pi = v; draw(); }, (v) => primes[v]), range('g =', 0, 6, 1, g, (v) => { g = v; draw(); })), c, info);
+  const cols = el('div', { class: 'cols', style: 'grid-template-columns:1fr' },
+    el('div', { class: 'col', html: '<h4>Étale 上同调 <span class="f">H(X, Q_ℓ)</span></h4>对每个素数 ℓ ≠ char k 各一套，取值在 ℓ-adic 域 Q_ℓ 上（Q₂, Q₃, Q₅, …）' }),
+    el('div', { class: 'col', html: '<h4>de Rham <span class="f">H_dR(X)</span></h4>k 上有限维向量空间' }),
+    el('div', { class: 'col', html: '<h4>晶体上同调</h4>特征 p ≠ 0 时，取值在 k 的 Witt 向量环分式域（特征 0）上' }),
+    el('div', { class: 'col on', html: '<h4>共同点：迹 <span class="f">Tr(αⁱ) ∈ Q</span></h4>正则映射 α: X → X 诱导的 αⁱ 的迹，是与理论无关的有理数' }),
+    el('div', { class: 'col no', html: '<h4>想要的 <span class="f">H(X, Q)</span> ✗</h4>一个 Q 系数理论把它们全部张成——「事实却并非如此」' }));
+  const right = el('div', { class: 'pane on' }, el('h3', {}, el('span', { class: 'tag o' }, 'Grothendieck'), '太多上同调理论'), cols);
+  root.append(el('div', { class: 'two' }, left, right));
+  draw();
+  addEventListener('resize', draw);
+});
+
+/* ===== 06 两种解释 ===== */
+reg('noq', (root) => {
+  const W = 560, H = 230;
+  const s1 = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  // 不可数 vs 可数
+  const grad = svg('defs', { html: '<linearGradient id="gU" x1="0" x2="1"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#0f9d8a"/></linearGradient>' });
+  s1.append(grad);
+  s1.append(svg('rect', { x: 30, y: 70, width: 200, height: 40, rx: 8, fill: 'url(#gU)', opacity: .8 }), svg('text', { x: 130, y: 55, class: 'txt b' }, 'Γ = Gal(k / k₀)'), svg('text', { x: 130, y: 128, class: 'txt s' }, '无限 Galois 群：不可数（连续统）'));
+  for (let i = 0; i < 9; i++) s1.append(svg('circle', { cx: 340 + i * 22, cy: 90, r: 5, class: 'f-p' }));
+  s1.append(svg('text', { x: 430, y: 55, class: 'txt b' }, 'Hⁱ(X, Q)'), svg('text', { x: 430, y: 128, class: 'txt s' }, '可数：一个个数得过来'));
+  s1.append(svg('path', { d: 'M 240 90 L 320 90', class: 'edge k', 'marker-end': 'url(#arrN)' }), svg('text', { x: 280, y: 78, class: 'txt s' }, '作用'));
+  s1.append(svg('defs', { html: '<marker id="arrN" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a8a95"/></marker>' }));
+  s1.append(svg('rect', { x: 180, y: 160, width: 200, height: 40, rx: 8, class: 'box r' }), svg('text', { x: 280, y: 180, class: 'txt s r' }, '⇒ 作用只能通过有限商群'));
+  s1.append(svg('text', { x: 280, y: 218, class: 'txt s' }, '「然而，这一般是不对的」✗'));
+  const s2 = el('div');
+  const cases = [
+    ['End(E)_Q = Q', '需要 ≥ 1 维 Q-空间', 1, true],
+    ['End(E)_Q = K（2 次扩域）', 'H¹ 是 1 维 K-空间 = 2 维 Q-空间', 2, true],
+    ['End(E)_Q = 4 次除代数（仅特征 p）', '能作用的最小 Q-空间是 4 维', 4, false],
+  ];
+  const bars = el('div', { class: 'checks' }, cases.map(c => el('div', { class: 'c ' + (c[3] ? 'on' : 'bad') }, el('span', { class: 'm' }, c[3] ? '✓' : '✗'), el('span', { html: `<b>${c[0]}</b><br>${c[1]}<br><span class="mono" style="color:var(--muted)">${'█'.repeat(c[2])}${'░'.repeat(4 - c[2])} ${c[2]} 维，而 dim_Q H¹(E(C), Q) = 2</span>` }))));
+  s2.append(el('p', { class: 'tiny' }, 'E(C) ≅ C/Λ 是环面；自同态是满足 αΛ = Λ 的复数 α。End(E) 是秩 1 或 2 的 Z-模。'), bars);
+  const paneA = el('div', { class: 'pane on' }, el('h3', {}, el('span', { class: 'tag p' }, '解释一'), '数数：不可数 vs 可数'), wide(s1));
+  const paneB = el('div', { class: 'pane on' }, el('h3', {}, el('span', { class: 'tag o' }, '解释二'), '椭圆曲线的自同态代数'), s2);
+  let mode = 'A';
+  const apply = () => { paneA.style.display = mode === 'A' ? '' : 'none'; paneB.style.display = mode === 'B' ? '' : 'none'; };
+  root.append(el('div', { class: 'ctrl' }, seg([['A', '解释一：数数'], ['B', '解释二：椭圆曲线']], 'A', (v) => { mode = v; apply(); })), paneA, paneB);
+  apply();
+});
+
+/* ===== 07 代数链：相交与有理等价 ===== */
+reg('cycles', (root) => {
+  const c1 = el('canvas', { class: 'cv' }), c2 = el('canvas', { class: 'cv' });
+  let mode = 'trans', lineY = 0, t = 0, dir = 1, t0 = performance.now();
+  const draw1 = () => {
+    const { ctx, w, h } = fitCanvas(c1, 2);
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    const mid = h * .55, A = h * .3;
+    const th = (x) => 0.4 + (x - 20) / (w - 40) * Math.PI * 3;
+    const f = (x) => mid - A * Math.sin(th(x));
+    ctx.strokeStyle = cssVar('--p'); ctx.lineWidth = 2.5; ctx.beginPath();
+    for (let x = 20; x <= w - 20; x++) { const y = f(x); if (x === 20) ctx.moveTo(x, y); else ctx.lineTo(x, y); } ctx.stroke();
+    const target = mode === 'trans' ? mid : mid + A;
+    lineY += (target - lineY) * (RM ? 1 : .12);
+    ctx.strokeStyle = cssVar('--o'); ctx.beginPath(); ctx.moveTo(20, lineY); ctx.lineTo(w - 20, lineY); ctx.stroke();
+    // 交点
+    const pts = [];
+    for (let x = 21; x <= w - 20; x++) { const a = f(x - 1) - lineY, b = f(x) - lineY; if (a * b <= 0 && !(a === 0 && b === 0)) pts.push(x); }
+    const near = Math.abs(lineY - (mid + A)) < 1.5 && mode === 'tan';
+    ctx.fillStyle = cssVar('--r'); ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    if (near) { const x = 20 + (1.5 * Math.PI - 0.4) / (3 * Math.PI) * (w - 40); ctx.beginPath(); ctx.arc(x, lineY, 7, 0, 7); ctx.fill(); ctx.fillText('2P（相切）', x, lineY - 14); }
+    else pts.forEach((x, i) => { ctx.beginPath(); ctx.arc(x, lineY, 5.5, 0, 7); ctx.fill(); ctx.fillText('P' + '₁₂₃₄'[i], x, lineY - 12); });
+    ctx.fillStyle = cssVar('--text'); ctx.font = '13px sans-serif';
+    ctx.fillText(near ? 'γ₁ · γ₂ = 2P' : `γ₁ · γ₂ = ${pts.map((_, i) => 'P' + '₁₂₃₄'[i]).join(' + ') || '…'}`, w / 2, 22);
+    ctx.fillStyle = cssVar('--muted'); ctx.font = '11px sans-serif'; ctx.fillText('余维数相加：codim(Z₁ ∩ Z₂) = codim Z₁ + codim Z₂ 时称真相交', w / 2, h - 10);
+    ctx.fillStyle = cssVar('--p'); ctx.textAlign = 'left'; ctx.fillText('γ₁', 24, f(20) - 8); ctx.fillStyle = cssVar('--o'); ctx.fillText('γ₂', w - 44, lineY - 8);
+  };
+  const draw2 = () => {
+    const { ctx, w, h } = fitCanvas(c2, 2);
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    const x0 = 60, x1 = w - 60, yb = h - 34;
+    ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x0, yb); ctx.lineTo(x1, yb); ctx.stroke();
+    ctx.fillStyle = cssVar('--muted'); ctx.font = '11px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('P¹（参数 t）', (x0 + x1) / 2, yb + 18); ctx.fillText('0', x0, yb + 18); ctx.fillText('1', x1, yb + 18);
+    if (!RM) { t += dir * .006; if (t > 1) { t = 1; dir = -1; } if (t < 0) { t = 0; dir = 1; } } else t = .5;
+    const fib = (tt, color, lw, lab) => { const x = x0 + tt * (x1 - x0); ctx.strokeStyle = color; ctx.lineWidth = lw; ctx.beginPath(); for (let y = 20; y <= yb - 6; y++) ctx.lineTo(x + 18 * Math.sin(y / 22 + tt * 3), y); ctx.stroke(); ctx.fillStyle = color; ctx.textAlign = 'center'; ctx.font = '12px sans-serif'; ctx.fillText(lab, x, 14); };
+    fib(0, cssVar('--p'), 2.5, 'γ₀ = γ 在 0 上的纤维'); fib(1, cssVar('--t'), 2.5, 'γ₁ = 在 1 上的纤维'); fib(t, cssVar('--o'), 2, 'γ_t');
+    ctx.fillStyle = cssVar('--o'); ctx.beginPath(); ctx.arc(x0 + t * (x1 - x0), yb, 5, 0, 7); ctx.fill();
+  };
+  const L = loop(() => { draw1(); draw2(); });
+  root.append(el('div', { class: 'ctrl' }, seg([['trans', '横截相交'], ['tan', '相切']], 'trans', (v) => { mode = v; })), el('div', { class: 'two' },
+    el('div', {}, c1, el('p', { class: 'tiny' }, 'Cʳ(X) × Cˢ(X) ⇢ Cʳ⁺ˢ(X)：交积只对真相交的链有定义，所以要能「移动」链。')),
+    el('div', {}, c2, el('p', { class: 'tiny' }, '有理等价：存在 X × P¹ 上的链 γ，γ₀、γ₁ 分别是它在 0 和 1 上的纤维（同伦等价的代数类比）。'))));
+  return L;
+});
+
+/* ===== 08 母题定义三步 ===== */
+reg('motive', (root) => {
+  const stages = [
+    ['初论', 'h X', 'Hom(hX, hY) = Corr⁰~(X, Y)_Q', '对每个非奇异射影簇 X 一个对象 hX，态射就是 0 次对应，合成即对应的合成。<b>不足</b>：幂等元 e² = e 应该把对象拆成 Ker(e) ⊕ eV，这里拆不了。'],
+    ['再论', 'h(X, e)', 'Hom(h(X,e), h(Y,f)) = f ∘ Corr⁰~(X, Y)_Q ∘ e', '对象改为二元对：X 加上 End(hX) = Corr⁰~(X,X)_Q 里的幂等元 e。这就是<b>有效母题范畴</b> M~ᵉᶠᶠ(k)。原来的母题是 h(X, Δ_X)。'],
+    ['三论', 'h(X, e, m)', 'Hom(h(X,e,m), h(Y,f,n)) = f ∘ Corrⁿ⁻ᵐ~(X, Y)_Q ∘ e', '再加一个整数 m（把 L 取逆），让每个对象都有<b>对偶</b>。这就是 k 上的母题范畴 M~(k)；有效母题是 m = 0 的全子范畴。'],
+  ];
+  const stepper = el('div', { class: 'stepper' });
+  const obj = el('div', { class: 'mathblock' }), hom = el('div', { class: 'mathblock' }), txt = el('p', { style: 'font-size:13.5px;margin-top:8px;color:var(--muted)' });
+  let k = 0;
+  const show = () => { [...stepper.children].forEach((b, i) => b.classList.toggle('on', i === k)); obj.innerHTML = `对象：<span class="hp">${stages[k][1]}</span>`; hom.innerHTML = `态射：<span class="hl">${stages[k][2]}</span>`; txt.innerHTML = stages[k][3]; };
+  stages.forEach((st, i) => stepper.append(el('button', { type: 'button', onclick: () => { k = i; show(); } }, st[0])));
+  // P¹ 例子
+  const W = 560, H = 120;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  s.append(svg('rect', { x: 20, y: 30, width: 150, height: 56, rx: 10, class: 'box p' }), svg('text', { x: 95, y: 52, class: 'txt b' }, 'h(P¹, Δ)'), svg('text', { x: 95, y: 72, class: 'txt s m' }, 'Corr⁰_rat(P¹,P¹) = Z ⊕ Z'));
+  s.append(svg('text', { x: 205, y: 58, class: 'txt b' }, '='));
+  s.append(svg('rect', { x: 240, y: 30, width: 120, height: 56, rx: 10, class: 'box t' }), svg('text', { x: 300, y: 52, class: 'txt b' }, 'h⁰P¹ = 1'), svg('text', { x: 300, y: 72, class: 'txt s m' }, 'e₀ = (1,0) ↔ {0}×P¹'));
+  s.append(svg('text', { x: 385, y: 58, class: 'txt b' }, '⊕'));
+  s.append(svg('rect', { x: 410, y: 30, width: 130, height: 56, rx: 10, class: 'box o' }), svg('text', { x: 475, y: 52, class: 'txt b' }, 'h²P¹ = L'), svg('text', { x: 475, y: 72, class: 'txt s m' }, 'e₂ = (0,1) ↔ P¹×{0}'));
+  s.append(svg('text', { x: W / 2, y: 108, class: 'txt s' }, 'Δ_{P¹} ~ e₀ + e₂，对应 H*(P¹) = H⁰ ⊕ H²；在 M_num 里也成立'));
+  root.append(stepper, obj, hom, txt, el('div', { class: 'cap', style: 'margin-top:12px' }, el('b', {}, '例子：'), 'P¹ 的母题拆成两块'), wide(s));
+  show();
+});
+
+/* ===== 09 性质清单 + 猜想 C 分解对角线 ===== */
+reg('conj', (root) => {
+  const props = [
+    '态射集合是 Q-向量空间；~ = num 时有限维',
+    '直和存在 ⇒ 加法范畴：h(X,e,m) ⊕ h(Y,f,m) = h(X ⊔ Y, e ⊕ f, m)',
+    '幂等元可分解 ⇒ 伪 Abel 范畴',
+    'M_num(k) 是 Abel 且半单；M_rat(k) 一般不是',
+    '张量积：h(X,e,m) ⊗ h(Y,f,n) = h(X×Y, e×f, m+n)，Künneth 公式成立',
+    '对偶存在：h(X,e,m)^∨ = h(X, eᵗ, dim X − m)',
+  ];
+  const checks = el('div', { class: 'checks' }, props.map(p => el('div', { class: 'c' }, el('span', { class: 'm' }, '○'), el('span', {}, p))));
+  const cs = [...checks.children];
+  let k = -1;
+  const play = every(RM ? 2500 : 900, () => { k = (k + 1) % (props.length + 2); cs.forEach((c, i) => { const on = i <= k; c.classList.toggle('on', on); c.querySelector('.m').textContent = on ? '✓' : '○'; }); });
+  // 对角线分解
+  const W = 400, H = 230, n = 2, N = 2 * n;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  s.append(svg('rect', { x: 20, y: 36, width: 150, height: 150, class: 'box' }), svg('text', { x: 95, y: 24, class: 'txt s' }, 'X × X'), svg('text', { x: 95, y: 204, class: 'txt s' }, 'Δ_X ∈ C^{dim X}_num(X × X)'));
+  const diag = svg('line', { x1: 20, y1: 186, x2: 170, y2: 36, class: 'curve c-p', 'stroke-width': 4 }); s.append(diag);
+  const cols = ['#4f46e5', '#0f9d8a', '#e8731f', '#d64550', '#8a8a95'];
+  const pieces = svg('g', { style: 'opacity:0;transition:opacity .6s' }); s.append(pieces);
+  for (let i = 0; i <= N; i++) { const a = i / (N + 1), b = (i + 1) / (N + 1); pieces.append(svg('line', { x1: 20 + 150 * a, y1: 186 - 150 * a, x2: 20 + 150 * b, y2: 186 - 150 * b, stroke: cols[i], 'stroke-width': 6 })); }
+  const boxes = svg('g'); s.append(boxes);
+  for (let i = 0; i <= N; i++) { const y = 50 + i * 32; const g = svg('g', { style: `opacity:0;transform:translateX(16px);transition:all .5s ${i * .12}s` }); g.append(svg('rect', { x: 195, y: y - 12, width: 100, height: 26, rx: 7, fill: cols[i], opacity: .18, stroke: cols[i] }), svg('text', { x: 245, y: y + 1, class: 'txt m' }, `hⁱX, i = ${i}`), svg('text', { x: 305, y: y + 1, class: 'txt s l' }, `权 ${i}，π${'₀₁₂₃₄'[i]}`)); boxes.append(g); }
+  s.append(svg('text', { x: 190, y: 24, class: 'txt s l' }, 'Δ_X = π₀ + ⋯ + π_{2 dim X} ⇒ hX = ⊕ hⁱX'), svg('text', { x: 190, y: 222, class: 'txt s l' }, '例：dim X = 2，分成 5 块，每块「纯粹」'));
+  let split = false;
+  const toggle = () => { split = !split; diag.style.opacity = split ? 0 : 1; pieces.style.opacity = split ? 1 : 0; [...boxes.children].forEach(g => { g.style.opacity = split ? 1 : 0; g.style.transform = split ? 'none' : 'translateX(16px)'; }); b.textContent = split ? '合回去' : '按猜想 C 分解'; };
+  const b = btn('按猜想 C 分解', toggle, 'primary');
+  diag.style.transition = 'opacity .4s';
+  root.append(el('div', { class: 'two' }, el('div', {}, el('div', { class: 'cap' }, el('b', {}, '已知性质')), checks), el('div', {}, el('div', { class: 'ctrl' }, b), s)));
+  return play;
+});
+
+/* ===== 10 Tannaka：迹的负号 ===== */
+reg('tannaka', (root) => {
+  let g = 1, fixed = false;
+  const c = el('canvas', { class: 'cv' });
+  const msg = el('div', { class: 'card', style: 'margin-top:10px;transition:all .3s' });
+  const draw = () => {
+    const { ctx, w, h } = fitCanvas(c, 2);
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    const dims = [1, 2 * g, 1], signs = fixed ? [1, 1, 1] : [1, -1, 1];
+    const base = fixed ? h * .8 : h * .5, unit = Math.min(40, (h * .4) / Math.max(2, 2 * g + 1));
+    const xs = [w * .2, w * .45, w * .7];
+    ctx.textAlign = 'center'; ctx.font = '12px sans-serif';
+    dims.forEach((d, i) => { const hh = d * unit * signs[i]; ctx.fillStyle = signs[i] > 0 ? cssVar('--t') : cssVar('--r'); ctx.fillRect(xs[i] - 24, base - Math.max(0, hh), 48, Math.abs(hh)); ctx.fillStyle = cssVar('--text'); ctx.fillText(['dim H⁰', 'dim H¹', 'dim H²'][i] + ' = ' + d, xs[i], base + (hh >= 0 ? 16 : -hh + 16)); ctx.fillStyle = cssVar('--muted'); ctx.fillText(signs[i] > 0 ? '+' : '−', xs[i], base - hh - (hh >= 0 ? 8 : -8)); });
+    ctx.strokeStyle = cssVar('--line'); ctx.beginPath(); ctx.moveTo(20, base); ctx.lineTo(w - 20, base); ctx.stroke();
+    const tr = fixed ? 2 + 2 * g : 2 - 2 * g;
+    ctx.fillStyle = tr >= 0 ? cssVar('--t') : cssVar('--r'); ctx.font = 'bold 15px sans-serif'; ctx.fillText(`Tr(恒等 | hX) = ${fixed ? '1 + 2g + 1' : '1 − 2g + 1'} = ${tr}`, w / 2, 26);
+    ctx.fillStyle = cssVar('--muted'); ctx.font = '11px sans-serif'; ctx.fillText(fixed ? 'Betti 数之和' : 'Betti 数的交错和 = Euler–Poincaré 特征', w / 2, 44);
+    if (tr < 0) { msg.className = 'card r'; msg.innerHTML = '<h3>负数 ✗</h3><p>任何忠实正合张量函子 ω 都保持迹，而 Tr(u | ω(M)) = dim_Q ω(M) 必须是非负整数。所以不存在 ω : M_num(k) → Vec_Q——它不是 Tannaka 范畴。</p>'; }
+    else { msg.className = 'card t'; msg.innerHTML = `<h3>非负 ✓</h3><p>${fixed ? '改了负号之后迹是 Betti 数之和，M_num(k) 成为 Tannaka 范畴（k 特征零时为中性）。' : 'g ≤ 1 时碰巧非负，但一般曲线 g 可以任意大。'}</p>`; }
+  };
+  root.append(el('div', { class: 'ctrl' }, range('亏格 g =', 0, 6, 1, g, (v) => { g = v; draw(); }), seg([['no', '原来的张量结构'], ['yes', 'ij 为奇数时改负号']], 'no', (v) => { fixed = v === 'yes'; draw(); })), c, msg);
+  draw();
+  addEventListener('resize', draw);
+});
+
+/* ===== 11 Zeta 与 Frobenius ===== */
+reg('zeta', (root) => {
+  let p = 3;
+  const tbl = el('div', { class: 'mathblock' });
+  const c = el('canvas', { class: 'cv', style: 'aspect-ratio:2.6/1' });
+  const nonres = { 2: null, 3: 2, 5: 2, 7: 3 };
+  const draw = () => {
+    const rows = [1, 2, 3, 4].map(m => `m = ${m}：|P⁰(F_{${p}^${m}})| = 1，  |P¹(F_{${p}^${m}})| = 1 + ${p}^${m} = ${1 + p ** m}`).join('<br>');
+    tbl.innerHTML = `${rows}<br><span class="hp">Z(P⁰, t) = 1 / (1 − t)</span>    <span class="hl">Z(P¹, t) = 1 / ((1 − t)(1 − ${p}t))</span>`;
+    const { ctx, w, h } = fitCanvas(c, 2.6);
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    const narrow = w < 500;
+    const n = p, cell = Math.min(narrow ? 30 : 64, (w - (narrow ? 110 : 160)) / n, (h - 60) / n), ox = (w - n * cell) / 2 - (narrow ? 36 : 50), oy = 48;
+    ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = cssVar('--text'); ctx.fillText(p === 2 ? (narrow ? 'F₄ = F₂[ω]/(ω²+ω+1)，固定 F₂ 的 2 个点' : 'p = 2 时 F₄ = F₂[ω]/(ω²+ω+1)，Frobenius 同样固定 F₂ 的 2 个点（示意：固定行）') : (narrow ? `A¹(F_{${p}²})：a + b√${nonres[p]}，π: b ↦ −b` : `A¹(F_{${p}²})：元素写成 a + b√${nonres[p]}（${nonres[p]} 是 F_${p} 的非平方），π: a + b√d ↦ a − b√d`), w / 2, 18);
+    ctx.fillStyle = cssVar('--muted'); ctx.fillText(narrow ? `${p * p} 个点，固定 ${p} 个；加 ∞ 共 ${p + 1} 个` : `${p}² = ${p * p} 个点，π 固定其中 b = 0 的 ${p} 个 = A¹(F_${p})；再加 ∞，P¹(F_${p}) 共 ${p + 1} 个点`, w / 2, 34);
+    for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) {
+      const x = ox + a * cell + cell / 2, y = oy + b * cell + cell / 2;
+      const fixedPt = b === 0;
+      ctx.fillStyle = fixedPt ? cssVar('--o') : cssVar('--p'); ctx.globalAlpha = fixedPt ? 1 : .45;
+      ctx.beginPath(); ctx.arc(x, y, Math.min(7, cell * .22), 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      if (!fixedPt) { const b2 = (n - b) % n; const y2 = oy + b2 * cell + cell / 2; if (b < b2) { ctx.strokeStyle = rgba('#8a8a95', .7); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y2 - 6); ctx.stroke(); ctx.fillStyle = cssVar('--muted'); ctx.fillText('↕', x, (y + y2) / 2 + 4); } }
+    }
+    ctx.fillStyle = cssVar('--muted'); ctx.textAlign = 'left'; ctx.fillText('b = 0（不动点）', ox + n * cell + 6, oy + cell / 2 + 4); ctx.fillText('b ↔ −b', ox + n * cell + 6, oy + cell * 1.5 + 4);
+  };
+  root.append(el('div', { class: 'ctrl' }, seg([[2, 'p = 2'], [3, 'p = 3'], [5, 'p = 5'], [7, 'p = 7']], 3, (v) => { p = +v; draw(); })), tbl, c,
+    el('div', { class: 'mathblock' }, 'Weil 猜想：Z(X, t) = ', el('span', { class: 'hp' }, 'P₁(t) ⋯ P_{2n−1}(t)'), ' / ', el('span', { class: 'hl' }, '(1 − t) P₂(t) ⋯ P_{2n−2}(t) (1 − pⁿt)'), '，  Pᵢ ∈ Z[t]，|α_ij| = p^{i/2}，deg Pᵢ = Betti 数 bᵢ'));
+  draw();
+  addEventListener('resize', draw);
+});
+
+/* ===== 12 从簇到费马 ===== */
+reg('modular', (root) => {
+  const steps = [
+    ['Q 上的簇 X（如椭圆曲线 E）', '去分母、模素数 p，得到 F_p 上的 X_p；除有限个「坏」素数外都是非奇异的。'],
+    ['每个好的 p 一个 Z(X_p, t)', 'ζ(X, s) = ∏_{好的 p} Z(X_p, p^{−s})。单点给出 Riemann ζ(s)；P¹ 给出 ζ(s)ζ(s−1)。'],
+    ['椭圆曲线：ζ(E, s) = ζ(s)ζ(s−1) / L(E, s)', 'Z(E_p, t) = (1−α_p t)(1−ᾱ_p t)/((1−t)(1−pt))，α_p + ᾱ_p ∈ Z，α_p ᾱ_p = p。'],
+    ['换成母题的语言', 'hE = h⁰E ⊕ h¹E ⊕ h²E，于是 ζ(hE, s) = ζ(s) · L(E, s)^{−1} · ζ(s−1)：L(E, s)^{−1} 就是 ζ(h¹E, s)。'],
+    ['母题 L-函数 vs 自守 L-函数', '前者来自代数几何，后者来自模形式 / 自守表示，定义不用代数几何。'],
+    ['模性大猜想（Langlands 纲领的基本原则）', '每个母题 L-函数都是自守 L-函数的交错积。'],
+    ['模性（小）猜想', 'ζ(h¹E, s) 是模形式的 Mellin 变换。'],
+    ['Wiles（等人）证明了它', '这是费马大定理证明中的主要步骤。'],
+  ];
+  const chain = el('div', { class: 'chain' }, steps.map((t, i) => el('div', { class: 'lnk' }, el('span', { class: 'i' }, String(i + 1)), el('span', { html: `<b>${t[0]}</b><br>${t[1]}` }))));
+  const links = [...chain.children];
+  let k = -1;
+  const play = every(RM ? 3000 : 1300, () => { k = (k + 1) % (steps.length + 1); links.forEach((l, i) => l.classList.toggle('on', k < steps.length && i <= k)); });
+  root.append(el('div', { class: 'ctrl' }, btn('播放', () => { play.stop(); k = -1; play.start(); }, 'primary')), chain);
+  return play;
+});
+
+/* ===== 13 BSD：2401 = 49² ===== */
+reg('bsd', (root) => {
+  const c = el('canvas', { class: 'cv', style: 'aspect-ratio:2.4/1' });
+  let t0 = -1, done = 0;
+  const eq = el('div', { class: 'mathblock' }, 'L(E, 1)* = {已知项} · ', el('span', { class: 'hl' }, '{神秘项}'), '      ← 猜想为 Tate–Shafarevich 群的阶数（若有限，是平方数）', el('br'), 'L₃(E, 1)* = {已知项} · ', el('span', { class: 'hr' }, '{神秘平方}'), '      ← 可以很大，例如 ', el('span', { class: 'hp' }, '2401'));
+  const draw = () => {
+    const { ctx, w, h } = fitCanvas(c, 2.4);
+    ctx.fillStyle = cssVar('--surface-2'); ctx.fillRect(0, 0, w, h);
+    const N = 49, cell = Math.min((h - 40) / N, (w * .6) / N), ox = 20, oy = 24;
+    const T = t0 < 0 ? 0 : (performance.now() - t0) / 1000;
+    const cnt = RM ? N * N : Math.min(N * N, Math.floor(T * 900));
+    done = cnt;
+    ctx.fillStyle = cssVar('--p');
+    for (let i = 0; i < cnt; i++) { const r = Math.floor(i / N), q = i % N; ctx.fillRect(ox + q * cell, oy + r * cell, cell - .6, cell - .6); }
+    ctx.strokeStyle = cssVar('--line'); ctx.strokeRect(ox, oy, N * cell, N * cell);
+    const narrow = w < 500, tx = ox + N * cell + (narrow ? 14 : 24), sp = narrow ? 15 : 22;
+    ctx.fillStyle = cssVar('--text'); ctx.font = `bold ${narrow ? 14 : 20}px sans-serif`; ctx.textAlign = 'left';
+    ctx.fillText(cnt >= N * N ? '2401 = 49 × 49 = 49²' : `${cnt} …`, tx, oy + (narrow ? 14 : 40));
+    ctx.font = `${narrow ? 11 : 12}px sans-serif`; ctx.fillStyle = cssVar('--muted');
+    ['49 行 × 49 列', '猜想：它是母题 M 的', '「Tate–Shafarevich 群」的阶', 'ζ(M, s) = L₃(E, s)⁻¹'].forEach((t, i) => ctx.fillText(t, tx, oy + (narrow ? 34 : 64) + i * sp));
+  };
+  const L = loop(draw);
+  root.append(eq, el('div', { class: 'ctrl' }, btn('拼一拼', () => { t0 = performance.now(); }, 'primary')), c);
+  return { start() { if (t0 < 0) t0 = performance.now(); L.start(); }, stop() { L.stop(); } };
+});
+
+/* ===== 14 纯粹 vs 混合 ===== */
+reg('mixed', (root) => {
+  const W = 560, H = 240;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  // 左：纯粹母题 = 直和
+  s.append(svg('text', { x: 130, y: 22, class: 'txt b' }, '纯粹母题 M(k)'), svg('text', { x: 130, y: 38, class: 'txt s' }, '非奇异射影簇；半单：直和拆开'));
+  const colsC = ['#4f46e5', '#0f9d8a', '#e8731f'];
+  [0, 1, 2].forEach(i => { s.append(svg('rect', { x: 40 + i * 62, y: 90, width: 54, height: 60, rx: 8, fill: colsC[i], opacity: .2, stroke: colsC[i] }), svg('text', { x: 67 + i * 62, y: 120, class: 'txt m' }, `权 ${i}`)); });
+  s.append(svg('text', { x: 130, y: 172, class: 'txt s' }, 'M = M₀ ⊕ M₁ ⊕ M₂'));
+  // 右：混合母题 = 滤链
+  s.append(svg('text', { x: 410, y: 22, class: 'txt b' }, '混合母题（预言中）'), svg('text', { x: 410, y: 38, class: 'txt s' }, '对应所有簇；不再半单：只有滤链'));
+  const layers = [0, 1, 2].map(i => { const g = svg('g', { style: `opacity:0;transition:opacity .5s ${i * .3}s` }); g.append(svg('rect', { x: 330, y: 150 - i * 34, width: 160, height: 30, rx: 6, fill: colsC[i], opacity: .2, stroke: colsC[i] }), svg('text', { x: 410, y: 165 - i * 34, class: 'txt m' }, `${['W₀', 'W₁ / W₀', 'W₂ / W₁'][i]} ≅ 纯粹，权 ${i}`)); s.append(g); return g; });
+  s.append(svg('path', { d: 'M 500 180 L 500 56', class: 'edge k dash anim', 'marker-end': 'url(#arrM)' }), svg('text', { x: 525, y: 120, class: 'txt s' }, '滤链'));
+  s.append(svg('defs', { html: '<marker id="arrM" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8a8a95"/></marker>' }));
+  s.append(svg('text', { x: 410, y: 206, class: 'txt s' }, '每个混合母题应有一条滤链，因子皆为纯粹母题'));
+  s.append(svg('text', { x: 280, y: 232, class: 'txt s r' }, '目前尚无混合母题范畴的明确定义——连猜想性的定义也没有'));
+  let k = -1;
+  const play = every(RM ? 3000 : 1000, () => { k = (k + 1) % 5; layers.forEach((g, i) => g.style.opacity = i <= k ? 1 : 0); });
+  const cands = el('div', { class: 'grid3', style: 'margin-top:10px' },
+    el('div', { class: 'col', html: '<h4>候选 1</h4>一些<b>三角化范畴</b>，作为「混合母题范畴的导出范畴」的候选' }),
+    el('div', { class: 'col', html: '<h4>还需要</h4>在候选范畴上定义一个 <b>t-结构</b>' }),
+    el('div', { class: 'col on', html: '<h4>目标</h4>t-结构的中心（heart）正是混合母题范畴自身' }));
+  root.append(wide(s), cands);
+  return { start() { s.classList.add('running'); play.start(); }, stop() { s.classList.remove('running'); play.stop(); } };
+});
+
+/* ===== 启动：导航、进度条、视口触发 ===== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

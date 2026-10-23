@@ -1,0 +1,1001 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>语义计算机中没有 Token</title>
+<meta name="description" content="孔某人《语义计算机中没有Token》可视化导读：Token 粒度为什么不是好的语义单元、推理期计算 LLM 的价值与训练、LLM 在语义空间中像 A* 算法、语义程序与可优化的语义计算机。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ---- 语义计算机页面专用 ---- */
+.bx{fill:var(--surface-2);stroke:var(--line);stroke-width:1}
+.bx.p{fill:var(--p-soft);stroke:var(--p)}
+.bx.t{fill:var(--t-soft);stroke:var(--t)}
+.bx.o{fill:var(--o-soft);stroke:var(--o)}
+.bx.r{fill:var(--r-soft);stroke:var(--r)}
+.bx.y{fill:var(--y-soft);stroke:var(--y)}
+.bx.dim{opacity:.35}
+.tx{fill:var(--text);font-size:13px;font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.tx.s{font-size:11px;fill:var(--muted)}
+.tx.b{font-weight:700}
+.tx.w{fill:#fff}
+.ar{stroke:var(--muted);stroke-width:1.6;fill:none;marker-end:url(#arr)}
+.ar.p{stroke:var(--p)}
+.ar.t{stroke:var(--t)}
+.ar.o{stroke:var(--o)}
+.ar.r{stroke:var(--r)}
+.ar.dash{stroke-dasharray:5 4}
+.pulse{fill:var(--o);filter:drop-shadow(0 0 4px var(--o))}
+.fade{transition:opacity .5s}
+.tl2{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .tl2{grid-template-columns:repeat(3,1fr)} }
+.tl2 .card{opacity:.4;transition:opacity .5s,border-color .3s,transform .5s;transform:translateY(6px)}
+.tl2 .card.on{opacity:1;transform:none;border-color:var(--p)}
+.tl2 .card .yr{font-family:var(--mono);font-size:12px;color:var(--p)}
+.mind{display:flex;align-items:center;justify-content:center;gap:14px;margin:12px 0 4px;font-family:var(--mono);font-size:clamp(18px,4vw,30px);font-weight:700}
+.mind .tok{color:var(--o);transition:opacity 1s,letter-spacing 1s,filter 1s;display:inline-block}
+.tank{display:grid;grid-template-columns:1fr;gap:12px;align-items:stretch}
+@media (min-width:760px){ .tank{grid-template-columns:.9fr 1.3fr} }
+.tank .jar{position:relative;background:var(--surface-2);border:1px solid var(--line);border-radius:14px;min-height:200px;overflow:hidden}
+.tank .jar .lv{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(180deg,var(--p),var(--t));height:60%;transition:height 1.6s cubic-bezier(.3,.7,.3,1)}
+.tank .jar .lab{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;font-size:13px;color:var(--text)}
+.tank .jar .lab b{font-size:16px}
+.tank .jar .lab small{color:var(--muted);font-size:12px;margin-top:6px;max-width:220px}
+.fact{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.fact h3{font-size:14px;margin-bottom:4px}
+.fact .belt{display:flex;gap:6px;flex-wrap:wrap;min-height:30px;align-items:center}
+.fact .it{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--line);opacity:0;transform:translateX(-8px);transition:opacity .4s,transform .4s}
+.fact .it.show{opacity:1;transform:none}
+.fact .it.ok{border-color:var(--t);color:var(--t)}
+.fact .it.no{border-color:var(--r);color:var(--r);text-decoration:line-through}
+.fact .cnt{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px}
+.two{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+@media (min-width:760px){ .two{grid-template-columns:1fr 1fr} }
+.two .box{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px}
+.two .box h3{font-size:14px;margin-bottom:8px}
+.two .box.hl{border-color:var(--t)}
+.steps{display:flex;flex-direction:column;gap:6px}
+.steps .st{padding:6px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:13px;opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.steps .st.show{opacity:1;transform:none}
+.steps .st.err{border-color:var(--r);color:var(--r)}
+.steps .st.ok{border-color:var(--t)}
+.steps .st.sw{border-color:var(--o)}
+.vals{display:grid;grid-template-columns:1fr;gap:10px;margin-top:12px}
+@media (min-width:680px){ .vals{grid-template-columns:1fr 1fr} }
+.vals .card .k{font-size:11px;font-family:var(--mono);color:var(--p)}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.tabs button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.tabs button.on{background:var(--p);border-color:var(--p);color:#fff}
+.tabpane{display:none}
+.tabpane.on{display:block}
+.tabpane .body{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .tabpane .body{grid-template-columns:1.1fr .9fr;align-items:center} }
+.tabpane .txt{font-size:14px}
+.tabpane .txt b{color:var(--text)}
+.tabpane .txt li{margin:4px 0;color:var(--muted)}
+.tabpane .txt ul{padding-left:18px;margin:6px 0}
+.hot{cursor:pointer}
+.hot rect{transition:stroke-width .2s}
+.hot.on rect{stroke-width:2.5}
+.arch-info{margin-top:8px;min-height:3.4em;font-size:14px;background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.arch-info b{color:var(--p)}
+.chain{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:760px){ .chain{grid-template-columns:repeat(5,1fr)} }
+.chain .step{background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:12px 10px;text-align:center;opacity:.35;transform:translateY(8px);transition:opacity .5s,transform .5s,border-color .3s}
+.chain .step.on{opacity:1;transform:none;border-color:var(--p)}
+.chain .step .t{font-weight:700;font-size:15px}
+.chain .step .d{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4}
+.chain .step.x .t{text-decoration:line-through;color:var(--muted)}
+.scrollx>svg.wide{min-width:620px}
+
+.ar.p{marker-end:url(#arr-p)}
+.ar.t{marker-end:url(#arr-t)}
+.ar.o{marker-end:url(#arr-o)}
+.ar.r{marker-end:url(#arr-r)}
+
+@media (max-width:700px){ .scrollx::after{content:"← 图可左右滑动 →";display:block;text-align:center;font-size:11px;color:var(--muted);padding-top:4px} }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <a class="back" href="../../README.md">← ai-visual-notes</a>
+  <div class="brand">语义计算机中没有 Token</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 公众号「孔某人的低维认知」 · 2025-01-23</div>
+  <h1>语义计算机中没有 Token</h1>
+  <p class="sub">副标题：正如 C 语言中没有寄存器。C 语言编译后的二进制代码会使用 CPU 寄存器，但 C 语言的层面没有寄存器的概念，也无法直接操作。</p>
+  <div class="thesis">作者的核心抽象：把 context 中的指令和过程当作<b>语义程序</b>，LLM 本身就是执行它的<b>语义计算机</b>。在语义空间里，token 和推理速度一样——是下面一层的事，感受不到。</div>
+  <div class="authors"><span class="au"><i style="background:var(--p)">孔</i>孔某人</span><span class="tag">只谈文本模态 · 未来 5 年尺度</span></div>
+  <div class="meta">来源：微信公众号「孔某人的低维认知」2025-01-23，同日首发知乎（zhuanlan.zhihu.com/p/19997644058）。本页图示均为示意，观点与术语忠于原文。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="grain" data-title="Token 粒度太细">
+  <div class="ch-head"><span class="num">01</span>
+    <h2>回顾 Token：粒度太细，不是好的语义单元</h2>
+    <p class="lead">作者从 2023 年起反复提：LLM 的 Token 粒度不是表达语义的好方式，基于 Token 的学习方式对学语义来说效率也低。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文的例子：你并不是靠学「每个路口怎么打方向盘」来学会从北京开到广州的。切换视角，看同一段路程里的「决策单元」（示意）。</div>
+    <div data-demo="drive"></div>
+  </div>
+  <ul class="notes">
+    <li><b>但没找到更好的</b>：一年半过去，仍未看到与 Token 不同、更接近语义粒度的建模方式。原因是没找到「更好地」表达语义的方式，而很多方案在和直接学 Token 的 scale 能力对比时没有显著提升，甚至下降。</li>
+    <li><b>相关阅读</b>（知乎）：《Rethinking LLM（1）：Token 与语义的 Gap》2023.5、《Rethinking LLM（3）：语义层面探索的一些想法》2023.6、《探索 LLM 的语义 loss 与模型设计（2）》2023.12。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="vanish" data-title="Token 正在从心智中消失">
+  <div class="ch-head"><span class="num">02</span>
+    <h2>现在的 Token：正在从 LLM 用户的心智中消失</h2>
+    <p class="lead">讨论 Token 问题的人本就不多，2024 年更少了——大家都觉得它够了。推理硬件和各种优化让 token 粒度过小对性能的影响不再那么大。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">三个时间点，作者自己对 prompt 的建议怎么变。上方的「token」会随之淡去。</div>
+    <div data-demo="vanish"></div>
+  </div>
+  <ul class="notes">
+    <li><b>炼丹团队也一样</b>：现在更在乎语料数据；对 Token 的关注多在一些特殊 Token 上，而那些与其说是 Token 层面，不如说是 Step / Message 层面的。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="ttc" data-title="推理期计算 LLM">
+  <div class="ch-head"><span class="num">03</span>
+    <h2>推理期计算 LLM：回答前先想一想</h2>
+    <p class="lead">本文把「明显会在回答前进行一个思考过程」的模型叫做推理期计算 LLM。从 o1-preview 到写作时已 4 个月，各方看法仍多样；作者对这个范式的评价却逐渐变高，这两天又跃升一次——这就是本文的写作契机。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左：传统 LLM 直接从问题到答案。右：推理期计算 LLM 中间多了一段思考——探索、反思改错、切换思路（示意）。点「重播」再看一次。</div>
+    <div data-demo="reason"></div>
+  </div>
+  <ul class="notes">
+    <li><b>名字不好取</b>：「推理 / reasoning」也不是好叫法——Anthropic CEO 最近说推理和 Agent 这个词一样，过于宽泛以至于几乎不提供信息量。MiniMax CEO 则表示还没看清 o 系列模型的未来，所以还没投入。</li>
+    <li><b>两个主要价值</b>（按重要性降序）：① 更好的分布外泛化能力，更能适应用户具体场景，同样效果下训练成本大幅下降；② 与现阶段高质量数据合成方式更匹配，总体训练成本更低，也更适合为具体场景特化模型（如 RFT）。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="data" data-title="高质量数据已经用完">
+  <div class="ch-head"><span class="num">04</span>
+    <h2>关键问题：可低成本获取的高质量数据【已经】几乎用完</h2>
+    <p class="lead">不是「快要用完」。什么算高质量也更清楚了：<b>能进一步提升模型能力的数据</b>才算。现在的前沿模型已很接近人类短时间思考的能力，大部分人类未经深思或没有专业加成的数据对提升没有帮助，甚至有害。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左：数据「水位」。右：现阶段能大批量合成的两类高质量数据——数学（Lean 自动验证）和代码（沙盒执行测试）。自动验证的「质量」明显高于招大量专业人员撰写，成本也更低；前提是要有自动的结果验证工具。</div>
+    <div data-demo="data"></div>
+  </div>
+  <ul class="notes">
+    <li><b>「污染」担心是多余的</b>：即使没有 LLM 生成的内容，光凭人类数据也很难让模型进一步提升。模型可以从新数据中学到新信息，但能力没有提升。</li>
+    <li><b>所以关键点是</b>：如何构造能让模型能力进一步提升的数据。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="explore" data-title="记住答案 vs 学会探索">
+  <div class="ch-head"><span class="num">05</span>
+    <h2>AlphaZero 思路：让模型自己探索，而不是记住答案</h2>
+    <p class="lead">高质量人类专家数据不够多，质量也难说够高，所以很多研究者选择让模型自己探索出解决问题的方式。这种逐步探索的过程与推理期计算范式一致：学的是解决问题的方式，而不只是记住答案。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左：没有思考过程的传统 LLM 更接近「直接记住探索的经验」——一个庞大的经验库。右：在新环境基于新信息重新分析问题——更有效的泛化，更能举一反三（示意）。</div>
+    <div data-demo="explore"></div>
+  </div>
+  <ul class="notes">
+    <li><b>代价转移</b>：只是增加了推理期成本，而且由使用者承担，不必预先为不存在的用户投入巨大前置成本。</li>
+    <li><b>不是新发现</b>：在一些领域推理期计算早就是低成本优化效果的有效手段，Noam Brown 的学术生涯里做过不少（扑克到 Diplomacy）。相关阅读还有 Hyung Won Chung 的 MIT EI 讲座 "Don't teach. Incentivize."</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="reward" data-title="Reward 介入的三个时机">
+  <div class="ch-head"><span class="num">06</span>
+    <h2>如何训练：reward 在哪一级介入</h2>
+    <p class="lead">我们并不清楚 o1 怎么训练的。按 reward 信息的介入时间可以分三类：Token 级（value model，pretrain 和 SFT 也是这类）、Step 级（PRM）、整个回答之后（ORM）。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">一条回答被切成 token → step → 整体。点选一类，看 reward 挂在哪里，以及它的问题。</div>
+    <div data-demo="reward"></div>
+  </div>
+  <ul class="notes">
+    <li><b>流行趋势</b>：直接用 ORM 做 RL，怎么解 prompt 完全靠模型自己探索。DeepSeek 的 GRPO 就是放弃了 value model。</li>
+    <li><b>LLM 并非从零开始</b>：这与传统 RL 不同——pretrain 学了大量人类语料，会用人类常用的方式：反思思考历史、识别过去的错误、从一种思路跳到另一种……整个训练对模型的要求只是达到 reward model 的目标，<b>方法不限</b>。所以出现各种人类式思考模式并不奇怪，DeepSeek R1 报告里的 Aha moment 也属此列；也更能理解为什么 Apollo Research AI 安全报告里 o1 问题最大——它可能就是被这么训练的，「只要结果，方法不论」。</li>
+    <li><b>作者的保留意见</b>：并不觉得只能走完全没有结构和先验、只针对有完美 ORM 的领域。算力仍是瓶颈，不完美的 ORM 也有价值；某些问题里人工设计的 Step 和 PRM 仍有可取之处——5 年后可能不需要，但未来 2 年内可能很有用。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="astar" data-title="不只是 Policy Model">
+  <div class="ch-head"><span class="num">07</span>
+    <h2>并非简单的 Policy Model：语义空间里的「A* 算法」</h2>
+    <p class="lead">只把 LLM 看成逐个生成 Token 的函数，它对应 RL 里的 policy model。但它还有两个能力：<b>自我反思和改错</b>、<b>识别当前路径希望不大并跳到其他路径</b>——这不符合传统 Policy Model 的认知。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">在语义空间里，LLM 包括：基于当前路径继续探索、反思改错、比较不同路径并适时切换……有点像一个 A* 算法并附带各种模型和策略（示意动画）。</div>
+    <div data-demo="astar"></div>
+  </div>
+  <ul class="notes">
+    <li><b>两个能力的来源</b>：第二个能力看起来包含了 value model 或 PRM 的功能；第一个似乎没有传统对应物，因为一般的 RL 建模中没有犯错和改错。这两个能力不在 token 序列空间视角中，而在<b>语义空间</b>中。</li>
+    <li><b>in-context RL</b>：虽然是在 token 空间训练的，LLM 似乎在语义空间学到了一种并不简单的探索能力。有人把推理期计算 LLM 算作 in-context RL，从这里确实能感觉到一些。</li>
+  </ul>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="program" data-title="语义程序">
+  <div class="ch-head"><span class="num">08</span>
+    <h2>语义程序：把 in-context 空间当作语义空间</h2>
+    <p class="lead">回顾一下：想找更好的语义空间表示但没找到；推理期计算 LLM 在语义空间形成了某些能力；还有一些「in-context xxxx」的不明所以的叫法。到这里，就可以把 in-context 空间当作语义空间——只是其中的语义内容是非结构化的。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">以程序的角度审视那个「A* 算法」。三条性质：① 数据和代码不区分（很像 Lisp）；② 语义能力本身在 LLM 模型中，程序只是调用这些能力；③ 程序可以靠用户 prompt 注入，也可以在推理中从模型里提取，并对历史学到的程序片段进行融合组装。</div>
+    <div data-demo="program"></div>
+  </div>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="computer" data-title="可优化的语义计算机">
+  <div class="ch-head"><span class="num">09</span>
+    <h2>可优化的语义计算机</h2>
+    <p class="lead">如果把 context 中的指令和过程当作程序和数据，那么 LLM 本身就是执行语义程序的语义计算机。它可以被优化——调整模型权重即可。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点选一种信号，看它作用在哪一层。SFT 是固定语义程序、优化语义计算机；推理期计算 LLM 的 RL 训练则是计算机和它使用的程序的联合优化。目前的 RL 并不直接优化语义程序 / prompt，而是通过优化模型参数，影响程序的执行效果和执行中召回的程序。</div>
+    <div data-demo="computer"></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="arch" data-title="以计算机的视角">
+  <div class="ch-head"><span class="num">10</span>
+    <h2>以计算机的视角：一台最简单的计算机</h2>
+    <p class="lead">目前的推理期计算 LLM 可以算成一种最简单的计算机。拿现在计算机的视角来看，能得到很多启发——也有些东西在这里根本不存在。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点击各个部件。灰色虚线的是「语义计算机里没有」的东西。</div>
+    <div data-demo="arch"></div>
+  </div>
+  <ul class="notes">
+    <li><b>语义计算机似乎是个不错的抽象层面</b>：两边可以分别独立优化，就像现在的软件和硬件分别迭代一样。</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section class="ch" id="misc" data-title="五条零散推论">
+  <div class="ch-head"><span class="num">11</span>
+    <h2>零散话题：五条推论</h2>
+    <p class="lead">主要内容到上一节已阐述完成，这里是作者列举的零碎推论。</p>
+  </div>
+  <div class="fig">
+    <div data-demo="misc"></div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="ch" id="end" data-title="结语">
+  <div class="ch-head"><span class="num">12</span>
+    <h2>结语：不是新概念，但现在有了实感</h2>
+    <p class="lead">语义计算机至少在 2023 年就是一个常见想法。但作者觉得，到推理期计算 LLM 才让人更能获得一些实感——没有更适合的形容方式了。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">全文的链条。</div>
+    <div data-demo="final"></div>
+  </div>
+  <div class="final">C 语言里没有寄存器，语义计算机里没有 token。把 context 当程序，把 LLM 当执行它的计算机——然后两边各自迭代。</div>
+</section>
+
+<footer>
+  <div><b>来源</b></div>
+  <ul>
+    <li>孔某人《语义计算机中没有Token》，微信公众号「孔某人的低维认知」，2025-01-23；知乎：<a href="https://zhuanlan.zhihu.com/p/19997644058">zhuanlan.zhihu.com/p/19997644058</a></li>
+    <li>原文列出的相关阅读（Noam Brown 讲座、Hyung Won Chung 讲座、Speculations on Test-Time Scaling、Flood Sung 对 Kimi k1.5 的回答、DeepSeek R1 / DeepSeekMath 技术报告、作者对 Apollo Research 报告的解读、Bitter Lesson 一文）未在本页展开。</li>
+  </ul>
+  <div style="margin-top:10px">本页由 Claude Code 基于原文生成，仅供学习。</div>
+</footer>
+
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+/* ======================================================================
+   SVG 小工具
+   ====================================================================== */
+const DEFS = '<defs>' + [['arr', 'var(--muted)'], ['arr-p', 'var(--p)'], ['arr-t', 'var(--t)'], ['arr-o', 'var(--o)'], ['arr-r', 'var(--r)']].map(([id, c]) => `<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join('') + '</defs>';
+const mkSvg = (w, h, cls = '') => { const s = svg('svg', { viewBox: `0 0 ${w} ${h}`, class: cls }); s.innerHTML = DEFS; return s; };
+const box = (x, y, w, h, text, cls = '', tcls = '') => {
+  const g = svg('g', { class: 'hot-' + cls });
+  g.append(svg('rect', { x, y, width: w, height: h, rx: 10, class: 'bx ' + cls }));
+  const lines = String(text).split('\n');
+  lines.forEach((ln, i) => g.append(svg('text', { x: x + w / 2, y: y + h / 2 + (i - (lines.length - 1) / 2) * 15, class: 'tx ' + tcls }, ln)));
+  return g;
+};
+const arrow = (d, cls = '') => svg('path', { d, class: 'ar ' + cls });
+const txt = (x, y, s, cls = '') => svg('text', { x, y, class: 'tx ' + cls }, s);
+const dot = (x, y, r = 5) => svg('circle', { cx: x, cy: y, r, class: 'pulse' });
+/* 沿折线走的小球 */
+function walker(pts, dur = 2.4) {
+  const c = dot(pts[0][0], pts[0][1]);
+  const segs = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const L = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); segs.push([pts[i - 1], pts[i], L]); total += L; }
+  c.at = (t) => { let d = ((t / dur) % 1) * total; for (const [a, b, L] of segs) { if (d <= L) { const k = d / L; c.setAttribute('cx', lerp(a[0], b[0], k)); c.setAttribute('cy', lerp(a[1], b[1], k)); return; } d -= L; } };
+  return c;
+}
+
+/* ======================================================================
+   Hero：C 语言 / 寄存器  ↔  语义程序 / token
+   ====================================================================== */
+reg('hero', (node) => {
+  const S = mkSvg(720, 252, 'wide'); const wrap = el('div', { class: 'scrollx' }, S); node.append(wrap);
+  const col = (x0, title, items, cls) => {
+    S.append(txt(x0 + 150, 18, title, 'b'));
+    items.forEach(([t, c], i) => { S.append(box(x0 + 40, 36 + i * 48, 220, 34, t, c || cls)); if (i) S.append(arrow(`M${x0 + 150},${36 + (i - 1) * 48 + 34} L${x0 + 150},${36 + i * 48 - 2}`)); });
+  };
+  col(10, '传统计算机', [['C 源码（程序 + 数据）', 'p'], ['编译', ''], ['二进制 / 机器码', ''], ['CPU 寄存器', 'o']], '');
+  col(380, '语义计算机', [['语义程序（context 里的指令和过程）', 'p'], ['LLM 执行（语义计算机）', ''], ['逐个生成', ''], ['token', 'o']], '');
+  S.append(txt(360, 118, '≈', 'b'), txt(360, 136, '同一层级', 's'));
+  S.append(svg('line', { x1: 40, y1: 226, x2: 300, y2: 226, class: 'gr' }), svg('line', { x1: 410, y1: 226, x2: 670, y2: 226, class: 'gr' }));
+  S.append(txt(160, 240, 'C 语言层面没有「寄存器」的概念', 's'), txt(530, 240, '语义层面没有「token」的概念', 's'));
+  const w1 = walker([[160, 53], [160, 101], [160, 149], [160, 197]], 3), w2 = walker([[530, 53], [530, 101], [530, 149], [530, 197]], 3);
+  S.append(w1, w2);
+  return loop((t) => { w1.at(t); w2.at(t); });
+});
+
+/* ======================================================================
+   01 北京 → 广州
+   ====================================================================== */
+reg('drive', (node) => {
+  const S = mkSvg(720, 260, 'wide'); const wrap = el('div', { class: 'scrollx' }, S);
+  let mode = 0;
+  const ctrl = el('div', { class: 'ctrl' }, seg(['Token 视角：每个路口打方向盘', '语义视角：几段路程'], (i) => { mode = i; draw(); }, 0));
+  node.append(ctrl, wrap);
+  // 一条弯弯曲曲的路线
+  const route = []; { let x = 60, y = 60; route.push([x, y]); let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280; for (let i = 0; i < 70; i++) { x += 8 + rnd() * 3; y = 60 + Math.sin(i / 6) * 60 + Math.sin(i / 2.3) * 22 + 60; route.push([x, y]); } }
+  const way = [route[0], route[14], route[28], route[42], route[56], route[70]];
+  const wayLab = ['北京', '上高速', '换线', '服务区', '下高速', '广州'];
+  const base = svg('g'), layer = svg('g'); S.append(base, layer);
+  base.append(svg('path', { d: 'M' + route.map(p => p.join(',')).join(' L'), fill: 'none', stroke: 'var(--line)', 'stroke-width': 10, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  base.append(svg('path', { d: 'M' + route.map(p => p.join(',')).join(' L'), fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.5, 'stroke-dasharray': '6 6' }));
+  const counter = txt(360, 246, '', 's');
+  S.append(counter);
+  const draw = () => {
+    layer.innerHTML = '';
+    if (mode === 0) {
+      route.forEach((p, i) => { if (i === 0) return; const q = route[i - 1]; const ang = Math.atan2(p[1] - q[1], p[0] - q[0]) * 180 / Math.PI; layer.append(svg('path', { d: 'M-6,3 L0,-5 L6,3', fill: 'none', stroke: 'var(--o)', 'stroke-width': 1.6, transform: `translate(${p[0]},${p[1]}) rotate(${ang + 90})` })); });
+      counter.textContent = `决策单元 ≈ ${route.length - 1} 个「路口」——每一个都对应一个 token`;
+    } else {
+      way.forEach((p, i) => { layer.append(svg('circle', { cx: p[0], cy: p[1], r: 9, fill: 'var(--p)', stroke: 'var(--surface)', 'stroke-width': 2 })); layer.append(txt(p[0], p[1] - 18, wayLab[i], 'b')); });
+      counter.textContent = `决策单元 = ${way.length - 1} 段——人的思维明显是分层的`;
+    }
+  };
+  draw();
+  const w = walker(route, 9); w.setAttribute('r', 7); S.append(w);
+  return loop((t) => w.at(t));
+});
+
+/* ======================================================================
+   02 token 淡出
+   ====================================================================== */
+reg('vanish', (node) => {
+  const mind = el('div', { class: 'mind' }, el('span', { style: 'color:var(--muted);font-size:14px' }, 'LLM 用户的心智里：'), el('span', { class: 'tok' }, 'token'));
+  const cards = [
+    ['2023', 'Token 与语义', '作者在知乎连发三篇，专题讨论 Token 粒度问题与可能方案。'],
+    ['2024.5', '写 prompt 的建议', '那时作者还会建议「避免在 CoT 过程中引入难 token」。'],
+    ['现在（2025.1）', '建议扔掉了', '靠模型自己思考和重新叙述 prompt 就好。对 o1，token 级 prompt 优化可以扔了，连语义 Step 的安排考量也逐步弱化。'],
+  ].map(([y, t, d]) => { const c = el('div', { class: 'card' }); c.append(el('div', { class: 'yr' }, y), el('h3', {}, t), el('p', {}, d)); return c; });
+  node.append(mind, el('div', { class: 'tl2' }, cards));
+  let k = -1;
+  const tok = mind.querySelector('.tok');
+  const step = () => { k = (k + 1) % 3; cards.forEach((c, i) => c.classList.toggle('on', i <= k)); tok.style.opacity = [1, .55, .12][k]; tok.style.letterSpacing = ['0', '.1em', '.35em'][k]; tok.style.filter = ['none', 'blur(.5px)', 'blur(2px)'][k]; };
+  step();
+  return every(1800, step);
+});
+
+/* ======================================================================
+   03 传统 vs 推理期计算
+   ====================================================================== */
+reg('reason', (node) => {
+  const two = el('div', { class: 'two' });
+  const L = el('div', { class: 'box' }); L.append(el('h3', {}, '传统 LLM'));
+  const Ls = el('div', { class: 'steps' }); L.append(Ls);
+  const R = el('div', { class: 'box hl' }); R.append(el('h3', {}, '推理期计算 LLM'));
+  const Rs = el('div', { class: 'steps' }); R.append(Rs);
+  two.append(L, R);
+  const btn = el('button', { type: 'button', class: 'btn', onclick: () => play() }, '重播');
+  node.append(two, el('div', { class: 'ctrl' }, btn));
+  const Lseq = [['问题', ''], ['↓ 直接作答（更接近记住的经验）', ''], ['答案', 'ok']];
+  const Rseq = [['问题', ''], ['思考：先试思路 A', ''], ['反思：这一步算错了 → 改', 'err'], ['判断：A 希望不大 → 跳到思路 B', 'sw'], ['验证：B 走得通', ''], ['答案', 'ok']];
+  const fill = (host, seq) => { host.innerHTML = ''; return seq.map(([t, c]) => { const s = el('div', { class: 'st ' + c }, t); host.append(s); return s; }); };
+  let timers = [];
+  const play = () => {
+    timers.forEach(clearTimeout); timers = [];
+    const a = fill(Ls, Lseq), b = fill(Rs, Rseq);
+    a.forEach((s, i) => timers.push(setTimeout(() => s.classList.add('show'), 300 + i * 350)));
+    b.forEach((s, i) => timers.push(setTimeout(() => s.classList.add('show'), 300 + i * 650)));
+  };
+  const vals = el('div', { class: 'vals' },
+    el('div', { class: 'card' }, el('div', { class: 'k' }, '价值 ①（更重要）'), el('h3', {}, '更好的分布外泛化'), el('p', {}, '更能适应用户的具体场景，有效果提升；同样效果下模型训练成本大幅下降。')),
+    el('div', { class: 'card' }, el('div', { class: 'k' }, '价值 ②'), el('h3', {}, '与高质量数据合成更匹配'), el('p', {}, '训练总体成本更低，更适合未来为具体场景特化模型（如 RFT）。')));
+  node.append(vals);
+  return { start: play, stop() { timers.forEach(clearTimeout); } };
+});
+
+/* ======================================================================
+   04 数据水位 + 两个工厂
+   ====================================================================== */
+reg('data', (node) => {
+  const jar = el('div', { class: 'jar' });
+  const lv = el('div', { class: 'lv' });
+  const lab = el('div', { class: 'lab' }, el('b', {}, '可低成本获取的高质量数据'), el('small', {}, '【已经】几乎用完——不是「快要」。高质量 = 能进一步提升模型能力的数据。'));
+  jar.append(lv, lab);
+  const mkFact = (title, src, verifier, items) => {
+    const f = el('div', { class: 'fact' });
+    const belt = el('div', { class: 'belt' });
+    const cnt = el('div', { class: 'cnt' });
+    f.append(el('h3', {}, title), el('p', { style: 'font-size:12px;color:var(--muted)' }, `${src} → ${verifier}`), belt, cnt);
+    f.items = items; f.belt = belt; f.cnt = cnt; return f;
+  };
+  const fm = mkFact('数学', 'AI 生成证明', 'Lean 自动验证', ['引理 1 ✓', '引理 2 ✗', '定理 A ✓', '推论 ✓', '引理 3 ✗', '定理 B ✓', '命题 ✓']);
+  const fc = mkFact('代码', 'AI 生成代码', '沙盒执行测试', ['PR #1 ✓', 'PR #2 ✓', 'PR #3 ✗', 'PR #4 ✓', 'PR #5 ✗', 'PR #6 ✓', 'PR #7 ✓']);
+  const human = el('div', { class: 'fact', style: 'opacity:.75' }, el('h3', {}, '人类专家撰写'), el('p', { style: 'font-size:12px;color:var(--muted)' }, '也能生产，但只有自动化方式才能生成足够多、足够准确的数据——AI 比人要认真得多。'));
+  node.append(el('div', { class: 'tank' }, jar, el('div', {}, fm, fc, human)));
+  let timers = [];
+  const run = () => {
+    timers.forEach(clearTimeout); timers = [];
+    lv.style.height = '60%'; timers.push(setTimeout(() => { lv.style.height = '4%'; }, 200));
+    [fm, fc].forEach(f => { f.belt.innerHTML = ''; let ok = 0; f.items.forEach((it, i) => { const n = el('span', { class: 'it' }, it); f.belt.append(n); timers.push(setTimeout(() => { n.classList.add('show', it.includes('✓') ? 'ok' : 'no'); if (it.includes('✓')) ok++; f.cnt.textContent = `自动验证通过 ${ok} / ${i + 1}，通过的才进训练集`; }, 400 + i * 420)); }); });
+  };
+  return { start: run, stop() { timers.forEach(clearTimeout); } };
+});
+
+/* ======================================================================
+   05 经验库 vs 探索
+   ====================================================================== */
+reg('explore', (node) => {
+  const two = el('div', { class: 'two' });
+  const L = el('div', { class: 'box' }); L.append(el('h3', {}, '庞大的经验库（记住答案）'));
+  const SL = mkSvg(320, 200); L.append(SL);
+  for (let i = 0; i < 6; i++) SL.append(box(20, 16 + i * 28, 280, 22, `经验 #${i + 1}：问题 → 答案`, i === 2 ? 'p' : 'dim', 's'));
+  SL.append(txt(160, 192, '新问题来了：在库里找最像的一条', 's'));
+  const R = el('div', { class: 'box hl' }); R.append(el('h3', {}, '在新环境重新分析（学会探索）'));
+  const SR = mkSvg(320, 200); R.append(SR);
+  // 树
+  const N = { r: [160, 24], a: [70, 76], b: [160, 76], c: [250, 76], a1: [40, 130], a2: [100, 130], b1: [160, 130], c1: [230, 130], c2: [280, 130], c1x: [230, 182] };
+  const E = [['r', 'a'], ['r', 'b'], ['r', 'c'], ['a', 'a1'], ['a', 'a2'], ['b', 'b1'], ['c', 'c1'], ['c', 'c2'], ['c1', 'c1x']];
+  const edges = {}, nodes = {};
+  E.forEach(([p, q]) => { const l = svg('line', { x1: N[p][0], y1: N[p][1], x2: N[q][0], y2: N[q][1], stroke: 'var(--line)', 'stroke-width': 2 }); edges[p + q] = l; SR.append(l); });
+  Object.entries(N).forEach(([k, [x, y]]) => { const c = svg('circle', { cx: x, cy: y, r: k === 'r' ? 10 : 8, fill: 'var(--surface)', stroke: 'var(--line)', 'stroke-width': 2 }); nodes[k] = c; SR.append(c); });
+  SR.append(txt(160, 20, '', 's'));
+  const lab = txt(160, 196, '', 's'); SR.append(lab);
+  two.append(L, R);
+  node.append(two, el('div', { style: 'font-size:12px;color:var(--muted);margin-top:8px;text-align:center' }, '示意：探索会走进死胡同、退回来、再试别的分支——学到的是「解决问题的方式」。'));
+  const script = [
+    [['r'], [], '从问题出发'], [['a'], ['ra'], '试分支 A'], [['a1'], ['aa1'], 'A-1 走不通（✗）'], [['a2'], ['aa2'], 'A-2 也不行，退回'], [['b'], ['rb'], '换分支 B'], [['b1'], ['bb1'], 'B 看起来希望不大'], [['c'], ['rc'], '换分支 C'], [['c1'], ['cc1'], '继续深入'], [['c1x'], ['c1c1x'], '找到答案 ✓'],
+  ];
+  let k = 0, timer;
+  const paint = () => {
+    const [ns, es, t] = script[k];
+    ns.forEach(n => { nodes[n].setAttribute('fill', k === script.length - 1 ? 'var(--t)' : (n === 'a1' || n === 'a2' || n === 'b1') ? 'var(--r)' : 'var(--p)'); });
+    es.forEach(e => edges[e].setAttribute('stroke', 'var(--p)'));
+    lab.textContent = t;
+  };
+  const reset = () => { Object.values(nodes).forEach(c => c.setAttribute('fill', 'var(--surface)')); Object.values(edges).forEach(l => l.setAttribute('stroke', 'var(--line)')); k = 0; paint(); };
+  return { start() { reset(); timer = setInterval(() => { k++; if (k >= script.length) { reset(); return; } paint(); }, 800); }, stop() { clearInterval(timer); } };
+});
+
+/* ======================================================================
+   06 reward 三个时机
+   ====================================================================== */
+reg('reward', (node) => {
+  const S = mkSvg(720, 230, 'wide'); const wrap = el('div', { class: 'scrollx' }, S);
+  const info = el('div', { class: 'arch-info' });
+  const MODES = [
+    ['Token 级：value model', 'pretrain 和 SFT 也是这类。Token 级 value model 很难事先准备；RL 中可以联合训练，但效果未必好——DeepSeek 的 GRPO 就是放弃了 value model。'],
+    ['Step 级：PRM', 'Process-supervised Reward Model。判定中间状态好坏更困难：连 ORM 都搞不定，PRM 就很难完善，容易被 reward hacking，也容易过度限制探索空间，还减少了模型学习自省和改错的机会。'],
+    ['整个回答后：ORM', 'Outcome-supervised Reward Model。很多领域做不出完美的 ORM，现阶段的 ORM 在实践中容易被 reward hacking——所以不少专家转而推崇能定义完美 ORM 的领域：数学和代码。'],
+  ];
+  let mode = 2;
+  const ctrl = el('div', { class: 'ctrl' }, seg(MODES.map(m => m[0]), (i) => { mode = i; draw(); }, 2));
+  node.append(ctrl, wrap, info);
+  const x0 = 40, W = 640, y = 110;
+  const steps = [0, .3, .62, 1];
+  const draw = () => {
+    S.innerHTML = DEFS;
+    S.append(txt(x0, y + 62, '开始', 's'), txt(x0 + W, y + 62, '结束', 's'));
+    // token 小格
+    for (let i = 0; i < 48; i++) S.append(svg('rect', { x: x0 + i * (W / 48) + 1, y: y - 12, width: W / 48 - 2, height: 24, rx: 3, fill: mode === 0 ? 'var(--p-soft)' : 'var(--surface-2)', stroke: 'var(--line)' }));
+    // step 分段
+    for (let s = 0; s < 3; s++) { const a = x0 + steps[s] * W, b = x0 + steps[s + 1] * W; S.append(svg('rect', { x: a + 2, y: y - 22, width: b - a - 4, height: 44, rx: 8, fill: mode === 1 ? 'var(--t-soft)' : 'none', stroke: mode === 1 ? 'var(--t)' : 'var(--line)', 'stroke-dasharray': mode === 1 ? '' : '4 4', opacity: mode === 1 ? .8 : .7 })); S.append(txt((a + b) / 2, y + 40, `Step ${s + 1}`, 's')); }
+    // 整体
+    S.append(svg('rect', { x: x0 - 8, y: y - 34, width: W + 16, height: 68, rx: 12, fill: mode === 2 ? 'var(--o-soft)' : 'none', stroke: mode === 2 ? 'var(--o)' : 'var(--line)', 'stroke-dasharray': mode === 2 ? '' : '4 4', opacity: mode === 2 ? .8 : .6 }));
+    // reward 标记
+    const mark = (x, lbl, cls) => { S.append(arrow(`M${x},${y - 70} L${x},${y - 40}`, cls)); S.append(txt(x, y - 82, lbl, 's')); };
+    if (mode === 0) for (let i = 0; i < 48; i += 4) mark(x0 + i * (W / 48) + W / 96, i === 24 ? 'reward' : '', 'p');
+    if (mode === 1) for (let s = 1; s <= 3; s++) mark(x0 + steps[s] * W - 4, 'reward', 't');
+    if (mode === 2) mark(x0 + W, 'reward', 'o');
+    S.append(txt(x0 + W / 2, 200, ['每个 token 都打分', '每个 step 结束时打分', '整个回答产出后才打分'][mode], 'b'));
+    info.innerHTML = `<b>${MODES[mode][0]}</b>　${MODES[mode][1]}`;
+  };
+  draw();
+});
+
+/* ======================================================================
+   07 A* 式探索
+   ====================================================================== */
+reg('astar', (node) => {
+  const S = mkSvg(720, 300, 'wide'); const wrap = el('div', { class: 'scrollx' }, S);
+  const legend = el('div', { class: 'kv', style: 'margin-top:8px' }, el('span', {}, el('span', { class: 'tag p' }, '继续探索'), ' 沿当前路径走下一步'), el('span', {}, el('span', { class: 'tag r' }, '反思改错'), ' 发现错误，回退修正'), el('span', {}, el('span', { class: 'tag o' }, '比较 / 切换'), ' 这条希望不大，换一条'));
+  const lab = el('div', { class: 'arch-info' });
+  node.append(wrap, legend, lab);
+  const cols = [1, 3, 3, 3, 1];
+  const N = {}; let id = 0;
+  cols.forEach((n, c) => { for (let r = 0; r < n; r++) N[`${c}${r}`] = [80 + c * 140, n === 1 ? 150 : 60 + r * 90]; });
+  const E = [['00', '10'], ['00', '11'], ['00', '12'], ['10', '20'], ['11', '21'], ['12', '22'], ['11', '20'], ['20', '30'], ['21', '31'], ['22', '32'], ['21', '30'], ['30', '40'], ['31', '40'], ['32', '40']];
+  const edges = {}, nodes = {};
+  E.forEach(([p, q]) => { const l = svg('line', { x1: N[p][0], y1: N[p][1], x2: N[q][0], y2: N[q][1], stroke: 'var(--line)', 'stroke-width': 2 }); edges[p + q] = l; S.append(l); });
+  Object.entries(N).forEach(([k, [x, y]]) => { const g = svg('g'); const c = svg('circle', { cx: x, cy: y, r: 16, fill: 'var(--surface)', stroke: 'var(--line)', 'stroke-width': 2 }); g.append(c); nodes[k] = c; S.append(g); });
+  S.append(txt(80, 185, '问题', 's'), txt(640, 185, '答案', 's'));
+  const script = [
+    ['00', null, 'p', '从问题出发，开一条路径'],
+    ['11', '0011', 'p', '继续探索：沿着当前路径往下走'],
+    ['21', '1121', 'p', '继续探索'],
+    ['21', null, 'r', '反思：这一步算错了——这不是传统 policy 会做的事'],
+    ['20', '1120', 'r', '改错：修正后换到相邻状态'],
+    ['30', '2030', 'p', '继续探索'],
+    ['30', null, 'o', '比较：这条路希望不大（像 value model / PRM 的功能）'],
+    ['12', '0012', 'o', '切换：跳到另一条探索路径'],
+    ['22', '1222', 'p', '继续探索'],
+    ['32', '2232', 'p', '继续探索'],
+    ['40', '3240', 't', '到达答案——整个过程像带着各种模型和策略的 A*'],
+  ];
+  let k = 0, timer;
+  const COL = { p: 'var(--p)', r: 'var(--r)', o: 'var(--o)', t: 'var(--t)' };
+  const paint = () => { const [n, e, c, t] = script[k]; nodes[n].setAttribute('fill', COL[c]); nodes[n].setAttribute('stroke', COL[c]); if (e) edges[e].setAttribute('stroke', COL[c]); lab.innerHTML = `<b>${k + 1}/${script.length}</b>　${t}`; };
+  const reset = () => { Object.values(nodes).forEach(c => { c.setAttribute('fill', 'var(--surface)'); c.setAttribute('stroke', 'var(--line)'); }); Object.values(edges).forEach(l => l.setAttribute('stroke', 'var(--line)')); k = 0; paint(); };
+  let hold = 0;
+  const tick = () => { if (hold > 0) { hold--; if (hold === 0) reset(); return; } k++; if (k >= script.length) { k = script.length - 1; hold = 3; return; } paint(); };
+  return { start() { reset(); hold = 0; timer = setInterval(tick, 1000); }, stop() { clearInterval(timer); } };
+});
+
+/* ======================================================================
+   08 语义程序
+   ====================================================================== */
+reg('program', (node) => {
+  const S = mkSvg(720, 300, 'wide'); const wrap = el('div', { class: 'scrollx' }, S); node.append(wrap);
+  // 左：LLM 模型（能力库 + 程序片段）
+  S.append(box(20, 30, 200, 240, '', 'p'));
+  S.append(txt(120, 50, 'LLM 模型', 'b'));
+  ['语义能力：推理 / 反思 / 比较 …', '历史学到的程序片段 ①', '程序片段 ②', '程序片段 ③'].forEach((t, i) => S.append(box(36, 70 + i * 46, 168, 34, t, i ? 'dim' : 't', 's')));
+  // 中：context 窗口
+  S.append(box(300, 30, 240, 240, '', ''));
+  S.append(txt(420, 50, 'context（in-context 空间 = 语义空间）', 'b'));
+  const slots = ['( 用户 prompt：指令 )', '( 数据 … )', '( 召回并组装的程序片段 ①+③ )', '( 中间结果 → 又成为数据 )'];
+  const slotNodes = slots.map((t, i) => { const b = box(316, 70 + i * 46, 208, 34, t, i === 0 ? 'p' : i === 2 ? 't' : 'y', 's'); b.style.opacity = 0; b.classList.add('fade'); S.append(b); return b; });
+  // 右：用户
+  S.append(box(600, 60, 100, 50, '用户', 'o'));
+  const a1 = arrow('M600,85 C570,85 560,87 526,87', 'o'); a1.style.opacity = 0; a1.classList.add('fade');
+  const a2 = arrow('M204,179 C250,179 270,179 314,179', 't dash'); a2.style.opacity = 0; a2.classList.add('fade');
+  const a3 = arrow('M204,87 C260,87 260,120 314,120', 'p dash'); a3.style.opacity = 0; a3.classList.add('fade');
+  S.append(a1, a2, a3);
+  S.append(txt(560, 70, '注入', 's'), txt(258, 165, '提取 + 组装', 's'), txt(258, 95, '调用能力', 's'));
+  S.append(txt(360, 290, '括号 = 像 Lisp：代码和数据不区分，都是 context 里的一段语义内容', 's'));
+  let timers = [];
+  const play = () => {
+    timers.forEach(clearTimeout); timers = [];
+    [...slotNodes, a1, a2, a3].forEach(n => n.style.opacity = 0);
+    const seqs = [[a1, slotNodes[0]], [slotNodes[1]], [a3], [a2, slotNodes[2]], [slotNodes[3]]];
+    seqs.forEach((grp, i) => timers.push(setTimeout(() => grp.forEach(n => n.style.opacity = 1), 400 + i * 700)));
+  };
+  return { start: play, stop() { timers.forEach(clearTimeout); } };
+});
+
+/* ======================================================================
+   09 可优化的语义计算机
+   ====================================================================== */
+reg('computer', (node) => {
+  const S = mkSvg(720, 260, 'wide'); const wrap = el('div', { class: 'scrollx' }, S);
+  const info = el('div', { class: 'arch-info' });
+  const SIG = [
+    ['SFT', '监督信号直接作用在模型参数上：固定语义程序，优化语义计算机。', ['hw'], 'p'],
+    ['ORM 做 RL', '指导这个系统整体该向什么方向演化——计算机和它使用的程序的联合优化。', ['hw', 'sw'], 'o'],
+    ['PRM', '除了指导系统演化，还可以在推理期指导探索过程。', ['hw', 'sw', 'run'], 't'],
+    ['外部信息 / tool', '可以在推理过程中插入外部信息；也可以让 LLM 生成某些模式主动调用外部——tool 调用很类似计算机中的中断调用或系统调用。', ['run'], 'r'],
+  ];
+  let cur = 1;
+  node.append(el('div', { class: 'ctrl' }, seg(SIG.map(s => s[0]), (i) => { cur = i; draw(); }, 1)), wrap, info);
+  const draw = () => {
+    S.innerHTML = DEFS;
+    const [name, desc, targets, cls] = SIG[cur];
+    const on = (k) => targets.includes(k);
+    S.append(box(60, 30, 400, 70, '语义程序（context 里的指令 + 数据）\n软件层', on('sw') ? cls : '', 'b'));
+    S.append(box(60, 150, 400, 70, '语义计算机（LLM 权重）\n硬件层', on('hw') ? cls : '', 'b'));
+    S.append(arrow('M200,100 L200,148', on('run') ? cls : ''), arrow('M320,148 L320,100', on('run') ? cls : ''));
+    S.append(txt(260, 124, '执行 ⇅ 召回', on('run') ? 'b' : 's'));
+    S.append(box(520, 95, 160, 60, name + '\n→ 作用于高亮层', cls, 'b'));
+    targets.forEach(t => { const y = t === 'sw' ? 65 : t === 'hw' ? 185 : 124; S.append(arrow(`M520,${y === 124 ? 124 : y} L${y === 124 ? 352 : 462},${y}`, cls)); });
+    S.append(txt(260, 245, '目前的 RL 不直接优化 prompt / 语义程序，而是通过优化参数，影响程序的执行效果和执行中召回的程序。', 's'));
+    info.innerHTML = `<b>${name}</b>　${desc}`;
+  };
+  draw();
+});
+
+/* ======================================================================
+   10 计算机视角
+   ====================================================================== */
+reg('arch', (node) => {
+  const S = mkSvg(720, 340, 'wide'); const wrap = el('div', { class: 'scrollx' }, S);
+  const info = el('div', { class: 'arch-info' });
+  node.append(wrap, info);
+  const PARTS = [
+    ['cpu', 40, 40, 200, 90, 'CPU：指令集\n↔ 模型大小', 'p', '越大的模型能学到的能力越强，对应 CPU 更复杂的指令集。精简指令集实现同样功能需要更多汇编指令——小模型实现同样功能可能也需要更长的语义程序。'],
+    ['tape', 280, 40, 200, 90, '存储：图灵机的纸带\n（只能写入一次）', 't', '现在这个计算机的存储方式类似图灵机的纸带，而且只能写入一次。对只写一次的存储，显式存储还是直接内化到模型中没有本质差别。作者的问题：现在计算机里按位置访问的可修改存储器，在这里应该是什么样的？'],
+    ['rom', 520, 40, 160, 90, '巨大的只读 memory\n= LLM 本身', 't', '在语义空间中，LLM 本身也可以看成包含了巨大的只读 memory。'],
+    ['snap', 40, 160, 200, 70, 'prefix context cache\n≈ 虚拟机运行状态快照', 'y', 'prefix context cache 类似于虚拟机运行状态的整体快照。'],
+    ['thread', 280, 160, 200, 70, '线性推理 ≈ 单线程\n→ 可扩展到多线程', 'y', '目前的线性推理过程类似单线程程序，可以扩展到多线程执行能力和对应的程序范式。'],
+    ['clock', 520, 160, 160, 70, '时钟（推理速度）', 'dim', '有些问题在语义计算机中并不存在。推理速度相当于计算机的时钟——在计算机运行的空间中，感受不到外部时钟的快慢。'],
+    ['token', 520, 268, 160, 56, 'token', 'dim', '同样，语义空间中也没有 token。原始文本不同 token 映射方式导致的模型效果差别，在语义空间的世界中大概表现为某种非对称性（物理学中的对称性，例如「平移时会改变」）。'],
+  ];
+  const gs = PARTS.map(([k, x, y, w, h, t, cls, desc]) => {
+    const g = box(x, y, w, h, t, cls, cls === 'dim' ? 's' : 'b'); g.classList.add('hot');
+    if (cls === 'dim') g.querySelector('rect').setAttribute('stroke-dasharray', '5 4');
+    g.addEventListener('click', () => pick(k)); S.append(g); g.key = k; g.desc = desc; g.title = t.split('\n')[0]; return g;
+  });
+  S.append(txt(280, 296, '← 语义计算机里存在的部件', 's'), txt(600, 250, '↓ 语义计算机里不存在的', 's'));
+  let cur = 0;
+  const pick = (k) => { cur = gs.findIndex(g => g.key === k); gs.forEach(g => g.classList.toggle('on', g.key === k)); info.innerHTML = `<b>${gs[cur].title}</b>　${gs[cur].desc}`; };
+  pick('cpu');
+  return every(3200, () => pick(gs[(cur + 1) % gs.length].key));
+});
+
+/* ======================================================================
+   11 五条推论
+   ====================================================================== */
+reg('misc', (node) => {
+  const tabs = el('div', { class: 'tabs' }); const panes = [];
+  const add = (title, textHtml, figFn) => {
+    const b = el('button', { type: 'button', onclick: () => show(panes.length) }, title); tabs.append(b);
+    const p = el('div', { class: 'tabpane' });
+    const body = el('div', { class: 'body' });
+    const fig = el('div'); figFn(fig);
+    body.append(fig, el('div', { class: 'txt', html: textHtml }));
+    p.append(body); panes.push([b, p]); node.append(p);
+  };
+  node.append(tabs);
+  const show = (i) => panes.forEach(([b, p], j) => { b.classList.toggle('on', i === j); p.classList.toggle('on', i === j); });
+  // 4.1
+  add('4.1 「硬件」会快速发展', '<b>语义计算机的「硬件」性能会快速发展。</b><ul><li>正如芯片算力快速发展，从语义空间看，它的「硬件」（语义计算机）未来一段时间也会快速发展。</li><li>The Bitter Lesson 告诉我们：要利用这种确定性的未来趋势。后续基于语义计算机的方案发展会有一波红利。</li></ul>', (f) => {
+    const S = mkSvg(360, 200); f.append(S);
+    S.append(arrow('M30,170 L340,170'), arrow('M30,170 L30,20'));
+    S.append(txt(190, 190, '时间', 's'), txt(28, 12, '能力', 's'));
+    const p = svg('path', { d: 'M30,165 C120,160 200,120 330,30', fill: 'none', stroke: 'var(--p)', 'stroke-width': 3, 'stroke-dasharray': '600', 'stroke-dashoffset': '600' }); S.append(p);
+    S.append(txt(250, 70, '语义计算机（LLM）', 'b'));
+    S.append(svg('rect', { x: 120, y: 95, width: 110, height: 40, rx: 8, class: 'bx t' }), txt(175, 115, '基于它的方案', 's'));
+    f.anim = () => { p.style.transition = 'none'; p.style.strokeDashoffset = 600; requestAnimationFrame(() => { p.style.transition = 'stroke-dashoffset 1.6s ease'; p.style.strokeDashoffset = 0; }); };
+  });
+  // 4.2
+  add('4.2 语义空间与 RL', '<b>把学习工作和逻辑结构都转移到语义空间。</b><ul><li>DeepSeek R1 的 GRPO 让我们看到：value model、step 级 value model / PRM 都可以内化到语义空间中，成为语义计算机的一个能力，整体端到端优化——很符合 scale 的思路。</li><li>语义空间中<b>没有机器学习算法</b>：执行能力孱弱、还没有可变存储单元，不能指望在其内部跑 ML / RL。只能跑一些相对现实世界很简单的程序，但它们是语义的，不必一切细节都编程指定。</li><li>RL 过程发生在语义计算机的空间<b>之外</b>，结果是计算机和它内部程序的组合。未来大概率是 RL 主导、甚至几乎纯 RL 的方案；构造完数据、ORM（可能还有 PRM）和训练过程后，似乎可以交给类似 infra 工程的团队——会更明显地分层，新的一层是 RL 的天下。</li></ul>', (f) => {
+    const S = mkSvg(360, 200); f.append(S);
+    S.append(box(20, 20, 320, 160, '', ''), txt(180, 36, '语义计算机（语义空间）', 'b'));
+    ['value model', 'PRM', '反思 / 比较 / 切换'].forEach((t, i) => S.append(box(40 + i * 104, 70, 96, 40, t, 't', 's')));
+    S.append(txt(180, 135, '↑ 都内化成语义计算机的能力', 's'));
+    S.append(box(110, 150, 140, 24, '没有 ML 算法在里面跑', 'dim', 's'));
+    S.append(txt(180, 194, 'RL 在这个框的外面进行', 's'));
+  });
+  // 4.3
+  add('4.3 reward model 也放进语义空间', '<b>用推理期计算 LLM 执行 reward prompt。</b><ul><li>OpenAI 和 DeepSeek 都提：reward model 不够好会 reward hacking——像 KPI 定得不完美总会导致管理问题。所以趋势是只用完全没有瑕疵的 reward model，但这限制了能跑 RL 的领域。</li><li>作者认为问题在于无法给 reward model 足够大量的数据，目前的训练方式也做不到足够「平滑」和准确；不完全精确的领域里语义本身有模糊性，像表达某种语义邻域。</li><li>方案：靠 LLM 通过 prompt 判断结果好坏。细节：固化执行 reward prompt 的 LLM，防止通过降低 reward prompt 效果来钻漏洞；探索的 LLM 优化一定阶段后，再更新判分 LLM；同时观察判分结果采样与人类意图的对齐度。不期望完美，但用至少 o1 级别的模型执行应该能起到一些用。</li></ul>', (f) => {
+    const S = mkSvg(360, 200); f.append(S);
+    S.append(box(20, 70, 130, 60, '探索的 LLM\n（在优化）', 'p', 's'), box(210, 70, 130, 60, '判分 LLM\n（固化，定期更新）', 'o', 's'));
+    S.append(arrow('M150,90 L208,90', 'p'), arrow('M210,110 L152,110', 'o'));
+    S.append(txt(180, 80, '回答', 's'), txt(180, 124, 'reward', 's'));
+    S.append(txt(275, 150, '执行 reward prompt', 's'), txt(180, 180, '两边都在语义空间里运行', 's'));
+    S.append(arrow('M275,40 L275,68', 'dash'), txt(275, 28, '人类意图：观察对齐度', 's'));
+  });
+  // 4.4
+  add('4.4 结构化仍有阶段性价值', '<b>语义空间中的结构化。</b><ul><li>目前的语义空间基本是非结构化的。如果认为 PRM 无用，也就不需要做粗 Step 粒度的结构化。</li><li>本质上结构化是为了与<b>外部非语义世界</b>交互，例如 tool 调用。</li><li>作者认为人工设计的 structure 仍有阶段性价值：上限不如无先验方案，但现阶段 baseline 太低，一些结构化设计可以成为支撑未来 1–2 年发展的台阶——更多是粗粒度层面。</li></ul>', (f) => {
+    const S = mkSvg(360, 200); f.append(S);
+    S.append(box(20, 30, 200, 140, '', ''), txt(120, 48, '语义空间（非结构化）', 'b'));
+    for (let i = 0; i < 12; i++) S.append(svg('circle', { cx: 40 + (i % 4) * 50 + (i % 3) * 6, cy: 75 + Math.floor(i / 4) * 30, r: 7, fill: 'var(--p-soft)', stroke: 'var(--p)' }));
+    S.append(box(250, 60, 90, 80, '外部世界\ntool', 'o', 's'));
+    S.append(box(200, 85, 60, 30, '结构', 't', 's'));
+    S.append(txt(180, 190, '结构化只出现在接口处（粗粒度）', 's'));
+  });
+  // 4.5
+  add('4.5 语义计算机不非得是 LLM', '<b>从传统计算机体系结构借鉴想法，会让模型离 LLM 越来越远。</b><ul><li>目前的语义计算机看起来就是一个单向只读的图灵机。</li><li>站在语义空间看，并不需要它一定是 LLM：一定逐个 token 生成、一定不能修改历史回答、一定只能生成文本——都不是必须的。</li><li>最核心的能力只有<b>执行语义程序</b>，甚至从历史记忆中不断召回组装程序可能都未必必须。这给未来的语义计算机设计打开了不少新空间。</li></ul>', (f) => {
+    const S = mkSvg(360, 200); f.append(S);
+    S.append(box(100, 20, 160, 44, '核心：执行语义程序', 'p', 'b'));
+    ['逐个 token 生成', '不能修改历史回答', '只能生成文本', '召回组装程序'].forEach((t, i) => { const b = box(20 + (i % 2) * 170, 90 + Math.floor(i / 2) * 50, 150, 36, t, 'dim', 's'); S.append(b); S.append(svg('line', { x1: 30 + (i % 2) * 170, y1: 108 + Math.floor(i / 2) * 50, x2: 160 + (i % 2) * 170, y2: 108 + Math.floor(i / 2) * 50, stroke: 'var(--r)', 'stroke-width': 2, opacity: .7 })); });
+    S.append(txt(180, 190, '划掉的都「不是必须的」', 's'));
+  });
+  show(0);
+  return { start() { panes.forEach(([, p]) => { const f = p.querySelector('.body > div'); f.anim?.(); }); } };
+});
+
+/* ======================================================================
+   12 结语链条
+   ====================================================================== */
+reg('final', (node) => {
+  const steps = [
+    ['Token', '粒度太细，正在从心智中消失', 'x'],
+    ['语义空间', 'in-context 空间 = 语义空间（非结构化）', ''],
+    ['语义程序', 'context 里的指令与过程；代码数据不分，像 Lisp', ''],
+    ['语义计算机', 'LLM 本身；靠调权重优化（SFT / RL）', ''],
+    ['两边各自迭代', '像软件和硬件分别演进；硬件会快速发展', ''],
+  ];
+  const C = el('div', { class: 'chain' });
+  const ns = steps.map(([t, d, x]) => { const s = el('div', { class: 'step ' + x }); s.append(el('div', { class: 't' }, t), el('div', { class: 'd' }, d)); C.append(s); return s; });
+  node.append(C);
+  return { start() { ns.forEach((s, i) => setTimeout(() => s.classList.add('on'), i * 300)); } };
+});
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>

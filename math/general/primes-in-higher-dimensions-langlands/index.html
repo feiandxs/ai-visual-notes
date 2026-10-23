@@ -1,0 +1,711 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>素数与朗兰兹纲领</title>
+<meta name="description" content="知乎问题「素数分布欧拉用一维去思考，黎曼用二维去思考，有没有数学家在更高维度去思考？」回答的可视化讲解：朗兰兹纲领、伽罗瓦表示与自守表示的 AB 面、费马大定理的故事、广义黎曼猜想。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ---- 页面专用 ---- */
+.dims{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .dims{grid-template-columns:repeat(3,1fr)} }
+.dims .dim{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--surface-2);transition:border-color .4s,background .4s}
+.dims .dim.on{border-color:var(--p);background:var(--p-soft)}
+.dims .dim h3{font-size:15px;margin:6px 0 2px}
+.dims .dim p{font-size:12.5px;color:var(--muted)}
+.dims .dim .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+.bridge-svg .dom{transition:opacity .4s}
+.bridge-svg .pulse{fill:var(--y)}
+.flip{perspective:1200px;min-height:230px}
+.flip .inner{position:relative;width:100%;height:230px;transition:transform .8s;transform-style:preserve-3d}
+.flip.b .inner{transform:rotateY(180deg)}
+.flip .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;padding:14px;border:1px solid var(--line)}
+.flip .face.a{background:var(--p-soft)}
+.flip .face.b{background:var(--t-soft);transform:rotateY(180deg)}
+.flip .face h3{font-size:16px;margin-bottom:4px}
+.flip .face p{font-size:13px;color:var(--muted)}
+.flip .face .big{font-family:var(--mono);font-size:14px;color:var(--text);margin:6px 0}
+@media (prefers-reduced-motion: reduce){ .flip .inner{transition:none} }
+.story{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .story{grid-template-columns:repeat(3,1fr)} }
+.story .who{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:border-color .3s,background .3s,transform .3s}
+.story .who.on{border-color:var(--o);background:var(--o-soft);transform:translateY(-3px)}
+.story .who .ic{font-size:26px}
+.story .who h3{font-size:15px;margin:4px 0}
+.story .who p{font-size:12.5px;color:var(--muted)}
+.story .who .say{margin-top:6px;font-size:13px;color:var(--text);min-height:3.2em;border-top:1px dashed var(--line);padding-top:6px}
+.stair-svg .lv rect{fill:var(--surface-2);stroke:var(--line);transition:fill .3s}
+.stair-svg .lv.on rect{fill:var(--p-soft);stroke:var(--p)}
+.stair-svg .lv{cursor:pointer}
+.stair-svg text{font-family:var(--font);font-size:12px;fill:var(--text)}
+.stair-svg .m{font-family:var(--mono)}
+.stair-svg .lbl{fill:var(--muted)}
+.stair-detail{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);margin-top:10px;min-height:92px}
+.stair-detail h3{font-size:16px;margin-bottom:4px}
+.stair-detail p{font-size:13.5px;color:var(--muted)}
+.grh-c{width:100%;height:240px;border-radius:10px;background:var(--surface-2)}
+.others{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .others{grid-template-columns:1fr 1fr} }
+.smale-svg .lv rect{fill:var(--surface-2);stroke:var(--line)}
+.smale-svg .lv.on rect{fill:var(--t-soft);stroke:var(--t)}
+.smale-svg text{font-family:var(--mono);font-size:12px;fill:var(--text)}
+.chain{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:760px){ .chain{grid-template-columns:repeat(4,1fr)} }
+.chain .step{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);transition:border-color .3s,background .3s}
+.chain .step.on{border-color:var(--p);background:var(--p-soft)}
+.chain .step .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+.chain .step h3{font-size:14px;margin:4px 0}
+.chain .step p{font-size:12.5px;color:var(--muted)}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <a class="back" href="../../../README.md">← ai-visual-notes</a>
+  <div class="brand">素数与朗兰兹纲领</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 数论</div>
+  <h1>素数分布：欧拉一维，黎曼二维，<br>有没有人在更高维度思考？</h1>
+  <p class="sub">答主清人的回答开头就是「有啊」——这个方法叫朗兰兹纲领（Langlands Program）。它野心大得很：不仅想解决素数问题，还想把数论、调和分析、代数几何统一起来，就像物理学统一四种力。本页用 8 个画面讲这件事。</p>
+  <div class="thesis">一句话：<b>每一个描述素数规律的算术问题，都对应着一个高维对称空间上振动的波</b>——它们是同一件事的 A 面和 B 面。</div>
+  <div class="authors">
+    <span class="au"><i style="background:var(--p)">清</i>清人 <span class="tag">主回答</span></span>
+    <span class="au"><i style="background:var(--t)">l</i>lliog <span class="tag">一句</span></span>
+    <span class="au"><i style="background:var(--o)">南</i>南方 <span class="tag">补充</span></span>
+  </div>
+  <div class="meta">来源：知乎问题 1942284575192646587（剪藏于 2025-11-08）。清人的回答收录于专栏「自然科学的胡言乱语」，239 人赞同。本页的图均为教学示意，不代表任何精确计算。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="dims" data-title="一维、二维、更高维">
+  <div class="ch-head"><span class="num">01</span><span class="who">题主的问题</span>
+    <h2>三种「维度」的思考</h2>
+    <p class="lead">题主把历史概括成：欧拉在一维（实数）上想素数，黎曼在二维（复平面）上想素数。那么有没有人在三维甚至更高维上想？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">进入视口后三张卡依次点亮。前两张是题主的提法，第三张是答主的回答：维度不止升到三，而是升到由对称群和表示论构成的<b>无穷维</b>。</div>
+    <div class="dims" data-demo="dims">
+      <div class="dim"><span class="k">1 维 · 欧拉</span><div class="art"></div><h3>实数轴上的素数</h3><p>素数散落在数轴上；欧拉把它们和一个无穷乘积联系起来。</p></div>
+      <div class="dim"><span class="k">2 维 · 黎曼</span><div class="art"></div><h3>复平面上的零点</h3><p>把 ζ 函数延拓到复平面，素数分布藏在零点的位置里。</p></div>
+      <div class="dim"><span class="k">N 维 · 朗兰兹</span><div class="art"></div><h3>无穷维的对称</h3><p>答主：要彻底理解素数，要把视野提升到对称群与表示论构成的无穷维中。</p></div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li><b>注意</b>：原文没有展开欧拉乘积公式或黎曼零点的细节，前两张卡只是把题主的提法画出来。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="unify" data-title="统一三个领域">
+  <div class="ch-head"><span class="num">02</span><span class="who">答主：清人</span>
+    <h2>野心：像统一四种力那样统一数学</h2>
+    <p class="lead">朗兰兹纲领想把数论、调和分析、代数几何统一起来。它甚至预言：不同领域的数学形式，在更高维度上都是一一对应的。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">三个领域几个世纪以来各自发展、互不通气。朗兰兹纲领在它们之间架桥，桥上的脉冲表示「同一件事在不同领域的翻译」。</div>
+    <div data-demo="bridge"></div>
+  </div>
+  <ul class="notes">
+    <li><b>物理的类比</b>来自原文：「就如物理学统一四种力」。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="ab" data-title="AB 面：伽罗瓦表示与自守表示">
+  <div class="ch-head"><span class="num">03</span><span class="who">答主：清人</span>
+    <h2>同一件事的 A 面和 B 面</h2>
+    <p class="lead">对于每一个（数论侧的）伽罗瓦表示，都存在一个对应的（分析侧的）自守表示，两者的 L-函数完全一致。研究波（B 面）的性质，就可以解决对应的算术问题（A 面）。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点击卡片翻面。两面的 L-函数是<b>同一条曲线</b>（示意）。</div>
+    <div data-demo="flip"></div>
+  </div>
+  <ul class="notes">
+    <li><b>A 面</b>：描述素数规律的算术问题（伽罗瓦表示）。<b>B 面</b>：高维对称空间上振动的波（自守表示）。</li>
+    <li><b>L-函数</b>是两面共享的「身份证」：它们完全一致，所以可以在容易的一面做计算。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="fermat" data-title="费马大定理的故事">
+  <div class="ch-head"><span class="num">04</span><span class="who">答主：清人</span>
+    <h2>会计、艺术家、音乐家：费马大定理是这么证的</h2>
+    <p class="lead">研究数论的是会计，关心解析问题；研究几何的是艺术家，关心空间的对称性；研究分析的是音乐家，关心波的振动。几百年来三人互不通气，直到一条「算不出来的线索」把他们聚到一起。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「下一幕」看故事推进。最后一幕是关键：如果定理是错的，椭圆曲线画不出来、旋律也弹不出来，所以线索是假的——定理成立。</div>
+    <div data-demo="story"></div>
+  </div>
+  <ul class="notes">
+    <li><b>翻译回术语</b>：会计的线索 = 费马方程的反例；艺术家的椭圆曲线 = 弗雷曲线；音乐家的旋律 = 模形式。原文只用比喻，这里的术语对应是教学补充。</li>
+    <li><b>原文的结论</b>：通过解决分析侧（模形式）的问题，解决了数论侧（费马大定理）的百年难题。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="stair" data-title="维度阶梯：1 维、2 维、N 维">
+  <div class="ch-head"><span class="num">05</span><span class="who">答主：清人</span>
+    <h2>素数问题的维度阶梯</h2>
+    <p class="lead">一维：黎曼 ζ 函数背后的对称群是简单的乘法群，函数方程是最简单的「自守性」。二维：椭圆曲线的 L-函数等于某个模形式的 L-函数。N 维：推广到任意维度、任意李群，每个数论对象的 L-函数都对应 GL(n) 这类高维群上的自守形式。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点击台阶查看每一级的「数论对象 ↔ 分析对象」。</div>
+    <div class="scrollx" data-demo="stair"></div>
+    <div class="stair-detail" id="stairDetail"></div>
+  </div>
+  <ul class="notes">
+    <li><b>每一级都是同一个模式</b>：左边一个算术对象，右边一个「波」，中间用 L-函数相等连起来。维度越高，群越大。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="grh" data-title="广义黎曼猜想">
+  <div class="ch-head"><span class="num">06</span><span class="who">答主：清人</span>
+    <h2>黎曼假设也被推广了</h2>
+    <p class="lead">在这个框架下，所有自守 L-函数的非平凡零点的实部都应为 1/2——这就是广义黎曼猜想。解决它，就意味着在极高维的视角下彻底理解所有 L-函数（包括 ζ）的零点分布，从而搞清楚素数及其推广形式的分布规律。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">临界带里，不同 L-函数的零点（不同颜色）一层层出现，全部落在 Re(s) = 1/2 这条线上（示意，不是真实零点坐标）。</div>
+    <div data-demo="grh"></div>
+  </div>
+  <ul class="notes">
+    <li><b>原文的坦诚</b>：「具体研究进展我就不清楚了，这东西太前沿，很多地方看不懂。」并推荐 B 站视频「国际基础科学大会丨Andrew Wiles: The Langlands project」。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="others" data-title="另外两位答主">
+  <div class="ch-head"><span class="num">07</span><span class="who">答主：lliog、南方</span>
+    <h2>另外两位答主怎么说</h2>
+    <p class="lead">lliog 给了几个关键词；南方讲了斯梅尔「先高维、再降维」攻克庞加莱猜想的策略，认为升维思考也许是素数分布的希望。</p>
+  </div>
+  <div class="others">
+    <div class="fig">
+      <div class="cap"><b>lliog</b>：猜你想搜</div>
+      <div class="cards">
+        <div class="card"><h3>Dedekind zeta</h3><p>数域上的 ζ 函数</p></div>
+        <div class="card"><h3>代数数论</h3><p>把整数的问题搬到更大的数域</p></div>
+        <div class="card"><h3>Hecke 的 ζ 函数方程证明</h3><p>函数方程的推广</p></div>
+        <div class="card on"><h3>Chebotarev 密度定理</h3><p>原文标注「更直接相关」：素数按伽罗瓦群分布的密度</p></div>
+      </div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>南方</b>：斯梅尔的策略——先证高维庞加莱猜想，再向低维延伸。1966 年菲尔兹奖，被称为「突破维度障碍的人」。</div>
+      <div data-demo="smale"></div>
+    </div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="summary" data-title="总结">
+  <div class="ch-head"><span class="num">08</span>
+    <h2>总结</h2>
+  </div>
+  <div class="fig">
+    <div class="chain" data-demo="chain">
+      <div class="step"><span class="k">1</span><h3>有，叫朗兰兹纲领</h3><p>把视野升到由对称群和表示论构成的无穷维。</p></div>
+      <div class="step"><span class="k">2</span><h3>AB 面</h3><p>伽罗瓦表示 ↔ 自守表示，L-函数完全一致。</p></div>
+      <div class="step"><span class="k">3</span><h3>先例</h3><p>费马大定理：解决模形式一侧，就解决了数论一侧。</p></div>
+      <div class="step"><span class="k">4</span><h3>目标</h3><p>广义黎曼猜想：所有自守 L-函数的零点实部都是 1/2。</p></div>
+    </div>
+  </div>
+  <div class="final">素数的规律不在数轴上，也不只在复平面上；它在一个无穷维的对称空间里，以「波」的形式振动。</div>
+</section>
+
+<footer>
+  <div><b>来源</b></div>
+  <ul>
+    <li>知乎问题《素数分布欧拉用一维去思考，黎曼用二维去思考，有没有数学家在三维，甚至更高维度去思考素数分布的规律？》：<a href="https://www.zhihu.com/question/1942284575192646587">zhihu.com/question/1942284575192646587</a></li>
+    <li>清人的回答：<a href="https://www.zhihu.com/question/1942284575192646587/answer/1967587213496817583">answer/1967587213496817583</a>。lliog、南方的回答来自同一问题下「更多回答」摘录。</li>
+    <li>第 04 节的术语对应（弗雷曲线、模形式）与第 01 节前两张卡为教学补充，非原文。</li>
+  </ul>
+  <div style="margin-top:10px">本页由 Claude Code 基于原文生成，仅供学习。</div>
+</footer>
+
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+
+const PR = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97];
+
+/* ======================================================================
+   Hero：1 维数轴 → 2 维平面 → N 维对称空间，循环切换
+   ====================================================================== */
+reg('hero', (root) => {
+  const c = el('canvas', { style: 'width:100%;height:220px;border-radius:10px;background:#0b0d16' }); root.append(c);
+  const ctx = c.getContext('2d');
+  const resize = () => { const w = c.clientWidth, h = 220; if (c.width !== w * 2 || c.height !== h * 2) { c.width = w * 2; c.height = h * 2; } };
+  const labels = ['1 维：数轴上的素数（欧拉）', '2 维：复平面上的零点（黎曼）', 'N 维：对称空间上振动的波（朗兰兹）'];
+  return loop((t) => {
+    resize(); const W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
+    const phase = Math.floor(t / 4) % 3, u = (t % 4) / 4, fade = Math.min(1, u * 4, (1 - u) * 4);
+    ctx.globalAlpha = fade;
+    if (phase === 0) {
+      const y = H * .6; ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(40, y); ctx.lineTo(W - 40, y); ctx.stroke();
+      for (let n = 1; n <= 100; n++) { const x = 40 + (W - 80) * n / 100; const isP = PR.includes(n); ctx.fillStyle = isP ? '#ffd27a' : 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.arc(x, y, isP ? 7 : 3, 0, 7); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '24px ' + cssVar('--mono'); ctx.textAlign = 'center'; ctx.fillText('1 … 100，黄点是素数', W / 2, y + 56);
+    } else if (phase === 1) {
+      const ox = W / 2, oy = H * .55; ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(60, oy); ctx.lineTo(W - 60, oy); ctx.moveTo(ox, 30); ctx.lineTo(ox, H - 30); ctx.stroke();
+      ctx.strokeStyle = 'rgba(143,138,255,.7)'; ctx.setLineDash([8, 6]); ctx.beginPath(); ctx.moveTo(ox + 60, 30); ctx.lineTo(ox + 60, H - 30); ctx.stroke(); ctx.setLineDash([]);
+      for (let k = 0; k < 9; k++) { const yy = oy - 20 - k * 16 - Math.sin(k * 1.7) * 6; ctx.fillStyle = '#ffd27a'; ctx.beginPath(); ctx.arc(ox + 60, yy, 6, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(ox + 60, 2 * oy - yy, 6, 0, 7); ctx.fill(); }
+      ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '24px ' + cssVar('--mono'); ctx.textAlign = 'left'; ctx.fillText('Re(s) = 1/2', ox + 72, 60);
+    } else {
+      const ox = W / 2, oy = H / 2;
+      for (let i = 0; i < 7; i++) for (let j = 0; j < 7; j++) {
+        const a = (i - 3) * .9 + t * .4, b = (j - 3) * .9; const r = 120 + 40 * Math.sin(a + b + t);
+        const x = ox + Math.cos(a) * r * 1.9 + Math.sin(b * 2 + t) * 20, y = oy + Math.sin(b) * 60 + Math.cos(a * 2) * 25;
+        ctx.fillStyle = `hsla(${(i * 40 + j * 20 + t * 40) % 360},80%,70%,.8)`; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill();
+      }
+      ctx.strokeStyle = 'rgba(255,210,122,.8)'; ctx.lineWidth = 3; ctx.beginPath();
+      for (let x = 40; x < W - 40; x += 4) { const y = oy + Math.sin(x / 40 + t * 2) * 30 * Math.sin(x / 200 + t); x === 40 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = '30px ' + cssVar('--font'); ctx.textAlign = 'left'; ctx.fillText(labels[phase], 20, 44);
+  });
+});
+
+/* ======================================================================
+   01 三张卡的小图 + 依次点亮
+   ====================================================================== */
+reg('dims', (root) => {
+  const cards = [...root.querySelectorAll('.dim')];
+  const arts = cards.map(c => c.querySelector('.art'));
+  // 1 维
+  { const s = svg('svg', { viewBox: '0 0 220 70', style: 'width:100%;height:auto' }); s.append(svg('line', { class: 'ax', x1: 8, y1: 40, x2: 212, y2: 40 })); for (let n = 2; n <= 40; n++) { const x = 8 + n * 5; s.append(svg('circle', { cx: x, cy: 40, r: PR.includes(n) ? 4 : 1.5, fill: PR.includes(n) ? 'var(--o)' : 'var(--muted)' })); } s.append(svg('text', { class: 'lbl m', x: 8, y: 62 }, 'ζ(s) = Π 1/(1−p⁻ˢ)（教学补充）')); arts[0].append(s); }
+  // 2 维
+  { const s = svg('svg', { viewBox: '0 0 220 70', style: 'width:100%;height:auto' }); s.append(svg('line', { class: 'ax', x1: 10, y1: 60, x2: 210, y2: 60 }), svg('line', { class: 'ax', x1: 60, y1: 6, x2: 60, y2: 66 }), svg('line', { x1: 110, y1: 6, x2: 110, y2: 66, stroke: 'var(--p)', 'stroke-dasharray': '4 3' })); for (let k = 0; k < 5; k++) s.append(svg('circle', { cx: 110, cy: 52 - k * 10, r: 3.5, fill: 'var(--o)' })); s.append(svg('text', { class: 'lbl m', x: 118, y: 16 }, 'Re = 1/2')); arts[1].append(s); }
+  // N 维
+  { const s = svg('svg', { viewBox: '0 0 220 70', style: 'width:100%;height:auto' }); for (let i = 0; i < 12; i++) for (let j = 0; j < 4; j++) { const x = 15 + i * 17 + (j % 2) * 8, y = 12 + j * 15; s.append(svg('circle', { cx: x, cy: y, r: 2.5, fill: `hsl(${i * 25 + j * 30},70%,60%)` })); } s.append(svg('path', { d: 'M8 40 Q 40 10 70 40 T 130 40 T 190 40 T 212 40', fill: 'none', stroke: 'var(--y)', 'stroke-width': 2.5 })); arts[2].append(s); }
+  let timer = 0;
+  const start = () => { stop(); cards.forEach(c => c.classList.remove('on')); let k = 0; const tick = () => { if (k < 3) { cards[k++].classList.add('on'); timer = setTimeout(tick, RM ? 0 : 700); } }; tick(); };
+  const stop = () => clearTimeout(timer);
+  return { start, stop };
+});
+
+/* ======================================================================
+   02 三领域之桥
+   ====================================================================== */
+reg('bridge', (root) => {
+  const W = 700, H = 260;
+  const s = svg('svg', { class: 'bridge-svg', viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' }); root.append(s);
+  const doms = [['数论', '会计 · 解析问题', 110, 70, 'var(--p)'], ['代数几何', '艺术家 · 空间的对称性', 590, 70, 'var(--t)'], ['调和分析', '音乐家 · 波的振动', 350, 215, 'var(--o)']];
+  doms.forEach(([n, d, x, y, col]) => { s.append(svg('g', { class: 'dom' }, svg('circle', { cx: x, cy: y, r: 44, fill: col, opacity: .18 }), svg('circle', { cx: x, cy: y, r: 44, fill: 'none', stroke: col, 'stroke-width': 2 }), svg('text', { class: 'lbl big', x, y: y - 2, 'text-anchor': 'middle' }, n), svg('text', { class: 'lbl', x, y: y + 16, 'text-anchor': 'middle', 'font-size': 11 }, d))); });
+  const edges = [[0, 1], [1, 2], [2, 0]];
+  const paths = edges.map(([a, b]) => { const [, , x1, y1] = doms[a], [, , x2, y2] = doms[b]; const p = svg('path', { d: `M${x1} ${y1} L${x2} ${y2}`, stroke: 'var(--line)', 'stroke-width': 6, 'stroke-dasharray': '10 8', fill: 'none' }); s.insertBefore(p, s.firstChild); return p; });
+  const center = svg('text', { class: 'lbl big', x: 350, y: 112, 'text-anchor': 'middle', fill: 'var(--p)' }, '朗兰兹纲领'); s.append(center);
+  s.append(svg('text', { class: 'lbl', x: 350, y: 130, 'text-anchor': 'middle' }, '不同领域的数学形式在更高维度一一对应'));
+  const pulses = edges.map(() => { const c = svg('circle', { class: 'pulse', r: 6 }); s.append(c); return c; });
+  return loop((t) => {
+    edges.forEach(([a, b], i) => { const [, , x1, y1] = doms[a], [, , x2, y2] = doms[b]; const u = ((t * .35 + i / 3) % 1); pulses[i].setAttribute('cx', lerp(x1, x2, u)); pulses[i].setAttribute('cy', lerp(y1, y2, u)); paths[i].setAttribute('stroke-dashoffset', -t * 30); });
+  });
+});
+
+/* ======================================================================
+   03 翻面卡
+   ====================================================================== */
+reg('flip', (root) => {
+  const curve = () => { let d = ''; for (let x = 0; x <= 300; x += 4) { const y = 40 - 22 * Math.sin(x / 22) * Math.exp(-x / 400) * Math.cos(x / 90); d += (x ? 'L' : 'M') + x + ' ' + y.toFixed(1) + ' '; } return svg('svg', { viewBox: '0 0 300 80', style: 'width:100%;max-width:360px;height:auto' }, svg('path', { d, fill: 'none', stroke: 'var(--p)', 'stroke-width': 2.5 }), svg('text', { class: 'lbl m', x: 4, y: 76 }, 'L(s)')); };
+  const box = el('div', { class: 'flip' });
+  const inner = el('div', { class: 'inner' },
+    el('div', { class: 'face a' }, el('h3', {}, 'A 面 · 数论侧'), el('p', {}, '一个描述素数规律的算术问题：伽罗瓦表示'), el('div', { class: 'big' }, 'Gal(Q̄/Q) → GLₙ'), curve(), el('p', {}, '点击翻到 B 面 →')),
+    el('div', { class: 'face b' }, el('h3', {}, 'B 面 · 分析侧'), el('p', {}, '一个高维对称空间上振动的波：自守表示'), el('div', { class: 'big' }, 'GLₙ 上的自守形式'), curve(), el('p', {}, '同一条 L-函数 ← 点击翻回')));
+  box.append(inner); box.addEventListener('click', () => box.classList.toggle('b'));
+  root.append(box, el('div', { class: 'src' }, '原文：「对于每一个（数论侧的）伽罗瓦表示，都存在一个对应的（分析侧的）自守表示，两者的 L-函数完全一致。」卡片上的符号为教学补充。'));
+  return {};
+});
+
+/* ======================================================================
+   04 故事
+   ====================================================================== */
+reg('story', (root) => {
+  const who = [['🧮', '会计（数论）', '关心解析问题'], ['🎨', '艺术家（几何）', '关心空间的对称性'], ['🎵', '音乐家（分析）', '关心波的振动']];
+  const box = el('div', { class: 'story' });
+  const cards = who.map(([ic, n, d]) => { const c = el('div', { class: 'who' }, el('div', { class: 'ic' }, ic), el('h3', {}, n), el('p', {}, d), el('div', { class: 'say' })); box.append(c); return c; });
+  const scenes = [
+    [0, '「我发现了一条线索，但死活算不出来，不知道是真是假。」（几百年都解决不了）'],
+    [1, '「这个线索怎么这么像建筑图中的一条椭圆曲线？」'],
+    [2, '「这个形状发出的声音，在我的乐谱上有一段特定的旋律啊。」'],
+    [-1, '三人聚到一起：如果定理是错的，椭圆曲线没法画出来，特定的旋律也没法弹奏——所以会计最初的线索是假的。费马大定理就这么证明出来了。'],
+  ];
+  const status = el('div', { class: 'quote' }); let k = -1;
+  const art = svg('svg', { viewBox: '0 0 600 90', style: 'width:100%;height:auto' });
+  const ell = svg('path', { d: 'M130 80 C 160 10, 200 10, 230 45 C 260 80, 300 80, 330 20', fill: 'none', stroke: 'var(--t)', 'stroke-width': 3, opacity: 0 });
+  let wave = ''; for (let x = 390; x <= 590; x += 4) wave += (x === 390 ? 'M' : 'L') + x + ' ' + (45 + 25 * Math.sin((x - 390) / 12) * Math.sin((x - 390) / 70)).toFixed(1) + ' ';
+  const wv = svg('path', { d: wave, fill: 'none', stroke: 'var(--o)', 'stroke-width': 3, opacity: 0 });
+  const eq = svg('text', { class: 'lbl big', x: 360, y: 50, 'text-anchor': 'middle', opacity: 0, 'font-size': 22 }, '=');
+  const clue = svg('text', { class: 'lbl m', x: 8, y: 50, opacity: 0 }, 'aⁿ+bⁿ=cⁿ ?');
+  const cross = svg('text', { x: 360, y: 58, 'text-anchor': 'middle', 'font-size': 40, fill: 'var(--r)', opacity: 0 }, '✗');
+  [ell, wv, eq, clue, cross].forEach(x => { x.style.transition = 'opacity .6s'; art.append(x); });
+  const next = () => {
+    k = (k + 1) % scenes.length; const [w, t] = scenes[k];
+    cards.forEach((c, i) => { c.classList.toggle('on', i === w || w === -1); c.querySelector('.say').textContent = (i === w || (w === -1)) ? (w === -1 ? '一起研究' : t) : c.querySelector('.say').textContent; });
+    if (k === 0) cards.forEach(c => c.querySelector('.say').textContent = ''), cards[0].querySelector('.say').textContent = t;
+    status.textContent = t;
+    clue.style.opacity = k >= 0 ? 1 : 0; ell.style.opacity = k >= 1 ? 1 : 0; wv.style.opacity = k >= 2 ? 1 : 0; eq.style.opacity = k === 2 ? 1 : 0; cross.style.opacity = k === 3 ? 1 : 0;
+  };
+  root.append(el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', onclick: next }, '下一幕 →')), box, art, status);
+  next();
+  return {};
+});
+
+/* ======================================================================
+   05 阶梯
+   ====================================================================== */
+reg('stair', (root) => {
+  const data = [
+    { n: '1 维', a: '黎曼 ζ 函数', b: '乘法群；函数方程 = 最简单的自守性', t: '黎曼 ζ 函数 ζ(s) 背后的对称群是简单的乘法群，其函数方程可以看作一种最简单的「自守性」。' },
+    { n: '2 维', a: '椭圆曲线的 L-函数', b: '模形式的 L-函数（二维复双曲空间等结构）', t: '对于椭圆曲线等对象，其 L-函数应该等于某个模形式的 L-函数。费马大定理就是在这一级解决的。' },
+    { n: 'N 维', a: '任意数论对象的 L-函数', b: 'GL(n) 等高维群上的自守形式 L-函数', t: '朗兰兹纲领把对应推广到任意维度和任意李群：每一个数论对象的 L-函数，都对应着一个类似 GL(n) 高维群的「自守形式」L-函数。' },
+  ];
+  const W = 680, H = 250;
+  const s = svg('svg', { class: 'stair-svg', viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto;min-width:560px' }); root.append(s);
+  const detail = document.getElementById('stairDetail');
+  const cut = (t, n) => t.length > n ? t.slice(0, n) + '…' : t;
+  const lvs = data.map((d, i) => {
+    const x = 20 + i * 215, h = 95 + i * 60, y = H - 12 - h;
+    const g = svg('g', { class: 'lv' }, svg('rect', { x, y, width: 205, height: h, rx: 8 }),
+      svg('text', { class: 'm', x: x + 10, y: y + 20, fill: 'var(--p)' }, d.n),
+      svg('text', { x: x + 10, y: y + 42, 'font-size': 12.5 }, cut(d.a, 15)),
+      svg('text', { class: 'lbl', x: x + 10, y: y + 60, 'font-size': 11 }, '↕ L-函数相等'),
+      svg('text', { x: x + 10, y: y + 80, 'font-size': 11.5 }, cut(d.b, 15)));
+    g.addEventListener('click', () => show(i)); s.append(g); return g;
+  });
+  const show = (i) => { lvs.forEach((g, j) => g.classList.toggle('on', j === i)); const d = data[i]; detail.innerHTML = ''; detail.append(el('h3', {}, d.n + '：' + d.a + ' ↔ ' + d.b), el('p', {}, d.t)); };
+  show(0);
+  let timer = 0, played = false;
+  const start = () => { if (played) return; played = true; let k = 0; const tick = () => { if (k < 3) { show(k++); timer = setTimeout(tick, RM ? 0 : 1300); } }; tick(); };
+  return { start, stop: () => clearTimeout(timer) };
+});
+
+/* ======================================================================
+   06 广义黎曼猜想：零点落到 1/2 线上
+   ====================================================================== */
+reg('grh', (root) => {
+  const c = el('canvas', { class: 'grh-c' }); root.append(c);
+  const ctx = c.getContext('2d');
+  const resize = () => { const w = c.clientWidth, h = 240; if (c.width !== w * 2 || c.height !== h * 2) { c.width = w * 2; c.height = h * 2; } };
+  const fams = [['ζ(s)', '#4f46e5'], ['椭圆曲线 L', '#0f9d8a'], ['GL(3) 自守 L', '#e8731f'], ['GL(n) 自守 L', '#c9a227']];
+  const seeds = fams.map((_, f) => Array.from({ length: 9 }, (_, k) => ({ y: .08 + k * .1 + Math.sin(f * 3 + k * 2.1) * .03, x0: .1 + Math.abs(Math.sin(f * 7 + k * 1.3)) * .8 })));
+  return loop((t) => {
+    resize(); const W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
+    const L = W * .24, R = W * .94, mid = (L + R) / 2;
+    ctx.fillStyle = 'rgba(128,128,160,.12)'; ctx.fillRect(L, 20, R - L, H - 40);
+    ctx.strokeStyle = 'rgba(128,128,160,.6)'; ctx.lineWidth = 2; ctx.strokeRect(L, 20, R - L, H - 40);
+    ctx.setLineDash([10, 8]); ctx.strokeStyle = 'rgba(143,138,255,.9)'; ctx.beginPath(); ctx.moveTo(mid, 20); ctx.lineTo(mid, H - 20); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(140,140,160,.9)'; ctx.font = '22px ' + cssVar('--mono'); ctx.textAlign = 'center';
+    ctx.fillText('Re(s)=0', L, H - 2); ctx.fillText('Re(s)=1', R, H - 2); ctx.fillStyle = '#8f8aff'; ctx.fillText('Re(s)=1/2', mid, 16);
+    const cyc = (t % 10) / 10;
+    fams.forEach(([name, col], f) => {
+      const appear = clamp((cyc - f * .18) * 4, 0, 1); if (appear <= 0) return;
+      const conv = clamp((cyc - f * .18 - .12) * 2.2, 0, 1);
+      ctx.fillStyle = col; ctx.globalAlpha = appear;
+      seeds[f].forEach(z => { const x = lerp(L + (R - L) * z.x0, mid, 1 - Math.pow(1 - conv, 3)); const y = 20 + (H - 40) * z.y; ctx.beginPath(); ctx.arc(x + (f - 1.5) * 4, y, 9, 0, 7); ctx.fill(); });
+      ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.font = '600 22px ' + cssVar('--font'); ctx.fillStyle = col; ctx.globalAlpha = appear; ctx.fillText(name, 12, 60 + f * 34); ctx.globalAlpha = 1;
+    });
+  });
+});
+
+/* ======================================================================
+   07 斯梅尔：先高维后低维
+   ====================================================================== */
+reg('smale', (root) => {
+  const W = 320, H = 170;
+  const s = svg('svg', { class: 'smale-svg', viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' }); root.append(s);
+  const dims = ['6 维', '5 维', '4 维', '3 维'];
+  const lvs = dims.map((d, i) => { const x = 10 + i * 78, y = 20 + i * 30; const g = svg('g', { class: 'lv' }, svg('rect', { x, y, width: 70, height: 130 - i * 30, rx: 6 }), svg('text', { x: x + 35, y: y + 20, 'text-anchor': 'middle' }, d)); s.append(g); return g; });
+  s.append(svg('text', { x: 10, y: H - 4, class: 'lbl', 'font-size': 11, fill: 'var(--muted)' }, '先证高维 → 顺序向低维延伸 → 三维宇宙'));
+  const ball = svg('circle', { r: 7, fill: 'var(--t)' }); s.append(ball);
+  let timer = 0;
+  const start = () => { stop(); let k = 0; const tick = () => { lvs.forEach((g, j) => g.classList.toggle('on', j <= k % 5 - 0 && k % 5 < 4)); const i = k % 5; if (i < 4) { ball.setAttribute('cx', 45 + i * 78); ball.setAttribute('cy', 10 + i * 30); ball.style.opacity = 1; } else ball.style.opacity = 0; k++; timer = setTimeout(tick, RM ? 100000 : 800); }; tick(); };
+  const stop = () => clearTimeout(timer);
+  return { start, stop };
+});
+
+/* ======================================================================
+   08 链条
+   ====================================================================== */
+reg('chain', (root) => {
+  const steps = [...root.querySelectorAll('.step')];
+  let i = 0;
+  return every(1600, () => { steps.forEach((s, j) => s.classList.toggle('on', j === i % steps.length)); i++; });
+});
+
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>
