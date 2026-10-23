@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>广义坐标不是时间的函数 · 可视化讲解</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f6f4ef;--bg2:#ffffff;--bg3:#efece4;--fg:#1d1c1a;--fg2:#5a5752;--fg3:#8a867f;
+  --line:#dedad0;--accent:#4f46e5;--accent2:#0f9b8e;--warn:#e07b1a;--pink:#d6336c;--ok:#2f9e44;
+  --accent-soft:#e8e6fb;--accent2-soft:#d9f3ef;--warn-soft:#fdebd3;--pink-soft:#fde0ea;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",Roboto,sans-serif;
+  --r:14px;--shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -12px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.92em}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:50;transition:width .1s linear}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:0;max-width:1180px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 16px 28px 20px;border-right:1px solid var(--line);font-size:13px}
+nav.toc .brand{font-weight:700;font-size:13px;color:var(--fg2);margin-bottom:14px;letter-spacing:.02em}
+nav.toc a{display:block;color:var(--fg2);text-decoration:none;padding:5px 8px;border-radius:8px;margin-bottom:2px;line-height:1.35}
+nav.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.toc a .n{display:inline-block;width:1.6em;color:var(--fg3);font-family:var(--mono);font-size:11px}
+main{padding:0 32px 80px;min-width:0}
+.hero{padding:72px 0 36px}
+.hero .kicker{color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,4.2vw,44px);line-height:1.2;margin:10px 0 14px;letter-spacing:-.01em}
+.hero p{font-size:17px;color:var(--fg2);max-width:62ch;margin:0 0 10px}
+.hero .meta{font-size:13px;color:var(--fg3);margin-top:16px}
+.notice{background:var(--warn-soft);border-left:3px solid var(--warn);padding:10px 14px;border-radius:8px;font-size:13.5px;color:var(--fg2);margin-top:18px}
+section.ch{padding:56px 0 24px;border-top:1px solid var(--line)}
+section.ch .num{display:inline-block;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;margin-bottom:10px}
+section.ch h2{font-size:clamp(22px,3vw,30px);line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}
+section.ch .lead{font-size:17px;color:var(--fg2);margin:0 0 20px;max-width:70ch}
+.fig{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 18px 14px;margin:0 0 18px}
+.fig .cap{font-size:13px;color:var(--fg3);margin:10px 0 0;line-height:1.5}
+.fig .hint{font-size:13px;color:var(--fg2);margin:0 0 10px}
+.fig svg,.fig canvas{display:block;max-width:100%;height:auto}
+.fig .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig .scroll > svg{min-width:560px}
+.notes{margin:0;padding-left:1.2em;color:var(--fg2);font-size:14.5px}
+.notes li{margin:4px 0}
+.notes b{color:var(--fg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--bg3);border-radius:12px;padding:14px 16px;font-size:14px}
+.card h4{margin:0 0 6px;font-size:14.5px}
+.card p{margin:0;color:var(--fg2);line-height:1.5}
+.card.ac{border-left:3px solid var(--accent)}
+.card.ac2{border-left:3px solid var(--accent2)}
+.card.wa{border-left:3px solid var(--warn)}
+.card.pk{border-left:3px solid var(--pink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--bg3);color:var(--fg);padding:7px 14px;border-radius:999px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translateY(1px)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg2);padding:7px 14px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--accent);color:#fff}
+.range{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2)}
+.range input{accent-color:var(--accent)}
+.formula{font-family:var(--mono);background:var(--bg3);border-radius:10px;padding:10px 14px;font-size:14px;overflow-x:auto;white-space:nowrap}
+.formula .k{color:var(--accent);font-weight:600}
+.quote{border-left:3px solid var(--accent2);padding:6px 14px;color:var(--fg2);font-size:15px;margin:0 0 14px;background:var(--accent2-soft);border-radius:0 10px 10px 0}
+.quote .who{display:block;font-size:12px;color:var(--fg3);margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--bg3);color:var(--fg3);vertical-align:middle;margin-left:6px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow .step{flex:1 1 120px;background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:13.5px;text-align:center;position:relative;opacity:.45;transition:opacity .4s,background .4s}
+.flow .step.lit{opacity:1;background:var(--accent-soft)}
+.flow .step b{display:block;font-size:14px}
+.flow .arrow{align-self:center;color:var(--fg3);padding:0 6px;font-size:18px}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--fg3);font-size:13px}
+footer a{color:var(--fg2)}
+#tocBtn{display:none;position:fixed;right:16px;bottom:16px;z-index:60;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
+@media (max-width:860px){
+  .layout{display:block}
+  nav.toc{position:fixed;inset:0;height:auto;z-index:55;background:var(--bg2);transform:translateX(-100%);transition:transform .25s;border-right:0;padding-top:48px}
+  nav.toc.open{transform:none}
+  #tocBtn{display:block}
+  main{padding:0 16px 80px}
+  .hero{padding:48px 0 24px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .fig{padding:14px 12px 12px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .pulse{animation:none}
+  *{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<button id="tocBtn" aria-label="目录">目录</button>
+<div class="layout">
+<nav class="toc"><div class="brand">广义坐标不是时间的函数 · 可视化讲解</div><div class="list"></div></nav>
+<main>
+<div class="hero">
+  <div class="kicker">分析力学 · 概念澄清</div>
+  <h1>广义坐标为什么"不是时间的函数"？</h1>
+  <p>拉格朗日方程里写着 ∂L/∂q̇，可 q̇ 不就是 dq/dt 吗？为什么物理书又说 q 和 q̇ 是两个独立的变量？答案是：同一个符号 q，在两个不同的场合里，指的是两样东西。</p>
+  <div class="meta">原文：東雲正樹 在知乎问题「拉格朗日方程中，为什么说广义坐标不是时间的函数？」下的回答（811 赞），2022 年 7 月；附 Skadiologist 的进阶回答 · 本页为可视化讲解</div>
+</div>
+
+<section class="ch" id="s1" data-title="状态：一组数字">
+  <div class="num">01</div>
+  <h2>第一层：一个状态，就是一组数字</h2>
+  <p class="lead">分析力学用广义坐标 q<sub>i</sub> 和广义速度 q̇<sub>i</sub> 刻画系统。一组确定的取值，唯一对应系统的一个确定状态。它们就是 2s 个数，仅此而已。</p>
+  <div class="fig reveal" data-demo="state">
+    <p class="hint">以 q 和 q̇ 为坐标轴架起"态空间"。每点一个状态。点"随机取一个状态"，看它只是两个数。</p>
+    <div class="controls"><button class="btn primary" id="stBtn">随机取一个状态</button></div>
+    <svg id="stS" viewBox="0 0 640 260"></svg>
+    <p class="cap" id="stCap">这里还没有引入时间。q 不是 q(t)，q̇ 也不是 dq/dt，它们"就俩数字罢了"。</p>
+  </div>
+  <ul class="notes">
+    <li>对无约束质点系，q<sub>i</sub> 可以是某质点的 x 坐标，q̇<sub>i</sub> 就是它在 x 方向的速度大小。</li>
+    <li>这套理论能研究一切物理系统，刻画系统的参数不一定是"坐标与速度"，所以才叫<b>广义</b>坐标与<b>广义</b>速度：本质是"刻画系统状态的参数"。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s2" data-title="q̇ 与 q 的关系">
+  <div class="num">02</div>
+  <h2>既然有 2s 个参数，为什么不叫 2s 个"坐标"？</h2>
+  <p class="lead">因为 q̇<sub>i</sub> 和 q<sub>i</sub> 始终有联系：q̇<sub>i</sub> 是"沿 q<sub>i</sub> 坐标轴方向的速度大小"。但这个联系不是"求导"，两者各自仍只是一个数。</p>
+  <div class="fig reveal" data-demo="comp">
+    <svg id="compS" viewBox="0 0 640 240"></svg>
+    <p class="cap">速度矢量按坐标轴分解：q̇<sub>1</sub> 是沿 q<sub>1</sub> 轴的分量，q̇<sub>2</sub> 是沿 q<sub>2</sub> 轴的分量。进阶写法里它是 v = Σ v<sup>i</sup> ∂/∂q<sup>i</sup>，基矢 ∂/∂q<sup>i</sup> 对应第 i 个坐标。</p>
+  </div>
+</section>
+
+<section class="ch" id="s3" data-title="引入时间：路径">
+  <div class="num">03</div>
+  <h2>第二层：引入时间，坐标才变成函数</h2>
+  <p class="lead">一段确定的演化过程 = 给每个时刻指定一个状态。于是在这条"演化路径"上，q<sub>i</sub> 和 q̇<sub>i</sub> 才成了时间的函数 q<sub>i</sub>(t)、q̇<sub>i</sub>(t)。</p>
+  <div class="fig reveal" data-demo="path">
+    <p class="hint">态空间里有无穷条路径，真实发生的只有一条。只有在真实路径上，q̇(t) 才同时等于 dq/dt。</p>
+    <div class="controls">
+      <div class="seg" id="pathMode"><button data-v="rand" class="on">随意选的一条路径</button><button data-v="real">真实的演化路径</button></div>
+      <button class="btn" id="pathNew">换一条</button>
+    </div>
+    <div class="grid2" style="align-items:start">
+      <canvas id="pathC" width="340" height="300"></canvas>
+      <div>
+        <div class="card" style="margin-bottom:10px"><h4>此刻读数</h4><p class="mono" id="pathRead">—</p></div>
+        <div class="card" id="pathVerdict"><h4>q̇(t) 等于 dq/dt 吗？</h4><p>—</p></div>
+      </div>
+    </div>
+    <p class="cap">随意选的路径：q̇(t) 和 q(t) 各自是任意函数，彼此不必有导数关系。真实路径：q̇(t) 恰好是 q(t) 的导函数（这里用简谐振子 q = cos t，q̇ = −sin t 作示例）。</p>
+  </div>
+  <ul class="notes">
+    <li>时间 t 在这个框架里也只是一个参数，但它<b>不用来刻画状态</b>，而用来给过程编号。</li>
+    <li>"为 q(t)、q̇(t) 选定函数形式" ⇔ "指定一条路径"。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s4" data-title="作用量原理">
+  <div class="num">04</div>
+  <h2>哪条路径是真的？作用量原理</h2>
+  <p class="lead">拉氏量 L 是 q(t)、q̇(t) 的复合函数；作用量 S 是 L 的泛函。一条确定的路径 → S 的一个确定值。真实路径使 S 取极值。</p>
+  <div class="fig reveal" data-demo="action">
+    <p class="hint">固定两端 q(0)=0、q(1)=1，用参数 a 改变路径形状 q(t) = t + a·sin(πt)。拖动 a，看 S 怎么变。（示例取 L = ½q̇²，自由粒子）</p>
+    <div class="controls"><label class="range">a <input type="range" id="actA" min="-100" max="100" value="60"> <span id="actAv">0.60</span></label><button class="btn" id="actAuto">自动扫一遍</button></div>
+    <div class="grid2" style="align-items:start">
+      <canvas id="actC" width="340" height="240"></canvas>
+      <canvas id="actS" width="340" height="240"></canvas>
+    </div>
+    <p class="cap">左：候选路径。右：每条路径对应的 S 值；a = 0（直线）处 S 最小，就是真实路径。"所以最后还是归结到函数取极值的问题上去了"（原文注：其实是泛函）。</p>
+  </div>
+  <div class="flow reveal">
+    <div class="step lit"><b>选定 q(t), q̇(t)</b>= 指定一条路径</div><div class="arrow">→</div>
+    <div class="step lit"><b>代入 L</b>L 变成 t 的函数</div><div class="arrow">→</div>
+    <div class="step lit"><b>积分得 S</b>一条路径一个数</div><div class="arrow">→</div>
+    <div class="step lit"><b>取极值</b>Euler–Lagrange 方程</div><div class="arrow">→</div>
+    <div class="step lit"><b>解出真实路径</b>此时 q̇(t) = dq/dt</div>
+  </div>
+</section>
+
+<section class="ch" id="s5" data-title="进阶：位形空间与切丛">
+  <div class="num">05</div>
+  <h2>进阶视角：位形空间 M 与切丛 TM</h2>
+  <p class="lead">Skadiologist 的回答用了更准确的语言：q 是位形空间 M 的坐标，v 是切丛 TM 的纤维坐标；路径 γ 是 ℝ → M 的映射，求导后才"提升"到 TM 里。</p>
+  <div class="fig reveal" data-demo="bundle">
+    <div class="scroll"><svg id="bunS" viewBox="0 0 720 300"></svg></div>
+    <p class="cap">L : TM × ℝ → ℝ，坐标形式 L(q¹…qⁿ; v¹…vⁿ; t)。此时没有任何路径，"v<sup>i</sup> = q̇<sup>i</sup>"无从谈起。指定路径 γ(t) 后，(γ, γ̇) : ℝ → TM 才把它提升到切丛，这时才能写 q̇<sup>i</sup>(t)。</p>
+  </div>
+  <ul class="notes">
+    <li>切丛中<b>不是所有路径</b>都能写成 (q(t), q̇(t)) 的形式，这正是必须区分 v<sup>i</sup> 和 q̇<sup>i</sup> 的原因。</li>
+    <li>所谓 ∂L/∂q̇<sup>i</sup> 是滥用记号，正确写法是 ∂L/∂v<sup>i</sup>：对切丛坐标求偏导，与"对时间求导"无关。</li>
+    <li>東雲正樹的表述：以全体 q<sub>i</sub>、q̇<sub>i</sub> 为轴架起实 2s 维的<b>态空间</b>，每个点一个状态；一条演化路径就是其中一条以时间为参数的曲线。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s6" data-title="偏导 vs 全导">
+  <div class="num">06</div>
+  <h2>偏导数 ∂L/∂t 和全导数 dL/dt 完全是两回事</h2>
+  <p class="lead">沿路径代入后得到的 𝓛(t) = L[γ(t), γ̇(t), t] 是 ℝ → ℝ 的函数；对它求导才是"全导数"，两者靠链式法则联系。</p>
+  <div class="grid2">
+    <div class="card ac reveal"><h4>∂L/∂t　偏导</h4><p>L 是 TM × ℝ 上的函数，固定 q、v，只动 t 坐标。<b>不涉及任何路径。</b></p></div>
+    <div class="card ac2 reveal"><h4>d𝓛/dt　全导</h4><p>先把路径代进去得到 𝓛(t)，再对 t 求导。<b>路径上 q、v 也在随 t 变。</b></p></div>
+  </div>
+  <div class="fig reveal" data-demo="chain" style="margin-top:14px">
+    <svg id="chainS" viewBox="0 0 640 150"></svg>
+    <div class="formula" style="margin-top:8px">d𝓛/dt = <span class="k">∂L/∂t</span> + Σ<sub>i</sub> ( ∂L/∂q<sup>i</sup> · q̇<sup>i</sup>(t) + ∂L/∂v<sup>i</sup> · q̈<sup>i</sup>(t) )</div>
+    <p class="cap">链式法则里的每个偏导都是在 TM × ℝ 上算好、再沿路径 [γ(t), γ̇(t), t] 取值的。</p>
+  </div>
+</section>
+
+<section class="ch" id="s7" data-title="懂的都懂">
+  <div class="num">07</div>
+  <h2>所以："懂的都懂"</h2>
+  <p class="lead">物理书把两层含义都写成 q，是符号的滥用。但既然大家都这么用，它就不容易出错。要继续学物理，就得掌握这种思维模式。</p>
+  <div class="fig reveal">
+    <div class="grid2">
+      <div class="card ac"><h4>写 ∂L/∂q、∂L/∂q̇ 时</h4><p>q、q̇ 是<b>态空间的坐标</b>，彼此独立，不是时间的函数。</p></div>
+      <div class="card ac2"><h4>写 d/dt (∂L/∂q̇) 时</h4><p>已经沿<b>某条路径</b>代入，q(t)、q̇(t) 是时间的函数，且 q̇ = dq/dt。</p></div>
+    </div>
+    <p class="cap">Euler–Lagrange 方程 d/dt(∂L/∂q̇) − ∂L/∂q = 0 把两层含义塞在一行里：先在态空间求偏导，再沿路径对时间求全导。</p>
+  </div>
+</section>
+
+<footer>原文：東雲正樹，知乎回答（2022-07-27）；进阶部分引自同一问题下 Skadiologist 的回答。本页由 Claude Code 基于原文生成，仅供学习。</footer>
+
+</main>
+</div>
+<script>
+/* shared runtime: progress bar, TOC, reveal + demo triggers, helpers */
+window.RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+window.DEMOS = {};
+window.$ = (s, r) => (r || document).querySelector(s);
+window.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+window.css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+window.seg = function (el, cb) {
+  const bs = $$('button', el);
+  bs.forEach((b) => b.addEventListener('click', () => {
+    bs.forEach((x) => x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v, b);
+  }));
+  return { set(v) { const b = bs.find((x) => x.dataset.v === v); if (b) b.click(); }, get() { const b = bs.find((x) => x.classList.contains('on')); return b ? b.dataset.v : null; } };
+};
+/* canvas with devicePixelRatio */
+window.canvas2d = function (c, w, h) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = w * dpr; c.height = h * dpr; c.style.width = '100%'; c.style.aspectRatio = w + '/' + h;
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return ctx;
+};
+/* raf loop with visibility pause */
+window.loop = function (fn) {
+  let on = false, id = 0, t0 = 0;
+  function frame(t) { if (!on) return; fn((t - t0) / 1000); id = requestAnimationFrame(frame); }
+  return {
+    start() { if (on) return; on = true; t0 = performance.now(); id = requestAnimationFrame(frame); },
+    stop() { on = false; cancelAnimationFrame(id); },
+    get running() { return on; }
+  };
+};
+window.flowCycle = function (el, ms) {
+  const steps = $$('.step', el); let i = 0, timer = 0;
+  function tick() { steps.forEach((s, k) => s.classList.toggle('lit', k === i)); i = (i + 1) % steps.length; }
+  return {
+    start() { if (timer) return; tick(); timer = setInterval(tick, ms || 1400); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const secs = $$('section.ch');
+  const toc = $('nav.toc .list');
+  secs.forEach((s, i) => {
+    const a = document.createElement('a'); a.href = '#' + s.id;
+    a.innerHTML = '<span class="n">' + String(i + 1).padStart(2, '0') + '</span>' + s.dataset.title;
+    toc.appendChild(a);
+    a.addEventListener('click', () => $('nav.toc').classList.remove('open'));
+  });
+  const links = $$('nav.toc a');
+  const pb = $('#progress');
+  function onScroll() {
+    const h = document.documentElement; pb.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    let cur = -1; secs.forEach((s, i) => { if (s.getBoundingClientRect().top < innerHeight * 0.4) cur = i; });
+    links.forEach((l, i) => l.classList.toggle('active', i === cur));
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  $('#tocBtn').addEventListener('click', () => $('nav.toc').classList.toggle('open'));
+  /* reveal + demo lifecycle */
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      const el = e.target;
+      if (e.isIntersecting) {
+        el.classList.add('in');
+        const d = el.dataset.demo; if (d && DEMOS[d]) { if (!el._inited) { el._inited = true; el._demo = DEMOS[d](el) || {}; } if (el._demo.start) el._demo.start(); }
+      } else if (el._demo && el._demo.stop) el._demo.stop();
+    });
+  }, { threshold: 0.18 });
+  $$('.reveal,[data-demo]').forEach((el) => io.observe(el));
+});
+
+</script>
+<script>
+/* ---------- 01 state space ---------- */
+DEMOS.state = function () {
+  const s = $('#stS'), cap = $('#stCap');
+  const ox = 70, oy = 220, w = 420, h = 180; let pts = [];
+  function render(cur) {
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), warn = css('--warn');
+    let g = `<line x1="${ox}" y1="${oy}" x2="${ox + w}" y2="${oy}" stroke="${fg3}" marker-end="url(#ar)"/><line x1="${ox}" y1="${oy}" x2="${ox}" y2="${oy - h}" stroke="${fg3}"/>
+    <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="${fg3}"/></marker></defs>
+    <text x="${ox + w + 8}" y="${oy + 4}" font-size="14" fill="${fg}">q</text><text x="${ox - 8}" y="${oy - h - 8}" font-size="14" fill="${fg}">q̇</text>
+    <text x="${ox + w / 2 - 30}" y="${oy + 30}" font-size="12" fill="${fg3}">态空间（2s 维，这里画 2 维）</text>`;
+    pts.forEach((p, i) => { const last = i === pts.length - 1; g += `<circle cx="${p.x}" cy="${p.y}" r="${last ? 7 : 4}" fill="${last ? warn : acc}" opacity="${last ? 1 : .5}"/>`; if (last) g += `<text x="${p.x + 12}" y="${p.y - 8}" font-size="13" fill="${fg}" font-family="${css('--mono')}">(q, q̇) = (${p.q}, ${p.qd})</text>`; });
+    // sidebar labels
+    g += `<rect x="${ox + w + 30}" y="60" width="110" height="110" rx="10" fill="${css('--bg3')}"/><text x="${ox + w + 44}" y="86" font-size="13" fill="${fg}">一个点</text><text x="${ox + w + 44}" y="106" font-size="13" fill="${fg3}">= 一组数</text><text x="${ox + w + 44}" y="126" font-size="13" fill="${fg3}">= 一个状态</text><text x="${ox + w + 44}" y="152" font-size="12" fill="${acc}">没有 t</text>`;
+    s.innerHTML = g;
+  }
+  function add() { const q = +(Math.random() * 4 - 2).toFixed(2), qd = +(Math.random() * 3 - 1.5).toFixed(2); pts.push({ q, qd, x: ox + (q + 2) / 4 * w, y: oy - (qd + 1.5) / 3 * h }); if (pts.length > 12) pts.shift(); render(); cap.textContent = `q = ${q}，q̇ = ${qd}。两个独立的数，没有谁是谁的导数。`; }
+  $('#stBtn').addEventListener('click', add);
+  add();
+  return {};
+};
+
+/* ---------- 02 components ---------- */
+DEMOS.comp = function () {
+  const s = $('#compS'); const fg3 = css('--fg3'), acc = css('--accent'), acc2 = css('--accent2'), fg = css('--fg'), warn = css('--warn');
+  const ox = 120, oy = 200, L = 150;
+  const vx = 150, vy = -110;
+  s.innerHTML = `<defs><marker id="a1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="${warn}"/></marker><marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="${fg3}"/></marker></defs>
+  <line x1="${ox - 20}" y1="${oy}" x2="${ox + 300}" y2="${oy}" stroke="${fg3}" marker-end="url(#a2)"/><line x1="${ox}" y1="${oy + 20}" x2="${ox}" y2="${oy - 170}" stroke="${fg3}" marker-end="url(#a2)"/>
+  <text x="${ox + 305}" y="${oy + 5}" font-size="14" fill="${fg}">q₁ 轴</text><text x="${ox - 50}" y="${oy - 170}" font-size="14" fill="${fg}">q₂ 轴</text>
+  <circle cx="${ox}" cy="${oy}" r="6" fill="${fg}"/><text x="${ox - 60}" y="${oy + 22}" font-size="12" fill="${fg3}">状态点 (q₁, q₂)</text>
+  <line x1="${ox}" y1="${oy}" x2="${ox + vx}" y2="${oy + vy}" stroke="${warn}" stroke-width="3" marker-end="url(#a1)"><animate attributeName="x2" values="${ox};${ox + vx}" dur="1s" fill="freeze"/><animate attributeName="y2" values="${oy};${oy + vy}" dur="1s" fill="freeze"/></line>
+  <text x="${ox + vx + 8}" y="${oy + vy - 6}" font-size="13" fill="${warn}">速度矢量</text>
+  <line x1="${ox}" y1="${oy}" x2="${ox + vx}" y2="${oy}" stroke="${acc}" stroke-width="3" stroke-dasharray="6 4" opacity="0"><animate attributeName="opacity" values="0;1" begin="1s" dur=".5s" fill="freeze"/></line>
+  <text x="${ox + vx / 2 - 30}" y="${oy + 40}" font-size="13" fill="${acc}" opacity="0">q̇₁ = 沿 q₁ 轴的大小<animate attributeName="opacity" values="0;1" begin="1s" dur=".5s" fill="freeze"/></text>
+  <line x1="${ox + vx}" y1="${oy}" x2="${ox + vx}" y2="${oy + vy}" stroke="${acc2}" stroke-width="3" stroke-dasharray="6 4" opacity="0"><animate attributeName="opacity" values="0;1" begin="1.5s" dur=".5s" fill="freeze"/></line>
+  <text x="${ox + vx + 10}" y="${oy + vy / 2 + 5}" font-size="13" fill="${acc2}" opacity="0">q̇₂ = 沿 q₂ 轴的大小<animate attributeName="opacity" values="0;1" begin="1.5s" dur=".5s" fill="freeze"/></text>
+  <rect x="430" y="40" width="190" height="120" rx="10" fill="${css('--bg3')}"/>
+  <text x="446" y="66" font-size="13" fill="${fg}" font-weight="600">有联系，但不是求导</text>
+  <text x="446" y="90" font-size="12.5" fill="${fg3}">q₁ 是一个数</text><text x="446" y="110" font-size="12.5" fill="${fg3}">q̇₁ 也是一个数</text><text x="446" y="134" font-size="12.5" fill="${acc}">还没引入时间</text>`;
+  return {};
+};
+
+/* ---------- 03 path ---------- */
+DEMOS.path = function () {
+  const c = $('#pathC'), W = 340, H = 300, ctx = canvas2d(c, W, H);
+  const ox = 170, oy = 160, sc = 95; let mode = 'rand', t = 0, l, rp;
+  const read = $('#pathRead'), verdict = $('#pathVerdict');
+  function newRand() { rp = { a: 0.6 + Math.random() * 0.6, b: 0.6 + Math.random() * 0.6, p1: Math.random() * 6, p2: Math.random() * 6, f1: 0.7 + Math.random() * 0.8, f2: 0.7 + Math.random() * 0.8 }; }
+  function q(tt) { return mode === 'real' ? Math.cos(tt) : rp.a * Math.cos(rp.f1 * tt + rp.p1); }
+  function qd(tt) { return mode === 'real' ? -Math.sin(tt) : rp.b * Math.sin(rp.f2 * tt + rp.p2); }
+  function dq(tt) { const e = 1e-3; return (q(tt + e) - q(tt - e)) / (2 * e); }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), warn = css('--warn');
+    ctx.strokeStyle = fg3; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(20, oy); ctx.lineTo(W - 20, oy); ctx.moveTo(ox, 20); ctx.lineTo(ox, H - 20); ctx.stroke();
+    ctx.fillStyle = fg; ctx.font = '13px ' + css('--sans'); ctx.fillText('q', W - 30, oy - 8); ctx.fillText('q̇', ox + 8, 30);
+    ctx.strokeStyle = acc; ctx.lineWidth = 2; ctx.beginPath();
+    for (let s = 0; s <= 12.6; s += 0.05) { const x = ox + q(s) * sc, y = oy - qd(s) * sc; s === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.stroke();
+    const x = ox + q(t) * sc, y = oy - qd(t) * sc;
+    ctx.fillStyle = warn; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
+    ctx.fillStyle = fg3; ctx.font = '12px ' + css('--mono'); ctx.fillText('t = ' + t.toFixed(1), 24, H - 28);
+    const a = qd(t), b = dq(t), ok = Math.abs(a - b) < 0.02;
+    read.textContent = `q(t) = ${q(t).toFixed(2)}   q̇(t) = ${a.toFixed(2)}   dq/dt = ${b.toFixed(2)}`;
+    verdict.className = 'card ' + (ok ? 'ac2' : 'pk');
+    verdict.innerHTML = '<h4>q̇(t) 等于 dq/dt 吗？</h4><p>' + (ok ? '<b>相等。</b>这是真实路径：q̇ 是 q 的导函数。' : '<b>不相等。</b>这条路径是随意选的，q̇(t) 与 q(t) 之间没有导数关系。') + '</p>';
+  }
+  l = loop((dt) => { t = (dt * 0.8) % 12.6; draw(); });
+  seg($('#pathMode'), (v) => { mode = v; draw(); });
+  $('#pathNew').addEventListener('click', () => { newRand(); if (mode === 'real') $('#pathMode').querySelector('[data-v=rand]').click(); draw(); });
+  newRand(); draw();
+  return { start() { if (RM) draw(); else l.start(); }, stop() { l.stop(); } };
+};
+
+/* ---------- 04 action ---------- */
+DEMOS.action = function () {
+  const c1 = $('#actC'), c2 = $('#actS'), W = 340, H = 240, g1 = canvas2d(c1, W, H), g2 = canvas2d(c2, W, H);
+  const inp = $('#actA'), lab = $('#actAv'); let a = 0.6, auto = null;
+  const S = (aa) => 0.5 * (1 + aa * aa * Math.PI * Math.PI / 2);
+  function draw() {
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), warn = css('--warn'), ok = css('--ok');
+    // left: paths
+    g1.clearRect(0, 0, W, H);
+    const ox = 40, oy = 200, w = 270, h = 160;
+    g1.strokeStyle = fg3; g1.beginPath(); g1.moveTo(ox, oy); g1.lineTo(ox + w, oy); g1.moveTo(ox, oy); g1.lineTo(ox, oy - h); g1.stroke();
+    g1.fillStyle = fg3; g1.font = '12px ' + css('--sans'); g1.fillText('t', ox + w - 6, oy + 16); g1.fillText('q', ox - 14, oy - h + 4);
+    const Y = (q) => oy - (q + 0.4) / 1.8 * h;
+    [-0.8, -0.4, 0.4, 0.8].forEach((aa) => { g1.strokeStyle = fg3; g1.globalAlpha = .3; g1.beginPath(); for (let i = 0; i <= 60; i++) { const t = i / 60, x = ox + t * w, y = Y(t + aa * Math.sin(Math.PI * t)); i ? g1.lineTo(x, y) : g1.moveTo(x, y); } g1.stroke(); g1.globalAlpha = 1; });
+    g1.strokeStyle = ok; g1.setLineDash([4, 4]); g1.beginPath(); g1.moveTo(ox, Y(0)); g1.lineTo(ox + w, Y(1)); g1.stroke(); g1.setLineDash([]);
+    g1.strokeStyle = acc; g1.lineWidth = 3; g1.beginPath(); for (let i = 0; i <= 80; i++) { const t = i / 80, x = ox + t * w, y = Y(t + a * Math.sin(Math.PI * t)); i ? g1.lineTo(x, y) : g1.moveTo(x, y); } g1.stroke(); g1.lineWidth = 1;
+    g1.fillStyle = warn; g1.beginPath(); g1.arc(ox, Y(0), 5, 0, 7); g1.arc(ox + w, Y(1), 5, 0, 7); g1.fill();
+    g1.fillStyle = fg; g1.font = '12px ' + css('--sans'); g1.fillText('q(t) = t + a·sin(πt)', ox + 8, 24); g1.fillStyle = ok; g1.fillText('a = 0：直线（真实路径）', ox + 120, oy - 10);
+    // right: S curve
+    g2.clearRect(0, 0, W, H);
+    const bx = 50, by = 200, bw = 260, bh = 160;
+    g2.strokeStyle = fg3; g2.beginPath(); g2.moveTo(bx, by); g2.lineTo(bx + bw, by); g2.moveTo(bx, by); g2.lineTo(bx, by - bh); g2.stroke();
+    g2.fillStyle = fg3; g2.font = '12px ' + css('--sans'); g2.fillText('a', bx + bw - 6, by + 16); g2.fillText('S', bx - 16, by - bh + 4); g2.fillText('−1', bx - 4, by + 16); g2.fillText('0', bx + bw / 2 - 3, by + 16); g2.fillText('1', bx + bw - 24, by + 16);
+    const smax = S(1), smin = 0.5;
+    const X = (aa) => bx + (aa + 1) / 2 * bw, Yv = (s) => by - (s - 0.3) / (smax - 0.3) * bh;
+    g2.strokeStyle = fg; g2.lineWidth = 2; g2.beginPath(); for (let i = 0; i <= 100; i++) { const aa = -1 + i / 50; i ? g2.lineTo(X(aa), Yv(S(aa))) : g2.moveTo(X(aa), Yv(S(aa))); } g2.stroke(); g2.lineWidth = 1;
+    g2.fillStyle = ok; g2.beginPath(); g2.arc(X(0), Yv(smin), 5, 0, 7); g2.fill(); g2.fillText('极小值', X(0) + 8, Yv(smin) + 4);
+    g2.fillStyle = acc; g2.beginPath(); g2.arc(X(a), Yv(S(a)), 7, 0, 7); g2.fill();
+    g2.fillStyle = fg; g2.font = '13px ' + css('--mono'); g2.fillText('S(a) = ' + S(a).toFixed(3), bx + 10, 24);
+    g2.fillStyle = fg3; g2.font = '12px ' + css('--sans'); g2.fillText('一条路径 → 一个数', bx + 10, 44);
+  }
+  inp.addEventListener('input', () => { a = inp.value / 100; lab.textContent = a.toFixed(2); draw(); });
+  $('#actAuto').addEventListener('click', () => { if (auto) return; let v = -100; auto = setInterval(() => { v += 2; inp.value = v; a = v / 100; lab.textContent = a.toFixed(2); draw(); if (v >= 100) { clearInterval(auto); auto = null; } }, 20); });
+  draw();
+  return { stop() { if (auto) { clearInterval(auto); auto = null; } } };
+};
+
+/* ---------- 05 bundle ---------- */
+DEMOS.bundle = function () {
+  const s = $('#bunS'); const fg3 = css('--fg3'), acc = css('--accent'), acc2 = css('--accent2'), fg = css('--fg'), warn = css('--warn'), bg3 = css('--bg3');
+  // M: curved grid surface (lower), TM: sketch above with fiber
+  let grid = '';
+  for (let i = 0; i <= 6; i++) { const x = 60 + i * 50; grid += `<path d="M${x} 150 Q${x + 20} 200 ${x + 40} 270" fill="none" stroke="${fg3}" stroke-opacity=".45"/>`; }
+  for (let j = 0; j <= 4; j++) { const y = 150 + j * 30; grid += `<path d="M60 ${y} Q220 ${y - 25} 400 ${y}" fill="none" stroke="${fg3}" stroke-opacity=".45" transform="translate(${j * 10},${j * 0})"/>`; }
+  const gamma = 'M90 240 C 160 170, 260 260, 370 185';
+  s.innerHTML = `<defs><marker id="b1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="${warn}"/></marker></defs>
+  ${grid}
+  <text x="60" y="296" font-size="14" fill="${fg}" font-weight="600">位形空间 M</text><text x="190" y="296" font-size="12" fill="${fg3}">坐标 (q¹, …, qⁿ)</text>
+  <path d="${gamma}" fill="none" stroke="${acc}" stroke-width="2.5"/><text x="300" y="250" font-size="13" fill="${acc}">路径 γ : ℝ → M</text>
+  <circle r="6" fill="${warn}"><animateMotion dur="4s" repeatCount="indefinite" path="${gamma}"/></circle>
+  <g><animateMotion dur="4s" repeatCount="indefinite" rotate="auto" path="${gamma}"/><line x1="0" y1="0" x2="48" y2="0" stroke="${warn}" stroke-width="3" marker-end="url(#b1)"/><text x="14" y="-8" font-size="12" fill="${warn}">γ̇</text></g>
+  <!-- TM -->
+  <rect x="470" y="40" width="230" height="230" rx="14" fill="${bg3}"/>
+  <text x="486" y="66" font-size="14" fill="${fg}" font-weight="600">切丛 TM（2n 维）</text>
+  <text x="486" y="86" font-size="12" fill="${fg3}">坐标 (q¹…qⁿ ; v¹…vⁿ)</text>
+  <line x1="500" y1="240" x2="680" y2="240" stroke="${fg3}"/><line x1="500" y1="240" x2="500" y2="110" stroke="${fg3}"/>
+  <text x="672" y="256" font-size="12" fill="${fg3}">q</text><text x="486" y="112" font-size="12" fill="${fg3}">v</text>
+  <path d="M520 220 C 560 120, 600 230, 660 150" fill="none" stroke="${acc2}" stroke-width="2.5" stroke-dasharray="5 4"/>
+  <text x="560" y="200" font-size="12" fill="${acc2}">提升 (γ, γ̇)</text>
+  <circle cx="610" cy="130" r="4" fill="${fg}"/><text x="600" y="120" font-size="11" fill="${fg3}">某个 (q, v)</text>
+  <text x="486" y="176" font-size="11" fill="${fg3}">L : TM × ℝ → ℝ</text>
+  <path d="M400 190 C 430 170, 450 140, 470 120" fill="none" stroke="${fg3}" stroke-dasharray="3 3"/><text x="400" y="128" font-size="12" fill="${fg3}">求导 ⇒ 提升</text>`;
+  return {};
+};
+
+/* ---------- 06 chain ---------- */
+DEMOS.chain = function () {
+  const s = $('#chainS'); const fg3 = css('--fg3'), acc = css('--accent'), acc2 = css('--accent2'), fg = css('--fg'), bg3 = css('--bg3');
+  const box = (x, w, t1, t2, col) => `<rect x="${x}" y="30" width="${w}" height="90" rx="12" fill="${bg3}" stroke="${col}" stroke-width="2"/><text x="${x + w / 2}" y="68" text-anchor="middle" font-size="15" fill="${fg}" font-weight="600">${t1}</text><text x="${x + w / 2}" y="94" text-anchor="middle" font-size="12" fill="${fg3}">${t2}</text>`;
+  s.innerHTML = box(10, 170, 'L(q, v, t)', 'TM × ℝ 上的函数 · 可求 ∂', acc)
+    + `<path d="M184 75 L 236 75" stroke="${fg3}" stroke-width="2"/><text x="210" y="22" text-anchor="middle" font-size="12" fill="${fg3}">代入路径</text><text x="210" y="138" text-anchor="middle" font-size="11" fill="${fg3}">q=γ(t), v=γ̇(t)</text>`
+    + box(240, 200, '𝓛(t) = L[γ(t), γ̇(t), t]', 'ℝ → ℝ 的函数 · 可求 d/dt', acc2)
+    + `<path d="M444 75 L 496 75" stroke="${fg3}" stroke-width="2"/><text x="470" y="22" text-anchor="middle" font-size="12" fill="${fg3}">链式法则</text>`
+    + box(500, 130, 'd𝓛/dt', '≠ ∂L/∂t', acc2);
+  return {};
+};
+
+</script>
+</body>
+</html>

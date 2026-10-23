@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>量子纠缠与超距联系</title>
+<meta name="description" content="基于知乎答主「拉格朗日的忧郁」回答的可视化讲解：量子纠缠意味着非定域关联，但传不了信息。">
+<style>
+/* ================= 设计令牌（与 ai-visual-notes 其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5.2vw,44px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.quote{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--o);background:var(--surface);border-radius:0 10px 10px 0;font-size:14px;color:var(--text)}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:440px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:140px}
+.range output{font-family:var(--mono);color:var(--text);min-width:2.5em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.math{font-family:var(--mono);font-size:14px;background:var(--surface-2);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+.math .hl{color:var(--o);font-weight:700}
+.math .hp{color:var(--p);font-weight:700}
+.math .ht{color:var(--t);font-weight:700}
+
+/* 通用 SVG */
+.ax{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--grid);stroke-width:1}
+.lbl{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)} .c-m{stroke:var(--muted)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)} .f-s{fill:var(--surface)} .f-s2{fill:var(--surface-2)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700} .txt.m{font-family:var(--mono)} .txt.l{text-anchor:start}
+.txt.p{fill:var(--p)} .txt.t{fill:var(--t)} .txt.o{fill:var(--o)} .txt.r{fill:var(--r)}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.edge.k{stroke:var(--muted)}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.dash{stroke-dasharray:5 5}
+.running .dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+
+/* 卡片 / 步骤 */
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.p{border-color:var(--p);background:var(--p-soft)} .card.t{border-color:var(--t);background:var(--t-soft)} .card.o{border-color:var(--o);background:var(--o-soft)} .card.r{border-color:var(--r);background:var(--r-soft)}
+.flow{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.step{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .4s;position:relative}
+.step .ic{font-size:26px;line-height:1;margin-bottom:6px}
+.step h3{font-size:14px}
+.step p{font-size:12px;color:var(--muted);margin-top:4px}
+.step.on{border-color:var(--p);background:var(--p-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+.step .k{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.blk{border-radius:10px;padding:8px 10px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);text-align:center;position:relative}
+.blk.p{background:var(--p-soft);border-color:var(--p)} .blk.t{background:var(--t-soft);border-color:var(--t)} .blk.o{background:var(--o-soft);border-color:var(--o)} .blk.r{background:var(--r-soft);border-color:var(--r)}
+.blk small{display:block;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.arrowd{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .running .pulse,.running .dash.anim{animation:none}
+}
+/* 宽图在窄屏上横向滚动，保证文字可读 */
+.scrollx>svg.wide{min-width:560px}
+.scrollx{border-radius:10px}
+
+/* ================= 本页专用 ================= */
+.amp{display:grid;grid-template-columns:4em repeat(2,1fr);gap:6px;max-width:360px;margin:0 auto;font-family:var(--mono);font-size:13px}
+.amp .h{color:var(--muted);text-align:center;font-size:12px}
+.amp .c{border:1px solid var(--line);border-radius:8px;padding:10px 6px;text-align:center;background:var(--surface-2);transition:all .4s;font-weight:700}
+.amp .c.z{color:var(--muted);font-weight:400;opacity:.55}
+.amp .c.hot{background:var(--p-soft);border-color:var(--p);color:var(--p)}
+.verdict{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:14px;background:var(--surface-2);transition:all .4s}
+.verdict.ok{background:var(--t-soft);color:var(--t)} .verdict.no{background:var(--o-soft);color:var(--o)}
+.lab{width:100%;aspect-ratio:2/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.hist{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:4px;margin-top:10px}
+.hist .pair{display:grid;grid-template-columns:1fr 1fr;gap:2px;font-family:var(--mono);font-size:12px;text-align:center}
+.hist .pair span{padding:3px 0;border-radius:4px;background:var(--surface-2);border:1px solid var(--line)}
+.hist .pair span.u{color:var(--p);font-weight:700} .hist .pair span.d{color:var(--o);font-weight:700}
+.hist .pair.new span{animation:pop .5s ease}
+@keyframes pop{0%{transform:scale(1.15)}100%{transform:none}}
+.stat{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.stat b{font-family:var(--mono);color:var(--text)}
+.axisdemo{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:760px){ .axisdemo{grid-template-columns:1fr 1fr;align-items:center} }
+.pbar{display:grid;grid-template-columns:5.5em 1fr 3.5em;gap:8px;align-items:center;font-size:13px;margin-top:6px}
+.pbar .tr{height:16px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.pbar .tr i{display:block;height:100%;background:var(--p);transition:width .3s}
+.pbar.o .tr i{background:var(--o)}
+.pbar .v{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.chan{width:100%;aspect-ratio:2.2/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.bob{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.bob .col{text-align:center;font-size:13px;color:var(--muted)}
+.bob .col .bar{height:90px;display:flex;align-items:flex-end;gap:6px;justify-content:center}
+.bob .col .bar i{width:34px;border-radius:6px 6px 0 0;transition:height .4s;background:var(--p)}
+.bob .col .bar i.d{background:var(--o)}
+.bob .col b{display:block;color:var(--text);margin-bottom:4px}
+.erepr{width:100%;aspect-ratio:2/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.sum3{display:grid;gap:10px}
+@media (min-width:760px){ .sum3{grid-template-columns:repeat(3,1fr)} }
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">量子纠缠与超距联系</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答</div>
+  <h1>量子纠缠，意味着宇宙间存在<br>超越距离的联系吗？</h1>
+  <p class="sub">答主「拉格朗日的忧郁」给出的回答，拆成 6 个画面：先看纠缠在数学上是什么，再亲手"测量"一对纠缠粒子，最后看它为什么传不了信息。</p>
+  <div class="thesis">核心结论：<b>量子纠缠确实意味着非定域性（超距关联），但这种关联无法传递信息</b>，自然也谈不上超光速。</div>
+  <div class="meta">原文：知乎问题「量子纠缠现象是否意味着宇宙间存在超越距离的联系？」下答主「拉格朗日的忧郁」的回答（参考 Cohen《量子力学》第三卷）。本页为教学改编，动画中的随机结果由浏览器模拟。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="纠缠在数学上是什么">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>纠缠态：拆不开的波函数</h2>
+    <p class="lead">多个粒子的态空间是各自空间的"直积"。运气好，波函数能拆成每个粒子各一份，叫直积态；拆不开的，就是纠缠态。</p>
+  </div>
+  <div class="fig" data-demo="product">
+    <div class="cap">两个自旋 1/2 粒子，用 z 轴本征态 |↑〉|↓〉 表示。表格里是 4 个基矢量前的系数。切换看看哪种能"拆开"。</div>
+  </div>
+  <ul class="notes">
+    <li>总空间 <b>H = H₁ ⊗ H₂ ⊗ … ⊗ H_N</b>，它的基由各子空间的基直积得到：|u_{i₁…i_N}〉= |u_{i₁}〉⊗ … ⊗ |u_{i_N}〉。</li>
+    <li>能写成 <b>|ψ〉= |ψ₁〉⊗ … ⊗ |ψ_N〉</b> 的叫直积态，没有纠缠；一般的波函数都拆不成这样，自然就是纠缠态。答主说：这在数学上非常直接。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c02" data-title="亲手测一对纠缠粒子">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>测了 1 号，就知道 2 号</h2>
+    <p class="lead">直积态下，测到 1 号自旋向上，2 号怎样无法预测。纠缠态下，1 号一旦向上，2 号必定向下。</p>
+  </div>
+  <div class="fig" data-demo="measure">
+    <div class="cap">点击"测量粒子 1"，两端沿<b>同一个 z 轴</b>测量。对比两种态下粒子 2 的表现。</div>
+  </div>
+  <ul class="notes">
+    <li>直积态 |ψ〉= ½(|↑↑〉+|↑↓〉+|↓↑〉+|↓↓〉)：1 号测到 ↑，2 号仍是 50/50。</li>
+    <li>纠缠态 |ψ〉= (1/√2)(|↑〉₁|↓〉₂ − |↓〉₁|↑〉₂)：1 号测到 ↑，2 号<b>必定</b> ↓。这就是"超距关联"。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="换个轴测量">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>上面默认了一个条件：两边用同一个轴</h2>
+    <p class="lead">"自旋向上/向下"是相对某个 z 轴说的。如果 1 号沿 z₁ 测、2 号沿 z₂ 测，两边用的不是一套基，结果又变得不确定了。</p>
+  </div>
+  <div class="fig" data-demo="axis">
+    <div class="cap">拖动滑块改变 z₂ 相对 z₁ 的夹角。1 号测到 ↑ 之后，2 号在 z₁ 轴上是 |↓〉，但在 z₂ 轴上要重新展开：|↓〉= c₁|↑〉′ + c₂|↓〉′。</div>
+  </div>
+  <ul class="notes">
+    <li>2 号测到 ↑′ 的概率是 <b>|c₁|²</b>，测到 ↓′ 的概率是 <b>|c₂|²</b>。只有两轴重合时，结果才完全确定。</li>
+    <li>曲线按自旋 1/2 的标准结果绘制（|c₁|² = sin²(θ/2)）；原文只给出 |c₁|²、|c₂|² 的形式。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c04" data-title="为什么传不了信息">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>No-communication theorem：关联 ≠ 通信</h2>
+    <p class="lead">不管 1 号那边测不测、沿哪个轴测，2 号这边看到的永远是一半 ↑ 一半 ↓ 的随机串。只看自己这边，什么都读不出来。</p>
+  </div>
+  <div class="fig" data-demo="nocomm">
+    <div class="cap">Alice 可以选择"不测量"或"沿某个轴测量"。看 Bob 这边 ↑/↓ 的统计会不会变。</div>
+  </div>
+  <ul class="notes">
+    <li>这个事实叫 <b>No-communication theorem</b>：量子纠缠本身不足以传递信息，自然也谈不上超光速。</li>
+    <li>要让 Bob 看出关联，必须把 Alice 的结果用经典方式告诉他，然后两人<b>对比</b>。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c05" data-title="量子信道 + 经典信道">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>量子通信为什么离不开经典信道</h2>
+    <p class="lead">真正的量子通信，除了分发纠缠的量子信道，一定还要一条经典信道。而经典信道传递信息的上限，就是光速。</p>
+  </div>
+  <div class="fig" data-demo="channel">
+    <div class="cap">上方是量子信道（分发纠缠对），下方是经典信道（光速传递测量信息）。按"发送"看完成一次通信需要什么。</div>
+  </div>
+  <ul class="notes">
+    <li>答主：如果你熟悉量子通信，就会发现"量子信道 + 经典信道"二者结合才能完成通信。</li>
+    <li>所以纠缠带来的"超距"，并没有打破相对论对信息速度的限制。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c06" data-title="ER = EPR 与时空">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>更深一层：纠缠也许和时空结构有关</h2>
+    <p class="lead">ER 是虫洞，EPR 是量子纠缠。有人猜想二者本质相关——答主说这主要是做形式理论的人在研究，"未来可期"。</p>
+  </div>
+  <div class="fig" data-demo="erepr">
+    <div class="cap">左：一对纠缠粒子（EPR）。右：一对被虫洞（ER）连接的黑洞。ER = EPR 猜想认为它们是一回事。配图灵感来自另一位答主「杂然赋流形丶」引用的"用量子纠缠编织时空"。</div>
+  </div>
+  <div class="sum3" style="margin-top:14px">
+    <div class="card t"><h3>有超距关联</h3><p>纠缠态下，测一个就知道另一个，这是量子力学的非定域性。</p></div>
+    <div class="card o"><h3>但传不了信息</h3><p>No-communication theorem：单看一端只有随机串，必须靠经典信道对比。</p></div>
+    <div class="card p"><h3>也许关乎时空</h3><p>ER = EPR 是形式理论界的猜想，是否成立还要看未来。</p></div>
+  </div>
+  <div class="final">所以，"宇宙间存在超越距离的联系"这句话，对了一半：联系是有的，但它不是一条能发消息的热线。</div>
+</section>
+
+<footer>
+  原文：知乎「量子纠缠现象是否意味着宇宙间存在超越距离的联系？」，答主<b>拉格朗日的忧郁</b>（物理学话题优秀答主）。本页为教学用可视化改编，单文件、离线可用；动画中的随机结果由浏览器模拟，仅用于说明概念。
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mulberry = (seed) => () => { let t = (seed += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+function fitCanvas(c, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, c.clientWidth);
+  const h = aspect ? w / aspect : Math.max(10, c.clientHeight);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const rgba = (hex, a) => { hex = hex.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); const n = parseInt(hex, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', { type: 'button', class: val === cur ? 'on' : '', onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); } }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, step, val, oninput, fmt = (v) => v) => {
+  const out = el('output', {}, fmt(val));
+  const inp = el('input', { type: 'range', min, max, step, value: val });
+  inp.addEventListener('input', () => { out.textContent = fmt(+inp.value); oninput(+inp.value); });
+  return el('label', { class: 'range' }, label, inp, out);
+};
+const loop = (fn) => {
+  let id = 0, last = 0, running = false;
+  const tick = (t) => { if (!running) return; fn(Math.min(50, t - last || 16), t); last = t; id = requestAnimationFrame(tick); };
+  return { start() { if (running) return; running = true; last = performance.now(); id = requestAnimationFrame(tick); }, stop() { running = false; cancelAnimationFrame(id); }, get running() { return running; } };
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+// 宽 SVG：窄屏时横向滚动
+const wide = (s) => { s.classList.add('wide'); return el('div', { class: 'scrollx' }, s); };
+
+/* ===== hero：两粒子分飞 + 关联线 ===== */
+reg('hero', (root) => {
+  const W = 800, H = 200;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' });
+  s.append(svg('line', { x1: 120, y1: 100, x2: 680, y2: 100, class: 'edge dash anim', style: 'stroke:var(--p);stroke-width:1.6' }));
+  const a = svg('g'); const b = svg('g');
+  const mk = (g, col) => { g.append(svg('circle', { r: 22, fill: col, opacity: .18 })); g.append(svg('circle', { r: 11, fill: col })); g.append(svg('path', { d: 'M0 -6 L0 6', stroke: '#fff', 'stroke-width': 2.5, 'stroke-linecap': 'round' })); };
+  mk(a, 'var(--p)'); mk(b, 'var(--o)');
+  s.append(a, b);
+  s.append(svg('text', { x: W / 2, y: 40, class: 'txt s' }, '纠缠对分开得再远，关联仍在'));
+  s.append(svg('text', { x: W / 2, y: 170, class: 'txt s' }, '但关联线上没有"消息"在跑'));
+  root.append(s);
+  let t = 0;
+  const L = loop((dt) => {
+    t += dt / 1000; const k = (1 + Math.sin(t * .8)) / 2; const x = lerp(0, 280, k);
+    a.setAttribute('transform', `translate(${400 - x - 20},100) rotate(${t * 60})`);
+    b.setAttribute('transform', `translate(${400 + x + 20},100) rotate(${-t * 60 + 180})`);
+  });
+  root.classList.add('running');
+  return L;
+});
+
+/* ===== 01 直积态 vs 纠缠态 ===== */
+reg('product', (root) => {
+  const wrap = el('div');
+  const grid = el('div', { class: 'amp' });
+  const cells = {};
+  grid.append(el('div'), el('div', { class: 'h' }, '粒子2 ↑'), el('div', { class: 'h' }, '粒子2 ↓'));
+  for (const r of ['↑', '↓']) { grid.append(el('div', { class: 'h', style: 'align-self:center' }, '粒子1 ' + r)); for (const c of ['↑', '↓']) { const d = el('div', { class: 'c' }); cells[r + c] = d; grid.append(d); } }
+  const verdict = el('div', { class: 'verdict' });
+  const formula = el('div', { class: 'math', style: 'margin-top:12px' });
+  const set = (mode) => {
+    if (mode === 'prod') {
+      Object.values(cells).forEach(c => { c.textContent = '+1/2'; c.className = 'c hot'; });
+      verdict.textContent = '✓ 可以拆开：= (|↑〉+|↓〉)/√2 ⊗ (|↑〉+|↓〉)/√2 。两个粒子各管各的 → 直积态，没有纠缠。'; verdict.className = 'verdict ok';
+      formula.innerHTML = '|ψ〉= <span class="hp">½</span>( |↑↑〉 + |↑↓〉 + |↓↑〉 + |↓↓〉 )';
+    } else {
+      cells['↑↑'].textContent = '0'; cells['↑↑'].className = 'c z';
+      cells['↓↓'].textContent = '0'; cells['↓↓'].className = 'c z';
+      cells['↑↓'].textContent = '+1/√2'; cells['↑↓'].className = 'c hot';
+      cells['↓↑'].textContent = '−1/√2'; cells['↓↑'].className = 'c hot';
+      verdict.textContent = '✗ 拆不开：找不到 |ψ₁〉⊗|ψ₂〉 能给出这张表（对角线是 0，反对角线不是 0）。→ 纠缠态。'; verdict.className = 'verdict no';
+      formula.innerHTML = '|ψ〉= <span class="hp">1/√2</span>( |↑〉₁|↓〉₂ <span class="hl">−</span> |↓〉₁|↑〉₂ )';
+    }
+  };
+  wrap.append(el('div', { class: 'ctrl' }, seg([['prod', '直积态'], ['ent', '纠缠态']], 'prod', set)), grid, formula, verdict);
+  set('prod'); root.append(wrap);
+});
+
+/* ===== 02 测量演示 ===== */
+reg('measure', (root) => {
+  let mode = 'ent';
+  const W = 640, H = 220;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lab' });
+  s.append(svg('line', { x1: 60, y1: 110, x2: 580, y2: 110, class: 'edge' }));
+  s.append(svg('rect', { x: 20, y: 60, width: 120, height: 100, rx: 10, class: 'box p' }));
+  s.append(svg('rect', { x: 500, y: 60, width: 120, height: 100, rx: 10, class: 'box o' }));
+  s.append(svg('text', { x: 80, y: 78, class: 'txt b' }, '粒子 1 的探测器'));
+  s.append(svg('text', { x: 560, y: 78, class: 'txt b' }, '粒子 2 的探测器'));
+  s.append(svg('text', { x: 320, y: 30, class: 'txt s' }, '两边都沿同一个 z 轴测量'));
+  const r1 = svg('text', { x: 80, y: 125, class: 'txt m', style: 'font-size:34px;font-weight:700' }, '?');
+  const r2 = svg('text', { x: 560, y: 125, class: 'txt m', style: 'font-size:34px;font-weight:700' }, '?');
+  const src = svg('g'); src.append(svg('circle', { cx: 320, cy: 110, r: 16, class: 'f-s2', stroke: 'var(--muted)' }), svg('text', { x: 320, y: 110, class: 'txt s' }, '源'));
+  const p1 = svg('circle', { cx: 320, cy: 110, r: 8, class: 'f-p' }); const p2 = svg('circle', { cx: 320, cy: 110, r: 8, class: 'f-o' });
+  const note = svg('text', { x: 320, y: 190, class: 'txt' }, '');
+  s.append(src, p1, p2, r1, r2, note);
+  const hist = el('div', { class: 'hist' }); const stat = el('div', { class: 'stat' });
+  let n = 0, same = 0, busy = false;
+  const fmt = () => { stat.innerHTML = `次数 <b>${n}</b> &nbsp; 1 号 ↑ 时 2 号也 ↑ 的比例 <b>${n ? Math.round(same / n * 100) : 0}%</b>`; };
+  const run = () => {
+    if (busy) return; busy = true;
+    r1.textContent = '?'; r2.textContent = '?'; note.textContent = '';
+    const t0 = performance.now(), D = RM ? 1 : 500;
+    const anim = () => {
+      const k = clamp((performance.now() - t0) / D, 0, 1);
+      p1.setAttribute('cx', lerp(320, 80, k)); p2.setAttribute('cx', lerp(320, 560, k));
+      if (k < 1) requestAnimationFrame(anim); else finish();
+    };
+    const finish = () => {
+      const a = Math.random() < .5 ? '↑' : '↓';
+      const b = mode === 'ent' ? (a === '↑' ? '↓' : '↑') : (Math.random() < .5 ? '↑' : '↓');
+      r1.textContent = a; r2.textContent = b;
+      note.textContent = mode === 'ent' ? `纠缠态：1 号 ${a}，2 号必定 ${b}` : `直积态：1 号 ${a}，2 号随机得到 ${b}`;
+      n++; if (a === b) same++; fmt();
+      const pair = el('div', { class: 'pair new' }, el('span', { class: a === '↑' ? 'u' : 'd' }, a), el('span', { class: b === '↑' ? 'u' : 'd' }, b));
+      hist.prepend(pair); while (hist.children.length > 24) hist.lastChild.remove();
+      setTimeout(() => { p1.setAttribute('cx', 320); p2.setAttribute('cx', 320); busy = false; }, 300);
+    };
+    anim();
+  };
+  const reset = () => { n = 0; same = 0; hist.innerHTML = ''; fmt(); r1.textContent = '?'; r2.textContent = '?'; note.textContent = ''; };
+  let auto = null;
+  const ctrl = el('div', { class: 'ctrl' },
+    seg([['ent', '纠缠态'], ['prod', '直积态']], 'ent', (v) => { mode = v; reset(); }),
+    btn('测量粒子 1', run, 'primary'),
+    btn('连测 10 次', () => { let i = 0; clearInterval(auto); auto = setInterval(() => { run(); if (++i >= 10) clearInterval(auto); }, RM ? 60 : 900); }),
+    btn('重来', reset));
+  fmt(); root.append(ctrl, wide(s), hist, stat);
+  return { stop() { clearInterval(auto); } };
+});
+
+/* ===== 03 换轴测量 ===== */
+reg('axis', (root) => {
+  const W = 300, H = 300;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'max-width:300px;margin:0 auto' });
+  const cx = 150, cy = 150, R = 110;
+  s.append(svg('circle', { cx, cy, r: R, class: 'box', 'stroke-dasharray': '4 4' }));
+  s.append(svg('line', { x1: cx, y1: cy + R + 10, x2: cx, y2: cy - R - 10, class: 'edge k' }));
+  s.append(svg('text', { x: cx - 8, y: cy - R - 22, class: 'txt p b', style: 'text-anchor:end' }, 'z₁（1 号的轴）'));
+  const z2 = svg('line', { x1: cx, y1: cy, x2: cx, y2: cy - R - 10, stroke: 'var(--o)', 'stroke-width': 3, 'stroke-linecap': 'round' });
+  const z2l = svg('text', { x: cx, y: cy, class: 'txt o b l' }, 'z₂（2 号的轴）');
+  const arc = svg('path', { d: '', fill: 'none', stroke: 'var(--o)', 'stroke-width': 1.5, 'stroke-dasharray': '3 3' });
+  // 粒子2 的态：沿 z1 的 ↓，画成指向下方的箭头
+  s.append(svg('line', { x1: cx, y1: cy, x2: cx, y2: cy + 70, stroke: 'var(--p)', 'stroke-width': 4, 'stroke-linecap': 'round' }));
+  s.append(svg('polygon', { points: `${cx - 7},${cy + 60} ${cx + 7},${cy + 60} ${cx},${cy + 76}`, class: 'f-p' }));
+  s.append(svg('text', { x: cx + 40, y: cy + 50, class: 'txt p' }, '2 号：|↓〉'));
+  s.append(arc, z2, z2l);
+  const bars = el('div');
+  const b1 = el('div', { class: 'pbar o' }, el('span', {}, '测到 ↑′'), el('div', { class: 'tr' }, el('i')), el('span', { class: 'v' }));
+  const b2 = el('div', { class: 'pbar' }, el('span', {}, '测到 ↓′'), el('div', { class: 'tr' }, el('i')), el('span', { class: 'v' }));
+  const f = el('div', { class: 'math', style: 'margin-top:10px' });
+  const set = (deg) => {
+    const th = deg * Math.PI / 180;
+    const x2 = cx + Math.sin(th) * (R + 10), y2 = cy - Math.cos(th) * (R + 10);
+    z2.setAttribute('x2', x2); z2.setAttribute('y2', y2);
+    z2l.setAttribute('x', cx + Math.sin(th) * (R + 14) + 8); z2l.setAttribute('y', cy - Math.cos(th) * (R + 14) - 8);
+    const ar = 40; arc.setAttribute('d', `M ${cx} ${cy - ar} A ${ar} ${ar} 0 ${deg > 180 ? 1 : 0} 1 ${cx + Math.sin(th) * ar} ${cy - Math.cos(th) * ar}`);
+    const pu = Math.sin(th / 2) ** 2, pd = Math.cos(th / 2) ** 2;
+    b1.querySelector('i').style.width = (pu * 100) + '%'; b1.querySelector('.v').textContent = Math.round(pu * 100) + '%';
+    b2.querySelector('i').style.width = (pd * 100) + '%'; b2.querySelector('.v').textContent = Math.round(pd * 100) + '%';
+    f.innerHTML = `|↓〉 = <span class="hl">c₁</span>|↑〉′ + <span class="hp">c₂</span>|↓〉′ &nbsp;&nbsp; |c₁|² = ${pu.toFixed(2)}，|c₂|² = ${pd.toFixed(2)}`;
+  };
+  const sl = range('z₂ 与 z₁ 夹角 θ', 0, 180, 1, 0, set, v => v + '°');
+  bars.append(el('div', { class: 'ctrl' }, sl), b1, b2, f);
+  root.append(el('div', { class: 'axisdemo' }, s, bars)); set(0);
+});
+
+/* ===== 04 No-communication ===== */
+reg('nocomm', (root) => {
+  let alice = 'none';
+  const W = 640, H = 150;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lab', style: 'aspect-ratio:auto' });
+  s.append(svg('rect', { x: 20, y: 30, width: 180, height: 90, rx: 10, class: 'box p' }), svg('text', { x: 110, y: 50, class: 'txt b' }, 'Alice'));
+  s.append(svg('rect', { x: 440, y: 30, width: 180, height: 90, rx: 10, class: 'box o' }), svg('text', { x: 530, y: 50, class: 'txt b' }, 'Bob'));
+  s.append(svg('line', { x1: 200, y1: 75, x2: 440, y2: 75, class: 'edge dash anim', style: 'stroke:var(--p)' }));
+  s.append(svg('text', { x: 320, y: 60, class: 'txt s' }, '共享纠缠对'));
+  const at = svg('text', { x: 110, y: 90, class: 'txt' }, '不测量'); const bt = svg('text', { x: 530, y: 90, class: 'txt' }, '沿 z 轴测量');
+  s.append(at, bt);
+  const col = (name) => { const b = el('div', { class: 'col' }); b.append(el('b', {}, name)); const bar = el('div', { class: 'bar' }, el('i', { style: 'height:0' }), el('i', { class: 'd', style: 'height:0' })); const lab = el('div', { class: 'mono' }, '↑ 0 / ↓ 0'); b.append(bar, lab); return { b, bar, lab }; };
+  const B = col('Bob 看到的统计');
+  const S = col('Alice 自己的记录');
+  let bu = 0, bd = 0, au = 0, ad = 0;
+  const upd = () => {
+    const tot = Math.max(1, bu + bd); B.bar.children[0].style.height = (bu / tot * 90) + 'px'; B.bar.children[1].style.height = (bd / tot * 90) + 'px'; B.lab.textContent = `↑ ${bu} / ↓ ${bd}`;
+    const t2 = Math.max(1, au + ad); S.bar.children[0].style.height = (au / t2 * 90) + 'px'; S.bar.children[1].style.height = (ad / t2 * 90) + 'px'; S.lab.textContent = alice === 'none' ? '（没有测量）' : `↑ ${au} / ↓ ${ad}`;
+  };
+  const shot = () => { const b = Math.random() < .5; if (b) bu++; else bd++; if (alice !== 'none') { const a = alice === 'z' ? !b : Math.random() < .5; if (a) au++; else ad++; } upd(); };
+  const reset = () => { bu = bd = au = ad = 0; upd(); };
+  const ctrl = el('div', { class: 'ctrl' },
+    seg([['none', 'Alice 不测'], ['z', 'Alice 沿 z 测'], ['x', 'Alice 沿 x 测']], 'none', (v) => { alice = v; at.textContent = v === 'none' ? '不测量' : v === 'z' ? '沿 z 轴测量' : '沿 x 轴测量'; reset(); }),
+    btn('发 50 对', () => { for (let i = 0; i < 50; i++) shot(); }, 'primary'), btn('清零', reset));
+  const bob = el('div', { class: 'bob' }, B.b, S.b);
+  const msg = el('div', { class: 'verdict' }, 'Bob 这边永远接近 50% / 50%。他无法从自己的数据判断 Alice 做了什么——信息没有传过来。');
+  root.append(ctrl, wide(s), bob, msg); upd();
+});
+
+/* ===== 05 量子信道 + 经典信道 ===== */
+reg('channel', (root) => {
+  const W = 640, H = 290;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chan', style: 'aspect-ratio:auto' });
+  const A = 90, Bx = 550;
+  s.append(svg('rect', { x: A - 50, y: 40, width: 100, height: 210, rx: 12, class: 'box p' }), svg('text', { x: A, y: 60, class: 'txt b' }, 'Alice'));
+  s.append(svg('rect', { x: Bx - 50, y: 40, width: 100, height: 210, rx: 12, class: 'box o' }), svg('text', { x: Bx, y: 60, class: 'txt b' }, 'Bob'));
+  s.append(svg('text', { x: 320, y: 85, class: 'txt s' }, '① 量子信道：分发纠缠对'));
+  const q = svg('line', { x1: A + 50, y1: 110, x2: Bx - 50, y2: 110, class: 'edge dash', style: 'stroke:var(--p);stroke-width:2' });
+  s.append(q);
+  s.append(svg('text', { x: 320, y: 165, class: 'txt s' }, '② 经典信道：告诉对方测量结果（≤ 光速）'));
+  s.append(svg('line', { x1: A + 50, y1: 195, x2: Bx - 50, y2: 195, class: 'edge k', style: 'stroke-width:2' }));
+  const msg = svg('g'); msg.append(svg('rect', { x: -26, y: -12, width: 52, height: 24, rx: 6, class: 'f-t' }), svg('text', { x: 0, y: 0, class: 'txt', style: 'fill:#fff;font-size:11px' }, '结果'));
+  msg.setAttribute('transform', `translate(${A + 60},195)`); msg.setAttribute('opacity', 0);
+  const pa = svg('circle', { cx: A, cy: 110, r: 9, class: 'f-p' }); const pb = svg('circle', { cx: Bx, cy: 110, r: 9, class: 'f-o' });
+  const ra = svg('text', { x: A, y: 140, class: 'txt m b' }, ''); const rb = svg('text', { x: Bx, y: 140, class: 'txt m b' }, '');
+  const st = svg('text', { x: 320, y: 265, class: 'txt' }, '');
+  s.append(msg, pa, pb, ra, rb, st);
+  const steps = el('div', { class: 'flow' });
+  const S = [['分发纠缠对', '量子信道'], ['各自测量', '两边都得到随机结果'], ['经典信道发消息', '这一步受光速限制'], ['对比 → 完成通信', '只有此时信息才算传到']];
+  const cards = S.map(([h, p], i) => { const c = el('div', { class: 'step' }, el('span', { class: 'k' }, '0' + (i + 1)), el('h3', {}, h), el('p', {}, p)); steps.append(c); return c; });
+  let busy = false;
+  const go = () => {
+    if (busy) return; busy = true; cards.forEach(c => c.classList.remove('on'));
+    ra.textContent = ''; rb.textContent = ''; msg.setAttribute('opacity', 0);
+    const D = RM ? 1 : 900;
+    const ph = (i, f) => setTimeout(() => { cards.forEach((c, j) => c.classList.toggle('on', j === i)); f(); }, D * i);
+    ph(0, () => { q.classList.add('anim'); st.textContent = '纠缠对分发中…'; });
+    ph(1, () => { const a = Math.random() < .5; ra.textContent = a ? '↑' : '↓'; rb.textContent = a ? '↓' : '↑'; st.textContent = 'Bob 的结果和 Alice 相反，但 Bob 自己还不知道这一点'; });
+    ph(2, () => { msg.setAttribute('opacity', 1); const t0 = performance.now(); const an = () => { const k = clamp((performance.now() - t0) / (RM ? 1 : 800), 0, 1); msg.setAttribute('transform', `translate(${lerp(A + 60, Bx - 60, k)},195)`); if (k < 1) requestAnimationFrame(an); }; an(); st.textContent = '经典消息以不超过光速的速度传过去…'; });
+    ph(3, () => { st.textContent = '对比之后，Bob 才真正"收到"信息。整体速度 ≤ 光速。'; busy = false; q.classList.remove('anim'); });
+  };
+  root.append(el('div', { class: 'ctrl' }, btn('发送一次', go, 'primary')), wide(s), steps);
+  root.classList.add('running');
+});
+
+/* ===== 06 ER = EPR ===== */
+reg('erepr', (root) => {
+  const W = 640, H = 260;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'erepr', style: 'aspect-ratio:auto' });
+  // 左：EPR
+  s.append(svg('text', { x: 160, y: 30, class: 'txt b' }, 'EPR：量子纠缠'));
+  s.append(svg('line', { x1: 80, y1: 130, x2: 240, y2: 130, class: 'edge dash anim', style: 'stroke:var(--p)' }));
+  s.append(svg('circle', { cx: 80, cy: 130, r: 14, class: 'f-p' }), svg('circle', { cx: 240, cy: 130, r: 14, class: 'f-o' }));
+  s.append(svg('text', { x: 160, y: 200, class: 'txt s' }, '两个粒子，拆不开的波函数'));
+  // 中：=
+  s.append(svg('text', { x: 320, y: 135, class: 'txt b', style: 'font-size:30px' }, '='), svg('text', { x: 320, y: 165, class: 'txt s' }, '猜想'));
+  // 右：ER 虫洞
+  s.append(svg('text', { x: 480, y: 30, class: 'txt b' }, 'ER：虫洞'));
+  const g = svg('g');
+  g.append(svg('path', { d: 'M 400 100 C 440 150, 520 150, 560 100', class: 'curve c-t' }), svg('path', { d: 'M 400 160 C 440 110, 520 110, 560 160', class: 'curve c-t' }));
+  g.append(svg('ellipse', { cx: 400, cy: 130, rx: 16, ry: 30, class: 'f-s2', stroke: 'var(--t)', 'stroke-width': 2 }), svg('ellipse', { cx: 560, cy: 130, rx: 16, ry: 30, class: 'f-s2', stroke: 'var(--t)', 'stroke-width': 2 }));
+  g.append(svg('circle', { cx: 400, cy: 130, r: 8, class: 'f-m' }), svg('circle', { cx: 560, cy: 130, r: 8, class: 'f-m' }));
+  s.append(g, svg('text', { x: 480, y: 200, class: 'txt s' }, '两个黑洞，被一条时空喉管连起来'));
+  s.append(svg('text', { x: 320, y: 240, class: 'txt' }, '纠缠也许就是时空的"针脚"——主要是形式理论界在研究'));
+  root.append(wide(s)); root.classList.add('running');
+});
+
+/* ===== 启动：导航、进度条、视口触发 ===== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>诺顿穹顶悖论 · 可视化讲解</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f6f4ef;--bg2:#ffffff;--bg3:#efece4;--fg:#1d1c1a;--fg2:#5a5752;--fg3:#8a867f;
+  --line:#dedad0;--accent:#4f46e5;--accent2:#0f9b8e;--warn:#e07b1a;--pink:#d6336c;--ok:#2f9e44;
+  --accent-soft:#e8e6fb;--accent2-soft:#d9f3ef;--warn-soft:#fdebd3;--pink-soft:#fde0ea;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",Roboto,sans-serif;
+  --r:14px;--shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -12px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.92em}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:50;transition:width .1s linear}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:0;max-width:1180px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 16px 28px 20px;border-right:1px solid var(--line);font-size:13px}
+nav.toc .brand{font-weight:700;font-size:13px;color:var(--fg2);margin-bottom:14px;letter-spacing:.02em}
+nav.toc a{display:block;color:var(--fg2);text-decoration:none;padding:5px 8px;border-radius:8px;margin-bottom:2px;line-height:1.35}
+nav.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.toc a .n{display:inline-block;width:1.6em;color:var(--fg3);font-family:var(--mono);font-size:11px}
+main{padding:0 32px 80px;min-width:0}
+.hero{padding:72px 0 36px}
+.hero .kicker{color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,4.2vw,44px);line-height:1.2;margin:10px 0 14px;letter-spacing:-.01em}
+.hero p{font-size:17px;color:var(--fg2);max-width:62ch;margin:0 0 10px}
+.hero .meta{font-size:13px;color:var(--fg3);margin-top:16px}
+.notice{background:var(--warn-soft);border-left:3px solid var(--warn);padding:10px 14px;border-radius:8px;font-size:13.5px;color:var(--fg2);margin-top:18px}
+section.ch{padding:56px 0 24px;border-top:1px solid var(--line)}
+section.ch .num{display:inline-block;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;margin-bottom:10px}
+section.ch h2{font-size:clamp(22px,3vw,30px);line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}
+section.ch .lead{font-size:17px;color:var(--fg2);margin:0 0 20px;max-width:70ch}
+.fig{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 18px 14px;margin:0 0 18px}
+.fig .cap{font-size:13px;color:var(--fg3);margin:10px 0 0;line-height:1.5}
+.fig .hint{font-size:13px;color:var(--fg2);margin:0 0 10px}
+.fig svg,.fig canvas{display:block;max-width:100%;height:auto}
+.fig .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig .scroll > svg{min-width:560px}
+.notes{margin:0;padding-left:1.2em;color:var(--fg2);font-size:14.5px}
+.notes li{margin:4px 0}
+.notes b{color:var(--fg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--bg3);border-radius:12px;padding:14px 16px;font-size:14px}
+.card h4{margin:0 0 6px;font-size:14.5px}
+.card p{margin:0;color:var(--fg2);line-height:1.5}
+.card.ac{border-left:3px solid var(--accent)}
+.card.ac2{border-left:3px solid var(--accent2)}
+.card.wa{border-left:3px solid var(--warn)}
+.card.pk{border-left:3px solid var(--pink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--bg3);color:var(--fg);padding:7px 14px;border-radius:999px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translateY(1px)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg2);padding:7px 14px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--accent);color:#fff}
+.range{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2)}
+.range input{accent-color:var(--accent)}
+.formula{font-family:var(--mono);background:var(--bg3);border-radius:10px;padding:10px 14px;font-size:14px;overflow-x:auto;white-space:nowrap}
+.formula .k{color:var(--accent);font-weight:600}
+.quote{border-left:3px solid var(--accent2);padding:6px 14px;color:var(--fg2);font-size:15px;margin:0 0 14px;background:var(--accent2-soft);border-radius:0 10px 10px 0}
+.quote .who{display:block;font-size:12px;color:var(--fg3);margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--bg3);color:var(--fg3);vertical-align:middle;margin-left:6px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow .step{flex:1 1 120px;background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:13.5px;text-align:center;position:relative;opacity:.45;transition:opacity .4s,background .4s}
+.flow .step.lit{opacity:1;background:var(--accent-soft)}
+.flow .step b{display:block;font-size:14px}
+.flow .arrow{align-self:center;color:var(--fg3);padding:0 6px;font-size:18px}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--fg3);font-size:13px}
+footer a{color:var(--fg2)}
+#tocBtn{display:none;position:fixed;right:16px;bottom:16px;z-index:60;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
+@media (max-width:860px){
+  .layout{display:block}
+  nav.toc{position:fixed;inset:0;height:auto;z-index:55;background:var(--bg2);transform:translateX(-100%);transition:transform .25s;border-right:0;padding-top:48px}
+  nav.toc.open{transform:none}
+  #tocBtn{display:block}
+  main{padding:0 16px 80px}
+  .hero{padding:48px 0 24px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .fig{padding:14px 12px 12px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .pulse{animation:none}
+  *{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<button id="tocBtn" aria-label="目录">目录</button>
+<div class="layout">
+<nav class="toc"><div class="brand">诺顿穹顶悖论 · 可视化讲解</div><div class="list"></div></nav>
+<main>
+<div class="hero">
+  <div class="kicker">经典力学 · 悖论</div>
+  <h1>诺顿穹顶：牛顿力学也会"不确定"？</h1>
+  <p>把一个小球放在一个特殊形状的穹顶顶点上，牛顿第二定律竟然允许它"在任意时刻无缘无故滑落"。这到底是物理出了问题，还是数学在开玩笑？</p>
+  <div class="meta">原文：东方既白《关于「诺顿穹顶」悖论》，知乎专栏「数理灵感笔记」，2022 年 8 月更新 · 本页为可视化讲解</div>
+  <div class="notice">说明：本页所依据的剪藏只保留了原文的目录与评论区，正文缺失。下面按原文目录（「悖论」何在 → 如何理解 → 讨论 → 总结 → 曲率发散 → 微扰计算）用诺顿穹顶的标准表述（Norton, 2003）重建讲解；评论区观点单独标注，不代表作者。</div>
+</div>
+
+<section class="ch" id="s1" data-title="「悖论」何在？">
+  <div class="num">01</div>
+  <h2>「悖论」何在？</h2>
+  <p class="lead">同一个初始状态（球静止在顶点），牛顿方程却有不止一个解：永远不动，或者在任意时刻 T 开始滑落。</p>
+  <div class="fig reveal" data-demo="dome">
+    <p class="hint">穹顶形状 h = (2/3g)·r<sup>3/2</sup>。选一种解，再按"演化"看小球怎么动。</p>
+    <div class="controls">
+      <div class="seg" id="domeMode"><button class="on" data-v="rest">解 ①：永远静止</button><button data-v="t2">解 ②：T = 2 s 滑落</button><button data-v="rand">解 ②：随机 T</button></div>
+      <button class="btn primary" id="domeRun">演化 →</button>
+      <button class="btn" id="domeReset">重放</button>
+    </div>
+    <canvas id="domeC" width="640" height="300"></canvas>
+    <p class="cap" id="domeCap">t = 0.0 s · r = 0（小球在顶点）</p>
+  </div>
+  <div class="formula">运动方程： d²r/dt² = <span class="k">√r</span>　　初始条件： r(0)=0, ṙ(0)=0</div>
+  <ul class="notes" style="margin-top:12px">
+    <li><b>解 ①</b>：r(t) ≡ 0，小球永远停在顶点。这是我们直觉里"唯一"的答案。</li>
+    <li><b>解 ②</b>：r(t) = 0（t ≤ T），r(t) = (t−T)<sup>4</sup>/144（t ≥ T）。<b>T 可以是任何数</b>，每个 T 都是方程的合法解，也都满足同一个初始条件。</li>
+    <li>没有任何外力、没有任何扰动，方程本身就"允许"小球在任意时刻出发。这就是「悖论」。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s2" data-title="为什么解不唯一">
+  <div class="num">02</div>
+  <h2>为什么解不唯一？关键在那个 √r</h2>
+  <p class="lead">常微分方程"初值确定、解唯一"是有条件的：右边的函数要足够光滑（Lipschitz 条件）。√r 在 r = 0 处斜率无穷大，恰好不满足。</p>
+  <div class="grid2">
+    <div class="fig reveal" data-demo="lip">
+      <p class="hint">左：普通的 f(r)=r，原点处斜率有限。右：f(r)=√r，原点处斜率发散。</p>
+      <svg id="lipS" viewBox="0 0 520 220"></svg>
+      <p class="cap">解的唯一性定理（Picard–Lindelöf）要求 f 满足 Lipschitz 条件；√r 在 0 附近不满足，于是唯一性不再有保证。</p>
+    </div>
+    <div class="fig reveal" data-demo="family">
+      <p class="hint">同一初始条件下的"解族"：r = 0 这条线，加上在不同 T 分叉出去的无数条四次曲线。</p>
+      <canvas id="famC" width="520" height="220"></canvas>
+      <p class="cap">每一条曲线都是 d²r/dt² = √r 的严格解，且在 t = T 处与 r = 0 光滑衔接（位置、速度、加速度都连续）。</p>
+    </div>
+  </div>
+  <ul class="notes">
+    <li>穹顶形状 r<sup>3/2</sup> 是被<b>特意设计</b>出来的：它让沿面切向的加速度正好等于 √r。换成普通的球面或抛物面，方程右边是光滑的，解就唯一。</li>
+    <li>所以悖论的根源不在"牛顿定律错了"，而在"这个方程恰好落在唯一性定理的盲区"。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s3" data-title="如何理解这个悖论">
+  <div class="num">03</div>
+  <h2>如何理解诺顿穹顶悖论？</h2>
+  <p class="lead">原文把讨论分成三层：数学上发生了什么，物理上这个穹顶是否真实，以及微小扰动下会怎样。</p>
+  <div class="grid3">
+    <div class="card ac reveal"><h4>数学层面</h4><p>这是一个初值问题"解不唯一"的例子。牛顿第二定律本身没有矛盾，是方程的非光滑性让决定论失效。</p></div>
+    <div class="card ac2 reveal"><h4>物理层面</h4><p>r<sup>3/2</sup> 的顶点是一个曲率发散的尖点（见下节）。真实材料做不出"数学上精确"的顶点，小球也不是质点。</p></div>
+    <div class="card wa reveal"><h4>微扰层面</h4><p>原文 2022-08-14 更新专门计算了<b>微扰情况</b>并讨论"实验上能否证实"。专栏里还有一篇追问：无穷小微扰下，什么样的「穹顶」滑落时间是有限的？</p></div>
+  </div>
+  <div class="fig reveal" style="margin-top:14px">
+    <p class="hint">评论区的三种声音（非作者观点，供对照）</p>
+    <div class="grid3">
+      <div class="card"><h4>"力从哪来？"</h4><p>有评论质疑：让球滑落的竖直分力从何而来？是外力、合力还是支持力的分量？——这是对受力分析的追问。</p></div>
+      <div class="card"><h4>"时间不是先验的"</h4><p>有评论提出：若把时间看成系统状态 (x, p) 的反函数，而不是把 x、p 当成 t 的函数，静止态的奇异解就消失了。</p></div>
+      <div class="card"><h4>"这就是概率"</h4><p>有评论认为：任何"理想实验"只能给出统计结果；牛顿定律可改述为"合外力为零时速度为零的概率为 1"。</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="s4" data-title="曲率发散？">
+  <div class="num">04</div>
+  <h2>曲率发散？小球会"飞起来"吗？</h2>
+  <p class="lead">原文附录对这个问题做了具体计算。这里只展示一个可以直接算出的数学事实：穹顶顶点的曲率是无穷大。</p>
+  <div class="fig reveal" data-demo="curv">
+    <p class="hint">h(r) = c·r<sup>3/2</sup> 的一阶、二阶导数。二阶导 ∝ r<sup>−1/2</sup>，在 r → 0 时发散。</p>
+    <svg id="curvS" viewBox="0 0 640 230"></svg>
+    <p class="cap">曲率发散意味着：顶点附近"弯得无限急"。一个有大小的真实小球无法贴合这样的尖点，这也是"物理上理想化"的具体含义。关于小球是否会脱离曲面（"飞起来"），请以原文附录计算为准，本页不替作者下结论。</p>
+  </div>
+  <div class="formula">h = c·r<sup>3/2</sup>　→　h′ = (3c/2)·r<sup>1/2</sup>　→　h″ = (3c/4)·<span class="k">r<sup>−1/2</sup></span> → ∞ （r→0）</div>
+</section>
+
+<section class="ch" id="s5" data-title="总结">
+  <div class="num">05</div>
+  <h2>总结</h2>
+  <p class="lead">决定论不是牛顿定律"自带"的，而是"定律 + 足够光滑的方程"共同给出的。诺顿穹顶把这个前提暴露了出来。</p>
+  <div class="fig reveal" data-demo="flow">
+    <div class="flow">
+      <div class="step"><b>特殊形状</b>h ∝ r<sup>3/2</sup></div><div class="arrow">→</div>
+      <div class="step"><b>方程非光滑</b>右边出现 √r</div><div class="arrow">→</div>
+      <div class="step"><b>唯一性失效</b>同一初态多个解</div><div class="arrow">→</div>
+      <div class="step"><b>看似悖论</b>"无故"滑落</div><div class="arrow">→</div>
+      <div class="step"><b>解释</b>数学盲区 + 物理理想化</div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li>它是<b>数学上合法</b>的构造：每个解都严格满足方程。</li>
+    <li>它是<b>物理上理想化</b>的构造：曲率发散的尖点、质点小球、零扰动，三者在现实中都不成立。</li>
+    <li>有价值的不是"牛顿错了"，而是看清：<b>决定论需要前提</b>。</li>
+  </ul>
+</section>
+
+<footer>原文：东方既白，《关于「诺顿穹顶」悖论》（知乎专栏，2022）。本页由 Claude Code 基于剪藏生成，仅供学习；因剪藏正文缺失，讲解内容按标准表述重建。</footer>
+
+</main>
+</div>
+<script>
+/* shared runtime: progress bar, TOC, reveal + demo triggers, helpers */
+window.RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+window.DEMOS = {};
+window.$ = (s, r) => (r || document).querySelector(s);
+window.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+window.css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+window.seg = function (el, cb) {
+  const bs = $$('button', el);
+  bs.forEach((b) => b.addEventListener('click', () => {
+    bs.forEach((x) => x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v, b);
+  }));
+  return { set(v) { const b = bs.find((x) => x.dataset.v === v); if (b) b.click(); }, get() { const b = bs.find((x) => x.classList.contains('on')); return b ? b.dataset.v : null; } };
+};
+/* canvas with devicePixelRatio */
+window.canvas2d = function (c, w, h) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = w * dpr; c.height = h * dpr; c.style.width = '100%'; c.style.aspectRatio = w + '/' + h;
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return ctx;
+};
+/* raf loop with visibility pause */
+window.loop = function (fn) {
+  let on = false, id = 0, t0 = 0;
+  function frame(t) { if (!on) return; fn((t - t0) / 1000); id = requestAnimationFrame(frame); }
+  return {
+    start() { if (on) return; on = true; t0 = performance.now(); id = requestAnimationFrame(frame); },
+    stop() { on = false; cancelAnimationFrame(id); },
+    get running() { return on; }
+  };
+};
+window.flowCycle = function (el, ms) {
+  const steps = $$('.step', el); let i = 0, timer = 0;
+  function tick() { steps.forEach((s, k) => s.classList.toggle('lit', k === i)); i = (i + 1) % steps.length; }
+  return {
+    start() { if (timer) return; tick(); timer = setInterval(tick, ms || 1400); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const secs = $$('section.ch');
+  const toc = $('nav.toc .list');
+  secs.forEach((s, i) => {
+    const a = document.createElement('a'); a.href = '#' + s.id;
+    a.innerHTML = '<span class="n">' + String(i + 1).padStart(2, '0') + '</span>' + s.dataset.title;
+    toc.appendChild(a);
+    a.addEventListener('click', () => $('nav.toc').classList.remove('open'));
+  });
+  const links = $$('nav.toc a');
+  const pb = $('#progress');
+  function onScroll() {
+    const h = document.documentElement; pb.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    let cur = -1; secs.forEach((s, i) => { if (s.getBoundingClientRect().top < innerHeight * 0.4) cur = i; });
+    links.forEach((l, i) => l.classList.toggle('active', i === cur));
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  $('#tocBtn').addEventListener('click', () => $('nav.toc').classList.toggle('open'));
+  /* reveal + demo lifecycle */
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      const el = e.target;
+      if (e.isIntersecting) {
+        el.classList.add('in');
+        const d = el.dataset.demo; if (d && DEMOS[d]) { if (!el._inited) { el._inited = true; el._demo = DEMOS[d](el) || {}; } if (el._demo.start) el._demo.start(); }
+      } else if (el._demo && el._demo.stop) el._demo.stop();
+    });
+  }, { threshold: 0.18 });
+  $$('.reveal,[data-demo]').forEach((el) => io.observe(el));
+});
+
+</script>
+<script>
+/* ---------- 01 dome ---------- */
+DEMOS.dome = function (root) {
+  const c = $('#domeC'), W = 640, H = 300, ctx = canvas2d(c, W, H);
+  const cx = W / 2, ytop = 50, sx = 165, sy = 150, c23 = 2 / 3;
+  const h = (r) => c23 * Math.pow(Math.abs(r), 1.5);
+  let mode = 'rest', T = 2, side = 1, t = 0, running = false, l;
+  const cap = $('#domeCap');
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const fg = css('--fg'), fg3 = css('--fg3'), acc = css('--accent'), line = css('--line');
+    // dome
+    ctx.beginPath();
+    for (let r = -1.75; r <= 1.75; r += 0.01) { const x = cx + r * sx, y = ytop + h(r) * sy; r === -1.75 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.strokeStyle = fg; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.lineTo(cx + 1.75 * sx, H); ctx.lineTo(cx - 1.75 * sx, H); ctx.closePath();
+    ctx.fillStyle = css('--bg3'); ctx.fill();
+    // axis labels
+    ctx.fillStyle = fg3; ctx.font = '12px ' + css('--mono');
+    ctx.fillText('r = 0', cx - 16, ytop - 22);
+    ctx.fillText('h ∝ r^1.5', cx + 1.2 * sx - 10, ytop + h(1.2) * sy - 10);
+    // T marker
+    if (mode !== 'rest') { ctx.fillStyle = css('--warn'); ctx.fillText('T = ' + T.toFixed(1) + ' s', 16, 24); }
+    // ball
+    let r = 0;
+    if (mode !== 'rest' && t > T) r = Math.pow(t - T, 4) / 144;
+    r = Math.min(r, 1.75);
+    const bx = cx + side * r * sx, by = ytop + h(r) * sy - 11;
+    ctx.beginPath(); ctx.arc(bx, by, 11, 0, Math.PI * 2); ctx.fillStyle = acc; ctx.fill();
+    ctx.strokeStyle = line; ctx.lineWidth = 1; ctx.stroke();
+    // trail dotted
+    if (r > 0) { ctx.setLineDash([3, 4]); ctx.beginPath(); for (let q = 0; q <= r; q += 0.02) { const x = cx + side * q * sx, y = ytop + h(q) * sy - 11; q === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); } ctx.strokeStyle = acc; ctx.stroke(); ctx.setLineDash([]); }
+    cap.textContent = 't = ' + t.toFixed(1) + ' s · r = ' + r.toFixed(2) + (r === 0 ? '（小球在顶点' + (mode !== 'rest' && t < T ? '，等待 T' : '') + '）' : (r >= 1.75 ? '（已滑离穹顶）' : '（正在滑落，r = (t−T)⁴/144）'));
+  }
+  l = loop((dt) => { t = dt * (RM ? 3 : 1.6); if (t > 9) { l.stop(); running = false; } draw(); });
+  function reset() { l.stop(); running = false; t = 0; side = Math.random() < 0.5 ? -1 : 1; if (mode === 'rand') T = +(0.5 + Math.random() * 3.5).toFixed(1); if (mode === 't2') T = 2; draw(); }
+  seg($('#domeMode'), (v) => { mode = v; reset(); });
+  $('#domeRun').addEventListener('click', () => { if (running) return; t = 0; running = true; l.start(); });
+  $('#domeReset').addEventListener('click', reset);
+  reset();
+  return { start() { draw(); }, stop() { l.stop(); running = false; } };
+};
+
+/* ---------- 02 lipschitz svg ---------- */
+DEMOS.lip = function () {
+  const s = $('#lipS'); const fg = css('--fg3'), acc = css('--accent'), pk = css('--pink');
+  function panel(x0, label, f, color, tangentSlope) {
+    const w = 220, hgt = 170, ox = x0 + 30, oy = 190;
+    let d = '';
+    for (let i = 0; i <= 100; i++) { const r = i / 100, x = ox + r * w * 0.85, y = oy - f(r) * hgt * 0.9; d += (i ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1); }
+    let g = `<line x1="${ox}" y1="${oy}" x2="${ox + w * 0.9}" y2="${oy}" stroke="${fg}" stroke-width="1"/><line x1="${ox}" y1="${oy}" x2="${ox}" y2="${oy - hgt}" stroke="${fg}" stroke-width="1"/>`;
+    g += `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="600" stroke-dashoffset="600"><animate attributeName="stroke-dashoffset" from="600" to="0" dur="1.4s" fill="freeze"/></path>`;
+    // tangent at origin
+    if (tangentSlope === Infinity) g += `<line x1="${ox}" y1="${oy}" x2="${ox}" y2="${oy - hgt}" stroke="${pk}" stroke-width="2" stroke-dasharray="4 4"/><text x="${ox + 8}" y="${oy - hgt + 14}" font-size="12" fill="${pk}">斜率 → ∞</text>`;
+    else g += `<line x1="${ox}" y1="${oy}" x2="${ox + 80}" y2="${oy - 80 * tangentSlope * (hgt * 0.9) / (w * 0.85)}" stroke="${pk}" stroke-width="2" stroke-dasharray="4 4"/><text x="${ox + 70}" y="${oy - 70}" font-size="12" fill="${pk}">斜率有限</text>`;
+    g += `<text x="${ox}" y="${oy + 18}" font-size="13" fill="${fg}">r = 0</text><text x="${x0 + 30}" y="18" font-size="14" font-weight="600" fill="${css('--fg')}">${label}</text>`;
+    return g;
+  }
+  s.innerHTML = panel(0, 'f(r) = r', (r) => r, acc, 1) + panel(260, 'f(r) = √r', (r) => Math.sqrt(r), pk, Infinity);
+  return {};
+};
+
+/* ---------- 02 solution family ---------- */
+DEMOS.family = function () {
+  const c = $('#famC'), W = 520, H = 220, ctx = canvas2d(c, W, H);
+  const ox = 40, oy = 190, tw = 460, tmax = 9, rh = 160, rmax = 2.5;
+  const Ts = [0, 1, 2, 3.5, 5, 6.5];
+  let prog = 0, l;
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg');
+    ctx.strokeStyle = fg3; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + tw, oy); ctx.moveTo(ox, oy); ctx.lineTo(ox, 20); ctx.stroke();
+    ctx.fillStyle = fg3; ctx.font = '12px ' + css('--mono'); ctx.fillText('t', ox + tw - 8, oy + 16); ctx.fillText('r', ox - 14, 28);
+    // r = 0 line
+    ctx.strokeStyle = fg; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(ox + tw, oy); ctx.stroke();
+    ctx.fillStyle = fg; ctx.font = '12px ' + css('--sans'); ctx.fillText('解①  r ≡ 0（永远静止）', ox + tw - 150, oy - 8);
+    Ts.forEach((T, i) => {
+      const a = Math.min(1, Math.max(0, prog - i * 0.6));
+      if (a <= 0) return;
+      ctx.globalAlpha = a; ctx.strokeStyle = acc; ctx.lineWidth = 2; ctx.beginPath();
+      for (let t = T; t <= tmax; t += 0.05) { const r = Math.pow(t - T, 4) / 144; if (r > rmax) break; const x = ox + t / tmax * tw, y = oy - r / rmax * rh; t === T ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+      ctx.stroke();
+      ctx.fillStyle = css('--warn'); ctx.beginPath(); ctx.arc(ox + T / tmax * tw, oy, 4, 0, 7); ctx.fill();
+      ctx.fillStyle = fg3; ctx.font = '11px ' + css('--mono'); ctx.fillText('T=' + T, ox + T / tmax * tw - 8, oy + 14);
+      ctx.globalAlpha = 1;
+    });
+    ctx.fillStyle = acc; ctx.font = '12px ' + css('--sans'); ctx.fillText('解②  r = (t−T)⁴/144，T 任意', ox + 10, 30);
+  }
+  l = loop((dt) => { prog = RM ? 10 : dt * 1.2; draw(); if (prog > 5) l.stop(); });
+  return { start() { prog = 0; l.start(); }, stop() { l.stop(); } };
+};
+
+/* ---------- 04 curvature ---------- */
+DEMOS.curv = function () {
+  const s = $('#curvS'); const fg3 = css('--fg3'), acc = css('--accent'), acc2 = css('--accent2'), pk = css('--pink'), fg = css('--fg');
+  const ox = 40, oy = 200, w = 560, hgt = 170;
+  function path(f, color, label, ly) {
+    let d = ''; let first = true;
+    for (let i = 1; i <= 200; i++) { const r = i / 200 * 1.5; let v = f(r); if (v > 3.2) continue; const x = ox + r / 1.5 * w, y = oy - v / 3.2 * hgt; d += (first ? 'M' : 'L') + x.toFixed(1) + ' ' + y.toFixed(1); first = false; }
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-dasharray="1200" stroke-dashoffset="1200"><animate attributeName="stroke-dashoffset" from="1200" to="0" dur="1.6s" fill="freeze"/></path><text x="${ox + w - 230}" y="${ly}" font-size="13" fill="${color}">${label}</text>`;
+  }
+  const c = 1;
+  s.innerHTML = `<line x1="${ox}" y1="${oy}" x2="${ox + w}" y2="${oy}" stroke="${fg3}"/><line x1="${ox}" y1="${oy}" x2="${ox}" y2="${oy - hgt - 10}" stroke="${fg3}"/>
+  <text x="${ox + w - 10}" y="${oy + 18}" font-size="12" fill="${fg3}">r</text><text x="${ox - 4}" y="${oy + 18}" font-size="12" fill="${fg3}">0</text>`
+  + path((r) => c * Math.pow(r, 1.5), acc, 'h = r^1.5（穹顶高度）', 74)
+  + path((r) => 1.5 * c * Math.sqrt(r), acc2, "h′ = 1.5·r^0.5（坡度）", 52)
+  + path((r) => 0.75 * c / Math.sqrt(r), pk, 'h″ = 0.75·r^−0.5（曲率，发散）', 30)
+  + `<line x1="${ox}" y1="${oy}" x2="${ox}" y2="${oy - hgt - 10}" stroke="${pk}" stroke-width="2" stroke-dasharray="4 4"/><text x="${ox + 8}" y="40" font-size="12" fill="${pk}">r → 0 时 → ∞</text>`;
+  return {};
+};
+DEMOS.flow = (el) => flowCycle(el, 1300);
+
+</script>
+</body>
+</html>

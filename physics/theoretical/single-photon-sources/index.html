@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把光子一个一个打出来</title>
+<meta name="description" content="可视化讲解：科学家如何在实验中按需发射单个光子——量子点、单原子、参量下转换、电路 QED 四种单光子源，以及量子点为什么最主流。">
+<style>
+/* ================= 设计令牌（与 ai-visual-notes 其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5.2vw,44px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.quote{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--o);background:var(--surface);border-radius:0 10px 10px 0;font-size:14px;color:var(--text)}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:440px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:140px}
+.range output{font-family:var(--mono);color:var(--text);min-width:2.5em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.math{font-family:var(--mono);font-size:14px;background:var(--surface-2);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+.math .hl{color:var(--o);font-weight:700}
+.math .hp{color:var(--p);font-weight:700}
+.math .ht{color:var(--t);font-weight:700}
+
+/* 通用 SVG */
+.ax{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--grid);stroke-width:1}
+.lbl{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)} .c-m{stroke:var(--muted)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)} .f-s{fill:var(--surface)} .f-s2{fill:var(--surface-2)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700} .txt.m{font-family:var(--mono)} .txt.l{text-anchor:start}
+.txt.p{fill:var(--p)} .txt.t{fill:var(--t)} .txt.o{fill:var(--o)} .txt.r{fill:var(--r)}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.edge.k{stroke:var(--muted)}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.dash{stroke-dasharray:5 5}
+.running .dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+
+/* 卡片 / 步骤 */
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.p{border-color:var(--p);background:var(--p-soft)} .card.t{border-color:var(--t);background:var(--t-soft)} .card.o{border-color:var(--o);background:var(--o-soft)} .card.r{border-color:var(--r);background:var(--r-soft)}
+.flow{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.step{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .4s;position:relative}
+.step .ic{font-size:26px;line-height:1;margin-bottom:6px}
+.step h3{font-size:14px}
+.step p{font-size:12px;color:var(--muted);margin-top:4px}
+.step.on{border-color:var(--p);background:var(--p-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+.step .k{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.blk{border-radius:10px;padding:8px 10px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);text-align:center;position:relative}
+.blk.p{background:var(--p-soft);border-color:var(--p)} .blk.t{background:var(--t-soft);border-color:var(--t)} .blk.o{background:var(--o-soft);border-color:var(--o)} .blk.r{background:var(--r-soft);border-color:var(--r)}
+.blk small{display:block;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.arrowd{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .running .pulse,.running .dash.anim{animation:none}
+}
+/* 宽图在窄屏上横向滚动，保证文字可读 */
+.scrollx>svg.wide{min-width:560px}
+.scrollx{border-radius:10px}
+
+/* ================= 本页专用 ================= */
+.stage{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.photon{filter:drop-shadow(0 0 4px var(--o))}
+.cmp{display:grid;grid-template-columns:7em repeat(3,1fr);gap:6px;font-size:13px}
+.cmp .h{color:var(--muted);text-align:center;font-size:12px;padding:4px 0}
+.cmp .rh{color:var(--muted);align-self:center;font-size:12px}
+.cmp .c{border-radius:8px;padding:8px 4px;text-align:center;border:1px solid var(--line);background:var(--surface-2);transition:transform .3s}
+.cmp .c.g3{background:var(--t-soft);color:var(--t);font-weight:700} .cmp .c.g2{background:var(--o-soft);color:var(--o)} .cmp .c.g1{background:var(--r-soft);color:var(--r)}
+.cmp .c small{display:block;font-size:11px;opacity:.8;font-weight:400}
+.cmp.seen .c{animation:rise .5s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.lvl{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.slit{width:100%;aspect-ratio:2/1;border-radius:10px;border:1px solid var(--line);background:#0b0d12}
+.apps{display:grid;gap:10px}
+@media (min-width:760px){ .apps{grid-template-columns:repeat(3,1fr)} }
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">单光子源</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+<header class="hero">
+  <div class="kicker">可视化导读 · 量子光学</div>
+  <h1>怎么把光子<br>一个一个打出来？</h1>
+  <p class="sub">实验里常说"让光子一个接一个通过双缝"。这到底是怎么做到的？原文介绍了 4 种单光子源，并重点拆解最主流的量子点方案。</p>
+  <div class="thesis">核心思路：<b>要么造一个"每次只能发一个光子"的发光体，要么从成对产生的光子里认领一个。</b></div>
+  <div class="meta">原文：一段关于单光子源（single-photon source）的问答整理，未署名。本页为教学改编，动画为示意，不代表真实器件尺寸与时序。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="四种单光子源">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>四条路线，一个目标：按需发单光子</h2>
+    <p class="lead">普通光源一闪就是海量光子。单光子源（single-photon source）要做到"你要一个，它就只给一个"。</p>
+  </div>
+  <div class="fig" data-demo="overview">
+    <div class="cap">点击任一路线查看一句话原理。后面各节逐个展开。</div>
+  </div>
+</section>
+
+<section class="ch" id="c02" data-title="路线一：量子点">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>量子点：一颗"人造原子"</h2>
+    <p class="lead">纳米级的半导体小块，像原子一样有离散能级。激光把电子激发上去，它掉回来时放出一个光子——而且每次只放一个。</p>
+  </div>
+  <div class="fig" data-demo="qdot">
+    <div class="cap">按"激发"发一个激光脉冲：电子跃迁 → 形成电子-空穴对（激子）→ 纳秒级复合 → 发出<b>一个</b>光子。也可以让它自动连发。</div>
+  </div>
+  <ul class="notes">
+    <li>量子点由 <b>砷化镓（GaAs）、铟砷（InAs）</b> 等材料制成，尺寸<b>几纳米到几十纳米</b>，电子被限制在里面，能级因此是离散的。</li>
+    <li>它每次<b>只能容纳一个电子-空穴对</b>，所以每次复合只能发一个光子，不会一下冒出好几个。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="路线二：单个原子或离子">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>抓住一个原子，让它一次发一个</h2>
+    <p class="lead">用激光冷却并捕获单个原子或离子（比如铷原子），再用微波或激光激发它，受控地放出单光子。</p>
+  </div>
+  <div class="fig" data-demo="atom">
+    <div class="cap">原子被困在两面镜子之间的光学腔里。腔量子电动力学（Cavity QED）增强对发射的控制，让光子一个一个、朝固定方向出来。</div>
+  </div>
+</section>
+
+<section class="ch" id="c04" data-title="路线三：参量下转换">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>SPDC：一个变两个，认领其中一个</h2>
+    <p class="lead">激光打进 β-硼酸钡（BBO）这类非线性晶体，一个高能光子会自发"裂变"成两个低能光子。探测到其中一个，就知道另一个正在路上。</p>
+  </div>
+  <div class="fig" data-demo="spdc">
+    <div class="cap">自发参量下转换（Spontaneous Parametric Down-Conversion）。右上探测器一响，右下这条路上就"筛选出"了一个单光子。</div>
+  </div>
+</section>
+
+<section class="ch" id="c05" data-title="路线四：电路 QED">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>微波腔里的光子，能数、能定时</h2>
+    <p class="lead">近年用超导电路量子电动力学（circuit QED）在微波腔中控制光子产生，能精确计数和定时单个光子的发射。</p>
+  </div>
+  <div class="fig" data-demo="cqed">
+    <div class="cap">超导芯片 + 微波谐振腔：每个光子的产生时刻都被精确记录下来。原文称之为"光子的汉堡包"。</div>
+  </div>
+</section>
+
+<section class="ch" id="c06" data-title="四种方案对比">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>为什么量子点最主流？</h2>
+    <p class="lead">原文的对比表：发射速率、单光子纯度、能否集成到芯片、稳定性。量子点四项全优。</p>
+  </div>
+  <div class="fig" data-demo="compare">
+    <div class="cap">颜色越绿越好。数据来自原文对比表（量子点 / 光子对湮灭 SPDC / 单原子或离子阱）。</div>
+  </div>
+  <ul class="notes">
+    <li>SPDC 的短板是<b>纯度</b>：有一定概率同时产生两对，也就"可能发射两个光子"。</li>
+    <li>量子点能做成<b>固态半导体器件</b>、集成到芯片上，这对量子通信和量子计算至关重要。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c07" data-title="量子点细节：能级与腔">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>再看一眼量子点里发生了什么</h2>
+    <p class="lead">价带、导带、激子，以及怎样保证"严格每次一个"：把量子点放进微小光学腔，再用电场或磁场稳住它。</p>
+  </div>
+  <div class="fig" data-demo="levels">
+    <div class="cap">左：能级图，点击步骤按钮逐步演示。右：两种稳定手段。</div>
+  </div>
+  <ul class="notes">
+    <li><b>腔增强效应（Cavity QED）</b>：把量子点放进微小光学腔，提高单光子的方向性和效率。</li>
+    <li><b>电控或光控</b>：施加电场或磁场来稳定单光子发射。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c08" data-title="用它能做什么">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>一个一个打出去，能干什么？</h2>
+    <p class="lead">量子密钥分发、光子量子计算，以及最经典的：单光子双缝实验——光子一个一个地过，干涉条纹照样出现。</p>
+  </div>
+  <div class="fig" data-demo="doubleslit">
+    <div class="cap">模拟单光子双缝实验：每个光子只在屏上留下一个点；攒多了，条纹自己浮现。按"开始"，或者加速。</div>
+  </div>
+  <div class="apps" style="margin-top:14px">
+    <div class="card p"><h3>量子通信</h3><p>单光子用于安全加密传输，如量子密钥分发（QKD）、量子加密网络。</p></div>
+    <div class="card t"><h3>量子计算</h3><p>光子量子计算（Photonic Quantum Computing）中，用单光子传递量子信息。</p></div>
+    <div class="card o"><h3>基础实验</h3><p>单光子双缝干涉，验证波粒二象性；各种光子干涉实验。</p></div>
+  </div>
+  <div class="final">掌握了"光子级别"的精确操控，就有了通往量子互联网和光子计算机的基础零件。</div>
+</section>
+
+<footer>
+  原文：关于"科学家如何把光子一个接一个打出来"的问答整理（未署名）。本页为教学用可视化改编，单文件、离线可用；动画为示意，器件比例与时序均非真实。
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mulberry = (seed) => () => { let t = (seed += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+function fitCanvas(c, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, c.clientWidth);
+  const h = aspect ? w / aspect : Math.max(10, c.clientHeight);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const rgba = (hex, a) => { hex = hex.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); const n = parseInt(hex, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', { type: 'button', class: val === cur ? 'on' : '', onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); } }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, step, val, oninput, fmt = (v) => v) => {
+  const out = el('output', {}, fmt(val));
+  const inp = el('input', { type: 'range', min, max, step, value: val });
+  inp.addEventListener('input', () => { out.textContent = fmt(+inp.value); oninput(+inp.value); });
+  return el('label', { class: 'range' }, label, inp, out);
+};
+const loop = (fn) => {
+  let id = 0, last = 0, running = false;
+  const tick = (t) => { if (!running) return; fn(Math.min(50, t - last || 16), t); last = t; id = requestAnimationFrame(tick); };
+  return { start() { if (running) return; running = true; last = performance.now(); id = requestAnimationFrame(tick); }, stop() { running = false; cancelAnimationFrame(id); }, get running() { return running; } };
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+// 宽 SVG：窄屏时横向滚动
+const wide = (s) => { s.classList.add('wide'); return el('div', { class: 'scrollx' }, s); };
+
+/* 光子：带光晕的小圆 */
+const photonG = (col = 'var(--o)') => { const g = svg('g', { class: 'photon' }); g.append(svg('circle', { r: 7, fill: col, opacity: .25 }), svg('circle', { r: 4, fill: col })); return g; };
+
+/* ===== hero：一串等间距的单光子飞出 ===== */
+reg('hero', (root) => {
+  const W = 800, H = 170;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'width:100%;height:auto' });
+  s.append(svg('rect', { x: 40, y: 55, width: 90, height: 60, rx: 10, class: 'box p' }), svg('text', { x: 85, y: 85, class: 'txt b' }, '单光子源'));
+  s.append(svg('rect', { x: 700, y: 45, width: 14, height: 80, rx: 3, class: 'box t' }), svg('text', { x: 707, y: 145, class: 'txt s' }, '探测器'));
+  const ps = []; for (let i = 0; i < 5; i++) { const g = photonG(); s.append(g); ps.push(g); }
+  s.append(svg('text', { x: 400, y: 150, class: 'txt s' }, '同一时刻，飞行路径上只有一个光子'));
+  root.append(s);
+  let t = 0;
+  return loop((dt) => { t += dt / 1000; ps.forEach((g, i) => { const k = ((t * .25 + i * .2) % 1); g.setAttribute('transform', `translate(${lerp(140, 700, k)},85)`); g.setAttribute('opacity', k > .97 ? 0 : 1); }); });
+});
+
+/* ===== 01 总览 ===== */
+reg('overview', (root) => {
+  const R = [
+    ['量子点', '纳米半导体"人造原子"，激光激发后每次只放一个光子。', 'p'],
+    ['单原子 / 离子', '激光冷却捕获单个原子，在光学腔里受控发射。', 't'],
+    ['参量下转换 SPDC', '非线性晶体把一个光子裂成两个，探测一个、认领另一个。', 'o'],
+    ['电路 QED', '超导电路在微波腔里产生光子，能精确计数和定时。', 'r'],
+  ];
+  const flow = el('div', { class: 'flow' });
+  const detail = el('div', { class: 'quote' }, R[0][1], el('small', {}, '点击上面的卡片切换'));
+  const cards = R.map(([h, p, c], i) => { const d = el('div', { class: 'step', style: 'cursor:pointer', onclick: () => { cards.forEach(x => x.classList.remove('on')); d.classList.add('on'); detail.firstChild.textContent = p; } }, el('span', { class: 'k' }, '0' + (i + 1)), el('h3', {}, h)); flow.append(d); return d; });
+  cards[0].classList.add('on');
+  root.append(flow, detail);
+});
+
+/* ===== 02 量子点动画 ===== */
+reg('qdot', (root) => {
+  const W = 640, H = 240;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stage' });
+  // 基底 + 量子点
+  s.append(svg('rect', { x: 200, y: 150, width: 240, height: 60, rx: 6, class: 'box' }), svg('text', { x: 320, y: 195, class: 'txt s' }, '半导体基底'));
+  s.append(svg('circle', { cx: 320, cy: 150, r: 18, class: 'box p' }), svg('text', { x: 320, y: 128, class: 'txt s' }, '量子点（几纳米）'));
+  // 能级（右侧小图）
+  s.append(svg('line', { x1: 500, y1: 170, x2: 600, y2: 170, class: 'edge k' }), svg('text', { x: 550, y: 185, class: 'txt s' }, '基态'));
+  s.append(svg('line', { x1: 500, y1: 90, x2: 600, y2: 90, class: 'edge k' }), svg('text', { x: 550, y: 78, class: 'txt s' }, '激发态'));
+  const e = svg('circle', { cx: 550, cy: 170, r: 7, class: 'f-p' }); s.append(e);
+  // 激光脉冲
+  const laser = svg('rect', { x: 60, y: 146, width: 40, height: 8, rx: 4, fill: 'var(--t)', opacity: 0 }); s.append(laser);
+  s.append(svg('rect', { x: 20, y: 130, width: 50, height: 40, rx: 6, class: 'box t' }), svg('text', { x: 45, y: 150, class: 'txt s' }, '脉冲激光'));
+  const ph = photonG(); ph.setAttribute('opacity', 0); s.append(ph);
+  const cnt = svg('text', { x: 320, y: 30, class: 'txt b' }, '已发出光子：0'); s.append(cnt);
+  const st = svg('text', { x: 320, y: 55, class: 'txt s' }, '等待激发'); s.append(st);
+  let n = 0, busy = false, auto = null;
+  const fire = () => {
+    if (busy) return; busy = true; const D = RM ? 1 : 350;
+    const t0 = performance.now();
+    const step1 = () => { const k = clamp((performance.now() - t0) / D, 0, 1); laser.setAttribute('opacity', 1); laser.setAttribute('x', lerp(60, 290, k)); if (k < 1) requestAnimationFrame(step1); else { laser.setAttribute('opacity', 0); st.textContent = '电子跃迁到激发态，留下空穴 → 激子'; e.setAttribute('cy', 90); setTimeout(step2, D); } };
+    const step2 = () => { st.textContent = '激子在纳秒级时间内复合 → 发出一个光子'; e.setAttribute('cy', 170); ph.setAttribute('opacity', 1); const t1 = performance.now(); const an = () => { const k = clamp((performance.now() - t1) / (D * 2), 0, 1); ph.setAttribute('transform', `translate(${lerp(320, 320, k)},${lerp(140, 20, k)}) translate(${k * 160},0)`); if (k < 1) requestAnimationFrame(an); else { ph.setAttribute('opacity', 0); n++; cnt.textContent = '已发出光子：' + n; st.textContent = '每次只有一个：量子点里只装得下一个电子-空穴对'; busy = false; } }; an(); };
+    step1();
+  };
+  root.append(el('div', { class: 'ctrl' }, btn('激发一次', fire, 'primary'), btn('自动连发', () => { clearInterval(auto); auto = setInterval(fire, RM ? 100 : 1400); }), btn('停', () => clearInterval(auto))), wide(s));
+  return { stop() { clearInterval(auto); } };
+});
+
+/* ===== 03 单原子 / 腔 ===== */
+reg('atom', (root) => {
+  const W = 640, H = 220;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stage' });
+  s.append(svg('rect', { x: 200, y: 50, width: 10, height: 120, rx: 3, class: 'box t' }), svg('rect', { x: 430, y: 50, width: 10, height: 120, rx: 3, class: 'box t' }));
+  s.append(svg('text', { x: 320, y: 40, class: 'txt s' }, '光学腔（两面镜子）'));
+  // 阱：虚线圈
+  s.append(svg('circle', { cx: 320, cy: 110, r: 30, class: 'edge dash anim', style: 'fill:none;stroke:var(--p)' }), svg('text', { x: 320, y: 160, class: 'txt s' }, '激光冷却 + 捕获'));
+  const atom = svg('circle', { cx: 320, cy: 110, r: 10, class: 'f-p' }); s.append(atom);
+  // 激发光
+  s.append(svg('rect', { x: 20, y: 90, width: 60, height: 40, rx: 6, class: 'box o' }), svg('text', { x: 50, y: 110, class: 'txt s' }, '激光/微波'));
+  const beam = svg('line', { x1: 80, y1: 110, x2: 80, y2: 110, stroke: 'var(--o)', 'stroke-width': 3, opacity: 0 }); s.append(beam);
+  s.append(svg('text', { x: 560, y: 110, class: 'txt s' }, '→ 单光子'));
+  const ph = photonG(); ph.setAttribute('opacity', 0); s.append(ph);
+  const lab = svg('text', { x: 320, y: 200, class: 'txt' }, 'Cavity QED：腔让发射方向和时机可控'); s.append(lab);
+  let t = 0, phase = 0;
+  const L = loop((dt) => {
+    t += dt / 1000; const c = t % 2.4;
+    atom.setAttribute('cy', 110 + Math.sin(t * 6) * 3);
+    if (c < .5) { beam.setAttribute('opacity', 1); beam.setAttribute('x2', lerp(80, 300, c / .5)); ph.setAttribute('opacity', 0); }
+    else if (c < .8) { beam.setAttribute('opacity', 0); atom.setAttribute('r', 13); }
+    else if (c < 1.8) { atom.setAttribute('r', 10); ph.setAttribute('opacity', 1); ph.setAttribute('transform', `translate(${lerp(330, 520, (c - .8))},110)`); }
+    else ph.setAttribute('opacity', 0);
+  });
+  root.append(wide(s)); root.classList.add('running'); return L;
+});
+
+/* ===== 04 SPDC ===== */
+reg('spdc', (root) => {
+  const W = 640, H = 260;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stage' });
+  s.append(svg('rect', { x: 20, y: 110, width: 70, height: 40, rx: 6, class: 'box t' }), svg('text', { x: 55, y: 130, class: 'txt s' }, '泵浦激光'));
+  s.append(svg('line', { x1: 90, y1: 130, x2: 290, y2: 130, stroke: 'var(--t)', 'stroke-width': 3 }));
+  s.append(svg('polygon', { points: '290,95 350,80 350,180 290,165', class: 'box p' }), svg('text', { x: 320, y: 205, class: 'txt s' }, 'BBO 非线性晶体'));
+  s.append(svg('line', { x1: 350, y1: 125, x2: 560, y2: 60, class: 'edge dash' }), svg('line', { x1: 350, y1: 135, x2: 560, y2: 200, class: 'edge dash' }));
+  s.append(svg('rect', { x: 560, y: 40, width: 14, height: 40, rx: 3, class: 'box o' }), svg('text', { x: 567, y: 30, class: 'txt s' }, '探测器'));
+  s.append(svg('text', { x: 600, y: 200, class: 'txt s l' }, '→ 实验'));
+  const click = svg('text', { x: 500, y: 35, class: 'txt o b' }, ''); s.append(click);
+  const tag = svg('text', { x: 470, y: 225, class: 'txt t' }, ''); s.append(tag);
+  const pump = photonG('var(--t)'), a = photonG(), b = photonG(); [pump, a, b].forEach(g => { g.setAttribute('opacity', 0); s.append(g); });
+  let t = 0;
+  const L = loop((dt) => {
+    t += dt / 1000; const c = t % 3;
+    if (c < 1) { pump.setAttribute('opacity', 1); pump.setAttribute('transform', `translate(${lerp(95, 320, c)},130)`); a.setAttribute('opacity', 0); b.setAttribute('opacity', 0); click.textContent = ''; tag.textContent = ''; }
+    else if (c < 2.2) { pump.setAttribute('opacity', 0); const k = (c - 1) / 1.2; a.setAttribute('opacity', 1); b.setAttribute('opacity', 1); a.setAttribute('transform', `translate(${lerp(350, 560, k)},${lerp(125, 60, k)})`); b.setAttribute('transform', `translate(${lerp(350, 560, k)},${lerp(135, 200, k)})`); if (k > .95) { click.textContent = '咔！'; tag.textContent = '另一个光子被"认领"：这是单光子'; } }
+    else { a.setAttribute('opacity', 0); b.setAttribute('opacity', 0); }
+  });
+  root.append(wide(s)); return L;
+});
+
+/* ===== 05 circuit QED ===== */
+reg('cqed', (root) => {
+  const W = 640, H = 200;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stage' });
+  s.append(svg('rect', { x: 40, y: 40, width: 380, height: 120, rx: 10, class: 'box' }), svg('text', { x: 230, y: 30, class: 'txt s' }, '微波谐振腔（超导芯片，极低温）'));
+  // 蜿蜒的超导线
+  let d = 'M 60 100'; for (let i = 0; i < 12; i++) d += ` l 12 ${i % 2 ? 40 : -40} l 12 0`; s.append(svg('path', { d, class: 'curve c-p' }));
+  s.append(svg('text', { x: 230, y: 150, class: 'txt s' }, '超导电路'));
+  // 时间轴
+  s.append(svg('line', { x1: 440, y1: 100, x2: 620, y2: 100, class: 'edge k' }), svg('text', { x: 530, y: 125, class: 'txt s' }, '时间 →'));
+  s.append(svg('text', { x: 530, y: 60, class: 'txt b' }, '光子计数 / 定时'));
+  const ticks = svg('g'); s.append(ticks);
+  const cnt = svg('text', { x: 530, y: 160, class: 'txt m' }, 'n = 0'); s.append(cnt);
+  const ph = photonG(); ph.setAttribute('opacity', 0); s.append(ph);
+  let t = 0, n = 0, last = -1;
+  const L = loop((dt) => {
+    t += dt / 1000; const c = t % 1.2, i = Math.floor(t / 1.2);
+    if (i !== last) { last = i; n = (n % 7) + 1; if (n === 1) ticks.innerHTML = ''; ticks.append(svg('line', { x1: 450 + n * 22, y1: 88, x2: 450 + n * 22, y2: 112, stroke: 'var(--o)', 'stroke-width': 3 })); cnt.textContent = 'n = ' + n; }
+    ph.setAttribute('opacity', c < .8 ? 1 : 0); ph.setAttribute('transform', `translate(${lerp(230, 450 + n * 22, c / .8)},${lerp(100, 100, c)})`);
+  });
+  root.append(wide(s)); return L;
+});
+
+/* ===== 06 对比表 ===== */
+reg('compare', (root) => {
+  const rows = [
+    ['光子发射速率', ['高', 'GHz 级别', 3], ['低', 'MHz 级别', 1], ['中等', 'MHz 级别', 2]],
+    ['光子纯度（单光子性）', ['高', '', 3], ['低', '可能发射两个光子', 1], ['高', '', 3]],
+    ['集成性', ['高', '可制成芯片', 3], ['低', '', 1], ['低', '', 1]],
+    ['稳定性', ['高', '', 3], ['一般', '', 2], ['一般', '', 2]],
+  ];
+  const g = el('div', { class: 'cmp' });
+  g.append(el('div'), el('div', { class: 'h' }, '量子点'), el('div', { class: 'h' }, 'SPDC'), el('div', { class: 'h' }, '单原子 / 离子阱'));
+  rows.forEach(([name, ...cs]) => { g.append(el('div', { class: 'rh' }, name)); cs.forEach(([v, sub, grade]) => g.append(el('div', { class: 'c g' + grade }, v, sub ? el('small', {}, sub) : null))); });
+  root.append(g);
+  return { start() { g.classList.add('seen'); } };
+});
+
+/* ===== 07 能级图 ===== */
+reg('levels', (root) => {
+  const W = 360, H = 260;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'lvl' });
+  s.append(svg('rect', { x: 60, y: 170, width: 240, height: 50, class: 'box', rx: 4 }), svg('text', { x: 180, y: 195, class: 'txt s' }, '价带'));
+  s.append(svg('rect', { x: 60, y: 40, width: 240, height: 50, class: 'box', rx: 4 }), svg('text', { x: 180, y: 65, class: 'txt s' }, '导带'));
+  s.append(svg('line', { x1: 110, y1: 100, x2: 250, y2: 100, class: 'edge k' }), svg('line', { x1: 110, y1: 160, x2: 250, y2: 160, class: 'edge k' }));
+  s.append(svg('text', { x: 300, y: 100, class: 'txt s l' }, '离散能级'), svg('text', { x: 300, y: 160, class: 'txt s l' }, '（尺寸小）'));
+  const e = svg('circle', { cx: 180, cy: 160, r: 8, class: 'f-p' }); const h = svg('circle', { cx: 180, cy: 160, r: 8, fill: 'none', stroke: 'var(--o)', 'stroke-width': 2, 'stroke-dasharray': '3 2', opacity: 0 });
+  const ph = photonG(); ph.setAttribute('opacity', 0);
+  const lab = svg('text', { x: 180, y: 245, class: 'txt' }, '① 量子点处于基态');
+  s.append(h, e, ph, lab);
+  const steps = ['① 量子点处于基态', '② 脉冲激光/电流激发：电子跳到高能级，价带留下空穴 → 激子', '③ 激子不稳定，纳秒级复合', '④ 发出一个光子；点太小，只装得下一个激子'];
+  let i = 0;
+  const show = () => {
+    lab.textContent = steps[i];
+    if (i === 0) { e.setAttribute('cy', 160); h.setAttribute('opacity', 0); ph.setAttribute('opacity', 0); }
+    if (i === 1) { e.setAttribute('cy', 100); h.setAttribute('opacity', 1); ph.setAttribute('opacity', 0); }
+    if (i === 2) { e.setAttribute('cy', 130); }
+    if (i === 3) { e.setAttribute('cy', 160); h.setAttribute('opacity', 0); ph.setAttribute('opacity', 1); ph.setAttribute('transform', 'translate(60,130)'); }
+  };
+  const right = el('div', { class: 'stack' },
+    el('div', { class: 'blk t' }, '腔增强（Cavity QED）', el('small', {}, '放进微小光学腔：方向性 ↑ 效率 ↑')),
+    el('div', { class: 'arrowd' }, '+'),
+    el('div', { class: 'blk o' }, '电控 / 光控', el('small', {}, '施加电场或磁场，稳定发射')),
+    el('div', { class: 'arrowd' }, '='),
+    el('div', { class: 'blk p' }, '严格每次一个光子', el('small', {}, '高纯度 · GHz 速率 · 可芯片化')));
+  const grid = el('div', { class: 'grid2' }, el('div', {}, s, el('div', { class: 'ctrl' }, btn('下一步', () => { i = (i + 1) % steps.length; show(); }, 'primary'), btn('重置', () => { i = 0; show(); }))), right);
+  root.append(grid); show();
+});
+
+/* ===== 08 单光子双缝 ===== */
+reg('doubleslit', (root) => {
+  const c = el('canvas', { class: 'slit' });
+  let speed = 1, pts = [], running = false;
+  const rnd = mulberry(7);
+  // 双缝干涉强度：cos²(k x) · sinc²
+  const I = (x) => { const u = (x - .5) * 14; const env = Math.pow(Math.sin(u * .35 + 1e-9) / (u * .35 + 1e-9), 2); return Math.pow(Math.cos(u * 1.6), 2) * env; };
+  const sample = () => { for (let k = 0; k < 50; k++) { const x = rnd(); if (rnd() < I(x)) return x; } return rnd(); };
+  const draw = () => {
+    const { ctx, w, h } = fitCanvas(c, 2);
+    ctx.fillStyle = '#0b0d12'; ctx.fillRect(0, 0, w, h);
+    // 光源与双缝
+    ctx.fillStyle = '#33d2ba'; ctx.fillRect(18, h / 2 - 8, 14, 16);
+    ctx.fillStyle = '#6b6b72'; ctx.fillRect(w * .3, 0, 6, h * .42); ctx.fillRect(w * .3, h * .47, 6, h * .06); ctx.fillRect(w * .3, h * .58, 6, h * .42);
+    ctx.fillStyle = '#9b9ba6'; ctx.font = '11px sans-serif'; ctx.fillText('双缝', w * .3 + 12, h - 8); ctx.fillText('屏幕 →', w * .62 - 44, h - 8); ctx.fillText(`已到达光子：${pts.length}`, 40, 16);
+    ctx.fillStyle = '#ffb347';
+    for (const [x, y] of pts) ctx.fillRect(w * .62 + x * w * .36, y * h, 1.6, 1.6);
+    if (pts.length) { const [x, y] = pts[pts.length - 1]; ctx.beginPath(); ctx.arc(w * .62 + x * w * .36, y * h, 4, 0, 7); ctx.strokeStyle = '#ffb347'; ctx.stroke(); }
+  };
+  let acc = 0;
+  const L = loop((dt) => { acc += dt * speed / 40; while (acc > 1) { acc--; if (pts.length < 6000) pts.push([sample(), rnd()]); } draw(); });
+  root.append(el('div', { class: 'ctrl' }, btn('开始', () => { L.start(); }, 'primary'), btn('暂停', () => L.stop()), seg([[1, '1×'], [10, '10×'], [60, '60×']], 1, v => speed = v), btn('清屏', () => { pts = []; draw(); })), c);
+  requestAnimationFrame(draw);
+  addEventListener('resize', draw);
+  return { stop() { L.stop(); } };
+});
+
+/* ===== 启动：导航、进度条、视口触发 ===== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

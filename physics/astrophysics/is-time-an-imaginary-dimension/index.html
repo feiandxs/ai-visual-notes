@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>时间是虚数维度吗</title>
+<meta name="description" content="知乎问题「时间会不会是一个以虚数为单位的维度？」回答的可视化讲解：矢量的协变性、光速不变、时空间隔，以及为什么闵可夫斯基时空里可以把时间写成 ict。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ---- 页面专用 ---- */
+.tuple{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;font-family:var(--mono);font-size:clamp(18px,4vw,30px);padding:18px 8px}
+.tuple .c{display:inline-flex;align-items:center;justify-content:center;min-width:1.6em;padding:6px 10px;border-radius:10px;background:var(--surface-2);transition:background .5s,transform .5s,color .5s}
+.tuple .c.sp{background:var(--p-soft);color:var(--p)}
+.tuple .c.tm{background:var(--o-soft);color:var(--o)}
+.tuple .c.hid{opacity:0;transform:scale(.6);width:0;min-width:0;padding:0;margin:0}
+.tuple .br{color:var(--muted)}
+.flow{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.flow .step{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);position:relative;transition:border-color .3s,background .3s}
+.flow .step .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+.flow .step h3{font-size:14px;margin:4px 0}
+.flow .step p{font-size:12.5px;color:var(--muted)}
+.flow .step .f{font-family:var(--mono);font-size:12px;margin-top:6px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.flow .step.on{border-color:var(--p);background:var(--p-soft)}
+.wave-c{width:100%;height:120px;border-radius:10px;background:var(--surface-2);margin-top:10px}
+.ro{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.ro .o{background:var(--surface-2);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--muted)}
+.ro .o b{display:block;font-family:var(--mono);font-size:18px;color:var(--text)}
+.ro .o b.ok{color:var(--t)}
+.ro .o b.bad{color:var(--r)}
+.reveal{font-family:var(--mono);font-size:clamp(15px,3vw,22px);text-align:center;padding:16px 6px;line-height:2}
+.reveal span{display:inline-block;transition:opacity .5s,color .5s,transform .5s;opacity:.25}
+.reveal span.on{opacity:1}
+.reveal span.hot{color:var(--o);transform:scale(1.15);font-weight:700}
+.reveal .line{display:block}
+.ans{border-left:4px solid var(--line);padding:10px 14px;background:var(--surface-2);border-radius:0 12px 12px 0}
+.ans h3{font-size:15px;margin-bottom:6px}
+.ans p{font-size:14px}
+.ans.a{border-color:var(--p)}
+.ans.b{border-color:var(--o)}
+.mini{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <a class="back" href="../../../README.md">← ai-visual-notes</a>
+  <div class="brand">时间是虚数维度吗</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 狭义相对论</div>
+  <h1>时间会不会是一个<br>以虚数为单位的维度？</h1>
+  <p class="sub">答主的结论是「是的」：在闵可夫斯基时空里，位置矢量可以写成 (x, y, z, ict)。本页用 7 个画面讲清楚这个 i 是怎么来的——它不是神秘的玄学，而是「矢量必须协变」加上「光速不变」逼出来的构造。</p>
+  <div class="thesis">一句话：<b>把时间写成 ict，是为了让 x² + y² + z² − c²t² 看起来像一个普通的「模长平方」。</b>这个量在洛伦兹变换下不变。</div>
+  <div class="authors">
+    <span class="au"><i style="background:var(--p)">T</i>Timothy Liu <span class="tag">完整回答</span></span>
+    <span class="au"><i style="background:var(--o)">零</i>零者 <span class="tag">仅存一句</span></span>
+  </div>
+  <div class="meta">来源：知乎问题 6943744414（剪藏于 2025-11-08）。两份剪藏文件实际收录的都是 Timothy Liu 的回答（219 赞）；零者的回答只剩摘要里的一句话。所有公式均出自原文，图示为教学改编。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="conclusion" data-title="先给结论">
+  <div class="ch-head"><span class="num">01</span><span class="who">答主：Timothy Liu</span>
+    <h2>先给结论：(x, y, z) → (x, y, z, ict)</h2>
+    <p class="lead">任何一本电动力学教材里的狭义相对论都会介绍四维时空（闵可夫斯基时空）。三维位矢是 (x, y, z)，四维位矢是 (x, y, z, ict)，i 是虚数单位，c 是真空光速。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">三个空间分量是实数，第四个分量是 i·c·t。乘上 c 是为了把时间换算成长度单位，乘上 i 是本页要解释的重点。</div>
+    <div data-demo="tuple"></div>
+  </div>
+  <ul class="notes">
+    <li><b>题主猜对了</b>——但「可以这样写」的理由，要从「什么东西才有资格叫矢量」说起。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="covariance" data-title="什么才算矢量：协变性">
+  <div class="ch-head"><span class="num">02</span><span class="who">答主：Timothy Liu</span>
+    <h2>什么东西才有资格叫「矢量」？协变性</h2>
+    <p class="lead">物理上，能叫矢量的量必须在坐标系的正交变换（旋转、反演）下保持协变：不管坐标系怎么转，它的模长、运算关系都不变。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">拖动旋转坐标系。位矢 <b>r</b> 的模长不变；但它在某个轴上的投影随坐标系变化——转到合适的角度甚至变成 0。所以「投影」不是矢量。原文用的是三维例子：r 在 xOy 平面的投影 (x, y, 0)，把 z 轴转到和它重合，坐标就成了 (0, 0, 0)。</div>
+    <div data-demo="rotate"></div>
+  </div>
+  <ul class="notes">
+    <li><b>正交变换</b>：坐标系绕原点旋转，或做一次反演；线性代数里就是乘一个正交矩阵。</li>
+    <li><b>极矢量 / 赝矢量</b>：反演下性质不变的是极矢量，反过来的是赝矢量（原文顺带一提）。</li>
+    <li><b>要求</b>：四维时空的位矢也必须满足协变性。那它的「模长」该是什么？</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="lightspeed" data-title="光速不变从哪来">
+  <div class="ch-head"><span class="num">03</span><span class="who">答主：Timothy Liu</span>
+    <h2>光速不变：从麦克斯韦方程组逼出来的</h2>
+    <p class="lead">真空中的麦克斯韦方程组化成一个波动方程，波速 c = 1/√(μ₀ε₀) 只由两个真空常量决定，和参考系无关。这与伽利略的速度叠加矛盾，于是有了光速不变原理和洛伦兹变换。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">推导链条逐步点亮；下方是沿 x 传播的电场正弦波 E = E₀cos(kx − ωt)，其波速 ω/k 就是 c。</div>
+    <div data-demo="chain"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>伽利略 vs 洛伦兹</b>：车对地面速度 1，我在车上走速度 1。牛顿说我对地面是 2；但光的速度由 μ₀、ε₀ 决定，换个参考系它还是 c。</div>
+    <div data-demo="galileo"></div>
+  </div>
+  <ul class="notes">
+    <li><b>爱因斯坦的论文标题</b>是《论动体的电动力学》——狭义相对论本来就是电动力学的问题。</li>
+    <li><b>原文推导</b>：对 ∇×E = −∂B/∂t 再取旋度，用 ∇×B = μ₀ε₀∂E/∂t 和 ∇·E = 0，得 ∇²E − μ₀ε₀∂²E/∂t² = 0。</li>
+    <li>洛伦兹变换的推导原文略去，「只要知道在洛伦兹变换下我对地面的速度不是 2 就好了」。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="interval" data-title="时空间隔：不变的量">
+  <div class="ch-head"><span class="num">04</span><span class="who">答主：Timothy Liu</span>
+    <h2>找一个所有参考系都同意的量：时空间隔</h2>
+    <p class="lead">O 点发光，P 点收到。两个参考系都测到光速 c，所以 x² + y² + z² − c²t² 在两个系里都是 0。推广：对任意两个事件，Δx² + Δy² + Δz² − c²Δt² 不随参考系改变。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">时空图：横轴 x，纵轴 ct（只画一维空间）。拖动 β = v/c 切换参考系：事件 P 的坐标 (x, ct) 会变，但 Δs² = Δx² − c²Δt² 不变（它沿着一条双曲线滑动）。切到「光信号」时，P 始终落在 45° 光线上，Δs² = 0。</div>
+    <div data-demo="minkowski"></div>
+  </div>
+  <ul class="notes">
+    <li><b>事件</b>：狭义相对论讨论的对象，有位置 x, y, z 和时刻 t。四维时空里的「位置」指的是事件。</li>
+    <li><b>先猜后验</b>：原文说「不妨合理做出假设」它对一般事件也是定值，「代入洛伦兹变换公式里计算，发现它确实为定值」。</li>
+    <li><b>名字</b>：Δs² = Δx² + Δy² + Δz² − c²Δt²，Δs 叫两事件的<b>时空间隔</b>——四维时空里「相对位置」的模长。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="why-i" data-title="为什么是 ict">
+  <div class="ch-head"><span class="num">05</span><span class="who">答主：Timothy Liu</span>
+    <h2>那个减号，正好是 i² = −1</h2>
+    <p class="lead">模长平方应该是各分量平方之和。想让「和」里出现 −c²t²，只需让第四个分量等于 ict：(ict)² = −c²t²。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">一步步展开 |(x, y, z, ict)|²。</div>
+    <div data-demo="reveal"></div>
+  </div>
+  <ul class="notes">
+    <li><b>构造而非发现</b>：答主的原话是「进行一个简单的构造，我们可以一眼看出，它正是 (x, y, z, ict) 模长的平方」。</li>
+    <li><b>验证</b>：把 (x, y, z, ict) 代入洛伦兹变换，它在四维坐标系的正交变换（即洛伦兹变换）下是协变的——满足第 02 节的资格要求。</li>
+    <li>于是题主要的东西找到了：<b>空间为实数维度、时间为虚数维度的矢量</b>。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="lightcone" data-title="光的视角：间隔为零">
+  <div class="ch-head"><span class="num">06</span><span class="who">答主：Timothy Liu（题外话）</span>
+    <h2>题外话：光经历的任何两个事件，间隔都是零</h2>
+    <p class="lead">以光速联系的两个事件，Δs = 0。一道光线经过的所有事件两两间隔都为零——这就是「以光速运动看时间是静止的」那种说法背后真正的意思。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">光子沿 45° 世界线飞行，沿途经过的事件之间 Δs² = Δx² − c²Δt² 始终为 0。而我们三维空间里熟悉的「距离」√(Δx²+Δy²+Δz²) 只是时空间隔的一部分。</div>
+    <div data-demo="cone"></div>
+  </div>
+  <ul class="notes">
+    <li><b>绝对量</b>：时空间隔与坐标系选取无关，就像三维空间里两点的距离与坐标系无关。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="answers" data-title="两位答主怎么说">
+  <div class="ch-head"><span class="num">07</span>
+    <h2>两位答主怎么说</h2>
+    <p class="lead">一位给出了完整构造；另一位只留下一句话，但角度不同：先问「可不可以用」，而不是「会不会是」。</p>
+  </div>
+  <div class="fig">
+    <div class="grid2">
+      <div class="ans a"><h3>Timothy Liu · 是的，可以</h3><p>时间的确可以作为虚数维度。四维位矢 (x, y, z, ict) 满足协变性，其模长平方就是时空间隔 Δs²，在洛伦兹变换下不变。</p><div class="mini">清华大学网络空间安全博士在读（知乎个人简介）。参考文献：郭硕鸿《电动力学》、张三慧《大学物理学》、梁昆淼《数学物理方法》。</div></div>
+      <div class="ans b"><h3>零者 · 先改问法</h3><p>「数学是个工具，其本身是不依赖现实的。所以『会不会』在这里其实是不合适的，应该改成『可不可以用』。不…」</p><div class="mini">剪藏只保留了摘要里的这一句，后文缺失。本页不替答主补全观点。</div></div>
+    </div>
+    <div class="final">两人并不矛盾：ict 是一种可以用、而且教材里常用的写法；它好用是因为让闵可夫斯基时空的「模长」长得像欧氏空间的模长。至于时间「本质上」是不是虚数，原文没有、本页也不下断言。</div>
+  </div>
+</section>
+
+<footer>
+  <div><b>来源</b></div>
+  <ul>
+    <li>知乎问题《时间会不会是一个以虚数为单位的维度？》：<a href="https://www.zhihu.com/question/6943744414">zhihu.com/question/6943744414</a></li>
+    <li>Timothy Liu 的回答（编辑于 2024-12-17）：<a href="https://www.zhihu.com/question/6943744414/answer/56204386105">answer/56204386105</a>；零者的回答：<a href="https://www.zhihu.com/question/6943744414/answer/57469841030">answer/57469841030</a>（本地剪藏不完整）。</li>
+    <li>原文参考文献：《电动力学（第三版）》郭硕鸿，高等教育出版社，2008；《大学物理学》（第 4 版）张三慧，清华大学出版社，2018；《数学物理方法（第四版）》梁昆淼编，高等教育出版社，2010。</li>
+  </ul>
+  <div style="margin-top:10px">本页由 Claude Code 基于原文生成，仅供学习。</div>
+</footer>
+
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+/* 洛伦兹变换（c = 1） */
+const boost = (x, t, b) => { const g = 1 / Math.sqrt(1 - b * b); return [g * (x - b * t), g * (t - b * x)]; };
+
+/* ======================================================================
+   Hero：被洛伦兹变换「拉扯」的时空网格，光线不动
+   ====================================================================== */
+reg('hero', (root) => {
+  const c = el('canvas', { style: 'width:100%;height:220px;border-radius:10px;background:#0b0d16' }); root.append(c);
+  const ctx = c.getContext('2d');
+  const resize = () => { const w = c.clientWidth, h = 220; if (c.width !== w * 2 || c.height !== h * 2) { c.width = w * 2; c.height = h * 2; } };
+  return loop((t) => {
+    resize(); const W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
+    const b = 0.55 * Math.sin(t * 0.6); const S = 44, ox = W / 2, oy = H - 24;
+    const P = (x, tt) => [ox + x * S, oy - tt * S];
+    ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(143,138,255,.45)';
+    for (let k = -14; k <= 14; k++) {
+      ctx.beginPath(); for (let tt = 0; tt <= 6; tt += 0.25) { const [x2, t2] = boost(k, tt, b); const [px, py] = P(x2, t2); tt ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(51,210,186,.45)';
+    for (let k = 0; k <= 8; k++) {
+      ctx.beginPath(); for (let x = -14; x <= 14; x += 0.5) { const [x2, t2] = boost(x, k, b); const [px, py] = P(x2, t2); x > -14 ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.stroke();
+    }
+    ctx.strokeStyle = '#ffd27a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(...P(-6, 6)); ctx.lineTo(...P(0, 0)); ctx.lineTo(...P(6, 6)); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = '22px ' + cssVar('--font'); ctx.textAlign = 'left';
+    ctx.fillText('换参考系：网格被拉扯，光线（黄）不动', 20, 36);
+    ctx.font = '18px ' + cssVar('--mono'); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillText('β = v/c = ' + b.toFixed(2), 20, 64);
+    ctx.fillStyle = '#ffd27a'; ctx.textAlign = 'right'; ctx.fillText('x² − c²t² 不变', W - 20, H - 20);
+  });
+});
+
+/* ======================================================================
+   01 四元组
+   ====================================================================== */
+reg('tuple', (root) => {
+  const w = el('div', { class: 'tuple' });
+  const cells = ['x', 'y', 'z'].map(s => el('span', { class: 'c sp' }, s));
+  const t4 = el('span', { class: 'c tm hid' }, 'ict');
+  const sep = () => el('span', { class: 'br' }, ',');
+  w.append(el('span', { class: 'br' }, '('), cells[0], sep(), cells[1], sep(), cells[2], el('span', { class: 'br', id: 'sep4' }, ','), t4, el('span', { class: 'br' }, ')'));
+  const lab = el('div', { class: 'src', style: 'text-align:center' }, '');
+  root.append(w, lab);
+  let k = 0; const sep4 = w.querySelector('#sep4');
+  return every(RM ? 1e9 : 1800, () => {
+    k = (k + 1) % 3;
+    if (k === 1) { t4.classList.add('hid'); sep4.style.opacity = 0; lab.textContent = '三维空间：位置矢量 (x, y, z)，模长平方 x² + y² + z²'; }
+    else if (k === 2) { t4.classList.remove('hid'); sep4.style.opacity = 1; lab.textContent = '四维时空：位置矢量 (x, y, z, ict)，模长平方 x² + y² + z² − c²t²'; }
+    else { lab.textContent = '第四个分量：i（虚数单位）× c（光速）× t（时间）'; }
+  });
+});
+
+/* ======================================================================
+   02 旋转坐标系：模长不变，投影会变
+   ====================================================================== */
+reg('rotate', (root) => {
+  const W = 480, H = 300, cx = 200, cy = 170, R = 120, ang = -35 * Math.PI / 180; // r 固定
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const axes = svg('g'); s.append(axes);
+  const rx = cx + R * Math.cos(ang), ry = cy + R * Math.sin(ang);
+  const proj = svg('line', { stroke: 'var(--o)', 'stroke-width': 5, 'stroke-linecap': 'round' }); const dash = svg('line', { stroke: 'var(--o)', 'stroke-dasharray': '4 4' });
+  s.append(dash, proj);
+  s.append(svg('line', { x1: cx, y1: cy, x2: rx, y2: ry, stroke: 'var(--p)', 'stroke-width': 4, 'stroke-linecap': 'round' }), svg('circle', { cx: rx, cy: ry, r: 6, fill: 'var(--p)' }), svg('text', { x: rx + 10, y: ry - 6, class: 'lbl big', fill: 'var(--p)' }, 'r'));
+  const o1 = el('b', { class: 'ok' }), o2 = el('b');
+  const ro = el('div', { class: 'ro' }, el('div', { class: 'o' }, '|r| 模长（矢量）', o1), el('div', { class: 'o' }, '在 x′ 轴上的投影（不是矢量）', o2));
+  let th = 0;
+  const draw = () => {
+    axes.innerHTML = '';
+    const ux = [Math.cos(th), Math.sin(th)], uy = [-Math.sin(th), Math.cos(th)];
+    axes.append(svg('line', { x1: cx - ux[0] * 170, y1: cy - ux[1] * 170, x2: cx + ux[0] * 170, y2: cy + ux[1] * 170, class: 'ax' }), svg('line', { x1: cx - uy[0] * 130, y1: cy - uy[1] * 130, x2: cx + uy[0] * 130, y2: cy + uy[1] * 130, class: 'ax' }));
+    axes.append(svg('text', { x: cx + ux[0] * 180, y: cy + ux[1] * 180 + 4, class: 'lbl m' }, 'x′'), svg('text', { x: cx + uy[0] * 140, y: cy + uy[1] * 140 + 4, class: 'lbl m' }, 'y′'));
+    const p = R * Math.cos(ang - th); const px = cx + ux[0] * p, py = cy + ux[1] * p;
+    proj.setAttribute('x1', cx); proj.setAttribute('y1', cy); proj.setAttribute('x2', px); proj.setAttribute('y2', py);
+    dash.setAttribute('x1', rx); dash.setAttribute('y1', ry); dash.setAttribute('x2', px); dash.setAttribute('y2', py);
+    o1.textContent = '120（不变）'; o2.textContent = Math.abs(p).toFixed(1) + (Math.abs(p) < 3 ? ' → 0' : ''); o2.className = Math.abs(p) < 3 ? 'bad' : '';
+  };
+  root.append(el('div', { class: 'ctrl' }, range('旋转坐标系 θ', -90, 90, 0, 1, (v) => { th = v * Math.PI / 180; draw(); }, (v) => v + '°')), s, ro);
+  draw(); return {};
+});
+
+/* ======================================================================
+   03a 推导链条 + 行波
+   ====================================================================== */
+reg('chain', (root) => {
+  const S = [
+    ['麦克斯韦方程组', '电场与磁场的关系（微分形式）', '∇×E = −∂B/∂t … (1)'],
+    ['真空：无电荷、无电流', 'ρ = 0, J = 0；D = ε₀E, B = μ₀H', '∇×B = μ₀ε₀ ∂E/∂t'],
+    ['化成波动方程', '对 (1) 再取旋度，用 ∇·E = 0', '∇²E − μ₀ε₀ ∂²E/∂t² = 0 … (3)'],
+    ['波速只由常量决定', 'μ₀、ε₀ 是真空常量，与参考系无关', 'c := 1/√(μ₀ε₀)'],
+    ['与伽利略变换矛盾', '牛顿时空观里速度应随参考系叠加', '1 + 1 应该 = 2 ？'],
+    ['光速不变原理', '于是假设：光速与参考系无关', '⇒ 洛伦兹变换'],
+  ];
+  const flow = el('div', { class: 'flow', style: 'grid-template-columns:repeat(auto-fit,minmax(150px,1fr))' });
+  const cards = S.map(([h, p, f], i) => { const c = el('div', { class: 'step' }, el('span', { class: 'k' }, '0' + (i + 1)), el('h3', {}, h), el('p', {}, p), el('div', { class: 'f', title: f }, f)); flow.append(c); return c; });
+  const cv = el('canvas', { class: 'wave-c' }); const ctx = cv.getContext('2d');
+  root.append(flow, cv);
+  let i = -1; const hl = every(RM ? 1e9 : 1500, () => { i = (i + 1) % S.length; cards.forEach((c, j) => c.classList.toggle('on', j === i)); });
+  const anim = loop((t) => {
+    const w = cv.clientWidth, h = 120; if (cv.width !== w * 2) { cv.width = w * 2; cv.height = h * 2; }
+    const W = cv.width, H = cv.height; ctx.clearRect(0, 0, W, H);
+    ctx.strokeStyle = cssVar('--muted'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(0, H / 2); ctx.lineTo(W, H / 2); ctx.stroke();
+    ctx.strokeStyle = cssVar('--p'); ctx.lineWidth = 4; ctx.beginPath();
+    const k = 2 * Math.PI / 160, om = 2 * Math.PI * 0.9;
+    for (let x = 0; x <= W; x += 3) { const y = H / 2 - Math.cos(k * x - om * t) * H * 0.32; x ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke();
+    ctx.fillStyle = cssVar('--text'); ctx.font = (W < 900 ? 20 : 24) + 'px ' + cssVar('--mono'); ctx.textAlign = 'left'; ctx.fillText('E(x,t) = E₀cos(kx − ωt)', 16, 30); ctx.fillText('波速 ω/k = 1/√(μ₀ε₀) = c', 16, 58);
+  });
+  return { start() { hl.start(); anim.start(); }, stop() { hl.stop(); anim.stop(); } };
+});
+
+/* ======================================================================
+   03b 伽利略 vs 光
+   ====================================================================== */
+reg('galileo', (root) => {
+  const W = 560, H = 200; let mode = 0;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  s.append(svg('line', { x1: 0, y1: 150, x2: W, y2: 150, class: 'ax' }), svg('text', { x: 8, y: 168, class: 'lbl' }, '地面'));
+  const car = svg('g'); car.append(svg('rect', { x: 0, y: 70, width: 180, height: 70, rx: 10, fill: 'var(--surface-2)', stroke: 'var(--line)' }), svg('circle', { cx: 35, cy: 145, r: 12, fill: 'var(--muted)' }), svg('circle', { cx: 145, cy: 145, r: 12, fill: 'var(--muted)' }), svg('text', { x: 90, y: 62, class: 'lbl mid' }, '车：对地面速度 1'));
+  const mover = svg('g'); const body = svg('circle', { cx: 0, cy: 105, r: 10, fill: 'var(--o)' }); const mlab = svg('text', { x: 0, y: 92, class: 'lbl mid', fill: 'var(--o)' }, ''); mover.append(body, mlab); car.append(mover);
+  s.append(car);
+  const out = svg('text', { x: W / 2, y: 30, class: 'lbl mid big' }, ''); s.append(out);
+  root.append(el('div', { class: 'ctrl' }, seg(['车上走路的人', '车上发出的光'], (i) => { mode = i; })), s);
+  return loop((t) => {
+    const u = (t % 4) / 4; const carX = 30 + u * 260; car.setAttribute('transform', `translate(${carX},0)`);
+    if (mode === 0) { mover.setAttribute('transform', `translate(${20 + u * 140},0)`); mlab.textContent = '人：对车 1'; out.textContent = '伽利略：对地面 1 + 1 = 2（日常没问题）'; body.setAttribute('fill', 'var(--o)'); }
+    else { mover.setAttribute('transform', `translate(${20 + ((t * 2) % 1) * 140},0)`); mlab.textContent = '光：对车 c'; out.textContent = '光速不变：对地面仍是 c，不是 c + 1 ⇒ 需要洛伦兹变换'; body.setAttribute('fill', 'var(--y)'); }
+  });
+});
+
+/* ======================================================================
+   04 闵可夫斯基图：两个参考系看同一事件
+   ====================================================================== */
+reg('minkowski', (root) => {
+  const W = 300, H = 300, S = 36, ox = 150, oy = 262; let b = 0, mode = 0;
+  const P0 = [[1.5, 2.6], [2.5, 2.5]]; // 一般事件 / 光信号（c = 1）
+  const mk = (title) => {
+    const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+    for (let k = -4; k <= 4; k++) s.append(svg('line', { x1: ox + k * S, y1: 10, x2: ox + k * S, y2: oy, class: 'gr' }));
+    for (let k = 0; k <= 6; k++) s.append(svg('line', { x1: 10, y1: oy - k * S, x2: W - 10, y2: oy - k * S, class: 'gr' }));
+    s.append(svg('line', { x1: 10, y1: oy, x2: W - 10, y2: oy, class: 'ax' }), svg('line', { x1: ox, y1: 10, x2: ox, y2: oy, class: 'ax' }));
+    s.append(svg('text', { x: W - 12, y: oy - 6, class: 'lbl m', 'text-anchor': 'end' }, 'x'), svg('text', { x: ox + 6, y: 20, class: 'lbl m' }, 'ct'));
+    s.append(svg('line', { x1: ox - 250, y1: oy + 250, x2: ox + 250, y2: oy - 250, stroke: 'var(--y)', 'stroke-width': 2 }), svg('line', { x1: ox + 250, y1: oy + 250, x2: ox - 250, y2: oy - 250, stroke: 'var(--y)', 'stroke-width': 2 }));
+    s.append(svg('text', { x: ox + 100, y: oy - 108, class: 'lbl', fill: 'var(--y)' }, '光'), svg('circle', { cx: ox, cy: oy, r: 5, fill: 'var(--text)' }), svg('text', { x: ox - 14, y: oy + 16, class: 'lbl m' }, 'O'));
+    const hyp = svg('path', { fill: 'none', stroke: 'var(--t)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4' }); s.append(hyp);
+    const seg1 = svg('line', { stroke: 'var(--p)', 'stroke-width': 2, 'stroke-dasharray': '3 3' }), seg2 = svg('line', { stroke: 'var(--p)', 'stroke-width': 2, 'stroke-dasharray': '3 3' });
+    const dot = svg('circle', { r: 7, fill: 'var(--o)', stroke: '#fff', 'stroke-width': 2 }); const lab = svg('text', { class: 'lbl m big' }, '');
+    s.append(seg1, seg2, dot, lab, svg('text', { x: 14, y: 22, class: 'lbl big' }, title));
+    return { s, hyp, dot, lab, seg1, seg2 };
+  };
+  const A = mk('参考系 1（β = 0）'), B = mk('参考系 2');
+  const titleB = B.s.querySelectorAll('text'); const tB = titleB[titleB.length - 1];
+  const oA = el('b'), oB = el('b'), oS = el('b', { class: 'ok' });
+  const ro = el('div', { class: 'ro', style: 'grid-template-columns:1fr 1fr 1fr' }, el('div', { class: 'o' }, '参考系 1 坐标 (x, ct)', oA), el('div', { class: 'o' }, '参考系 2 坐标 (x′, ct′)', oB), el('div', { class: 'o' }, 'Δs² = Δx² − c²Δt²', oS));
+  const place = (F, x, t, s2) => {
+    const px = ox + x * S, py = oy - t * S; F.dot.setAttribute('cx', px); F.dot.setAttribute('cy', py); F.lab.setAttribute('x', px + 10); F.lab.setAttribute('y', py - 8); F.lab.textContent = 'P';
+    F.seg1.setAttribute('x1', px); F.seg1.setAttribute('y1', py); F.seg1.setAttribute('x2', px); F.seg1.setAttribute('y2', oy);
+    F.seg2.setAttribute('x1', px); F.seg2.setAttribute('y1', py); F.seg2.setAttribute('x2', ox); F.seg2.setAttribute('y2', py);
+    let d = ''; if (s2 < -0.01) { for (let xx = -4; xx <= 4; xx += 0.1) { const tt = Math.sqrt(-s2 + xx * xx); d += (d ? 'L' : 'M') + (ox + xx * S).toFixed(1) + ',' + (oy - tt * S).toFixed(1); } } F.hyp.setAttribute('d', d);
+  };
+  const draw = () => {
+    const [x, t] = P0[mode]; const [x2, t2] = boost(x, t, b); const s2 = x * x - t * t;
+    place(A, x, t, s2); place(B, x2, t2, s2); tB.textContent = `参考系 2（β = ${b.toFixed(2)}）`;
+    oA.textContent = `(${x.toFixed(2)}, ${t.toFixed(2)})`; oB.textContent = `(${x2.toFixed(2)}, ${t2.toFixed(2)})`; oS.textContent = s2.toFixed(2) + '（两系相同）';
+  };
+  root.append(el('div', { class: 'ctrl' }, range('β = v/c', -0.8, 0.8, 0.4, 0.01, (v) => { b = v; draw(); }, (v) => v.toFixed(2)), seg(['一般事件', '光信号'], (i) => { mode = i; draw(); })), el('div', { class: 'grid2' }, A.s, B.s), ro);
+  b = 0.4; draw(); return {};
+});
+
+/* ======================================================================
+   05 逐步展开
+   ====================================================================== */
+reg('reveal', (root) => {
+  const box = el('div', { class: 'reveal' });
+  const L = [
+    ['|(x, y, z, ict)|²', ' = x² + y² + z² + ', '(ict)²'],
+    ['(ict)² = i² · c² · t²', ' = ', '(−1) · c²t²'],
+    ['所以 |(x, y, z, ict)|²', ' = x² + y² + z² ', '− c²t²'],
+    ['这正是', '时空间隔 Δs²', '：所有参考系都同意的「模长平方」'],
+  ];
+  const spans = L.map(parts => { const line = el('span', { class: 'line' }); const ss = parts.map(p => el('span', {}, p)); line.append(...ss); box.append(line); return ss; });
+  root.append(box);
+  let k = -1; const all = spans.flat();
+  return every(RM ? 1e9 : 1100, () => {
+    k = (k + 1) % (all.length + 2);
+    all.forEach((s, i) => { s.classList.toggle('on', i <= k); s.classList.toggle('hot', i === k && (i % 3 === 2 || i === 10)); });
+  });
+});
+
+/* ======================================================================
+   06 光锥：沿光线间隔为零
+   ====================================================================== */
+reg('cone', (root) => {
+  const W = 560, H = 300, ox = 120, oy = 270, S = 40;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  for (let k = 0; k <= 10; k++) s.append(svg('line', { x1: ox + k * S, y1: 10, x2: ox + k * S, y2: oy, class: 'gr' }));
+  for (let k = 0; k <= 6; k++) s.append(svg('line', { x1: ox - 100, y1: oy - k * S, x2: W - 10, y2: oy - k * S, class: 'gr' }));
+  s.append(svg('line', { x1: ox - 100, y1: oy, x2: W - 10, y2: oy, class: 'ax' }), svg('line', { x1: ox, y1: 10, x2: ox, y2: oy, class: 'ax' }), svg('text', { x: W - 12, y: oy - 6, class: 'lbl m', 'text-anchor': 'end' }, 'x'), svg('text', { x: ox + 6, y: 20, class: 'lbl m' }, 'ct'));
+  s.append(svg('line', { x1: ox, y1: oy, x2: ox + 260, y2: oy - 260, stroke: 'var(--y)', 'stroke-width': 2.5 }), svg('line', { x1: ox, y1: oy, x2: ox - 110, y2: oy - 110, stroke: 'var(--y)', 'stroke-width': 2.5, opacity: .5 }));
+  s.append(svg('text', { x: ox + 200, y: oy - 230, class: 'lbl', fill: 'var(--y)' }, '光的世界线'));
+  const evs = svg('g'); s.append(evs);
+  const ph = svg('circle', { r: 8, fill: 'var(--y)', stroke: '#fff', 'stroke-width': 2 }); s.append(ph);
+  const info = svg('text', { x: ox + 60, y: oy - 22, class: 'lbl big' }, ''); s.append(info);
+  const dxLab = svg('text', { x: ox + 60, y: oy - 4, class: 'lbl m' }, ''); s.append(dxLab);
+  s.querySelectorAll('text').forEach(t => t.setAttribute('font-size', '14'));
+  root.append(el('div', { class: 'scrollx' }, s));
+  return loop((t) => {
+    const u = (t % 5) / 5 * 6; const px = ox + u * S, py = oy - u * S; ph.setAttribute('cx', px); ph.setAttribute('cy', py);
+    evs.innerHTML = '';
+    for (let k = 1; k <= Math.floor(u); k++) { evs.append(svg('circle', { cx: ox + k * S, cy: oy - k * S, r: 5, fill: 'var(--o)' }), svg('text', { x: ox + k * S + 10, y: oy - k * S + 16, class: 'lbl m', fill: 'var(--o)', 'font-size': 14 }, 'Δs²=0')); }
+    info.textContent = `空间距离 Δx = ${u.toFixed(1)}，时间 cΔt = ${u.toFixed(1)}`; dxLab.textContent = `Δs² = ${u.toFixed(1)}² − ${u.toFixed(1)}² = 0`;
+  });
+});
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>

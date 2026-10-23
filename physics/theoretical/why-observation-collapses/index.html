@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>观测为什么导致坍缩</title>
+<meta name="description" content="基于知乎答主「贾明子」与「陈童」回答的可视化讲解：量子力学三公设、U/R 过程、冯诺依曼链、三类诠释、退相干能回答什么与不能回答什么。">
+<style>
+/* ================= 设计令牌（与 ai-visual-notes 其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5.2vw,44px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.quote{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--o);background:var(--surface);border-radius:0 10px 10px 0;font-size:14px;color:var(--text)}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:440px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:140px}
+.range output{font-family:var(--mono);color:var(--text);min-width:2.5em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.math{font-family:var(--mono);font-size:14px;background:var(--surface-2);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+.math .hl{color:var(--o);font-weight:700}
+.math .hp{color:var(--p);font-weight:700}
+.math .ht{color:var(--t);font-weight:700}
+
+/* 通用 SVG */
+.ax{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--grid);stroke-width:1}
+.lbl{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)} .c-m{stroke:var(--muted)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)} .f-s{fill:var(--surface)} .f-s2{fill:var(--surface-2)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700} .txt.m{font-family:var(--mono)} .txt.l{text-anchor:start}
+.txt.p{fill:var(--p)} .txt.t{fill:var(--t)} .txt.o{fill:var(--o)} .txt.r{fill:var(--r)}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.edge.k{stroke:var(--muted)}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.dash{stroke-dasharray:5 5}
+.running .dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+
+/* 卡片 / 步骤 */
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.p{border-color:var(--p);background:var(--p-soft)} .card.t{border-color:var(--t);background:var(--t-soft)} .card.o{border-color:var(--o);background:var(--o-soft)} .card.r{border-color:var(--r);background:var(--r-soft)}
+.flow{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.step{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .4s;position:relative}
+.step .ic{font-size:26px;line-height:1;margin-bottom:6px}
+.step h3{font-size:14px}
+.step p{font-size:12px;color:var(--muted);margin-top:4px}
+.step.on{border-color:var(--p);background:var(--p-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+.step .k{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.blk{border-radius:10px;padding:8px 10px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);text-align:center;position:relative}
+.blk.p{background:var(--p-soft);border-color:var(--p)} .blk.t{background:var(--t-soft);border-color:var(--t)} .blk.o{background:var(--o-soft);border-color:var(--o)} .blk.r{background:var(--r-soft);border-color:var(--r)}
+.blk small{display:block;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.arrowd{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .running .pulse,.running .dash.anim{animation:none}
+}
+/* 宽图在窄屏上横向滚动，保证文字可读 */
+.scrollx>svg.wide{min-width:560px}
+.scrollx{border-radius:10px}
+
+/* ================= 本页专用 ================= */
+.two{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .two{grid-template-columns:1fr 1fr} }
+.pillar{border-radius:12px;padding:14px;border:1px solid var(--line);background:var(--surface-2)}
+.pillar.p{border-color:var(--p);background:var(--p-soft)} .pillar.t{border-color:var(--t);background:var(--t-soft)}
+.pillar h3{font-size:16px;margin-bottom:6px}
+.pillar p{font-size:13px;color:var(--muted)}
+.pillar .q{margin-top:8px;font-size:13px;color:var(--text);font-style:italic}
+.born{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:760px){ .born{grid-template-columns:300px 1fr;align-items:center} }
+.pbar{display:grid;grid-template-columns:7em 1fr 3.5em;gap:8px;align-items:center;font-size:13px;margin-top:6px}
+.pbar .tr{height:16px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.pbar .tr i{display:block;height:100%;background:var(--p);transition:width .2s}
+.pbar.o .tr i{background:var(--o)}
+.pbar .v{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.ur{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.wrong{display:grid;gap:12px}
+@media (min-width:760px){ .wrong{grid-template-columns:1fr 1fr} }
+.chain{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.views{display:grid;gap:10px}
+@media (min-width:760px){ .views{grid-template-columns:repeat(3,1fr)} }
+.view{border-radius:12px;padding:12px;border:1px solid var(--line);background:var(--surface-2);font-size:13px}
+.view h3{font-size:15px;margin-bottom:4px}
+.view .tag{margin:4px 4px 6px 0}
+.view p{color:var(--muted)}
+.view .pro{margin-top:6px;color:var(--text)}
+.view .con{margin-top:4px;color:var(--r)}
+.dead{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px dashed var(--r);color:var(--r);font-size:13px;text-align:center}
+.deco{display:grid;gap:8px;min-width:0}
+.deco .st{min-width:0}
+.deco .st{font-family:var(--mono);font-size:clamp(12px,2.3vw,15px);padding:10px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);opacity:.35;transition:all .4s;overflow-x:auto;white-space:nowrap}
+.deco .st.on{opacity:1;border-color:var(--p)}
+.deco .st small{display:block;font-family:var(--font);color:var(--muted);font-size:12px;white-space:normal}
+.deco .st .a{color:var(--p);font-weight:700} .deco .st .b{color:var(--o);font-weight:700} .deco .st .m{color:var(--t);font-weight:700}
+.doors{display:grid;gap:12px}
+@media (min-width:760px){ .doors{grid-template-columns:1fr 1fr} }
+.door{border-radius:12px;padding:14px;border:2px solid var(--line);background:var(--surface-2);position:relative;transition:all .5s}
+.door h3{font-size:15px;margin-bottom:4px}
+.door p{font-size:13px;color:var(--muted)}
+.door .ans{margin-top:8px;font-size:13px;padding:8px 10px;border-radius:8px;background:var(--surface);border:1px solid var(--line)}
+.door.open{border-color:var(--t);background:var(--t-soft)}
+.door.locked{border-color:var(--r)}
+.door .lock{position:absolute;top:10px;right:12px;font-size:20px}
+.branch{width:100%;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">观测与坍缩</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 量子测量</div>
+  <h1>量子力学中，<br>为什么观测会导致坍缩？</h1>
+  <p class="sub">答主「贾明子」先总结两句话：这个问题科学家们还不完全清楚；但科学家知道的，比一般人想象的要清楚得多。本页把这份回答和答主「陈童」的补充拆成 10 个画面。</p>
+  <div class="thesis">核心结论：<b>科学家并不清楚"观测是否导致坍缩"，更谈不上"为什么"。但退相干理论已经把测量过程理清了一大半</b>——剩下的那一小半，取决于你选哪种诠释。</div>
+  <div class="meta">原文：知乎问题「量子力学中，为什么观测会导致坍缩？」下「贾明子」（主要内容）与「陈童」（退相干与诠释部分的补充）的回答。本页为教学改编。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="量子力学只讲两件事">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>"裸量子力学"只讲两件事：演化、观察</h2>
+    <p class="lead">量子力学描述系统的量子态如何演化，以及对某个量子态做观察时会得到什么。对应两个概念：量子态，可观测量。</p>
+  </div>
+  <div class="fig" data-demo="two">
+    <div class="cap">左边是"演化问题"，右边是"观察问题"。量子态包含一切可观测量的信息；反过来，一切信息合起来就是量子态。</div>
+  </div>
+</section>
+
+<section class="ch" id="c02" data-title="三个公设">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>三个公设：薛定谔方程、波恩规则、投影公设</h2>
+    <p class="lead">前两个各管一件事；第三个把演化和观察纠缠在一起，它有个更响亮的名字：波函数坍缩。</p>
+  </div>
+  <div class="fig" data-demo="born">
+    <div class="cap"><b>波恩规则</b>互动：拖动量子态矢量与本征态的夹角。夹角 0°（重合）→ 100% 得到该本征值；90°（正交）→ 0%。</div>
+  </div>
+  <ul class="notes">
+    <li><b>薛定谔方程</b> iħ ∂|ψ〉/∂t = Ĥ|ψ〉：地位像牛顿第二定律。量子态是确定的、连续变化的、由决定论方程严格预测的。</li>
+    <li><b>波恩规则</b>：观察到的只能是可观测量的某个本征值，概率由量子态与本征态的"重叠"决定。本征值往往离散（但不总是），这是"量子"一词的由来。</li>
+    <li><b>投影公设</b>：观察得到哪个结果，量子态就突变为那个本征态。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="U 过程与 R 过程">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>坍缩奇怪在哪：两种演化模式</h2>
+    <p class="lead">不理它时，它按薛定谔方程走，确定、连续、幺正（冯诺依曼叫 U 过程）；观察的瞬间，它随机突变——而且突变成什么由你观察什么决定（R 过程）。</p>
+  </div>
+  <div class="fig" data-demo="ur">
+    <div class="cap">波函数在平滑演化。按"观察"，看它瞬间跳到某个本征态；换一个可观测量，可选的"落点"也跟着换。</div>
+  </div>
+  <ul class="notes">
+    <li>观察时发生两件事：① 根据你观察的可观测量，产生一系列本征态选项；② 按波恩规则从中选一个。</li>
+    <li>"结果由观察手段决定"还容易接受；"系统的<b>演化</b>也由观察手段决定"就让人费解了。这是坍缩最有争议的部分。</li>
+    <li>注意：坍缩这个概念不是玻尔、海森堡提出的，而是<b>冯诺依曼</b>提出的。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c04" data-title="“观察干扰了系统”是错的">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>教科书常见解释："观察干扰了系统"——这是错的</h2>
+    <p class="lead">这是典型的经典思维。说"干扰并改变了状态"，等于默认观察前系统已经有一个确定的状态。可量子力学说的是观察改变了"量子态"，而量子态是不是系统的状态，不知道。</p>
+  </div>
+  <div class="fig" data-demo="wrong">
+    <div class="cap">右图：同一个态矢量可以随我们的计算方便，任意看成不同状态的叠加。拖动基的方向试试。难道系统的状态能随我们的意愿变？</div>
+  </div>
+  <ul class="notes">
+    <li><b>贝尔实验</b>也明确表明：在满足定域性的前提下，不可能存在一个确定的状态。"观察干扰了系统的状态"立不住脚。</li>
+    <li>在量子力学的基本假设里，观察、坍缩、R 过程都是<b>原生概念</b>，作为公理不加解释。它是意识造就现实？还是纯物理过程？不可说。</li>
+    <li>纯"闭嘴计算"的态度：量子态是预测工具，坍缩是使用手册里的一环。有用，但只知道它有用。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c05" data-title="冯诺依曼链">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>冯诺依曼链：叠加一路传到意识面前</h2>
+    <p class="lead">冯诺依曼第一个用物理机制分析观察过程，想把"坍缩"消解成明确的物理过程。他发现：由薛定谔方程的线性性质，叠加态会在系统 → 仪器 → 观察者的每一环保留下来。</p>
+  </div>
+  <div class="fig" data-demo="chain">
+    <div class="cap">按"推进"，看叠加沿着链传递。物理部分消解不掉叠加；最后我们意识到的却是单一结果。于是他把未消解的部分归为"非物理"——意识。这就是"意识坍缩"的由来。</div>
+  </div>
+  <ul class="notes">
+    <li>很多人说"观察是个纯物理过程"，但如果真是这样，就意味着<b>量子力学不完备</b>：一个完备的物理理论应该描述这个过程，而不是把它付诸公设。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c06" data-title="三大类观点">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>三大类观点：无现实、多重现实、单一非定域现实</h2>
+    <p class="lead">波函数到底是我们的认识（ψ_epistemic），还是物理状态本身（ψ_ontic）？不同回答，通向不同诠释。</p>
+  </div>
+  <div class="fig" data-demo="views">
+    <div class="cap">共同点：传统的"唯一的、定域的、确定的现实"无法成立。</div>
+  </div>
+</section>
+
+<section class="ch" id="c07" data-title="退相干：测量就是纠缠">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>退相干：观察 = 仪器、环境与系统纠缠起来</h2>
+    <p class="lead">退相干不是一种诠释，是纯粹的动力学理论：在量子力学框架内分析观察过程。整个过程是纯幺正的、由薛定谔方程唯一描述的。</p>
+  </div>
+  <div class="fig" data-demo="deco">
+    <div class="cap">按"下一步"逐行推演（采用陈童回答中含环境的版本）：粒子 + 仪器 + 环境纠缠成一个整体；忽略环境后，仪器的描述从纯态变成混态，概率出现了。</div>
+  </div>
+  <ul class="notes">
+    <li>纠缠态<b>不可再分</b>：粒子与仪器相互作用后，不是仪表进入"1 和 2 的叠加"，而是整体进入"+、1"与"−、2"的叠加。此时单独的仪表或粒子的量子态在数学上不再有定义。</li>
+    <li>观察仪表，就是把整体强行分割成两部分来对待。从数学形式上，纯态变成混态，叠加变成概率。</li>
+    <li>所以：<b>观察不是观察者对系统产生了什么影响，而是观察者与系统纠缠后不再有独立的定义。</b>退相干的根源是量子信息泄露到了环境里。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c08" data-title="两个问题：退相干能答一个">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>两个问题，退相干只能回答一个</h2>
+    <p class="lead">测量时发生两件事：形成一系列经典的结果选项；系统"坍缩"到其中一个。前者叫偏好基问题，后者叫输出值问题。</p>
+  </div>
+  <div class="fig" data-demo="doors">
+    <div class="cap">按"用退相干试试"。</div>
+  </div>
+  <ul class="notes">
+    <li><b>偏好基问题</b>（preferred basis problem）：为什么结果总是确定的经典结果？看不到"既在这又在那"的粒子、"既死又活"的猫、"既是猫又是狗"的动物？——退相干能回答。</li>
+    <li><b>输出值问题</b>（outcome problem）：为什么会产生一个特定结果？概率为什么由波恩规则指定？——退相干无能为力，归根结底依赖诠释。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c09" data-title="剩下的分歧：坍缩 vs 多世界">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>剩下的分歧：真的坍缩了，还是世界分裂了？</h2>
+    <p class="lead">到退相干为止，各诠释基本有共识。麻烦在于：当我们看到仪器读数 ↑，整个世界是坍缩到了 |W↑〉，还是 |W↑〉和 |W↓〉两个分支都发生了？</p>
+  </div>
+  <div class="fig" data-demo="branch">
+    <div class="cap">切换两种立场看同一次测量。每种立场各有一个没解决的问题。</div>
+  </div>
+  <ul class="notes">
+    <li><b>坍缩立场</b>的问题：设想一个外在于整个世界、不关心读数的"上帝"，对它来说世界仍是 c↑|W↑〉+ c↓|W↓〉，根本没有坍缩。坍缩怎么进行的，也仍在研究。</li>
+    <li><b>多世界立场</b>的问题：分裂后的两个平行世界，在物理上怎么保持相干叠加、共同构成同一个量子现实？多世界需要对波恩规则和投影公设给出物理解释，已有开创性工作（Deutsch 与 Wallace 的决策论、Carroll 与 Albert 的 post-measurement uncertainty、Zurek 的量子对称性等），但还没有决定性突破。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c10" data-title="结论">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>所以，为什么观测会导致坍缩？</h2>
+    <p class="lead">答案是：科学家们并不清楚观测是不是导致坍缩，更谈不上回答为什么。但他们正从不同方向接近这个答案。</p>
+  </div>
+  <div class="fig" data-demo="summary">
+    <div class="cap">这份回答的整条线索。</div>
+  </div>
+  <div class="final">有没有量子态坍缩？目前还不知道。怎么坍缩的？同样不知道。——但"不知道"的边界，已经被退相干理论画得很清楚了。</div>
+</section>
+
+<footer>
+  原文：知乎「量子力学中，为什么观测会导致坍缩？」，答主<b>贾明子</b>（主要内容）与<b>陈童</b>（量子物理话题优秀答主，退相干与诠释部分）。本页为教学用可视化改编，单文件、离线可用；动画仅用于说明概念。
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mulberry = (seed) => () => { let t = (seed += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+function fitCanvas(c, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, c.clientWidth);
+  const h = aspect ? w / aspect : Math.max(10, c.clientHeight);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const rgba = (hex, a) => { hex = hex.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); const n = parseInt(hex, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', { type: 'button', class: val === cur ? 'on' : '', onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); } }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, step, val, oninput, fmt = (v) => v) => {
+  const out = el('output', {}, fmt(val));
+  const inp = el('input', { type: 'range', min, max, step, value: val });
+  inp.addEventListener('input', () => { out.textContent = fmt(+inp.value); oninput(+inp.value); });
+  return el('label', { class: 'range' }, label, inp, out);
+};
+const loop = (fn) => {
+  let id = 0, last = 0, running = false;
+  const tick = (t) => { if (!running) return; fn(Math.min(50, t - last || 16), t); last = t; id = requestAnimationFrame(tick); };
+  return { start() { if (running) return; running = true; last = performance.now(); id = requestAnimationFrame(tick); }, stop() { running = false; cancelAnimationFrame(id); }, get running() { return running; } };
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+// 宽 SVG：窄屏时横向滚动
+const wide = (s) => { s.classList.add('wide'); return el('div', { class: 'scrollx' }, s); };
+
+/* 画一个波包（用于 hero 与 U/R 演示） */
+function wavePath(W, y0, amp, k, phase, env = 1) {
+  let d = ''; for (let i = 0; i <= 120; i++) { const x = i / 120; const g = Math.exp(-((x - .5) ** 2) / (.045 * env)); const y = y0 - amp * g * Math.cos(k * x * Math.PI * 2 + phase); d += (i ? 'L' : 'M') + (x * W).toFixed(1) + ' ' + y.toFixed(1) + ' '; } return d;
+}
+
+reg('hero', (root) => {
+  const W = 800, H = 180;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const p = svg('path', { d: '', class: 'curve c-p' }); s.append(p);
+  const eye = svg('g', { transform: 'translate(400,40)', opacity: 0 }); eye.append(svg('ellipse', { rx: 22, ry: 12, fill: 'none', stroke: 'var(--o)', 'stroke-width': 2 }), svg('circle', { r: 5, fill: 'var(--o)' })); s.append(eye);
+  const lab = svg('text', { x: 400, y: 165, class: 'txt s' }, 'U 过程：平滑演化'); s.append(lab);
+  root.append(s);
+  let t = 0;
+  return loop((dt) => { t += dt / 1000; const c = t % 6; if (c < 4) { p.setAttribute('d', wavePath(W, 100, 40, 6, -t * 4, 1 + c * .4)); eye.setAttribute('opacity', 0); lab.textContent = 'U 过程：平滑、连续、幺正地演化'; } else { eye.setAttribute('opacity', 1); const spike = `M0 100 L ${W * .5 - 14} 100 L ${W * .5} 30 L ${W * .5 + 14} 100 L ${W} 100`; p.setAttribute('d', spike); lab.textContent = 'R 过程：观察的瞬间，随机突变到一个本征态'; } });
+});
+
+/* 01 两件事 */
+reg('two', (root) => {
+  const g = el('div', { class: 'two' },
+    el('div', { class: 'pillar p' }, el('h3', {}, '演化 · 量子态'), el('p', {}, '微观系统的运动状态可以完备地用量子态描述：希尔伯特空间中的一个矢量（态矢量），最熟悉的写法是波函数。'), el('div', { class: 'q' }, '"给定初始状态，如何预言未来某一时刻的量子态？"')),
+    el('div', { class: 'pillar t' }, el('h3', {}, '观察 · 可观测量'), el('p', {}, '从实证意义上我们更关心：观察系统时会"看"到什么。位置、动量、角动量、能量……这些是可观测量。'), el('div', { class: 'q' }, '"已知量子态，做一个特定观察，会得到哪些结果、概率多大？"')));
+  root.append(g);
+});
+
+/* 02 波恩规则 */
+reg('born', (root) => {
+  const W = 300, H = 260, cx = 130, cy = 150, R = 100;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'max-width:300px;margin:0 auto' });
+  s.append(svg('circle', { cx, cy, r: R, class: 'box', 'stroke-dasharray': '4 4' }));
+  s.append(svg('line', { x1: cx, y1: cy, x2: cx + R, y2: cy, stroke: 'var(--t)', 'stroke-width': 4, 'stroke-linecap': 'round' }), svg('text', { x: cx + R + 12, y: cy, class: 'txt t l b' }, '本征态 |a〉'));
+  s.append(svg('line', { x1: cx, y1: cy, x2: cx, y2: cy - R, stroke: 'var(--muted)', 'stroke-width': 2, 'stroke-dasharray': '3 3' }), svg('text', { x: cx, y: cy - R - 12, class: 'txt s' }, '正交态 |b〉'));
+  const vec = svg('line', { x1: cx, y1: cy, x2: cx + R, y2: cy, stroke: 'var(--p)', 'stroke-width': 4, 'stroke-linecap': 'round' });
+  const vlab = svg('text', { x: 0, y: 0, class: 'txt p b' }, '|ψ〉');
+  const proj = svg('line', { x1: cx, y1: cy, x2: cx, y2: cy, stroke: 'var(--p)', 'stroke-width': 2, 'stroke-dasharray': '3 3' });
+  const arc = svg('path', { d: '', fill: 'none', stroke: 'var(--o)', 'stroke-width': 1.5 });
+  const alab = svg('text', { x: cx + 48, y: cy - 14, class: 'txt o' }, 'θ');
+  s.append(proj, arc, vec, vlab, alab);
+  const b1 = el('div', { class: 'pbar' }, el('span', {}, '得到 a 的概率'), el('div', { class: 'tr' }, el('i')), el('span', { class: 'v' }));
+  const b2 = el('div', { class: 'pbar o' }, el('span', {}, '得到 b 的概率'), el('div', { class: 'tr' }, el('i')), el('span', { class: 'v' }));
+  const f = el('div', { class: 'math', style: 'margin-top:10px' });
+  const set = (deg) => {
+    const th = deg * Math.PI / 180; const x = cx + Math.cos(th) * R, y = cy - Math.sin(th) * R;
+    vec.setAttribute('x2', x); vec.setAttribute('y2', y); vlab.setAttribute('x', cx + Math.cos(th) * (R + 18)); vlab.setAttribute('y', cy - Math.sin(th) * (R + 18));
+    proj.setAttribute('x1', x); proj.setAttribute('y1', y); proj.setAttribute('x2', x); proj.setAttribute('y2', cy);
+    arc.setAttribute('d', `M ${cx + 36} ${cy} A 36 36 0 0 0 ${cx + Math.cos(th) * 36} ${cy - Math.sin(th) * 36}`);
+    const pa = Math.cos(th) ** 2, pb = 1 - pa;
+    b1.querySelector('i').style.width = pa * 100 + '%'; b1.querySelector('.v').textContent = Math.round(pa * 100) + '%';
+    b2.querySelector('i').style.width = pb * 100 + '%'; b2.querySelector('.v').textContent = Math.round(pb * 100) + '%';
+    f.innerHTML = `|ψ〉= <span class="ht">${Math.cos(th).toFixed(2)}</span>|a〉+ <span class="hl">${Math.sin(th).toFixed(2)}</span>|b〉 &nbsp; P(a) = |〈a|ψ〉|² = cos²θ`;
+  };
+  const right = el('div', {}, el('div', { class: 'ctrl' }, range('夹角 θ', 0, 90, 1, 30, set, v => v + '°')), b1, b2, f);
+  root.append(el('div', { class: 'born' }, s, right)); set(30);
+});
+
+/* 03 U / R */
+reg('ur', (root) => {
+  const W = 640, H = 220;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'ur' });
+  s.append(svg('line', { x1: 20, y1: 190, x2: 620, y2: 190, class: 'ax' }), svg('text', { x: 600, y: 205, class: 'txt s' }, '时间 →'));
+  const p = svg('path', { d: '', class: 'curve c-p' }); s.append(p);
+  const marks = svg('g'); s.append(marks);
+  const lab = svg('text', { x: 320, y: 24, class: 'txt' }, 'U 过程：按薛定谔方程平滑演化'); s.append(lab);
+  let obs = 'pos', t = 0, collapsed = 0, cpos = 0;
+  const eig = { pos: [[.2, '左'], [.5, '中'], [.8, '右']], mom: [[.35, '慢'], [.65, '快']] };
+  const drawMarks = () => { marks.innerHTML = ''; eig[obs].forEach(([x, n]) => { marks.append(svg('line', { x1: x * W, y1: 60, x2: x * W, y2: 190, class: 'edge dash', style: 'stroke:var(--o)' }), svg('text', { x: x * W, y: 48, class: 'txt o s' }, `本征态「${n}」`)); }); };
+  drawMarks();
+  const L = loop((dt) => {
+    t += dt / 1000;
+    if (collapsed > 0) { collapsed -= dt / 1000; const x = cpos * W; p.setAttribute('d', `M20 190 L ${x - 10} 190 L ${x} 70 L ${x + 10} 190 L 620 190`); }
+    else { lab.textContent = 'U 过程：按薛定谔方程平滑演化（确定、连续、幺正）'; p.setAttribute('d', wavePath(W, 140, 45, 5, -t * 3, 1.2 + Math.sin(t) * .5)); }
+  });
+  const observe = () => { const opts = eig[obs]; const pick = opts[Math.floor(Math.random() * opts.length)]; cpos = pick[0]; collapsed = RM ? .6 : 1.6; lab.textContent = `R 过程：观察「${obs === 'pos' ? '位置' : '动量'}」→ 随机突变到本征态「${pick[1]}」`; };
+  root.append(el('div', { class: 'ctrl' }, seg([['pos', '观察位置'], ['mom', '观察动量']], 'pos', v => { obs = v; drawMarks(); }), btn('观察！', observe, 'primary')), wide(s));
+  return L;
+});
+
+/* 04 错误解释 + 任意叠加 */
+reg('wrong', (root) => {
+  const left = el('div', { class: 'card r' }, el('h3', {}, '✗ 经典思维的版本'), el('p', {}, '"系统本来处于某个确定状态，观察不可避免地干扰了它，所以状态变了。"'), el('p', { style: 'margin-top:6px;color:var(--text)' }, '问题：这默认了观察前已有确定状态。贝尔实验表明，在定域性前提下，不存在这样的确定状态。'));
+  const W = 260, H = 260, cx = 130, cy = 130, R = 95;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, style: 'max-width:260px;margin:0 auto' });
+  s.append(svg('circle', { cx, cy, r: R, class: 'box', 'stroke-dasharray': '4 4' }));
+  const ax1 = svg('line', { class: 'edge k' }), ax2 = svg('line', { class: 'edge k' });
+  const c1 = svg('line', { stroke: 'var(--t)', 'stroke-width': 3, 'stroke-dasharray': '4 3' }), c2 = svg('line', { stroke: 'var(--o)', 'stroke-width': 3, 'stroke-dasharray': '4 3' });
+  const vec = svg('line', { x1: cx, y1: cy, x2: cx + Math.cos(.9) * R, y2: cy - Math.sin(.9) * R, stroke: 'var(--p)', 'stroke-width': 4, 'stroke-linecap': 'round' });
+  const t1 = svg('text', { class: 'txt t s' }, ''), t2 = svg('text', { class: 'txt o s' }, '');
+  s.append(ax1, ax2, c1, c2, vec, t1, t2, svg('text', { x: cx + Math.cos(.9) * (R + 14), y: cy - Math.sin(.9) * (R + 14), class: 'txt p b' }, '|ψ〉'));
+  const f = el('div', { class: 'math', style: 'margin-top:8px' });
+  const set = (deg) => {
+    const b = deg * Math.PI / 180, vx = Math.cos(.9), vy = Math.sin(.9);
+    const e1 = [Math.cos(b), Math.sin(b)], e2 = [-Math.sin(b), Math.cos(b)];
+    ax1.setAttribute('x1', cx - e1[0] * R); ax1.setAttribute('y1', cy + e1[1] * R); ax1.setAttribute('x2', cx + e1[0] * R); ax1.setAttribute('y2', cy - e1[1] * R);
+    ax2.setAttribute('x1', cx - e2[0] * R); ax2.setAttribute('y1', cy + e2[1] * R); ax2.setAttribute('x2', cx + e2[0] * R); ax2.setAttribute('y2', cy - e2[1] * R);
+    const a1 = vx * e1[0] + vy * e1[1], a2 = vx * e2[0] + vy * e2[1];
+    c1.setAttribute('x1', cx); c1.setAttribute('y1', cy); c1.setAttribute('x2', cx + a1 * e1[0] * R); c1.setAttribute('y2', cy - a1 * e1[1] * R);
+    c2.setAttribute('x1', cx); c2.setAttribute('y1', cy); c2.setAttribute('x2', cx + a2 * e2[0] * R); c2.setAttribute('y2', cy - a2 * e2[1] * R);
+    t1.setAttribute('x', cx + e1[0] * (R + 14)); t1.setAttribute('y', cy - e1[1] * (R + 14)); t1.textContent = '|1〉';
+    t2.setAttribute('x', cx + e2[0] * (R + 14)); t2.setAttribute('y', cy - e2[1] * (R + 14)); t2.textContent = '|2〉';
+    f.innerHTML = `同一个 |ψ〉= <span class="ht">${a1.toFixed(2)}</span>|1〉+ <span class="hl">${a2.toFixed(2)}</span>|2〉`;
+  };
+  const right = el('div', { class: 'card' }, el('h3', {}, '量子力学实际说的'), el('p', {}, '观察改变的是"量子态"。而态矢量可以任意地看作不同状态的叠加：'), s, el('div', { class: 'ctrl' }, range('换一组基', 0, 180, 1, 0, set, v => v + '°')), f);
+  root.append(el('div', { class: 'wrong' }, left, right)); set(0);
+});
+
+/* 05 冯诺依曼链 */
+reg('chain', (root) => {
+  const W = 640, H = 230;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'chain' });
+  const nodes = [['系统', '|+〉+|−〉'], ['仪器', '|1〉+|2〉'], ['观察者', '看到1 + 看到2'], ['意识', '只有一个结果？']];
+  const xs = [80, 240, 400, 560];
+  const gs = nodes.map(([n, st], i) => { const g = svg('g'); g.append(svg('rect', { x: xs[i] - 52, y: 70, width: 104, height: 70, rx: 10, class: 'box' + (i === 3 ? ' r' : '') }), svg('text', { x: xs[i], y: 90, class: 'txt b' }, n)); const t = svg('text', { x: xs[i], y: 118, class: 'txt m s' }, '就绪'); g.append(t); s.append(g); if (i < 3) s.append(svg('line', { x1: xs[i] + 52, y1: 105, x2: xs[i + 1] - 52, y2: 105, class: 'edge k' }), svg('text', { x: (xs[i] + xs[i + 1]) / 2, y: 95, class: 'txt s' }, '相互作用')); return { g, t, st }; });
+  const lab = svg('text', { x: 320, y: 40, class: 'txt' }, '线性性质：叠加会被原样传递'); s.append(lab);
+  const foot = svg('text', { x: 320, y: 200, class: 'txt s' }, ''); s.append(foot);
+  gs[0].t.textContent = gs[0].st;
+  let i = 0;
+  const step = () => { i++; if (i > 3) { i = 0; gs.forEach((g, j) => { g.t.textContent = j ? '就绪' : g.st; g.g.querySelector('rect').setAttribute('class', 'box' + (j === 3 ? ' r' : '')); }); foot.textContent = ''; lab.textContent = '线性性质：叠加会被原样传递'; return; } gs[i].t.textContent = gs[i].st; gs[i].g.querySelector('rect').setAttribute('class', 'box p'); if (i === 3) { gs[3].g.querySelector('rect').setAttribute('class', 'box r'); lab.textContent = '物理部分消解不了叠加，但意识到的只有一个结果'; foot.textContent = '冯诺依曼：剩下的归为"非物理"——意识。这就是"意识坍缩"的由来。'; } else foot.textContent = '叠加沿着链传到了' + nodes[i][0]; };
+  root.append(el('div', { class: 'ctrl' }, btn('推进一环', step, 'primary')), wide(s));
+});
+
+/* 06 三类观点 */
+reg('views', (root) => {
+  const v = el('div', { class: 'views' },
+    el('div', { class: 'view' }, el('h3', {}, '无现实'), el('span', { class: 'tag p' }, 'ψ_epistemic 认识论波函数'), el('p', {}, '态矢量代表的不是物理状态，而是我们的认识状态。量子力学描述的是认知的更新。叠加态毫不奇怪，"坍缩"就是获得观测信息后的贝叶斯更新。'), el('div', { class: 'pro' }, '代表：哥本哈根诠释。态矢量只适用于微观系统；跨越量子-经典边界时，波函数就坍缩了。')),
+    el('div', { class: 'view' }, el('h3', {}, '多重现实'), el('span', { class: 'tag t' }, 'ψ_ontic 本体论波函数'), el('p', {}, '量子态就是物理状态，量子力学描述的是物理过程。那"叠加态是真实的物理状态"——现实本身就是多重的。'), el('div', { class: 'pro' }, '代表：多世界理论。观察是纯物理过程，需要对波恩规则和投影公设做出物理解释。'), el('div', { class: 'con' }, '已有开创性工作，但尚无决定性突破。')),
+    el('div', { class: 'view' }, el('h3', {}, '单一非定域现实'), el('span', { class: 'tag o' }, '隐变量'), el('p', {}, '承认波函数的预测，但认为它只是对更深层现实的认识论描述。'), el('div', { class: 'con' }, '贝尔定理：隐变量必然是非定域的，与相对论冲突。受众较少。')));
+  root.append(v, el('div', { class: 'dead' }, '✗ 传统的唯一的、定域的、确定的现实：无法成立'));
+});
+
+/* 07 退相干推演 */
+reg('deco', (root) => {
+  const L = [
+    ['测量前：|W₀〉= |ψ〉|m₀〉|e₀〉', '电子态 |ψ〉= c↑|↑〉+ c↓|↓〉，仪器就绪 |m₀〉，环境 |e₀〉。三者各自独立（直积）。'],
+    ['= <span class="a">c↑</span>|↑〉|m₀〉|e₀〉 + <span class="b">c↓</span>|↓〉|m₀〉|e₀〉', '把 |ψ〉 展开。'],
+    ['相互作用规则：|↑〉|m₀〉→ |↑〉|m↑〉，|↓〉|m₀〉→ |↓〉|m↓〉', '仪器读数跟着电子走；环境也相应变成 |e↑〉或 |e↓〉。'],
+    ['测量后：|W〉= <span class="a">c↑</span>|↑〉|m↑〉|e↑〉 + <span class="b">c↓</span>|↓〉|m↓〉|e↓〉', '由薛定谔方程的线性性质，整体保持叠加并幺正演化。电子、仪器、环境纠缠成一个整体。<b>仍是确定的量子态，此时不谈概率。</b>'],
+    ['只看仪器（忽略电子与环境）→ 混态：<span class="a">|c↑|²</span>|m↑〉〈m↑| + <span class="b">|c↓|²</span>|m↓〉〈m↓|', '我们根本收集不到环境的信息。纠缠的整体被强行分割，仪器的描述从纯态变成混态：<span class="m">相干叠加消失，概率出现</span>。这就是退相干。'],
+    ['|c↑|² 的概率看到 m↑，|c↓|² 的概率看到 m↓', '退相干的根源：量子信息泄露到了环境中。到这里，各诠释基本都有共识。'],
+  ];
+  const box = el('div', { class: 'deco' });
+  const els = L.map(([a, b]) => { const d = el('div', { class: 'st' }); d.innerHTML = a + `<small>${b}</small>`; box.append(d); return d; });
+  let i = -1;
+  const step = () => { i = Math.min(els.length - 1, i + 1); els.forEach((e, j) => e.classList.toggle('on', j <= i)); };
+  const reset = () => { i = -1; els.forEach(e => e.classList.remove('on')); };
+  root.append(el('div', { class: 'ctrl' }, btn('下一步', step, 'primary'), btn('全部展开', () => { i = els.length - 2; step(); }), btn('重置', reset)), box);
+  step();
+});
+
+/* 08 两扇门 */
+reg('doors', (root) => {
+  const d1 = el('div', { class: 'door' }, el('span', { class: 'lock' }, '🔒'), el('h3', {}, '① 偏好基问题'), el('p', {}, '为什么观察产生的结果总是确定的经典结果？为什么看不到"既死又活"的猫？'), el('div', { class: 'ans' }, '…'));
+  const d2 = el('div', { class: 'door' }, el('span', { class: 'lock' }, '🔒'), el('h3', {}, '② 输出值问题'), el('p', {}, '为什么观察会产生一个特定的结果？为什么概率由波恩规则指定？'), el('div', { class: 'ans' }, '…'));
+  const go = () => {
+    d1.className = 'door open'; d1.querySelector('.lock').textContent = '🔓'; d1.querySelector('.ans').textContent = '退相干能回答：与环境纠缠后，只有经典的"偏好基"能存活下来。';
+    d2.className = 'door locked'; d2.querySelector('.lock').textContent = '🔒'; d2.querySelector('.ans').textContent = '退相干无能为力。归根结底依赖诠释：坍缩派说"这就是坍缩"（仍是神秘过程）；多世界派说所有结果都保留，"我"的一个副本只在一个分支上意识到一个结果。';
+  };
+  const reset = () => { [d1, d2].forEach(d => { d.className = 'door'; d.querySelector('.lock').textContent = '🔒'; d.querySelector('.ans').textContent = '…'; }); };
+  root.append(el('div', { class: 'ctrl' }, btn('用退相干试试', go, 'primary'), btn('重置', reset)), el('div', { class: 'doors' }, d1, d2));
+});
+
+/* 09 坍缩 vs 多世界 */
+reg('branch', (root) => {
+  const W = 640, H = 260;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'branch' });
+  const g = svg('g'); s.append(g);
+  const draw = (mode) => {
+    g.innerHTML = '';
+    g.append(svg('rect', { x: 40, y: 100, width: 150, height: 60, rx: 10, class: 'box p' }), svg('text', { x: 115, y: 122, class: 'txt b' }, '测量后 |W〉'), svg('text', { x: 115, y: 142, class: 'txt m s' }, 'c↑|W↑〉+ c↓|W↓〉'));
+    if (mode === 'collapse') {
+      g.append(svg('path', { d: 'M190 130 C 260 130, 300 60, 380 60', class: 'curve c-t' }), svg('path', { d: 'M190 130 C 260 130, 300 200, 380 200', class: 'curve c-m dash' }));
+      g.append(svg('rect', { x: 380, y: 35, width: 150, height: 50, rx: 10, class: 'box t' }), svg('text', { x: 455, y: 60, class: 'txt b' }, '看到 m↑ → |W↑〉'));
+      g.append(svg('rect', { x: 380, y: 175, width: 150, height: 50, rx: 10, class: 'box', opacity: .35 }), svg('text', { x: 455, y: 200, class: 'txt s' }, '|W↓〉 消失了'));
+      g.append(svg('text', { x: 320, y: 245, class: 'txt' }, '坍缩立场：只发生了一个结果，世界从 |W〉跳到 |W↑〉'));
+      g.append(svg('text', { x: 580, y: 130, class: 'txt o s' }, '"上帝"视角：'), svg('text', { x: 580, y: 145, class: 'txt o s' }, '仍是 |W〉？'));
+    } else {
+      g.append(svg('path', { d: 'M190 130 C 260 130, 300 60, 380 60', class: 'curve c-t' }), svg('path', { d: 'M190 130 C 260 130, 300 200, 380 200', class: 'curve c-o' }));
+      g.append(svg('rect', { x: 380, y: 35, width: 150, height: 50, rx: 10, class: 'box t' }), svg('text', { x: 455, y: 60, class: 'txt b' }, '分支 1：你测到 ↑'));
+      g.append(svg('rect', { x: 380, y: 175, width: 150, height: 50, rx: 10, class: 'box o' }), svg('text', { x: 455, y: 200, class: 'txt b' }, '分支 2：你测到 ↓'));
+      g.append(svg('path', { d: 'M540 60 C 600 60, 600 200, 540 200', class: 'edge dash', style: 'stroke:var(--p)' }), svg('text', { x: 600, y: 130, class: 'txt p s' }, '仍相干叠加'));
+      g.append(svg('text', { x: 320, y: 245, class: 'txt' }, '多世界立场：所有结果都发生了，世界分裂，从来没有坍缩'));
+    }
+  };
+  const q = el('div', { class: 'quote' }, '', el('small', {}));
+  const set = (m) => { draw(m); if (m === 'collapse') { q.firstChild.textContent = '未解问题：一个外在于整个世界、不看仪器的"上帝"，看到的世界仍是 c↑|W↑〉+ c↓|W↓〉，根本没有坍缩。'; q.lastChild.textContent = '而且坍缩过程如何进行，仍在研究中。'; } else { q.firstChild.textContent = '未解问题：分裂后的两个平行世界，在物理上怎么保持相干叠加、共同构成同一个量子现实？'; q.lastChild.textContent = '多世界还需要对波恩规则给出物理解释，尚无决定性突破。'; } };
+  root.append(el('div', { class: 'ctrl' }, seg([['collapse', '坍缩立场'], ['mwi', '多世界立场']], 'collapse', set)), wide(s), q); set('collapse');
+});
+
+/* 10 总结 */
+reg('summary', (root) => {
+  const S = [['三个公设', '薛定谔 · 波恩 · 投影'], ['坍缩的奇怪', 'U 过程 vs R 过程'], ['"干扰说"是错的', '观察前没有确定状态'], ['冯诺依曼链', '叠加一路传到意识'], ['三类诠释', '无 / 多重 / 非定域现实'], ['退相干', '测量 = 纠缠，纯态 → 混态'], ['能答一个', '偏好基 ✓ 输出值 ✗'], ['仍在分歧', '坍缩？还是分裂？']];
+  const flow = el('div', { class: 'flow', style: 'grid-template-columns:repeat(auto-fit,minmax(130px,1fr))' });
+  const cards = S.map(([h, p], i) => { const c = el('div', { class: 'step' }, el('span', { class: 'k' }, String(i + 1).padStart(2, '0')), el('h3', {}, h), el('p', {}, p)); flow.append(c); return c; });
+  let i = 0; const show = () => cards.forEach((c, j) => c.classList.toggle('on', j === i)); show(); root.append(flow);
+  return every(RM ? 1e9 : 1200, () => { i = (i + 1) % S.length; show(); });
+});
+
+/* ===== 启动：导航、进度条、视口触发 ===== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>所有电子都一模一样吗</title>
+<meta name="description" content="基于知乎答主「酱紫君」回答的可视化讲解：电子是同一个狄拉克场的激发，像编程里的单例模式；创生湮灭算符与泡利不相容。">
+<style>
+/* ================= 设计令牌（与 ai-visual-notes 其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5.2vw,44px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.quote{margin:14px 0 0;padding:12px 16px;border-left:3px solid var(--o);background:var(--surface);border-radius:0 10px 10px 0;font-size:14px;color:var(--text)}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:440px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:140px}
+.range output{font-family:var(--mono);color:var(--text);min-width:2.5em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.math{font-family:var(--mono);font-size:14px;background:var(--surface-2);border-radius:8px;padding:8px 12px;overflow-x:auto;white-space:nowrap}
+.math .hl{color:var(--o);font-weight:700}
+.math .hp{color:var(--p);font-weight:700}
+.math .ht{color:var(--t);font-weight:700}
+
+/* 通用 SVG */
+.ax{stroke:var(--line);stroke-width:1}
+.gridline{stroke:var(--grid);stroke-width:1}
+.lbl{font-size:11px;fill:var(--muted);font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.curve{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.c-p{stroke:var(--p)} .c-t{stroke:var(--t)} .c-o{stroke:var(--o)} .c-r{stroke:var(--r)} .c-m{stroke:var(--muted)}
+.f-p{fill:var(--p)} .f-t{fill:var(--t)} .f-o{fill:var(--o)} .f-r{fill:var(--r)} .f-m{fill:var(--muted)} .f-s{fill:var(--surface)} .f-s2{fill:var(--surface-2)}
+.box{fill:var(--surface-2);stroke:var(--line)}
+.box.p{fill:var(--p-soft);stroke:var(--p)} .box.t{fill:var(--t-soft);stroke:var(--t)} .box.o{fill:var(--o-soft);stroke:var(--o)} .box.r{fill:var(--r-soft);stroke:var(--r)}
+.txt{font-size:12px;fill:var(--text);font-family:var(--font);text-anchor:middle;dominant-baseline:middle}
+.txt.s{font-size:10px;fill:var(--muted)} .txt.b{font-weight:700} .txt.m{font-family:var(--mono)} .txt.l{text-anchor:start}
+.txt.p{fill:var(--p)} .txt.t{fill:var(--t)} .txt.o{fill:var(--o)} .txt.r{fill:var(--r)}
+.edge{stroke:var(--line);stroke-width:1.2;fill:none}
+.edge.k{stroke:var(--muted)}
+.node{fill:var(--surface);stroke:var(--muted);stroke-width:1.4}
+.dash{stroke-dasharray:5 5}
+.running .dash.anim{animation:dashmove 1s linear infinite}
+@keyframes dashmove{to{stroke-dashoffset:-20}}
+.pulse{stroke:var(--p);stroke-width:2.4;fill:none;stroke-dasharray:10 90;stroke-dashoffset:100;opacity:0}
+.running .pulse{animation:flow 2.4s linear infinite}
+@keyframes flow{0%{stroke-dashoffset:100;opacity:1}30%{stroke-dashoffset:0;opacity:1}31%{opacity:0}100%{stroke-dashoffset:0;opacity:0}}
+
+/* 卡片 / 步骤 */
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.p{border-color:var(--p);background:var(--p-soft)} .card.t{border-color:var(--t);background:var(--t-soft)} .card.o{border-color:var(--o);background:var(--o-soft)} .card.r{border-color:var(--r);background:var(--r-soft)}
+.flow{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .flow{grid-template-columns:repeat(4,1fr)} }
+.step{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--surface-2);transition:all .4s;position:relative}
+.step .ic{font-size:26px;line-height:1;margin-bottom:6px}
+.step h3{font-size:14px}
+.step p{font-size:12px;color:var(--muted);margin-top:4px}
+.step.on{border-color:var(--p);background:var(--p-soft);transform:translateY(-3px);box-shadow:var(--shadow)}
+.step .k{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+.blk{border-radius:10px;padding:8px 10px;font-size:13px;border:1px solid var(--line);background:var(--surface-2);text-align:center;position:relative}
+.blk.p{background:var(--p-soft);border-color:var(--p)} .blk.t{background:var(--t-soft);border-color:var(--t)} .blk.o{background:var(--o-soft);border-color:var(--o)} .blk.r{background:var(--r-soft);border-color:var(--r)}
+.blk small{display:block;color:var(--muted);font-size:11px;font-family:var(--mono)}
+.arrowd{text-align:center;color:var(--muted);font-size:12px;line-height:1}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .running .pulse,.running .dash.anim{animation:none}
+}
+/* 宽图在窄屏上横向滚动，保证文字可读 */
+.scrollx>svg.wide{min-width:560px}
+.scrollx{border-radius:10px}
+
+/* ================= 本页专用 ================= */
+.field{width:100%;aspect-ratio:2.4/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.lag{font-family:var(--mono);font-size:clamp(13px,2.4vw,17px);text-align:center;padding:14px 6px;line-height:2.2;word-break:keep-all;overflow-x:auto}
+.lag .term{padding:2px 6px;border-radius:6px;cursor:pointer;border:1px solid transparent;transition:all .25s;display:inline-block}
+.lag .term.m{color:var(--o)} .lag .term.e{color:var(--t)} .lag .term.g{color:var(--p)} .lag .term.a{color:var(--muted)}
+.lag .term.on{border-color:currentColor;background:var(--surface-2)}
+.explain{display:grid;gap:8px;margin-top:8px}
+.explain .row{display:grid;grid-template-columns:5em 1fr;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);font-size:13px;transition:all .25s}
+.explain .row b{font-family:var(--mono)}
+.explain .row.on{border-color:var(--p);background:var(--p-soft)}
+.slots{display:flex;gap:8px;flex-wrap:wrap;min-height:64px;align-items:center;padding:10px;border-radius:10px;background:var(--surface-2);border:1px dashed var(--line)}
+.slots .e{width:46px;height:46px;border-radius:50%;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;animation:pop .35s ease;position:relative}
+.slots .e::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--p);opacity:.35}
+.slots .empty{color:var(--muted);font-size:13px}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.log{font-family:var(--mono);font-size:12px;background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-top:8px;max-height:120px;overflow:auto;color:var(--muted)}
+.log .ok{color:var(--t)} .log .nil{color:var(--r)} .log .hi{color:var(--p)}
+.uni{width:100%;aspect-ratio:2.2/1;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+.pauli{display:grid;gap:8px;min-width:0}
+.pauli .ln{min-width:0}
+.pauli .ln{font-family:var(--mono);font-size:clamp(13px,2.5vw,16px);padding:10px 12px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);opacity:.35;transition:all .4s;overflow-x:auto;white-space:nowrap}
+.pauli .ln.on{opacity:1;border-color:var(--p)}
+.pauli .ln.bad{border-color:var(--r);background:var(--r-soft);color:var(--r);font-weight:700}
+.pauli .ln small{display:block;font-family:var(--font);color:var(--muted);font-size:12px;white-space:normal}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">电子为什么一模一样</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 量子场论</div>
+  <h1>所有电子<br>都一模一样吗？</h1>
+  <p class="sub">答主「酱紫君」用程序员的语言回答：这叫<b>单例模式</b>。所有电子都是同一个遍布宇宙的狄拉克场的激发态。本页把这个回答拆成 6 个画面。</p>
+  <div class="thesis">核心结论：<b>电子不是一个个独立的小球，而是同一个场的局域激发。质量、电荷、自旋都写在这个场的定义里，所以"每个电子"必然完全一样。</b></div>
+  <div class="meta">原文：知乎问题「所有电子都是一模一样的吗？」下答主「酱紫君」的回答（答主标注：内容包含虚构创作，指其编程类比）。本页为教学改编。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="粒子还是场">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>宇宙最基本的不是粒子，是场</h2>
+    <p class="lead">按量子场论，充满整个时空的是场。对电子来说，有一个遍布全宇宙的狄拉克场 ψ(x)，x 是时空中的一个点 (t, <b>x</b>)。电子是这个场的一次局域激发。</p>
+  </div>
+  <div class="fig" data-demo="field">
+    <div class="cap">把狄拉克场想成铺满宇宙的一张"膜"。点击任意位置激发它：冒出来的"鼓包"就是一个电子。注意每个鼓包形状完全一样。</div>
+  </div>
+  <ul class="notes">
+    <li>电子<b>不是独立实体</b>，它依附于狄拉克场存在，是场自身的一个局域激发。</li>
+    <li>宇宙中<b>只有唯一一个</b>电子狄拉克场。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c02" data-title="属性写在拉格朗日量里">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>质量、电荷、自旋：都是场的参数</h2>
+    <p class="lead">电子的内禀属性全部相同，是因为这些属性是定义狄拉克场本身时的参数，写在描述场行为的拉格朗日量里。</p>
+  </div>
+  <div class="fig" data-demo="lagrangian">
+    <div class="cap">点一下公式里的彩色项，看它对应电子的哪条属性。</div>
+  </div>
+  <ul class="notes">
+    <li>任何通过激发同一个狄拉克场产生的电子，质量、电荷、自旋<b>必然完全一样</b>。</li>
+    <li>所以电子不只是"长得像"一模一样，而是<b>本就源于同一个物理实体，共享同一套参数</b>。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="创生与湮灭算符">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Create 和 Destroy：创生、湮灭算符</h2>
+    <p class="lead">为了在数学上描述"激发"，量子场论引入创生算符 a† 和湮灭算符 a，可以理解为编程里的 Create 和 Destroy。</p>
+  </div>
+  <div class="fig" data-demo="ops">
+    <div class="cap">对"状态"施加算符。a†_{p,s} 添加一个动量 p、自旋 s 的电子；a_{p,s} 移除一个。对空状态做移除，结果是 0——程序员的说法：Nil。</div>
+  </div>
+  <ul class="notes">
+    <li>单电子态由创生算符作用在真空上得到：<b>|p, s〉= a†_{p,s}|0〉</b>（p 为动量矢量）。</li>
+    <li>如果状态里本就没有这个电子，湮灭算符作用后结果为 <b>0</b>，相当于空向量 Nil。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c04" data-title="单例模式">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>宇宙任何角落，用的都是同一个 a†</h2>
+    <p class="lead">无论你在宇宙的哪个角落、哪个时间想要一个电子，都只能用同一个创生算符。这就防止了"抽象泄露"：所有被创造出来的电子，指针都指向同一个实例。</p>
+  </div>
+  <div class="fig" data-demo="singleton">
+    <div class="cap">四个相隔遥远的地方分别"要一个电子"。请求都汇到同一个场、同一个算符，返回的是同一个实例的引用。</div>
+  </div>
+</section>
+
+<section class="ch" id="c05" data-title="泡利不相容">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>硬要在同一个状态造两个电子？</h2>
+    <p class="lead">电子的创生、湮灭算符必须满足反对易关系。于是 a†a†|0〉= −a†a†|0〉，而唯一满足 X = −X 的解是 X = 0。创建结果是 Nil。这就是泡利不相容原理。</p>
+  </div>
+  <div class="fig" data-demo="pauli">
+    <div class="cap">按"尝试创建"，看数学一步步把这个状态推成 0。</div>
+  </div>
+  <ul class="notes">
+    <li>反对易关系：<b>{a†_r, a†_s} = a†_r a†_s + a†_s a†_r = 0</b>，即 a†_r a†_s = − a†_s a†_r。</li>
+    <li>答主说，这是"为了防止一些数学上不自洽的情况"而必须满足的；物理上，这种状态也不可能存在。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c06" data-title="总结">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>一句话回答</h2>
+    <p class="lead">为什么所有电子一模一样？因为根本没有"所有电子"，只有一个狄拉克场，电子是它的激发。</p>
+  </div>
+  <div class="fig" data-demo="summary">
+    <div class="cap">从场到电子到泡利不相容，整条链。</div>
+  </div>
+  <div class="final">"单例模式"：唯一的场，唯一的创生算符，唯一的一套参数。所以每一个电子，都是同一个实例的引用。</div>
+</section>
+
+<footer>
+  原文：知乎「所有电子都是一模一样的吗？」，答主<b>酱紫君</b>（新知答主；答主声明内容包含虚构创作，指其编程类比）。本页为教学用可视化改编，单文件、离线可用；动画仅用于说明概念。
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const mulberry = (seed) => () => { let t = (seed += 0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+function fitCanvas(c, aspect) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = Math.max(10, c.clientWidth);
+  const h = aspect ? w / aspect : Math.max(10, c.clientHeight);
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { ctx, w, h };
+}
+const rgba = (hex, a) => { hex = hex.replace('#', ''); if (hex.length === 3) hex = hex.split('').map(c => c + c).join(''); const n = parseInt(hex, 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; };
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', { type: 'button', class: val === cur ? 'on' : '', onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); } }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, step, val, oninput, fmt = (v) => v) => {
+  const out = el('output', {}, fmt(val));
+  const inp = el('input', { type: 'range', min, max, step, value: val });
+  inp.addEventListener('input', () => { out.textContent = fmt(+inp.value); oninput(+inp.value); });
+  return el('label', { class: 'range' }, label, inp, out);
+};
+const loop = (fn) => {
+  let id = 0, last = 0, running = false;
+  const tick = (t) => { if (!running) return; fn(Math.min(50, t - last || 16), t); last = t; id = requestAnimationFrame(tick); };
+  return { start() { if (running) return; running = true; last = performance.now(); id = requestAnimationFrame(tick); }, stop() { running = false; cancelAnimationFrame(id); }, get running() { return running; } };
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+// 宽 SVG：窄屏时横向滚动
+const wide = (s) => { s.classList.add('wide'); return el('div', { class: 'scrollx' }, s); };
+
+/* ===== 场的小工具：画一张"膜"和若干鼓包 ===== */
+function drawField(c, bumps, t) {
+  const { ctx, w, h } = fitCanvas(c, 2.4);
+  const bg = cssVar('--surface-2'), line = cssVar('--p'), ink = cssVar('--ink');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h);
+  const rows = 14, cols = 40;
+  const fy = (x, y) => { let z = 0; for (const b of bumps) { const dx = (x - b.x) / 40, dy = (y - b.y) / 22; const age = Math.min(1, (t - b.t) / 500); z += b.a * age * Math.exp(-(dx * dx + dy * dy)); } return z; };
+  ctx.strokeStyle = rgba(line.startsWith('#') ? line : '#4f46e5', .55); ctx.lineWidth = 1;
+  for (let r = 0; r <= rows; r++) {
+    ctx.beginPath();
+    for (let cI = 0; cI <= cols; cI++) { const x = cI / cols * w, y0 = 30 + r / rows * (h - 40); const y = y0 - fy(x, y0) * 38 * (1 + Math.sin(t / 300 + r) * .05); if (cI) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+    ctx.stroke();
+  }
+  ctx.fillStyle = ink; ctx.font = '12px sans-serif';
+  for (const b of bumps) { const age = Math.min(1, (t - b.t) / 500); if (age > .9) { ctx.beginPath(); ctx.arc(b.x, b.y - 42, 3.5, 0, 7); ctx.fill(); ctx.fillText('e⁻', b.x + 7, b.y - 40); } }
+}
+
+reg('hero', (root) => {
+  const c = el('canvas', { class: 'field', style: 'border:0' });
+  const rnd = mulberry(3); let bumps = [], t0 = performance.now(), nextAt = 0;
+  root.append(c);
+  const L = loop((dt, t) => { const T = t - t0; if (T > nextAt) { const w = c.clientWidth, h = c.clientHeight; bumps.push({ x: 40 + rnd() * (w - 80), y: 60 + rnd() * (h - 90), a: 1, t: T }); if (bumps.length > 6) bumps.shift(); nextAt = T + 900; } drawField(c, bumps, T); });
+  return L;
+});
+
+/* ===== 01 点击激发 ===== */
+reg('field', (root) => {
+  const c = el('canvas', { class: 'field', style: 'cursor:crosshair' });
+  let bumps = [], t0 = performance.now();
+  const add = (x, y) => { bumps.push({ x, y, a: 1, t: performance.now() - t0 }); if (bumps.length > 10) bumps.shift(); };
+  c.addEventListener('pointerdown', (e) => { const r = c.getBoundingClientRect(); add(e.clientX - r.left, e.clientY - r.top); });
+  const info = el('div', { class: 'kv', style: 'margin-top:8px' }, el('span', {}, '激发次数 ', el('b', {}, '0')), el('span', {}, '鼓包形状 ', el('b', {}, '全部相同')));
+  const cnt = info.querySelector('b');
+  c.addEventListener('pointerdown', () => { cnt.textContent = String(+cnt.textContent + 1); });
+  root.append(el('div', { class: 'ctrl' }, btn('随机激发 3 个', () => { for (let i = 0; i < 3; i++) add(40 + Math.random() * (c.clientWidth - 80), 60 + Math.random() * (c.clientHeight - 90)); cnt.textContent = String(+cnt.textContent + 3); }, 'primary'), btn('清空', () => { bumps = []; cnt.textContent = '0'; })), c, info);
+  const L = loop((dt, t) => drawField(c, bumps, t - t0));
+  return L;
+});
+
+/* ===== 02 拉格朗日量 ===== */
+reg('lagrangian', (root) => {
+  const terms = [
+    ['ψ̄(x)( iγ^μ ∂_μ', 'g', 'spin', '自旋与运动：γ^μ 是狄拉克矩阵，决定了这个场是自旋 1/2 的费米子场'],
+    ['− m', 'm', 'mass', '质量 m：直接写在场的定义里，所有激发共享'],
+    [') ψ(x)', 'g', 'spin', ''],
+    ['− ¼ F_{μν}F^{μν}', 'a', 'photon', '电磁场（光子）自己的部分'],
+    ['− e ψ̄(x) γ^μ ψ(x) A_μ', 'e', 'charge', '电荷 e：电子场与电磁场的耦合强度'],
+  ];
+  const lag = el('div', { class: 'lag' }, el('span', { class: 'term' }, 'ℒ = '));
+  const rows = el('div', { class: 'explain' });
+  const R = { spin: el('div', { class: 'row' }, el('b', {}, '自旋'), '来自 γ^μ 的狄拉克结构：场本身就是自旋 1/2 的'), mass: el('div', { class: 'row' }, el('b', {}, '质量 m'), '拉格朗日量里的参数，而不是哪个电子"自己的"属性'), charge: el('div', { class: 'row' }, el('b', {}, '电荷 e'), '耦合项前的系数，决定电子与电磁场如何相互作用'), photon: el('div', { class: 'row' }, el('b', {}, 'F_{μν}'), '电磁场的动能项（光子），与电子属性无关') };
+  Object.values(R).forEach(r => rows.append(r));
+  const spans = terms.map(([txt, cls, key]) => { const s = el('span', { class: 'term ' + cls, onclick: () => pick(key) }, txt); lag.append(s, ' '); return [s, key]; });
+  const pick = (key) => { spans.forEach(([s, k]) => s.classList.toggle('on', k === key)); Object.entries(R).forEach(([k, r]) => r.classList.toggle('on', k === key)); };
+  root.append(lag, rows); pick('mass');
+});
+
+/* ===== 03 创生 / 湮灭 ===== */
+reg('ops', (root) => {
+  const slots = el('div', { class: 'slots' }); const log = el('div', { class: 'log' });
+  let state = []; let seq = 0;
+  const render = () => { slots.innerHTML = ''; if (!state.length) slots.append(el('span', { class: 'empty' }, '|0〉 真空：什么都没有')); state.forEach(s => slots.append(el('div', { class: 'e', title: s }, s))); };
+  const say = (h, cls = '') => { log.prepend(el('div', { class: cls, html: h })); while (log.children.length > 8) log.lastChild.remove(); };
+  const labels = ['p₁,↑', 'p₂,↓', 'p₃,↑'];
+  const create = () => { const l = labels[seq++ % labels.length]; if (state.includes(l)) { say(`a†_{${l}} 作用：该状态已被占据 → 结果 0（见下一节）`, 'nil'); return; } state.push(l); say(`a†_{${l}} |…〉 → 添加一个动量 ${l.split(',')[0]}、自旋 ${l.split(',')[1]} 的电子`, 'ok'); render(); };
+  const destroy = () => { if (!state.length) { say('a 作用在真空 |0〉 上 → <b>0</b>（Nil）：本来就没有这个电子', 'nil'); return; } const l = state.pop(); say(`a_{${l}} |…〉 → 移除电子 ${l}`, 'hi'); render(); };
+  root.append(el('div', { class: 'ctrl' }, btn('创生 a†', create, 'primary'), btn('湮灭 a', destroy), btn('重置为 |0〉', () => { state = []; seq = 0; render(); log.innerHTML = ''; })), slots, log);
+  render(); say('|0〉：真空态。试试先按"湮灭"。');
+});
+
+/* ===== 04 单例 ===== */
+reg('singleton', (root) => {
+  const W = 640, H = 290;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'uni', style: 'aspect-ratio:auto' });
+  const places = [['地球实验室', 60, 50], ['仙女座星系', 580, 50], ['138 亿年前', 60, 240], ['遥远的未来', 580, 240]];
+  const C = [320, 145];
+  s.append(svg('circle', { cx: C[0], cy: C[1], r: 58, class: 'box p' }), svg('text', { x: C[0], y: C[1] - 10, class: 'txt b' }, '狄拉克场 ψ(x)'), svg('text', { x: C[0], y: C[1] + 10, class: 'txt m s' }, '唯一的 a†'));
+  const reqs = [];
+  places.forEach(([name, x, y]) => {
+    s.append(svg('line', { x1: x, y1: y, x2: C[0], y2: C[1], class: 'edge' }));
+    s.append(svg('rect', { x: x - 50, y: y - 16, width: 100, height: 32, rx: 8, class: 'box' }), svg('text', { x, y, class: 'txt' }, name));
+    const dot = svg('circle', { r: 6, class: 'f-o', opacity: 0 }); s.append(dot);
+    const ret = svg('text', { x, y: y + (y < C[1] ? 30 : -28), class: 'txt m p', opacity: 0 }, 'e⁻ 同一实例'); s.append(ret);
+    reqs.push({ x, y, dot, ret });
+  });
+  let t = 0;
+  const L = loop((dt) => {
+    t += dt / 1000;
+    reqs.forEach((r, i) => { const dx = r.x - C[0], dy = r.y - C[1], L0 = Math.hypot(dx, dy); const ex = C[0] + dx / L0 * 64, ey = C[1] + dy / L0 * 64; const c = (t * .5 + i * .25) % 1; if (c < .45) { r.dot.setAttribute('opacity', 1); const k = c / .45; r.dot.setAttribute('cx', lerp(r.x, ex, k)); r.dot.setAttribute('cy', lerp(r.y, ey, k)); r.ret.setAttribute('opacity', 0); } else if (c < .9) { const k = (c - .45) / .45; r.dot.setAttribute('cx', lerp(ex, r.x, k)); r.dot.setAttribute('cy', lerp(ey, r.y, k)); r.dot.setAttribute('opacity', 1); r.ret.setAttribute('opacity', k > .9 ? 1 : 0); } else { r.dot.setAttribute('opacity', 0); r.ret.setAttribute('opacity', 1); } });
+  });
+  root.append(wide(s)); return L;
+});
+
+/* ===== 05 泡利 ===== */
+reg('pauli', (root) => {
+  const lines = [
+    ['尝试：a†_{p,s} a†_{p,s} |0〉', '在同一个状态 (p, s) 造两个电子'],
+    ['反对易关系：{a†_r, a†_s} = a†_r a†_s + a†_s a†_r = 0', '电子的创生算符必须满足这条'],
+    ['⇒ a†_r a†_s = − a†_s a†_r', '交换顺序要变号'],
+    ['令 r = s：a†a†|0〉 = − a†a†|0〉', '同一个算符作用两次，等于自己的相反数'],
+    ['X = −X 的唯一解：X = 0', '所以 a†_{p,s} a†_{p,s} |0〉 = 0'],
+    ['结果：Nil。这个状态不存在 → 泡利不相容原理', ''],
+  ];
+  const box = el('div', { class: 'pauli' });
+  const els = lines.map(([a, b]) => { const d = el('div', { class: 'ln' }, a, b ? el('small', {}, b) : null); box.append(d); return d; });
+  let i = -1, timer = null;
+  const step = () => { i++; if (i >= els.length) { clearInterval(timer); timer = null; return; } els[i].classList.add('on'); if (i === els.length - 1) els[i].classList.add('bad'); };
+  const reset = () => { clearInterval(timer); timer = null; i = -1; els.forEach(e => e.className = 'ln'); };
+  root.append(el('div', { class: 'ctrl' }, btn('尝试创建', () => { reset(); step(); timer = setInterval(step, RM ? 50 : 900); }, 'primary'), btn('重置', reset)), box);
+});
+
+/* ===== 06 总结链 ===== */
+reg('summary', (root) => {
+  const S = [['一个狄拉克场', '遍布全宇宙，唯一'], ['参数写在 ℒ 里', '质量 m、电荷 e、自旋'], ['a† 激发出电子', '任何地方都用同一个算符'], ['反对易 ⇒ 泡利', '同一状态不能放两个']];
+  const flow = el('div', { class: 'flow' });
+  const cards = S.map(([h, p], i) => { const c = el('div', { class: 'step' }, el('span', { class: 'k' }, '0' + (i + 1)), el('h3', {}, h), el('p', {}, p)); flow.append(c); return c; });
+  let i = 0; const show = () => cards.forEach((c, j) => c.classList.toggle('on', j === i)); show(); root.append(flow);
+  return every(RM ? 1e9 : 1300, () => { i = (i + 1) % S.length; show(); });
+});
+
+/* ===== 启动：导航、进度条、视口触发 ===== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+
+</script>
+</body>
+</html>

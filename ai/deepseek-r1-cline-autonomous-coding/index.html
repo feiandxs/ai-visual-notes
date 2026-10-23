@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cline 如何自动编程</title>
+<meta name="description" content="基于 Heycc《深度解密 | DeepSeek R1 + 编程神器 Cline 是如何做到全自动化编程的?》的可视化讲解：用图示和动画逐轮拆解一个真实的 Cline 编程任务。">
+<style>
+/* ================= 设计令牌（与仓库其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);font-size:.92em;background:var(--surface-2);padding:1px 5px;border-radius:5px}
+pre{margin:0;font-family:var(--mono);font-size:12.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,5.5vw,46px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:520px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.quote{border-left:3px solid var(--line);padding:6px 12px;color:var(--muted);font-size:13.5px;margin-top:10px}
+
+/* 代码证据块 */
+.evi{background:var(--surface-2);border-radius:10px;padding:28px 14px 12px;position:relative;overflow:auto;max-height:360px}
+.evi .lab{position:absolute;top:8px;left:14px;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.evi .hl{background:var(--o-soft);color:var(--text);border-radius:3px;padding:0 2px}
+.evi .hl.t{background:var(--t-soft)}
+.evi .hl.r{background:var(--r-soft)}
+.evi .hl.p{background:var(--p-soft)}
+.evi .dim{opacity:.55}
+
+/* ---- 演示：VS Code 布局 ---- */
+.vsc .hot{transition:opacity .4s}
+.vsc .focus-ring{opacity:0;transition:opacity .4s}
+.vsc .focus-ring.on{opacity:1}
+.vsc-legend{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px;font-size:14px}
+@media (min-width:760px){ .vsc-legend{grid-template-columns:repeat(2,1fr)} }
+.vsc-legend .it{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:10px;border:1px solid var(--line);cursor:pointer;transition:background .25s}
+.vsc-legend .it.on{background:var(--p-soft);border-color:transparent}
+.vsc-legend .dot{width:12px;height:12px;border-radius:50%;margin-top:6px;flex:none}
+.vsc-legend b{display:block}
+.vsc-legend span{color:var(--muted);font-size:13px}
+
+/* ---- 演示：代理 ---- */
+.flow-dot{filter:drop-shadow(0 0 4px currentColor)}
+
+/* ---- 演示：请求结构 ---- */
+.req{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:860px){ .req{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr)} }
+.tree{font-family:var(--mono);font-size:13px;line-height:1.7}
+.tree .node{padding:4px 8px;border-radius:8px;margin:2px 0;border:1px solid transparent;cursor:pointer;transition:background .2s}
+.tree .node:hover{background:var(--surface-2)}
+.tree .node.on{background:var(--p-soft);border-color:var(--p)}
+.tree .ind1{margin-left:18px}.tree .ind2{margin-left:36px}.tree .ind3{margin-left:54px}
+.tree .k{color:var(--p)}.tree .s{color:var(--t)}.tree .n{color:var(--o)}
+.tree .sysbar{display:inline-block;height:8px;background:var(--r);border-radius:4px;vertical-align:middle;margin-left:6px}
+.env-cards{display:grid;gap:8px}
+.env-card{border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;transition:background .25s,border-color .25s}
+.env-card.on{background:var(--t-soft);border-color:var(--t)}
+.env-card .h{font-family:var(--mono);font-weight:600;font-size:12.5px}
+.env-card .v{font-family:var(--mono);color:var(--muted);font-size:12px}
+.env-card .why{color:var(--muted);margin-top:2px}
+.explain{min-height:48px;font-size:14px;padding:10px 12px;border-radius:10px;background:var(--surface-2);margin-top:10px}
+
+/* ---- 演示：第 1 轮流式输出 ---- */
+.stream{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border-radius:10px;padding:12px;min-height:280px;position:relative}
+.stream .blk{border-radius:8px;padding:8px 10px;margin:6px 0;border:1px solid var(--line);background:var(--surface);opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s;position:relative}
+.stream .blk.show{opacity:1;transform:none}
+.stream .blk .t{font-weight:700;font-size:12px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stream .blk .body{color:var(--muted);white-space:pre-wrap;line-height:1.5;max-height:150px;overflow:hidden}
+.stream .blk.think{border-color:var(--p);background:var(--p-soft)}
+.stream .blk.think .body{color:var(--text)}
+.stream .blk .stamp{font-size:11px;padding:1px 8px;border-radius:999px;opacity:0;transform:scale(.6);transition:opacity .3s,transform .3s}
+.stream .blk .stamp.show{opacity:1;transform:none}
+.stream .blk .stamp.ok{background:var(--t);color:#fff}
+.stream .blk .stamp.no{background:var(--r);color:#fff}
+.stream .blk.cut{border-color:var(--r);background:var(--r-soft)}
+.stream .blk.cut .body{color:var(--text)}
+.stream .typing::after{content:"▍";animation:blink 1s steps(2) infinite;color:var(--p)}
+@keyframes blink{50%{opacity:0}}
+.rule-card{display:flex;gap:12px;align-items:center;padding:10px 12px;border-radius:10px;background:var(--o-soft);font-size:14px;margin-top:10px}
+.rule-card .ic{font-size:22px}
+
+/* ---- 演示：时间线 ---- */
+.tl{position:relative;padding-left:0}
+.tl-rail{display:flex;gap:6px;align-items:stretch;overflow-x:auto;padding:6px 2px 10px;-webkit-overflow-scrolling:touch}
+.tl-node{flex:1 0 118px;border:1px solid var(--line);border-radius:12px;padding:10px 10px 8px;cursor:pointer;background:var(--surface);transition:background .2s,border-color .2s,transform .2s;position:relative;min-width:118px}
+.tl-node:hover{transform:translateY(-2px)}
+.tl-node.on{background:var(--p-soft);border-color:var(--p)}
+.tl-node .rn{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.tl-node .rt{font-weight:700;font-size:14px;margin:2px 0}
+.tl-node .rs{font-size:12px;color:var(--muted);line-height:1.4}
+.tl-node .pip{position:absolute;top:10px;right:10px;width:9px;height:9px;border-radius:50%}
+.tl-node.human .pip{background:var(--o)}
+.tl-node.fail .pip{background:var(--r)}
+.tl-node.ok .pip{background:var(--t)}
+.tl-node.auto .pip{background:var(--p)}
+.tl-detail{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+@media (min-width:760px){ .tl-detail{grid-template-columns:1fr 1fr} }
+.msg{border-radius:10px;padding:10px 12px;font-size:13px;border:1px solid var(--line)}
+.msg .who{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px}
+.msg.user{background:var(--surface-2)}
+.msg.user .who{color:var(--t)}
+.msg.ai{background:var(--p-soft)}
+.msg.ai .who{color:var(--p)}
+.msg ul{margin:0;padding-left:16px}
+.msg li{margin:2px 0}
+.msg .x{color:var(--r);font-weight:600}
+.msg .ok{color:var(--t);font-weight:600}
+.tok-chart{margin-top:14px}
+
+/* ---- 演示：ReAct 环 ---- */
+.react-stage{fill:var(--surface-2);stroke:var(--line);transition:fill .4s,stroke .4s}
+.react-stage.on{fill:var(--p-soft);stroke:var(--p)}
+.react-txt{fill:var(--text);font-size:12.5px;font-family:var(--font);font-weight:600}
+.react-sub{fill:var(--muted);font-size:10.5px;font-family:var(--font)}
+.react-desc{min-height:52px;font-size:14px;padding:10px 12px;border-radius:10px;background:var(--surface-2);margin-top:8px}
+
+/* ---- 演示：工具统计 ---- */
+.tools-bars{display:grid;gap:10px;margin-top:6px}
+.tb{display:grid;grid-template-columns:11.5em 1fr 2.5em;align-items:center;gap:10px;font-size:13.5px}
+.tb .name{font-family:var(--mono);text-align:right;white-space:nowrap;font-size:12.5px}
+@media (max-width:600px){ .tb{grid-template-columns:1fr 2.5em;row-gap:2px} .tb .name{grid-column:1 / -1;text-align:left} }
+.tb .track{height:22px;display:flex;gap:2px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.tb .sg{height:100%;width:0;transition:width .6s cubic-bezier(.2,.8,.2,1)}
+.tb .sg.ok{background:var(--t)}.tb .sg.failed{background:var(--r)}.tb .sg.blocked{background:var(--line)}
+.tb .tot{font-family:var(--mono);color:var(--muted)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.xmlvs{display:grid;grid-template-columns:1fr;gap:10px;margin-top:6px}
+@media (min-width:760px){ .xmlvs{grid-template-columns:1fr 1fr} }
+.xmlvs .c{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+.xmlvs .c h4{margin:0 0 6px;font-size:14px}
+.xmlvs pre{font-size:12px;background:var(--surface-2);border-radius:8px;padding:8px 10px;margin-top:6px}
+
+/* ---- 演示：失败与恢复 ---- */
+.diffcmp{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .diffcmp{grid-template-columns:1fr 1fr} }
+.diffcmp .box{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.diffcmp .box h4{margin:0 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+.diffcmp pre{font-size:12px}
+.diffcmp .ln{color:var(--muted);display:inline-block;width:2.2em;text-align:right;margin-right:8px;user-select:none}
+.diffcmp .m{background:var(--o-soft);border-radius:3px}
+.meter{margin-top:12px}
+.meter .track{height:14px;border-radius:7px;background:var(--surface-2);position:relative;overflow:visible}
+.meter .fill{height:100%;border-radius:7px;background:var(--r);width:0;transition:width 1s cubic-bezier(.2,.8,.2,1)}
+.meter .need{position:absolute;top:-6px;right:0;width:2px;height:26px;background:var(--t)}
+.meter .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px}
+.steps{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+@media (min-width:760px){ .steps{grid-template-columns:repeat(3,1fr)} }
+.step{border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;opacity:.45;transition:opacity .4s,background .4s}
+.step.on{opacity:1;background:var(--surface-2)}
+.step b{display:block;margin-bottom:4px}
+.step .n{font-family:var(--mono);color:var(--p);font-size:11px}
+.udiff{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border-radius:10px;padding:10px 12px;margin-top:10px}
+.udiff{overflow-x:auto}
+.udiff span{display:block;white-space:pre}
+.udiff .del{background:var(--r-soft)}
+.udiff .ctx{color:var(--muted)}
+.diffcmp .box{overflow-x:auto}
+.diffcmp pre{white-space:pre}
+
+/* ---- 演示：R1 ---- */
+.r1cards{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .r1cards{grid-template-columns:1fr 1fr} }
+.r1c{border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px}
+.r1c h4{margin:0 0 6px;font-size:15px;display:flex;align-items:center;gap:8px}
+.r1c p{color:var(--muted)}
+.models{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.rank{display:grid;grid-template-columns:1fr;gap:6px;margin-top:8px}
+.rank .row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;padding:6px 10px;border-radius:8px;background:var(--surface-2);font-size:13px}
+.rank .row.top{background:var(--o-soft)}
+
+/* ---- 演示：总结 ---- */
+.sum3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .sum3{grid-template-columns:repeat(3,1fr)} }
+.sumc{border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13.5px}
+.sumc .big{font-size:30px;font-weight:800;letter-spacing:-.02em;font-family:var(--mono);margin:4px 0;color:var(--p)}
+.sumc h4{margin:0;font-size:15px}
+.sumc p{color:var(--muted);margin-top:4px}
+.tokbar{margin-top:10px}
+.tokbar .track{height:16px;background:var(--surface-2);border-radius:8px;overflow:hidden}
+.tokbar .fill{height:100%;width:0;background:linear-gradient(90deg,var(--p),var(--o));transition:width 2.2s cubic-bezier(.2,.8,.2,1)}
+.final{margin-top:16px;padding:16px 18px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);font-size:15px}
+footer{padding:40px 0 70px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  .stream .typing::after{animation:none}
+  .tb .sg,.meter .fill,.tokbar .fill{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">Cline 如何自动编程</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 基于 Heycc 的实测拆解</div>
+  <h1>DeepSeek R1 + Cline<br>是怎么“全自动”写代码的？</h1>
+  <p class="sub">作者在本地架了一个代理，把 Cline 发给模型的每一个 prompt 都打印出来。本页把这场实测拆成 10 个画面：一句指令进去，几轮对话之后，代码出来了。中间到底发生了什么？</p>
+  <div class="thesis">核心结论：Cline 是一个 <b>ReAct 思维链循环 Agent</b>。它靠一份超长的 system prompt 和 XML 格式的工具调用，让模型“思考 → 调一个工具 → 看结果 → 再思考”，直到任务完成。代价是 <b>Token 消耗巨大</b>。</div>
+  <div class="meta">原文：Heycc，2025-02-11，ihey.cc · 实测工具：Roo Code（Cline 的 fork）+ DeepSeek R1（硅基流动 API）· 本页为教学改编，所有 prompt、工具调用和数字都取自原文。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="c01" data-title="Cline 是什么">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>Cline 是什么：住在 VS Code 里的编程 Agent</h2>
+    <p class="lead">它能改文件、跑终端命令、用浏览器，并且可以接任何兼容 OpenAI API 的模型，包括本地模型。</p>
+  </div>
+  <div class="fig vsc" data-demo="vscode">
+    <div class="cap">点击右侧条目，看 Cline 在 VS Code 里“看得见、摸得着”的四个区域。</div>
+  </div>
+  <ul class="notes">
+    <li><b>开源，Apache 2.0</b>，fork 很多。最火的是 Roo Code（原名 Roo Cline），作者实测用的就是它。</li>
+    <li>在 OpenRouter 的工具排行榜上，Cline 排<b>第一名</b>。</li>
+    <li>DeepSeek R1 爆红后，Cline 官方专门兼容了 DeepSeek、Gemini 的 Thinking 输出。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="c02" data-title="怎么偷看它的 prompt">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>怎么偷看它的 prompt：架一个代理</h2>
+    <p class="lead">在 Cline 和模型 API 之间插一个本地 proxy，把每次请求原样打印出来。</p>
+  </div>
+  <div class="fig" data-demo="proxy">
+    <div class="cap">请求从 VS Code 出发，经过本地代理，再到硅基流动的 DeepSeek R1 服务。代理只做一件事：<b>打印</b>。</div>
+  </div>
+  <ul class="notes">
+    <li>Cline 的 system prompt 在源码里就能找到，约 <b>800 行、5 万字符</b>。但那是静态的，看不出运行时行为，所以才需要代理。</li>
+    <li>代理源码和完整 prompt 作者放在了 GitHub（见页脚）。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="c03" data-title="一次请求长什么样">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>一次请求长什么样</h2>
+    <p class="lead">用户只打了一句话，Cline 真正发出去的却是三样东西：超长 system prompt、任务、环境快照。</p>
+  </div>
+  <div class="fig" data-demo="request">
+    <div class="cap">左：发给 DeepSeek R1 的请求结构（点击节点看说明）。右：<b>environment_details</b> 里的六个字段，原文逐一注解。</div>
+  </div>
+  <ul class="notes">
+    <li>用户唯一手动输入的文字：<code>write a python demo to chat with api.openai.com</code>。</li>
+    <li>温度设为 <b>0</b>，模型 <code>deepseek-ai/DeepSeek-R1</code>。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="c04" data-title="第 1 轮：模型太急了">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>第 1 轮：R1 一口气想干完，被 Cline 打断</h2>
+    <p class="lead">R1 先 &lt;thinking&gt;，然后连续输出 4 个工具调用。Cline 只执行第一个，其余全部拦下。</p>
+  </div>
+  <div class="fig" data-demo="round1">
+    <div class="cap">回放 R1 第 1 轮的输出流。绿色 = Cline 执行了；红色 = 被拦下。文字取自原文。</div>
+  </div>
+  <ul class="notes">
+    <li>system prompt 规定：<b>一轮只能用一个工具</b>，而且要放在消息末尾。R1 没守规矩。</li>
+    <li>第一个 <code>write_to_file</code> 生效后，Cline 在界面上提示用户 Save。点 Save，自动进入第 2 轮。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="c05" data-title="多轮时间线">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>整个任务的多轮时间线</h2>
+    <p class="lead">除了第一句指令，后面每一轮的“用户消息”都是 Cline 自动拼的：工具结果 + 被拦下的提醒 + 新的环境快照。</p>
+  </div>
+  <div class="fig" data-demo="timeline">
+    <div class="cap">点击任一轮，看这一轮 Cline 发了什么、R1 回了什么。下方是环境快照里 <b>Current Context Size</b> 的真实数字。</div>
+  </div>
+  <ul class="notes">
+    <li>触发第 2 轮的不是人，是 VS Code 底部 PROBLEMS 面板里的 <b>flake8 报错</b>。Cline 能读到它并喂给模型。</li>
+    <li>原文指出 Context Size 这个数字“应该统计不准”：第 2 轮显示 1191 万 token，占比 9307%。</li>
+    <li>R1 始终没能修好 flake8 的空行要求，后面几轮反复修改、反复失败，原文略去了这些轮次。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="c06" data-title="每一轮内部的循环">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>每一轮内部：ReAct 循环</h2>
+    <p class="lead">感知环境 → 思考 → 输出一个工具 → Cline 解析并执行 → 把结果回填 → 再来一轮。</p>
+  </div>
+  <div class="fig" data-demo="react">
+    <div class="cap">环会自动转动。如果允许自动执行所有操作，它会一直转到模型认为任务完成。</div>
+  </div>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="c07" data-title="工具调用统计">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>原文展示的轮次里，工具被调了多少次</h2>
+    <p class="lead">14 次调用，只有 6 次真正走到执行。一大半被“一轮一工具”的规则拦下。</p>
+  </div>
+  <div class="fig" data-demo="tools">
+    <div class="cap">按原文逐轮数出来的统计（第 1～3 轮、失败案例、人工干预后、最后一轮）。</div>
+  </div>
+  <div class="fig" data-demo="xml">
+    <div class="cap">Cline 的工具不是 JSON function call，而是 <b>XML 标签</b>。原文总结了为什么。</div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="c08" data-title="失败与恢复">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>工具执行失败了怎么办</h2>
+    <p class="lead">apply_diff 要求搜索块和文件 100% 相似。只有 40% 时 Cline 拒绝修改，把错误详情喂回去，R1 反思后先 read_file。</p>
+  </div>
+  <div class="fig" data-demo="fail">
+    <div class="cap">一次真实的 apply_diff 失败：R1 记的行号已经过时。</div>
+  </div>
+  <div class="fig" data-demo="human">
+    <div class="cap">最后是人出手：作者手动改了文件。Cline 检测到人工编辑，把 diff 和<b>整个文件全文</b>重新发给模型。</div>
+  </div>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="c09" data-title="DeepSeek R1 在其中的角色">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>DeepSeek R1 在这里扮演什么角色</h2>
+    <p class="lead">它负责“想”和“说”，Cline 负责“做”和“管”。强如 R1，也没能严格遵守 system prompt。</p>
+  </div>
+  <div class="fig" data-demo="r1">
+    <div class="cap">仅限原文提到的事实。</div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="c10" data-title="总结">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>总结：画面很美好，代价也很高</h2>
+    <p class="lead">一个写 chat demo 的小任务，累计消耗约 100 万 token。</p>
+  </div>
+  <div class="fig" data-demo="summary">
+    <div class="cap">原文的三条结论。</div>
+  </div>
+  <div class="final">对做 Agent 应用的人来说，Cline 的启发在于：<b>靠 prompt 就能搭出一个能跑的 Agent</b>。工具定义、示例、规则全写在 system prompt 里，用 XML 标签管理，不依赖模型的 function call 能力，解析出错也容易恢复。</div>
+</section>
+
+<footer>
+  原文：Heycc，<i>深度解密 | DeepSeek R1 + 编程神器 Cline 是如何做到全自动化编程的?</i>（2025-02-11，<a href="https://ihey.cc/agent/how-cline-agent-works-in-depth/">ihey.cc</a>）。参考：<a href="https://github.com/cline/cline/blob/main/src/core/prompts/system.ts">Cline 的 system prompt</a>、<a href="https://github.com/heycc/Cline-Agent-Prompt/blob/main/simple_https_proxy.py">作者的代理源码与完整 prompt</a>。本页为教学用可视化改编，单文件、离线可用。
+</footer>
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+const sleep = (ms) => new Promise(r => setTimeout(r, RM ? 0 : ms));
+
+/* ======================================================================
+   Hero：任务进去，循环几轮，代码出来
+   ====================================================================== */
+reg('hero', (node) => {
+  const W = 760, H = 150;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '一句指令经过多轮循环变成代码' });
+  const box = (x, y, w, h, label, sub, cls) => {
+    s.append(svg('rect', { x, y, width: w, height: h, rx: 12, fill: 'var(--surface-2)', stroke: 'var(--line)' }));
+    s.append(svg('text', { x: x + w / 2, y: y + (sub ? 30 : 38), 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 13, 'font-weight': 700, 'font-family': 'var(--font)' }, label));
+    if (sub) s.append(svg('text', { x: x + w / 2, y: y + 50, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--mono)' }, sub));
+  };
+  box(10, 45, 190, 64, '一句指令', 'write a python demo…');
+  box(285, 20, 190, 110, '', '');
+  s.append(svg('text', { x: 380, y: 44, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 13, 'font-weight': 700, 'font-family': 'var(--font)' }, 'Cline ⟲ DeepSeek R1'));
+  // 环
+  const ring = svg('circle', { cx: 380, cy: 88, r: 26, fill: 'none', stroke: 'var(--p)', 'stroke-width': 4, 'stroke-dasharray': '40 123', 'stroke-linecap': 'round' });
+  s.append(svg('circle', { cx: 380, cy: 88, r: 26, fill: 'none', stroke: 'var(--line)', 'stroke-width': 4 }));
+  s.append(ring);
+  const roundTxt = svg('text', { x: 380, y: 93, 'text-anchor': 'middle', fill: 'var(--p)', 'font-size': 13, 'font-weight': 700, 'font-family': 'var(--mono)' }, '第 1 轮');
+  s.append(roundTxt);
+  box(560, 45, 190, 64, '代码 + README', 'chat_demo.py 运行中');
+  // 箭头
+  const arrow = (x1, x2, y) => { s.append(svg('line', { x1, y1: y, x2, y2: y, stroke: 'var(--muted)', 'stroke-width': 2 })); s.append(svg('polygon', { points: `${x2},${y} ${x2 - 8},${y - 5} ${x2 - 8},${y + 5}`, fill: 'var(--muted)' })); };
+  arrow(205, 280, 77); arrow(480, 555, 77);
+  const dot1 = svg('circle', { cx: 210, cy: 77, r: 5, fill: 'var(--t)', class: 'flow-dot', style: 'color:var(--t)' });
+  const dot2 = svg('circle', { cx: 485, cy: 77, r: 5, fill: 'var(--o)', class: 'flow-dot', style: 'color:var(--o);opacity:0' });
+  s.append(dot1, dot2);
+  s.append(svg('text', { x: 380, y: 143, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--font)' }, '中间经过了好几轮“思考 → 调工具 → 看结果”，还有一次人工干预，累计约 100 万 token'));
+  node.append(s);
+  let t = 0, raf = 0, running = false;
+  const frame = () => {
+    if (!running) return;
+    t += 1;
+    const phase = (t % 420) / 420;
+    if (phase < 0.15) { dot1.setAttribute('cx', 210 + (phase / 0.15) * 65); dot1.style.opacity = 1; dot2.style.opacity = 0; ring.setAttribute('stroke-dashoffset', 0); }
+    else if (phase < 0.8) {
+      dot1.style.opacity = 0;
+      const p = (phase - 0.15) / 0.65;
+      ring.setAttribute('stroke-dashoffset', -p * 163 * 4);
+      roundTxt.textContent = '第 ' + (1 + Math.floor(p * 6)) + ' 轮';
+    } else { dot2.style.opacity = 1; dot2.setAttribute('cx', 485 + ((phase - 0.8) / 0.2) * 65); }
+    raf = requestAnimationFrame(frame);
+  };
+  return { start() { if (running || RM) return; running = true; raf = requestAnimationFrame(frame); }, stop() { running = false; cancelAnimationFrame(raf); } };
+});
+
+/* ======================================================================
+   01 VS Code 布局
+   ====================================================================== */
+reg('vscode', (node) => {
+  const W = 760, H = 400;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'VS Code 布局：左侧 Cline 面板、中间编辑器、底部 PROBLEMS 与终端' });
+  s.append(svg('rect', { x: 0, y: 0, width: W, height: H, rx: 12, fill: 'var(--surface-2)' }));
+  s.append(svg('rect', { x: 0, y: 0, width: W, height: 26, rx: 12, fill: 'var(--line)' }));
+  [16, 34, 52].forEach((x, i) => s.append(svg('circle', { cx: x, cy: 13, r: 5, fill: ['#ff5f57', '#febc2e', '#28c840'][i] })));
+  s.append(svg('text', { x: W / 2, y: 17, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--mono)' }, 'tmp2 — Visual Studio Code'));
+  // 活动栏
+  s.append(svg('rect', { x: 0, y: 26, width: 36, height: H - 26, fill: 'var(--line)', opacity: .6 }));
+  [50, 80, 110, 140].forEach(y => s.append(svg('rect', { x: 10, y, width: 16, height: 16, rx: 3, fill: 'var(--muted)', opacity: .5 })));
+  s.append(svg('rect', { x: 10, y: 170, width: 16, height: 16, rx: 3, fill: 'var(--p)' }));
+  const areas = {
+    cline: { x: 36, y: 26, w: 250, h: H - 26, color: 'var(--p)' },
+    editor: { x: 286, y: 26, w: W - 286, h: 234, color: 'var(--t)' },
+    problems: { x: 286, y: 260, w: W - 286, h: 70, color: 'var(--r)' },
+    terminal: { x: 286, y: 330, w: W - 286, h: 70, color: 'var(--o)' },
+  };
+  // Cline 面板内容
+  s.append(svg('rect', { x: areas.cline.x, y: areas.cline.y, width: areas.cline.w, height: areas.cline.h, fill: 'var(--surface)' }));
+  s.append(svg('text', { x: 50, y: 50, fill: 'var(--text)', 'font-size': 12, 'font-weight': 700, 'font-family': 'var(--font)' }, 'Roo Code (Cline)'));
+  const bubble = (y, h, text, me) => { s.append(svg('rect', { x: me ? 90 : 48, y, width: 180, height: h, rx: 8, fill: me ? 'var(--p-soft)' : 'var(--surface-2)' })); s.append(svg('text', { x: me ? 100 : 58, y: y + 17, fill: 'var(--text)', 'font-size': 10.5, 'font-family': 'var(--mono)' }, text)); };
+  bubble(64, 26, 'write a python demo to…', true);
+  bubble(100, 26, '<thinking> …', false);
+  bubble(136, 26, 'write_to_file chat_demo.py', false);
+  s.append(svg('rect', { x: 48, y: 168, width: 70, height: 20, rx: 6, fill: 'var(--t)' }));
+  s.append(svg('text', { x: 83, y: 182, 'text-anchor': 'middle', fill: '#fff', 'font-size': 10.5, 'font-family': 'var(--font)' }, 'Save'));
+  bubble(200, 26, 'apply_diff chat_demo.py', false);
+  bubble(236, 26, 'execute_command python…', false);
+  s.append(svg('rect', { x: 48, y: 340, width: 222, height: 44, rx: 8, fill: 'var(--surface-2)', stroke: 'var(--line)' }));
+  s.append(svg('text', { x: 58, y: 358, fill: 'var(--muted)', 'font-size': 10.5, 'font-family': 'var(--font)' }, 'Type a task…'));
+  s.append(svg('text', { x: 58, y: 374, fill: 'var(--muted)', 'font-size': 9.5, 'font-family': 'var(--mono)' }, 'API: deepseek-ai/DeepSeek-R1 (proxy)'));
+  // 编辑器
+  s.append(svg('rect', { x: areas.editor.x, y: areas.editor.y, width: areas.editor.w, height: areas.editor.h, fill: 'var(--surface)' }));
+  s.append(svg('rect', { x: 286, y: 26, width: 110, height: 24, fill: 'var(--surface-2)' }));
+  s.append(svg('text', { x: 296, y: 42, fill: 'var(--text)', 'font-size': 11, 'font-family': 'var(--mono)' }, 'chat_demo.py'));
+  s.append(svg('text', { x: 406, y: 42, fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--mono)' }, 'README.md'));
+  const code = ['import openai', 'import os', '', 'def chat_with_openai():', '    api_key = input("Enter your OpenAI API key: ")', '    os.environ["OPENAI_API_KEY"] = api_key', '    print("Chat with AI (type \'quit\' to exit)")', '    while True:', '        user_input = input("\\nYou: ")', '        response = openai.ChatCompletion.create(…)'];
+  code.forEach((l, i) => { s.append(svg('text', { x: 300, y: 72 + i * 17, fill: 'var(--muted)', 'font-size': 10, 'font-family': 'var(--mono)' }, String(i + 1))); s.append(svg('text', { x: 320, y: 72 + i * 17, fill: i === 3 ? 'var(--p)' : 'var(--text)', 'font-size': 10.5, 'font-family': 'var(--mono)', style: 'white-space:pre' }, l)); });
+  s.append(svg('rect', { x: 318, y: 112, width: 420, height: 2, fill: 'var(--r)' }));
+  // PROBLEMS
+  s.append(svg('rect', { x: areas.problems.x, y: areas.problems.y, width: areas.problems.w, height: areas.problems.h, fill: 'var(--surface)', stroke: 'var(--line)' }));
+  s.append(svg('text', { x: 296, y: 277, fill: 'var(--text)', 'font-size': 10.5, 'font-weight': 700, 'font-family': 'var(--font)' }, 'PROBLEMS  2'));
+  s.append(svg('text', { x: 296, y: 296, fill: 'var(--r)', 'font-size': 10.5, 'font-family': 'var(--mono)' }, '⨯ [Flake8] Line 4: expected 2 blank lines, found 1'));
+  s.append(svg('text', { x: 296, y: 314, fill: 'var(--r)', 'font-size': 10.5, 'font-family': 'var(--mono)' }, '⨯ [Flake8] Line 29: expected 2 blank lines after …'));
+  // TERMINAL
+  s.append(svg('rect', { x: areas.terminal.x, y: areas.terminal.y, width: areas.terminal.w, height: areas.terminal.h, fill: 'var(--ink)', opacity: .9 }));
+  s.append(svg('text', { x: 296, y: 350, fill: '#9be7c4', 'font-size': 10.5, 'font-family': 'var(--mono)' }, '$ python chat_demo.py'));
+  s.append(svg('text', { x: 296, y: 368, fill: '#e8e8ec', 'font-size': 10.5, 'font-family': 'var(--mono)' }, 'Enter your OpenAI API key: ▍'));
+  // 高亮框
+  const rings = {};
+  for (const [k, a] of Object.entries(areas)) {
+    const r = svg('rect', { x: a.x + 2, y: a.y + 2, width: a.w - 4, height: a.h - 4, rx: 8, fill: 'none', stroke: a.color, 'stroke-width': 3, class: 'focus-ring' });
+    rings[k] = r; s.append(r);
+  }
+  node.append(s);
+  const items = [
+    ['cline', 'var(--p)', 'Cline 面板', '用户在这里下指令、看模型的思考和工具调用、点 Save 确认文件修改。'],
+    ['editor', 'var(--t)', '编辑器', 'Cline 直接编辑文件。打开了哪些 Tab、哪些文件可见，都会被塞进 prompt。'],
+    ['problems', 'var(--r)', 'PROBLEMS 面板', 'flake8 等 linter 的报错。Cline 会读取它并反馈给模型，这正是触发第 2 轮的原因。'],
+    ['terminal', 'var(--o)', '终端', 'Cline 可以运行命令（pip install、python …），并把输出回传给模型。'],
+  ];
+  const leg = el('div', { class: 'vsc-legend' });
+  const its = items.map(([k, c, t, d]) => el('div', { class: 'it', 'data-k': k, onclick: () => focus(k, true) }, el('span', { class: 'dot', style: 'background:' + c }), el('div', {}, el('b', {}, t), el('span', {}, d))));
+  its.forEach(i => leg.append(i)); node.append(leg);
+  let idx = 0, manual = false;
+  const focus = (k, byUser) => { if (byUser) { manual = true; } for (const [kk, r] of Object.entries(rings)) r.classList.toggle('on', kk === k); its.forEach(i => i.classList.toggle('on', i.dataset.k === k)); };
+  const cyc = every(2600, () => { if (manual) return; focus(items[idx % items.length][0]); idx++; });
+  focus('cline');
+  return { start: () => (RM ? focus('cline') : cyc.start()), stop: () => cyc.stop() };
+});
+
+/* ======================================================================
+   02 代理
+   ====================================================================== */
+reg('proxy', (node) => {
+  const W = 760, H = 214;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'Cline 经本地代理访问 DeepSeek R1' });
+  const box = (x, y, w, h, l1, l2, stroke) => { s.append(svg('rect', { x, y, width: w, height: h, rx: 12, fill: 'var(--surface-2)', stroke: stroke || 'var(--line)', 'stroke-width': stroke ? 2 : 1 })); s.append(svg('text', { x: x + w / 2, y: y + 28, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 13, 'font-weight': 700, 'font-family': 'var(--font)' }, l1)); s.append(svg('text', { x: x + w / 2, y: y + 48, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--mono)' }, l2)); };
+  box(10, 40, 200, 64, 'VS Code + Cline', '发出完整请求');
+  box(280, 40, 200, 64, '本地 proxy', 'localhost · 打印 prompt', 'var(--p)');
+  box(550, 40, 200, 64, 'DeepSeek R1', '硅基流动 API');
+  const path1 = svg('path', { d: 'M212 72 L278 72', stroke: 'var(--muted)', 'stroke-width': 2 });
+  const path2 = svg('path', { d: 'M482 72 L548 72', stroke: 'var(--muted)', 'stroke-width': 2 });
+  s.append(path1, path2);
+  s.append(svg('polygon', { points: '278,72 270,67 270,77', fill: 'var(--muted)' }), svg('polygon', { points: '548,72 540,67 540,77', fill: 'var(--muted)' }));
+  // 打印输出
+  s.append(svg('path', { d: 'M380 106 L380 128', stroke: 'var(--p)', 'stroke-width': 2, 'stroke-dasharray': '4 3' }));
+  s.append(svg('rect', { x: 215, y: 130, width: 330, height: 70, rx: 10, fill: 'var(--surface)', stroke: 'var(--p)', 'stroke-dasharray': '5 3' }));
+  const lines = ['{ "model": "deepseek-ai/DeepSeek-R1",', '  "temperature": 0,', '  "messages": [ {"role":"system","content":"You are Roo…"},', '                {"role":"user","content":[ <task>… ]} ] }'];
+  const txts = lines.map((l, i) => svg('text', { x: 226, y: 147 + i * 14, fill: 'var(--text)', 'font-size': 9.5, 'font-family': 'var(--mono)', opacity: 0.3 }, l));
+  txts.forEach(t => s.append(t));
+  s.append(svg('text', { x: 108, y: 160, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5, 'font-family': 'var(--font)' }, 'system prompt ≈ 800 行'));
+  s.append(svg('text', { x: 108, y: 178, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5, 'font-family': 'var(--font)' }, '≈ 5 万字符'));
+  s.append(svg('text', { x: 652, y: 152, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5, 'font-family': 'var(--font)' }, '也可换成本地模型'));
+  s.append(svg('text', { x: 652, y: 170, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--font)' }, '（R1 Distill Qwen 14B'));
+  s.append(svg('text', { x: 652, y: 186, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11, 'font-family': 'var(--font)' }, 'Q8 量化版也能用）'));
+  const dot = svg('circle', { cx: 212, cy: 72, r: 6, fill: 'var(--t)', class: 'flow-dot', style: 'color:var(--t)' });
+  s.append(dot);
+  node.append(s);
+  let raf = 0, running = false, t = 0;
+  const frame = () => {
+    if (!running) return;
+    t = (t + 1) % 300;
+    let x;
+    if (t < 70) x = 212 + (t / 70) * 68;
+    else if (t < 110) { x = 280 + 100; }
+    else if (t < 180) x = 482 + ((t - 110) / 70) * 68;
+    else x = 550;
+    dot.setAttribute('cx', x);
+    dot.style.opacity = (t >= 70 && t < 110) || t >= 180 ? 0.0 : 1;
+    // 小球到达代理后，打印的文字点亮并保持
+    if (t > 75) txts.forEach((tx, i) => { if (t > 75 + i * 10) tx.setAttribute('opacity', 1); });
+    raf = requestAnimationFrame(frame);
+  };
+  return { start() { if (RM) { txts.forEach(t => t.setAttribute('opacity', 1)); return; } if (running) return; running = true; raf = requestAnimationFrame(frame); }, stop() { running = false; cancelAnimationFrame(raf); } };
+});
+
+/* ======================================================================
+   03 请求结构 + environment_details
+   ====================================================================== */
+reg('request', (node) => {
+  const wrap = el('div', { class: 'req' });
+  const tree = el('div', { class: 'tree' });
+  const explain = el('div', { class: 'explain' });
+  const nodes = [
+    ['', '{', null],
+    ['ind1', '<span class="k">"model"</span>: <span class="s">"deepseek-ai/DeepSeek-R1"</span>,', '模型：DeepSeek R1。Cline 兼容了它的 Thinking 输出。'],
+    ['ind1', '<span class="k">"temperature"</span>: <span class="n">0</span>,', '温度 0：尽量确定性输出，减少随机发挥。'],
+    ['ind1', '<span class="k">"messages"</span>: [', null],
+    ['ind2', '{ <span class="k">"role"</span>: <span class="s">"system"</span>, <span class="k">"content"</span>: <span class="s">"You are Roo, a highly skilled software engineer ……"</span> }<span class="sysbar" style="width:160px"></span>', 'system prompt 超级长：约 800 行、5 万字符。所有工具的定义、示例、规则都写在这里，每一轮都要重发。'],
+    ['ind2', '{ <span class="k">"role"</span>: <span class="s">"user"</span>, <span class="k">"content"</span>: [', null],
+    ['ind3', '{ <span class="k">"type"</span>: <span class="s">"text"</span>, <span class="k">"text"</span>: <span class="s">"&lt;task&gt;\\nwrite a python demo to chat with api.openai.com\\n&lt;/task&gt;"</span> },', '用 &lt;task&gt; 包起来的用户指令。这是整个测试中唯一一次人工输入文字。'],
+    ['ind3', '{ <span class="k">"type"</span>: <span class="s">"text"</span>, <span class="k">"text"</span>: <span class="s">"&lt;environment_details&gt; … &lt;/environment_details&gt;"</span> }', '环境快照：VS Code 此刻的状态。右侧展开六个字段。'],
+    ['ind2', '] }', null],
+    ['ind1', ']', null],
+    ['', '}', null],
+  ];
+  const ns = nodes.map(([ind, h, why]) => { const d = el('div', { class: 'node ' + ind, html: h }); if (why) d.addEventListener('click', () => { ns.forEach(x => x.classList.remove('on')); d.classList.add('on'); explain.textContent = why; }); else d.style.cursor = 'default'; return d; });
+  ns.forEach(n => tree.append(n));
+  const left = el('div', {}, tree, explain);
+  const env = [
+    ['# VSCode Visible Files', 'README.md', 'VS Code 当前可见的所有文件'],
+    ['# VSCode Open Tabs', 'README.md', 'VS Code 中打开的 Tab 文件'],
+    ['# Current Time', '2/10/2025, 9:55:20 PM (Asia/Shanghai, UTC+8:00)', '当前时间。原文：没看出来用途是什么'],
+    ['# Current Context Size (Tokens)', '(Not available)', '当前上下文长度。原文：应该统计不准'],
+    ['# Current Mode', 'code', 'Cline 当前模式。code 模式要求模型直接写代码'],
+    ['# Current Working Directory (…/tmp2) Files', 'README.md', '当前工作目录及其文件列表'],
+  ];
+  const cards = el('div', { class: 'env-cards' });
+  const cs = env.map(([h, v, why]) => el('div', { class: 'env-card' }, el('div', { class: 'h' }, h), el('div', { class: 'v' }, v), el('div', { class: 'why' }, why)));
+  cs.forEach(c => cards.append(c));
+  const right = el('div', {}, el('div', { class: 'cap', style: 'margin-bottom:8px' }, el('b', {}, '<environment_details>'), ' 第 1 轮的真实内容'), cards);
+  wrap.append(left, right);
+  node.append(wrap);
+  // 初始选中 system
+  ns[4].click();
+  let i = 0;
+  const cyc = every(1400, () => { cs.forEach((c, j) => c.classList.toggle('on', j === i % cs.length)); i++; });
+  return { start: () => (RM ? cs[0].classList.add('on') : cyc.start()), stop: () => cyc.stop() };
+});
+
+/* ======================================================================
+   04 第 1 轮：流式输出回放
+   ====================================================================== */
+reg('round1', (node) => {
+  const THINK = `First, I need to create a Python script that demonstrates chatting with OpenAI's API. The key requirements are:
+1. Use OpenAI's Python client library
+2. Handle API key input securely
+3. Implement a conversational loop
+4. Include error handling
+… Next, I should update the README.md with instructions … Finally, the OpenAI package needs to be installed. I'll use execute_command to run the pip install.`;
+  const blocks = [
+    { cls: 'think', title: '<thinking>', body: THINK, typing: true },
+    { cls: 'tool', title: '<write_to_file> chat_demo.py', body: '<path>chat_demo.py</path>\n<content>\nimport openai\nimport os\n\ndef chat_with_openai():\n    api_key = input("Enter your OpenAI API key: ").strip()\n    …\n</content>\n<line_count>27</line_count>', stamp: 'ok', stampText: 'Cline 执行 ✓' },
+    { cls: 'tool', title: '<write_to_file> README.md', body: '<path>README.md</path>\n<content>\n# OpenAI Chat Demo\n…\n</content>\n<line_count>22</line_count>', stamp: 'no', stampText: '未执行' },
+    { cls: 'tool', title: '<execute_command>', body: '<command>pip install openai</command>', stamp: 'no', stampText: '未执行' },
+    { cls: 'tool', title: '<attempt_completion>', body: '<result>\nCreated chat demo with secure API key handling and error checking. Installed required dependencies. See README for usage instructions.\n</result>\n<command>python chat_demo.py</command>\n</attempt_com', stamp: 'no', stampText: '未执行' },
+    { cls: 'cut', title: '⛔ Cline 打断', body: '[Response interrupted by a tool use result. Only one tool may be used at a time and should be placed at the end of the message.]' },
+  ];
+  const stream = el('div', { class: 'stream' });
+  const bs = blocks.map(b => {
+    const t = el('div', { class: 't' }, el('span', {}, b.title), b.stamp ? el('span', { class: 'stamp ' + b.stamp }, b.stampText) : null);
+    const body = el('div', { class: 'body' });
+    const d = el('div', { class: 'blk ' + b.cls }, t, body);
+    stream.append(d);
+    return { d, body, cfg: b };
+  });
+  const ctrl = el('div', { class: 'ctrl' });
+  const replay = btn('▶ 回放第 1 轮', () => play(), 'primary');
+  ctrl.append(replay, el('span', { class: 'tag p' }, 'temperature 0'), el('span', { class: 'tag' }, '1 条 assistant 消息'));
+  node.append(ctrl, stream);
+  node.append(html(`<div class="rule-card"><span class="ic">📏</span><div><b>system prompt 的规矩：</b>Only one tool may be used per message. You must assess the first tool's result before proceeding to use the next tool.</div></div>`));
+  let token = 0, playing = false;
+  async function play() {
+    const my = ++token; playing = true; replay.disabled = true;
+    bs.forEach(({ d, body }) => { d.classList.remove('show'); body.textContent = ''; body.classList.remove('typing'); d.querySelector('.stamp')?.classList.remove('show'); });
+    await sleep(200);
+    for (const { d, body, cfg } of bs) {
+      if (my !== token) return;
+      d.classList.add('show');
+      if (cfg.typing && !RM) {
+        body.classList.add('typing');
+        for (let i = 0; i < cfg.body.length; i += 3) { if (my !== token) return; body.textContent = cfg.body.slice(0, i + 3); await sleep(12); }
+        body.classList.remove('typing');
+      } else body.textContent = cfg.body;
+      await sleep(cfg.cls === 'think' ? 500 : 350);
+      const st = d.querySelector('.stamp'); if (st) { st.classList.add('show'); await sleep(450); }
+    }
+    playing = false; replay.disabled = false;
+  }
+  let started = false;
+  return { start() { if (!started) { started = true; play(); } }, stop() {} };
+});
+
+/* ======================================================================
+   05 多轮时间线 + token 曲线
+   ====================================================================== */
+reg('timeline', (node) => {
+  const rounds = [
+    { n: '第 1 轮', t: '输入任务', cls: 'human', s: '唯一一次人工输入', ctx: null, ctxLabel: '(Not available)', time: '9:55:20 PM',
+      user: ['<task>write a python demo to chat with api.openai.com</task>', '<environment_details> 六个字段'],
+      ai: ['<thinking> 规划：写脚本、改 README、装依赖', '<span class="ok">write_to_file chat_demo.py ✓</span>', '<span class="x">write_to_file README.md ✗</span>', '<span class="x">execute_command pip install openai ✗</span>', '<span class="x">attempt_completion ✗</span>', '被 Cline 打断'] },
+    { n: '第 2 轮', t: 'flake8 报错', cls: 'auto', s: 'Cline 自动触发', ctx: 11913404, ctxLabel: '11,913,404 (9307%)', time: '9:59:55 PM',
+      user: ['[write_to_file for chat_demo.py] Result: 保存成功', 'New problems: Flake8 Line 4、Line 29 空行数不对', '3 条 “Tool … was not executed because a tool has already been used” 提醒', '<environment_details>'],
+      ai: ['<span class="ok">apply_diff 修 Line 29 ✓</span>（没修 Line 4）', '<span class="x">execute_command python chat_demo.py ✗</span>'] },
+    { n: '第 3 轮', t: '还剩一个错', cls: 'auto', s: 'Cline 自动触发', ctx: 5205887, ctxLabel: '5,205,887 (4067%)', time: '10:16:26 PM',
+      user: ['[apply_diff for chat_demo.py] Result: 成功', 'New problems: Flake8 Line 30 仍有空行错误', '1 条未执行提醒', '[TASK RESUMPTION] 任务曾被中断，请重新评估', '两份 <environment_details>'],
+      ai: ['<span class="ok">apply_diff 修 Line 1–4 ✓</span>', '<span class="x">apply_diff 修 Line 27 ✗</span>', '<span class="x">write_to_file README.md ✗</span>', '<span class="x">execute_command ✗</span>', '<span class="x">attempt_completion ✗</span>', '又被打断'] },
+    { n: '后续几轮', t: '反复失败', cls: 'fail', s: '原文略去', ctx: null, ctxLabel: '—', time: '',
+      user: ['R1 始终没能输出符合 flake8 空行要求的修改', 'Cline 每轮把新的报错喂回去'],
+      ai: ['反复 apply_diff、反复失败', '其中一次：相似度 40%，Cline 拒绝修改（见第 08 节）', '下一轮 R1 反思后先 <span class="ok">read_file ✓</span>'] },
+    { n: '人工干预', t: '作者手改文件', cls: 'human', s: '第 2 次人工介入', ctx: null, ctxLabel: '—', time: '',
+      user: ['The user made the following updates to your content: 一段 diff', '<final_file_content> 全文 33 行，带行号', '提示：不用重写，以此为新基线'],
+      ai: ['决定运行 <span class="ok">execute_command python chat_demo.py ✓</span>'] },
+    { n: '最后一轮', t: '命令运行中', cls: 'ok', s: '任务完成', ctx: 3957252, ctxLabel: '3,957,252 (3092%)', time: '10:21:37 PM',
+      user: ['[execute_command for python chat_demo.py] Result: Command is still running…', '输出：Enter your OpenAI API key:', '# Actively Running Terminals: python chat_demo.py'],
+      ai: ['等用户体验'] },
+  ];
+  const rail = el('div', { class: 'tl-rail' });
+  const detail = el('div', { class: 'tl-detail' });
+  const show = (i) => {
+    rail.querySelectorAll('.tl-node').forEach((n, j) => n.classList.toggle('on', j === i));
+    const r = rounds[i];
+    detail.innerHTML = '';
+    detail.append(
+      el('div', { class: 'msg user' }, el('div', { class: 'who' }, 'Cline → R1（role: user）'), el('ul', { html: r.user.map(x => '<li>' + x + '</li>').join('') })),
+      el('div', { class: 'msg ai' }, el('div', { class: 'who' }, 'R1 → Cline（role: assistant）'), el('ul', { html: r.ai.map(x => '<li>' + x + '</li>').join('') })),
+    );
+    dots.forEach((d, j) => d && d.setAttribute('r', j === i ? 7 : 4.5));
+  };
+  rounds.forEach((r, i) => rail.append(el('div', { class: 'tl-node ' + r.cls, onclick: () => { manual = true; show(i); } }, el('span', { class: 'pip' }), el('div', { class: 'rn' }, r.n), el('div', { class: 'rt' }, r.t), el('div', { class: 'rs' }, r.s))));
+  node.append(rail, detail);
+  // token 图
+  const W = 760, H = 190, L = 70, R = 30, T = 34, B = 40;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '环境快照里 Current Context Size 的数值' });
+  const maxV = 13_000_000;
+  const y = (v) => T + (H - T - B) * (1 - v / maxV);
+  const x = (i) => L + (W - L - R) * (i / (rounds.length - 1));
+  [0, 4e6, 8e6, 12e6].forEach(v => { s.append(svg('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--grid)' })); s.append(svg('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 10.5, 'font-family': 'var(--mono)' }, (v / 1e6) + 'M')); });
+  const pts = rounds.map((r, i) => r.ctx != null ? [x(i), y(r.ctx)] : null);
+  const valid = pts.map((p, i) => p ? { p, i } : null).filter(Boolean);
+  for (let k = 1; k < valid.length; k++) s.append(svg('line', { x1: valid[k - 1].p[0], y1: valid[k - 1].p[1], x2: valid[k].p[0], y2: valid[k].p[1], stroke: 'var(--o)', 'stroke-width': 2, 'stroke-dasharray': valid[k].i - valid[k - 1].i > 1 ? '6 4' : 'none' }));
+  const dots = rounds.map((r, i) => {
+    s.append(svg('text', { x: x(i), y: H - 20, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 10.5, 'font-family': 'var(--font)' }, r.n));
+    if (r.time) s.append(svg('text', { x: x(i), y: H - 6, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 9.5, 'font-family': 'var(--mono)' }, r.time));
+    if (r.ctx == null) { s.append(svg('text', { x: x(i), y: y(0) - 8, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 10, 'font-family': 'var(--mono)' }, r.ctxLabel)); return null; }
+    const d = svg('circle', { cx: x(i), cy: y(r.ctx), r: 4.5, fill: 'var(--o)' });
+    s.append(d);
+    const anchor = i === rounds.length - 1 ? 'end' : (i === 0 ? 'start' : 'middle');
+    s.append(svg('text', { x: x(i) + (anchor === 'end' ? 6 : 0), y: y(r.ctx) - 10, 'text-anchor': anchor, fill: 'var(--text)', 'font-size': 10.5, 'font-family': 'var(--mono)', 'font-weight': 700 }, r.ctxLabel));
+    return d;
+  });
+  node.append(el('div', { class: 'tok-chart' }, el('div', { class: 'cap' }, el('b', {}, 'Current Context Size (Tokens)'), '，取自每轮环境快照。原文注：应该统计不准（百分比超过 100% 就是证据）。'), el('div', { class: 'scrollx' }, s)));
+  let manual = false, i = 0;
+  show(0);
+  const cyc = every(3200, () => { if (manual) return; show(i % rounds.length); i++; });
+  return { start: () => (RM ? null : cyc.start()), stop: () => cyc.stop() };
+});
+
+/* ======================================================================
+   06 ReAct 环
+   ====================================================================== */
+reg('react', (node) => {
+  const W = 420, H = 330, cx = 210, cy = 165, r = 118;
+  const stages = [
+    ['感知环境', 'environment_details', 'Cline 把 VS Code 的可见文件、打开的 Tab、模式、目录、PROBLEMS 报错拼进 prompt。'],
+    ['模型思考', '<thinking>', 'R1 先输出思考过程：分析需求、规划步骤、决定下一步用哪个工具。'],
+    ['输出工具', 'XML 标签', '模型用 <write_to_file>、<apply_diff>、<execute_command> 等 XML 标签表达要做的事。'],
+    ['Cline 解析', '一轮只认一个', 'Cline 解析 XML。若一条消息里有多个工具，只执行第一个，并打断模型输出。'],
+    ['执行', 'VS Code', '改文件、跑命令。改文件前需要用户点 Save（或开启自动批准）。'],
+    ['结果回填', 'role: user', '把执行结果、linter 新报错、未执行提醒、新环境快照拼成下一条“用户消息”。'],
+  ];
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'ReAct 循环的六个阶段' });
+  s.append(svg('circle', { cx, cy, r, fill: 'none', stroke: 'var(--line)', 'stroke-width': 2, 'stroke-dasharray': '4 4' }));
+  const arc = svg('circle', { cx, cy, r, fill: 'none', stroke: 'var(--p)', 'stroke-width': 4, 'stroke-dasharray': `${2 * Math.PI * r / 6 - 12} ${2 * Math.PI * r}`, 'stroke-linecap': 'round', transform: `rotate(-90 ${cx} ${cy})` });
+  s.append(arc);
+  const groups = stages.map((st, i) => {
+    const a = -Math.PI / 2 + (i / 6) * Math.PI * 2;
+    const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+    const g = svg('g', {});
+    g.append(svg('rect', { x: x - 58, y: y - 24, width: 116, height: 48, rx: 10, class: 'react-stage' }));
+    g.append(svg('text', { x, y: y - 4, 'text-anchor': 'middle', class: 'react-txt' }, st[0]));
+    g.append(svg('text', { x, y: y + 13, 'text-anchor': 'middle', class: 'react-sub' }, st[1]));
+    s.append(g);
+    return g;
+  });
+  s.append(svg('text', { x: cx, y: cy - 6, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 15, 'font-weight': 700, 'font-family': 'var(--font)' }, 'ReAct 循环'));
+  s.append(svg('text', { x: cx, y: cy + 14, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5, 'font-family': 'var(--font)' }, '直到 attempt_completion'));
+  const desc = el('div', { class: 'react-desc' });
+  s.style.maxWidth = '460px'; s.style.margin = '0 auto';
+  node.append(s, desc);
+  let i = 0;
+  const set = (k) => { groups.forEach((g, j) => g.querySelector('rect').classList.toggle('on', j === k)); arc.setAttribute('transform', `rotate(${-90 + k * 60 - 30} ${cx} ${cy})`); desc.innerHTML = `<b>${stages[k][0]}</b> · ${stages[k][2]}`; };
+  set(0);
+  const cyc = every(2200, () => { set(i % 6); i++; });
+  return { start: () => (RM ? null : cyc.start()), stop: () => cyc.stop() };
+});
+
+/* ======================================================================
+   07 工具统计 + XML vs JSON
+   ====================================================================== */
+reg('tools', (node) => {
+  // 按原文逐轮数：ok=执行成功, failed=执行但失败, blocked=被“一轮一工具”拦下
+  const data = [
+    ['apply_diff', { ok: 2, failed: 1, blocked: 1 }, '第 2 轮 ✓；第 3 轮 1 ✓ 1 ✗；失败案例 1 次 40% 相似度'],
+    ['execute_command', { ok: 1, failed: 0, blocked: 3 }, '第 1、2、3 轮都被拦；最后一轮 python chat_demo.py 真正跑起来'],
+    ['write_to_file', { ok: 1, failed: 0, blocked: 2 }, '第 1 轮 chat_demo.py ✓，README.md ✗；第 3 轮 README.md ✗'],
+    ['attempt_completion', { ok: 0, failed: 0, blocked: 2 }, '第 1、3 轮都想“宣布完成”，都被拦'],
+    ['read_file', { ok: 1, failed: 0, blocked: 0 }, 'apply_diff 失败后，R1 反思并先读文件'],
+  ];
+  const max = 4;
+  const bars = el('div', { class: 'tools-bars' });
+  const rows = data.map(([name, c, why]) => {
+    const tot = c.ok + c.failed + c.blocked;
+    const track = el('div', { class: 'track' });
+    const sgs = ['ok', 'failed', 'blocked'].map(k => { const s = el('div', { class: 'sg ' + k, 'data-w': (c[k] / max * 100) }); track.append(s); return s; });
+    const row = el('div', { class: 'tb', title: why }, el('span', { class: 'name' }, name), track, el('span', { class: 'tot' }, tot));
+    bars.append(row);
+    return sgs;
+  });
+  const kv = el('div', { class: 'kv', style: 'margin-bottom:12px' }, el('span', {}, '调用总数 ', el('b', {}, '14')), el('span', {}, '走到执行 ', el('b', {}, '6')), el('span', {}, '被规则拦下 ', el('b', {}, '8')), el('span', {}, '执行后失败 ', el('b', {}, '1')));
+  node.append(kv, bars, html(`<div class="legend"><span><i style="background:var(--t)"></i>执行成功</span><span><i style="background:var(--r)"></i>执行但失败</span><span><i style="background:var(--line)"></i>被“一轮一工具”拦下</span><span>悬停条目看出处</span></div>`));
+  let done = false;
+  return { start() { if (done) return; done = true; requestAnimationFrame(() => rows.flat().forEach(s => s.style.width = s.dataset.w + '%')); }, stop() {} };
+});
+reg('xml', (node) => {
+  node.append(html(`<div class="xmlvs">
+    <div class="c"><h4><span class="tag t">Cline 的做法</span> XML 标签</h4>
+      <p>工具定义、示例全写在 system prompt 里，模型用标签表达调用。</p>
+      <pre>&lt;apply_diff&gt;
+  &lt;path&gt;chat_demo.py&lt;/path&gt;
+  &lt;diff&gt;
+  &lt;&lt;&lt;&lt;&lt;&lt;&lt; SEARCH … ======= … &gt;&gt;&gt;&gt;&gt;&gt;&gt; REPLACE
+  &lt;/diff&gt;
+&lt;/apply_diff&gt;</pre>
+      <ul class="notes" style="margin-top:8px"><li><b>通用：</b>不强依赖模型的 function call / JSON 输出能力。</li><li><b>容错高：</b>XML 解析更容易从错误中恢复。</li><li>所以 DeepSeek R1 / V3、Gemini、甚至本地量化模型都能跑。</li></ul>
+    </div>
+    <div class="c"><h4><span class="tag">常见做法</span> JSON function call</h4>
+      <p>依赖模型原生的工具调用接口，格式由 API 约束。</p>
+      <pre>{ "tool_calls": [ {
+  "function": {
+    "name": "apply_diff",
+    "arguments": "{\\"path\\": \\"chat_demo.py\\", …}"
+} } ] }</pre>
+      <ul class="notes" style="margin-top:8px"><li>需要模型和 API 都支持，换模型时兼容性更差。</li><li>JSON 稍有破损就整体解析失败。</li></ul>
+    </div></div>`));
+  return {};
+});
+
+/* ======================================================================
+   08 失败与恢复
+   ====================================================================== */
+reg('fail', (node) => {
+  const wrap = el('div', { class: 'diffcmp' });
+  wrap.append(html(`<div class="box"><h4>R1 发来的 SEARCH 块（声称在第 27 行）</h4><pre><span class="ln">27</span><span class="m">    chat_with_openai()</span></pre><div class="quote">R1 记住的行号来自上一次的文件内容，但文件在此前的修改中已经变了。</div></div>`));
+  wrap.append(html(`<div class="box"><h4>文件里实际的第 27 行附近（Cline 找到的最佳匹配）</h4><pre><span class="ln">27</span>            print(f"An error occurred: {str(e)}")
+<span class="ln">28</span>            break
+<span class="ln">29</span>
+<span class="ln">30</span>if __name__ == "__main__":
+<span class="ln">31</span><span class="m">    chat_with_openai()</span></pre><div class="quote">真正的 <code>chat_with_openai()</code> 在第 31 行。</div></div>`));
+  node.append(wrap);
+  const meter = html(`<div class="meter"><div class="track"><div class="fill"></div><div class="need"></div></div><div class="lbl"><span>Similarity Score: <b class="mono">40%</b></span><span>Required Threshold: <b class="mono">100%</b></span></div></div>`);
+  node.append(meter);
+  node.append(html(`<div class="evi" style="margin-top:12px"><span class="lab">原文 · error_details 节选</span><pre>No sufficiently similar match found at start: 27 to end: 27 (<span class="hl r">40% similar, needs 100%</span>)
+- Tip: <span class="hl t">Use read_file to get the latest content of the file before attempting the diff again</span>, as the file content may have changed</pre></div>`));
+  const steps = html(`<div class="steps">
+    <div class="step"><span class="n">STEP 1</span><b>Cline 拒绝修改</b>相似度只有 40%，没达到 100%。这是 Cline 为了确保改文件不出错。</div>
+    <div class="step"><span class="n">STEP 2</span><b>错误详情回填给 R1</b>包含搜索内容、最佳匹配、文件原文和一条 Tip。</div>
+    <div class="step"><span class="n">STEP 3</span><b>R1 反思，先 read_file</b>“行号在之前的编辑后变了……我先用 read_file 核实当前状态再改。”</div>
+  </div>`);
+  node.append(steps);
+  const fill = meter.querySelector('.fill'), sts = [...steps.querySelectorAll('.step')];
+  let done = false;
+  return { async start() { if (done) return; done = true; await sleep(200); fill.style.width = '40%'; for (let i = 0; i < 3; i++) { await sleep(700); sts[i].classList.add('on'); } }, stop() {} };
+});
+reg('human', (node) => {
+  node.append(html(`<div class="grid2">
+    <div>
+      <div class="cap"><b>Cline 发给 R1 的 diff</b>：作者删掉了多余的空行</div>
+      <div class="udiff"><span class="ctx">@@ -27,7 +27,6 @@</span><span class="ctx">             print(f"An error occurred: {str(e)}")</span><span class="ctx">             break</span><span class="ctx"> </span><span class="del">-</span><span class="ctx"> if __name__ == "__main__":</span><span class="ctx">     chat_with_openai()</span></div>
+    </div>
+    <div>
+      <div class="cap"><b>随后附上全文</b>：<code>&lt;final_file_content path="chat_demo.py"&gt;</code> 33 行带行号</div>
+      <div class="evi"><span class="lab">原文 · 提示语</span><pre>The user made the following updates to your content: …
+The updated content … has been successfully saved to chat_demo.py.
+Please note:
+1. <span class="hl t">You do not need to re-write the file</span> with these changes, as they have already been applied.
+2. Proceed with the task using this updated file content as <span class="hl p">the new baseline</span>.
+3. If the user's edits have addressed part of the task or changed the requirements, adjust your approach accordingly.</pre></div>
+    </div>
+  </div>
+  <ul class="notes"><li>人工编辑后，R1 决定执行 <code>python chat_demo.py</code>。终端显示 <code>Enter your OpenAI API key:</code>，任务到此完成。</li><li>所谓“全自动”，这次实测里还是有 2 次人工介入：第一句指令，和最后这次手改。</li></ul>`));
+  return {};
+});
+
+/* ======================================================================
+   09 R1 的角色
+   ====================================================================== */
+reg('r1', (node) => {
+  node.append(html(`<div class="r1cards">
+    <div class="r1c"><h4><span class="tag p">思考</span> 先 &lt;thinking&gt; 再行动</h4><p>R1 每轮都先输出思考过程：分析需求、拆步骤、决定用什么工具。Cline 兼容了 DeepSeek、Gemini 的 Thinking 输出。</p></div>
+    <div class="r1c"><h4><span class="tag r">不守规矩</span> 一次输出多个工具</h4><p>system prompt 明说一轮只能一个工具。原文：即使强如 DeepSeek R1，也没有准确遵循，第 1、2、3 轮都输出了多个工具调用，每次都被 Cline 即时打断。</p></div>
+    <div class="r1c"><h4><span class="tag o">修不好</span> flake8 的两个空行</h4><p>R1 反复尝试都没能输出符合 flake8 空行要求的 diff，还因为行号过时导致 apply_diff 失败。最后靠人手改。</p></div>
+    <div class="r1c"><h4><span class="tag t">会反思</span> 失败后先读文件</h4><p>收到 40% 相似度的错误详情后，R1 在 thinking 里分析出“行号在之前的编辑后变了”，先 read_file 再动手。</p></div>
+  </div>
+  <div class="r1c" style="margin-top:10px"><h4><span class="tag">可替换</span> Cline 不绑定某一个模型</h4><p>Cline 声称基于 Claude 3.5 Sonnet 的能力开发，但原文实测以下模型都能跑：</p>
+    <div class="models"><span class="tag p">DeepSeek R1</span><span class="tag">DeepSeek V3</span><span class="tag">Gemini</span><span class="tag">本地 R1 Distill Qwen 14B（Q8 量化）</span><span class="tag">任意 OpenAI 兼容 API</span></div></div>`));
+  return {};
+});
+
+/* ======================================================================
+   10 总结
+   ====================================================================== */
+reg('summary', (node) => {
+  const tok = html(`<div class="tokbar"><div class="track"><div class="fill"></div></div></div>`);
+  const big = el('div', { class: 'big' }, '0');
+  node.append(html(`<div class="sum3">
+    <div class="sumc"><h4>① ReAct 思维链循环</h4><p>自主思考、生成代码、执行工具、感知 VS Code 上下文。允许自动执行时，它会一直跑到自认为完成。</p></div>
+    <div class="sumc" id="sumTok"><h4>② Token 黑洞</h4></div>
+    <div class="sumc"><h4>③ 靠 prompt 就能搭 Agent</h4><p>工具定义、示例全在 system prompt 里，用 XML 标签管理，通用且容错。对 Agent 应用开发有借鉴意义。</p></div>
+  </div>`));
+  const c2 = node.querySelector('#sumTok');
+  c2.append(big, el('p', {}, 'token，这么简单的一个任务。约花费 0.5 元。若服务端支持 prompt cache，成本可显著下降。'), tok);
+  let done = false;
+  return { start() { if (done) return; done = true; const target = 1_000_000; if (RM) { big.textContent = '1,000,000'; tok.querySelector('.fill').style.width = '100%'; return; } tok.querySelector('.fill').style.width = '100%'; const t0 = performance.now(); const step = (t) => { const p = Math.min(1, (t - t0) / 2200); const e = 1 - Math.pow(1 - p, 3); big.textContent = Math.round(target * e).toLocaleString('en-US'); if (p < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); }, stop() {} };
+});
+
+/* ======================================================================
+   启动
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) return;
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>宇宙最初的物质从哪里来</title>
+<meta name="description" content="知乎问题「既然物质不能凭空产生，那么宇宙最初的物质是从哪里来的？」几位答主回答的可视化讲解：暴胀、真空涨落、宇宙没有中心、哈勃定律、膨胀宇宙中能量不守恒。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ---- 页面专用 ---- */
+.stack{margin:10px 0}
+.stack .row{display:grid;grid-template-columns:6.5em 1fr;gap:10px;align-items:center;margin:8px 0;font-size:14px}
+.stack .row .lab{color:var(--muted);text-align:right}
+.stack .track{display:flex;height:30px;border-radius:8px;overflow:hidden;background:var(--surface-2)}
+.stack .piece{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;white-space:nowrap;width:0;transition:width 1.2s cubic-bezier(.2,.8,.2,1);overflow:hidden}
+.tl-cards{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+@media (min-width:760px){ .tl-cards{grid-template-columns:repeat(3,1fr)} }
+.tl-cards .card{cursor:pointer;transition:border-color .2s,background .2s}
+.tl-cards .card .t{font-family:var(--mono);font-size:12px;color:var(--o)}
+.vac-wrap{position:relative}
+.vac-wrap canvas{width:100%;height:260px;border-radius:10px;background:radial-gradient(ellipse at center,#141828,#07080f)}
+.vac-wrap .hud{position:absolute;left:10px;top:8px;font-family:var(--mono);font-size:12px;color:#cfd3e6;background:rgba(0,0,0,.35);padding:3px 8px;border-radius:6px}
+.vac-wrap .msg{position:absolute;right:10px;top:8px;font-size:13px;color:#ffd27a;background:rgba(0,0,0,.45);padding:3px 10px;border-radius:6px;opacity:0;transition:opacity .3s}
+.vac-wrap .msg.on{opacity:1}
+.scale-bar{position:relative;height:120px;margin:20px 6px 0}
+.scale-bar .axis{position:absolute;left:0;right:0;top:70px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--t),var(--p),var(--r))}
+.scale-bar .tick{position:absolute;top:80px;transform:translateX(-50%);font-family:var(--mono);font-size:11px;color:var(--muted)}
+.scale-bar .mk{position:absolute;top:0;transform:translateX(-50%);text-align:center;opacity:0;transition:opacity .6s,transform .6s;width:120px}
+.scale-bar .mk.on{opacity:1}
+.scale-bar .mk .dot{width:12px;height:12px;border-radius:50%;margin:0 auto 4px;border:2px solid #fff;box-shadow:0 0 0 2px var(--line)}
+.scale-bar .mk .v{font-family:var(--mono);font-size:13px;font-weight:700}
+.scale-bar .mk .l{font-size:11px;color:var(--muted);line-height:1.3}
+.scale-bar .mk::after{content:"";position:absolute;left:50%;top:52px;width:2px;height:20px;background:var(--line);transform:translateX(-50%)}
+@media (max-width:600px){ .scale-bar{height:150px} .scale-bar .mk{width:92px} .scale-bar .axis{top:100px} .scale-bar .tick{top:110px} .scale-bar .mk::after{height:48px} }
+.hub-out{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.hub-out .o{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.hub-out .o small{display:block;color:var(--muted);font-size:12px}
+.hub-out .o b{font-family:var(--mono);font-size:clamp(15px,3vw,20px)}
+.hub-out .o b.over{color:var(--r)}
+.ebar{display:grid;grid-template-columns:7em 1fr 5em;gap:10px;align-items:center;font-size:13px;margin:6px 0}
+.ebar .track{height:16px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.ebar .fill{height:100%;border-radius:6px;transition:width .3s}
+.ebar .val{font-family:var(--mono);text-align:right}
+.noe-svg .g{transition:transform .8s ease}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <a class="back" href="../../../README.md">← ai-visual-notes</a>
+  <div class="brand">宇宙最初的物质从哪里来</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · 知乎问答 · 天体物理</div>
+  <h1>既然物质不能凭空产生，<br>宇宙最初的物质是从哪里来的？</h1>
+  <p class="sub">三位答主，三个角度：宏观上的「无中生有」、量子上的「有中生有」，以及一个更大胆的说法——能量在宇宙尺度上其实可以不守恒。本页把它们拆成 9 个画面。</p>
+  <div class="thesis">先记住一句话：<b>我们今天说的「物质」，在宇宙最初几乎都是能量（辐射）。</b>所以真正的问题是：最初的能量从哪来？</div>
+  <div class="authors">
+    <span class="au"><i style="background:var(--p)">王</i>王清扬 <span class="tag">仅收录图注</span></span>
+    <span class="au"><i style="background:var(--t)">时</i>时空通讯</span>
+    <span class="au"><i style="background:var(--o)">包</i>我喜欢小笼包</span>
+  </div>
+  <div class="meta">来源：知乎问题 428394983 下的回答（剪藏于 2025-11-08）。王清扬的高赞回答正文未被剪藏，仅保留其图 1 的说明文字；本页主要依据「时空通讯」与「我喜欢小笼包」两篇完整回答。图中标注「示意」的内容为教学用，不是原文数据。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="reframe" data-title="先换个问法">
+  <div class="ch-head"><span class="num">01</span><span class="who">答主：我喜欢小笼包</span>
+    <h2>先换个问法：物质 ← 能量</h2>
+    <p class="lead">今天的宇宙由普通物质、暗物质、暗能量组成；宇宙最初，绝大部分能量却以辐射（光子、中微子）的形式存在。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">两个时刻的「能量构成」对比（<b>示意</b>，原文未给出比例，只说「绝大部分」）。E = mc² 让质量与能量可以互换，所以「物质从哪来」应改问「能量从哪来」。</div>
+    <div data-demo="forms"></div>
+  </div>
+  <ul class="notes">
+    <li><b>质能等价</b>：时空通讯答主也从 E = mc² 出发——宇宙中的物质由能量转化而来，极端情况下又会转化回能量。</li>
+    <li><b>问题的前提</b>：「物质不能凭空产生」默认了能量守恒。第 08 节会专门检查这个前提。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="inflation" data-title="暴胀：势能高台">
+  <div class="ch-head"><span class="num">02</span><span class="who">答主：王清扬（图注）</span>
+    <h2>暴胀：宇宙曾停在一个势能高台上</h2>
+    <p class="lead">宇宙诞生初期，驱动暴胀的标量物质场处在势能曲线的平缓高台上：势能密度近似常数 V₀，远大于动能，ρ ≈ V₀。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>左</b>：标量场的势能曲线（蓝）与「小球」位置；<b>右</b>：当 ρ ≈ V₀ 时，弗里德曼方程存在指数膨胀解，尺度因子 a(t) 呈指数增长。曲线形状为示意。</div>
+    <div data-demo="inflation"></div>
+  </div>
+  <ul class="notes">
+    <li><b>高台 = 暴胀</b>：小球在高台上慢慢滚，能量密度几乎不变，宇宙指数膨胀。</li>
+    <li><b>滚下来 = 暴胀结束</b>：原图注到此为止；回答正文未被剪藏，后续细节这里不补。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="timeline" data-title="从奇点到 118 种元素">
+  <div class="ch-head"><span class="num">03</span><span class="who">答主：时空通讯</span>
+    <h2>宏观叙事：从奇点到 118 种元素</h2>
+    <p class="lead">138 亿年前，奇点「膨胀」开来：先只有能量，1 秒内粒子陆续出现，38.4 万年后才有中性原子和第一缕光。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">六个节点等距排列（时间跨度从 10⁻⁴³ 秒到 138 亿年，横轴不按比例）。曲线是温度的大致走势，节点数字来自原文。点击卡片或等待自动播放。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <ul class="notes">
+    <li><b>奇点</b>：体积无限小、密度无限高、曲率无限大、温度无限大——所有物理理论在那里失效。答主认为它是「从另一个时空反弹」来的，所以宏观上是<b>无中生有</b>。</li>
+    <li><b>常见物质很晚才出现</b>：先是氢、氦、极少量锂，再由恒星核聚变和超新星爆炸一个个造出更重的元素。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="vacuum" data-title="真空不空：虚粒子对">
+  <div class="ch-head"><span class="num">04</span><span class="who">答主：时空通讯</span>
+    <h2>量子叙事：真空不空，有中生有</h2>
+    <p class="lead">不确定性原理 → 绝对零度也有振动 → 真空零点能 → 虚粒子对随机出现又随机湮灭。偶尔一对「错开」没湮灭，就成了奇点。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">正反虚粒子对不断冒出、相撞、湮灭。按原文说法，宇称不守恒意味着世界并不完美对称——总有那么一对错开了。点「再来一次」可立刻触发。</div>
+    <div data-demo="vacuum"></div>
+  </div>
+  <ul class="notes">
+    <li><b>海森堡不确定性原理</b>：不能同时精确知道粒子的位置和动量，所以粒子不可能完全静止。</li>
+    <li><b>宇称不守恒</b>：杨振宁、李政道提出、吴健雄实验验证，1957 年诺贝尔物理学奖。答主用它来说明「破缺」为什么可能。</li>
+    <li><b>证据</b>：答主提到卡西米尔效应验证了真空零点能；大型强子对撞机重现了大爆炸百万分之一秒的「夸克汤」状态。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="zpe" data-title="真空零点能有多大">
+  <div class="ch-head"><span class="num">05</span><span class="who">答主：时空通讯</span>
+    <h2>一个没湮灭的虚粒子，凭什么有整个宇宙的能量？</h2>
+    <p class="lead">惠勒估算：真空零点能密度高达 10⁹⁵ g/cm³。1 立方厘米真空的本底能量，比大爆炸普朗克时刻整个宇宙的能量还大 10 倍。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">对数尺度上的三个数（答主原文的对比方式；注意前两个是密度、第三个是总质量，单位不同，答主是按「数量级」来比的）。</div>
+    <div data-demo="scale"></div>
+  </div>
+  <ul class="notes">
+    <li><b>普朗克时刻</b>：大爆炸开始后 10⁻⁴³ 秒，宇宙只有 1.6×10⁻³⁵ m，温度 10³² K，密度 10⁹⁴ g/cm³。</li>
+    <li><b>可观测宇宙总质量</b>约 10⁵³ g，只有 1 cm³ 真空零点能的 1/10⁴²。</li>
+    <li>答主自己也说：零点能为什么这么大是量子力学里很高深的话题，「吃瓜群众只要知道这很神奇但真实存在就够了」。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="nocenter" data-title="大爆炸没有中心">
+  <div class="ch-head"><span class="num">06</span><span class="who">答主：时空通讯</span>
+    <h2>大爆炸为什么没有中心？</h2>
+    <p class="lead">它不是炸弹在某一点爆炸，而是「气球表面」在膨胀：所有星系都画在球面上，任选一点看出去都一样。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点击任意一个星系把它设为「我们」：其他星系都在离开，越远的离开越快。换一个点，结论不变——所以哪一点都是中心，也就没有中心。</div>
+    <div data-demo="balloon"></div>
+  </div>
+  <ul class="notes">
+    <li><b>地球表面类比</b>：地球表面哪里是中心？北京、纽约还是巴黎？宇宙像地球表面，没有「地核」那样的核心。</li>
+    <li><b>各向同性</b>：站在宇宙任何一点观测都一样，这是哈勃定律的内容之一。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="hubble" data-title="哈勃定律 V = HD">
+  <div class="ch-head"><span class="num">07</span><span class="who">答主：时空通讯</span>
+    <h2>哈勃定律：越远跑得越快</h2>
+    <p class="lead">V = HD。在可观测宇宙边缘（465 亿光年），星系离开我们的速度约为光速的 3.6 倍——但我们身边感觉不到。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">拖动距离，切换哈勃常数（几十年来几次有影响的测量值：77、74.2、68.7、82.4 km/s/Mpc，答主取平均约 75.6）。1 Mpc ≈ 326 万光年。</div>
+    <div data-demo="hubble"></div>
+  </div>
+  <ul class="notes">
+    <li><b>超光速膨胀</b>不是每个地方都超光速，而是整个宇宙叠加的膨胀；只有最远处的星系退行速度超过光速。</li>
+    <li><b>感觉不到</b>：附近膨胀速率很慢，天体更主要受引力作用，所以太阳还是那个太阳。</li>
+  </ul>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="energy" data-title="能量其实可以不守恒">
+  <div class="ch-head"><span class="num">08</span><span class="who">答主：我喜欢小笼包</span>
+    <h2>能量守恒从哪来？膨胀的宇宙会打破它</h2>
+    <p class="lead">能量守恒是「时间平移对称」的推论：物理定律不随时间变。宇宙在膨胀，宇宙学尺度上这个对称性不再成立，能量就不必守恒。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>对称性 → 守恒量</b>。今天做实验、十年后再做，结果一样 → 能量守恒。把时间尺度拉到宇宙学，背景本身在变。切换看看。</div>
+    <div data-demo="noether"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>盒子实验</b>：边长 L 的立方体随宇宙膨胀 a 倍。物质的质量不变，光子的波长却被拉长 a 倍（红移），能量 E = h/λ 随之变小。拖动 a 看总能量。</div>
+    <div data-demo="box"></div>
+  </div>
+  <ul class="notes">
+    <li><b>物质</b>：密度 ε ∝ a⁻³，体积 V ∝ a³，总能量 E = εV 不变——和我们熟悉的能量守恒一致。</li>
+    <li><b>光子</b>：密度多乘一个 a⁻¹，ε ∝ a⁻⁴，所以 E ∝ 1/a。盒子里光子数不变，总能量却在变少。少掉的能量去哪了？「没人知道，或者说，消失了。」</li>
+    <li><b>CMB</b>：宇宙微波背景光子刚辐射出来时能量远高于今天观测到的，就是这个效应。能量能「凭空」消失，当然也能「凭空」出现（答主以暗能量为例，但说用非专业语言讲不清，略过）。</li>
+  </ul>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="verdict" data-title="三个回答并排看">
+  <div class="ch-head"><span class="num">09</span>
+    <h2>所以，最初的物质从哪来？三个回答并排看</h2>
+    <p class="lead">他们没有互相反驳，而是站在不同层次上回答。本页不替任何一位下结论。</p>
+  </div>
+  <div class="fig">
+    <div class="vs">
+      <div class="side-card b"><h3>时空通讯 · 宏观：无中生有</h3><p>奇点是「超时空的玩意」，从另一个时空反弹、膨胀进我们的时空。物理理论在那里失效，所以无法解释，只能说是无中生有。</p></div>
+      <div class="mid">+</div>
+      <div class="side-card a"><h3>时空通讯 · 量子：有中生有</h3><p>能量早就蕴藏在真空中（真空零点能）。一对没湮灭的虚粒子成了奇点，巨大的零点能按 E = mc² 转化成各种物质。</p></div>
+    </div>
+    <div class="vs" style="margin-top:12px">
+      <div class="side-card c"><h3>我喜欢小笼包 · 能量可能真是「凭空」来的</h3><p>时间平移不变性在宇宙演化尺度上不成立，能量在宇宙中并不守恒，一直有能量出现和消失。所以这些能量「还真的就<b>可能</b>（划重点）是凭空出现的」。</p></div>
+      <div class="mid">+</div>
+      <div class="side-card" style="background:var(--surface-2)"><h3>王清扬 · 暴胀（仅存图注）</h3><p>标量场停在势能高台上，ρ ≈ V₀，弗里德曼方程给出指数膨胀解。完整论证在未被剪藏的正文里。</p></div>
+    </div>
+    <div class="final">共同点：E = mc² 把「物质从哪来」变成「能量从哪来」。分歧点：能量是本来就在真空里，还是真的可以凭空出现。</div>
+  </div>
+</section>
+
+<footer>
+  <div><b>来源</b></div>
+  <ul>
+    <li>知乎问题《既然物质不能凭空产生，那么宇宙最初的物质是从哪里来的？》：<a href="https://www.zhihu.com/question/428394983">zhihu.com/question/428394983</a></li>
+    <li>答主：王清扬（新知答主，仅收录图 1 说明）、时空通讯、我喜欢小笼包。原文观点与数字均归答主所有；本页只做图示化改编，标注「示意」处为教学用。</li>
+  </ul>
+  <div style="margin-top:10px">本页由 Claude Code 基于原文生成，仅供学习。</div>
+</footer>
+
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+/* ======================================================================
+   Hero：能量 ⇄ 物质
+   ====================================================================== */
+reg('hero', (root) => {
+  const c = el('canvas', { style: 'width:100%;height:200px;border-radius:10px;background:radial-gradient(ellipse at 30% 50%,#1a1f3a,#07080f)' });
+  root.append(c);
+  const ctx = c.getContext('2d');
+  const P = Array.from({ length: 46 }, (_, i) => ({ a: Math.random() * Math.PI * 2, r: 30 + Math.random() * 60, s: .4 + Math.random() * .8, ph: Math.random() * 6, q: i % 2 }));
+  const resize = () => { const w = c.clientWidth, h = 200; if (c.width !== w * 2 || c.height !== h * 2) { c.width = w * 2; c.height = h * 2; } };
+  return loop((t) => {
+    resize(); const W = c.width, H = c.height; ctx.clearRect(0, 0, W, H);
+    const cx = W * 0.28, cy = H / 2, pulse = 1 + 0.08 * Math.sin(t * 3);
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 90 * pulse);
+    g.addColorStop(0, 'rgba(255,230,150,1)'); g.addColorStop(.4, 'rgba(255,160,60,.6)'); g.addColorStop(1, 'rgba(255,120,30,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 90 * pulse, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px ' + cssVar('--mono'); ctx.textAlign = 'center'; ctx.fillText('E', cx, cy + 9);
+    // arrow & formula
+    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 3; ctx.setLineDash([10, 10]); ctx.lineDashOffset = -t * 40;
+    ctx.beginPath(); ctx.moveTo(cx + 110, cy); ctx.lineTo(W * 0.56, cy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.font = '22px ' + cssVar('--mono'); ctx.fillText('E = mc²', (cx + 110 + W * 0.56) / 2, cy - 18);
+    ctx.font = '20px ' + cssVar('--font'); ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.fillText('能量 ⇄ 物质', (cx + 110 + W * 0.56) / 2, cy + 34);
+    // particles
+    const px = W * 0.76;
+    for (const p of P) {
+      const r = p.r * (1 + 0.15 * Math.sin(t * p.s + p.ph)), a = p.a + t * p.s * 0.6;
+      const x = px + Math.cos(a) * r * 1.4, y = cy + Math.sin(a) * r * 0.8;
+      ctx.fillStyle = p.q ? '#8f8aff' : '#33d2ba'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill();
+    }
+  });
+});
+
+/* ======================================================================
+   01 能量构成（示意）
+   ====================================================================== */
+reg('forms', (root) => {
+  const mk = (lab, pieces) => {
+    const track = el('div', { class: 'track' });
+    const ps = pieces.map(([name, w, col]) => { const d = el('div', { class: 'piece', style: `background:${col}`, 'data-w': w }, name); track.append(d); return d; });
+    root.append(el('div', { class: 'row' }, el('div', { class: 'lab' }, lab), track));
+    return ps;
+  };
+  const wrap = el('div', { class: 'stack' }); root.append(wrap);
+  const all = [
+    ...mk('今天', [['普通物质', 10, 'var(--t)'], ['暗物质', 28, 'var(--p)'], ['暗能量', 62, '#6b6b85']]),
+    ...mk('宇宙最初', [['辐射：光子、中微子', 92, 'var(--o)'], ['其他', 8, '#6b6b85']]),
+  ];
+  // 把 row 移到 stack 内
+  [...root.querySelectorAll('.row')].forEach(r => wrap.append(r));
+  root.append(el('div', { class: 'src' }, '宽度只表示「绝大部分 / 少部分」，不是测量比例。'));
+  return { start() { all.forEach(p => { p.style.width = p.dataset.w + '%'; }); }, stop() { all.forEach(p => { p.style.width = '0'; }); } };
+});
+
+/* ======================================================================
+   02 暴胀：势能高台 + 指数膨胀
+   ====================================================================== */
+reg('inflation', (root) => {
+  const g = el('div', { class: 'grid2' }); root.append(g);
+  // 势能曲线：x 0..1 → 路径
+  const W = 440, H = 240;
+  const V = (u) => { // 势能 y（屏幕坐标，越小越高）
+    if (u < 0.55) return 60 + 6 * u; // 高台微斜
+    const v = (u - 0.55) / 0.45; return 60 + 150 * Math.sin(v * Math.PI) * (1 - 0.35 * v) + (v > 0.5 ? (v - 0.5) * 20 : 0);
+  };
+  const X = (u) => 30 + u * (W - 60);
+  let d = ''; for (let i = 0; i <= 100; i++) { const u = i / 100; d += (i ? 'L' : 'M') + X(u).toFixed(1) + ',' + V(u).toFixed(1); }
+  const s1 = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'infl' });
+  s1.append(
+    svg('line', { x1: 30, y1: H - 20, x2: W - 20, y2: H - 20, class: 'ax' }), svg('line', { x1: 30, y1: 20, x2: 30, y2: H - 20, class: 'ax' }),
+    svg('text', { x: W - 20, y: H - 6, class: 'lbl m', 'text-anchor': 'end' }, 'φ 标量场'), svg('text', { x: 36, y: 16, class: 'lbl m' }, 'V(φ) 势能'),
+    svg('path', { d, fill: 'none', stroke: '#3b82f6', 'stroke-width': 3 }),
+    svg('line', { x1: X(0), y1: 60, x2: X(0.55), y2: 60, stroke: 'var(--o)', 'stroke-dasharray': '4 4' }),
+    svg('text', { x: X(0.25), y: 50, class: 'lbl mid', fill: 'var(--o)' }, 'ρ ≈ V₀（平缓高台：暴胀）'),
+    svg('text', { x: X(0.8), y: H - 30, class: 'lbl mid' }, '滚下来：暴胀结束'),
+  );
+  const ball = svg('circle', { r: 8, fill: 'var(--o)', stroke: '#fff', 'stroke-width': 2 }); s1.append(ball);
+  // a(t)
+  const s2 = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  s2.append(
+    svg('line', { x1: 30, y1: H - 20, x2: W - 20, y2: H - 20, class: 'ax' }), svg('line', { x1: 30, y1: 20, x2: 30, y2: H - 20, class: 'ax' }),
+    svg('text', { x: W - 20, y: H - 6, class: 'lbl m', 'text-anchor': 'end' }, 't'), svg('text', { x: 36, y: 16, class: 'lbl m' }, 'a(t) 尺度因子'),
+  );
+  const path2 = svg('path', { fill: 'none', stroke: 'var(--p)', 'stroke-width': 3 }); s2.append(path2);
+  const lab2 = svg('text', { x: 40, y: 40, class: 'lbl big' }, ''); s2.append(lab2);
+  const f1 = el('div', {}, s1), f2 = el('div', {}, s2); g.append(f1, f2);
+  const T = 9;
+  return loop((t) => {
+    const tt = t % T; const u = tt < 6 ? (tt / 6) * 0.55 : 0.55 + Math.min(1, (tt - 6) / 1.6) * 0.42;
+    ball.setAttribute('cx', X(u)); ball.setAttribute('cy', V(u) - 9);
+    // a(t): 指数增长直到 6s，然后平缓
+    let d2 = ''; const n = 80;
+    for (let i = 0; i <= n; i++) {
+      const tau = (i / n) * T; if (tau > tt) break;
+      const a = tau < 6 ? Math.exp(tau * 0.8) : Math.exp(4.8) * (1 + (tau - 6) * 0.2);
+      const y = H - 20 - Math.min(H - 50, a / Math.exp(4.8) * (H - 70)) ; const x = 30 + tau / T * (W - 60);
+      d2 += (i ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1);
+    }
+    path2.setAttribute('d', d2);
+    lab2.textContent = tt < 6 ? '指数膨胀 a ∝ e^{Ht}' : '暴胀结束，减速膨胀';
+  });
+});
+
+/* ======================================================================
+   03 时间线
+   ====================================================================== */
+reg('timeline', (root) => {
+  const EV = [
+    { t: 1e-43, T: 1e32, k: '普朗克时刻', tx: '10⁻⁴³ s', d: '宇宙只有 1.6×10⁻³⁵ m，温度 10³² K，密度 10⁹⁴ g/cm³。只有能量，什么也没有。' },
+    { t: 1e-30, T: 1e27, k: '暴涨', tx: '< 1 s', d: '引力、胶子、夸克、玻色子、轻子、质子、中子及其反粒子先后出现；强、弱、电磁相互作用分离。' },
+    { t: 1, T: 1e10, k: '1 秒后', tx: '1 s', d: '温度降到约 100 亿 K，但核力还无法束缚中子和质子——没有核子，更没有原子。' },
+    { t: 1.2e13, T: 3000, k: '38.4 万年', tx: '3.84×10⁵ 年', d: '冷却到约 3000 K，中性原子出现。第一缕光（电磁波）脱耦而出，宇宙变得透明。最早的物质：氢、氦、极少量锂。' },
+    { t: 1e16, T: 30, k: '恒星与星系', tx: '数亿年', d: '轻元素在引力下聚成星云星团，坍缩成恒星。早期恒星巨大而短命，核聚变与超新星爆炸造出更重的元素。' },
+    { t: 4.35e17, T: 2.7, k: '今天', tx: '138 亿年', d: '可观测宇宙半径约 465 亿光年，已知 118 种元素。宇宙仍在膨胀。' },
+  ];
+  const W = 760, H = 210, L = 70, R = 40;
+  const lx = (t) => { const i = EV.findIndex(e => e.t === t); return L + i / (EV.length - 1) * (W - L - R); };
+  const ly = (T) => H - 50 - (Math.log10(T) / 32) * (H - 90);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  EV.forEach((e) => { const x = lx(e.t); s.append(svg('line', { x1: x, y1: 30, x2: x, y2: H - 50, class: 'gr' }), svg('text', { x, y: H - 34, class: 'lbl m mid' }, e.tx)); });
+  s.append(svg('line', { x1: L - 20, y1: H - 50, x2: W - R + 20, y2: H - 50, class: 'ax' }), svg('text', { x: W - R + 20, y: H - 12, class: 'lbl', 'text-anchor': 'end' }, '时间 →（节点等距排列，不按比例）'), svg('text', { x: W - R + 20, y: 16, class: 'lbl', 'text-anchor': 'end' }, '纵轴：温度（对数，示意曲线）'));
+  let d = ''; EV.forEach((e, i) => { d += (i ? ' L' : 'M') + lx(e.t).toFixed(1) + ',' + ly(e.T).toFixed(1); });
+  s.append(svg('path', { d, fill: 'none', stroke: 'var(--o)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' }));
+  const dots = EV.map((e) => { const g = svg('g'); g.append(svg('circle', { cx: lx(e.t), cy: ly(e.T), r: 7, fill: 'var(--surface)', stroke: 'var(--o)', 'stroke-width': 3 }), svg('text', { x: lx(e.t), y: ly(e.T) - 16, class: 'lbl mid big' }, e.k)); s.append(g); return g; });
+  const cards = el('div', { class: 'tl-cards' });
+  const cs = EV.map((e, i) => { const c = el('div', { class: 'card', onclick: () => { idx = i; show(); timer.stop(); } }, el('div', { class: 't' }, e.tx + ' · ' + e.k), el('p', {}, e.d)); cards.append(c); return c; });
+  let idx = 0;
+  const show = () => { cs.forEach((c, i) => c.classList.toggle('on', i === idx)); dots.forEach((g, i) => { g.querySelector('circle').setAttribute('fill', i === idx ? 'var(--o)' : 'var(--surface)'); g.querySelector('circle').setAttribute('r', i === idx ? 9 : 7); }); };
+  root.append(el('div', { class: 'scrollx' }, s), cards);
+  const timer = every(RM ? 1e9 : 2200, () => { show(); idx = (idx + 1) % EV.length; });
+  return timer;
+});
+
+/* ======================================================================
+   04 真空涨落
+   ====================================================================== */
+reg('vacuum', (root) => {
+  const wrap = el('div', { class: 'vac-wrap' }); const c = el('canvas'); const hud = el('div', { class: 'hud' }, '湮灭 0 对'); const msg = el('div', { class: 'msg' }, '');
+  wrap.append(c, hud, msg); root.append(wrap);
+  const btn = el('button', { class: 'btn primary', onclick: () => { force = true; } }, '再来一次：让一对错开');
+  root.append(el('div', { class: 'ctrl' }, btn, el('span', { class: 'tag' }, '示意动画')));
+  const ctx = c.getContext('2d');
+  let pairs = [], ann = 0, force = false, last = 0, sing = null, nextBreak = 6;
+  const spawn = (brk = false) => {
+    const W = c.width, H = c.height; const x = 40 + Math.random() * (W - 80), y = 40 + Math.random() * (H - 80), a = Math.random() * 6.28;
+    pairs.push({ x, y, a, t: 0, brk, life: brk ? 2.6 : 1.2 + Math.random() * .6 });
+  };
+  const resize = () => { const w = wrap.clientWidth, h = 260; if (c.width !== w * 2 || c.height !== h * 2) { c.width = w * 2; c.height = h * 2; } };
+  let prev = 0;
+  return loop((t) => {
+    resize(); const dt = Math.min(0.05, t - prev); prev = t; const W = c.width, H = c.height;
+    ctx.fillStyle = 'rgba(7,8,15,.35)'; ctx.fillRect(0, 0, W, H);
+    if (sing) {
+      sing.t += dt; const r = 20 + sing.t * 160;
+      const g = ctx.createRadialGradient(sing.x, sing.y, 0, sing.x, sing.y, r); g.addColorStop(0, 'rgba(255,240,200,.95)'); g.addColorStop(.3, 'rgba(255,170,60,.5)'); g.addColorStop(1, 'rgba(255,120,30,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sing.x, sing.y, r, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 26px ' + cssVar('--font'); ctx.textAlign = 'center'; ctx.fillText(sing.t < 1 ? '没湮灭 → 奇点' : '膨胀：大爆炸', sing.x, sing.y - 30 - sing.t * 10);
+      if (sing.t > 2.6) { sing = null; msg.classList.remove('on'); pairs = []; }
+      return;
+    }
+    if (t - last > 0.35 && pairs.length < 14) { last = t; const brk = force || t > nextBreak; if (brk) { force = false; nextBreak = t + 9; } spawn(brk); }
+    for (const p of pairs) {
+      p.t += dt; const u = p.t / p.life;
+      const sep = p.brk ? 14 + p.t * 34 : 14 + 44 * Math.sin(Math.PI * u); // 分开再回来
+      const dx = Math.cos(p.a) * sep, dy = Math.sin(p.a) * sep;
+      ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,.12)'; ctx.lineWidth = 1; ctx.moveTo(p.x - dx, p.y - dy); ctx.lineTo(p.x + dx, p.y + dy); ctx.stroke();
+      ctx.fillStyle = '#ff6b76'; ctx.beginPath(); ctx.arc(p.x + dx, p.y + dy, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = '#5fa8ff'; ctx.beginPath(); ctx.arc(p.x - dx, p.y - dy, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 15px ' + cssVar('--mono'); ctx.textAlign = 'center'; ctx.fillText('+', p.x + dx, p.y + dy + 5); ctx.fillText('−', p.x - dx, p.y - dy + 5);
+      if (p.brk && p.t > 0.4) { msg.textContent = '这一对错开了（破缺）…'; msg.classList.add('on'); }
+      if (!p.brk && u >= 1) { p.dead = true; ann++; const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 30); g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, 44, 0, 7); ctx.fill(); }
+      if (p.brk && u >= 1) { p.dead = true; sing = { x: p.x, y: p.y, t: 0 }; }
+    }
+    pairs = pairs.filter(p => !p.dead); hud.textContent = `湮灭 ${ann} 对`;
+  });
+});
+
+/* ======================================================================
+   05 数量级尺子
+   ====================================================================== */
+reg('scale', (root) => {
+  const W = 760, H = 188, L = 40, R = 40, AY = 104;
+  const px = (e) => L + e / 100 * (W - L - R);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const grad = svg('linearGradient', { id: 'sgrad', x1: 0, x2: 1, y1: 0, y2: 0 }); grad.append(svg('stop', { offset: '0', 'stop-color': 'var(--t)' }), svg('stop', { offset: '.6', 'stop-color': 'var(--p)' }), svg('stop', { offset: '1', 'stop-color': 'var(--r)' }));
+  s.append(svg('defs', {}, grad), svg('rect', { x: L, y: AY - 3, width: W - L - R, height: 6, rx: 3, fill: 'url(#sgrad)' }));
+  for (const e of [0, 20, 40, 60, 80, 100]) s.append(svg('line', { x1: px(e), y1: AY + 4, x2: px(e), y2: AY + 10, class: 'ax' }), svg('text', { x: px(e), y: AY + 26, class: 'lbl m mid' }, '10^' + e));
+  s.append(svg('text', { x: L, y: AY + 44, class: 'lbl' }, '数量级（对数尺子）'));
+  // [指数, 数值, 说明, 颜色, 标签 x 偏移, 标签 y]
+  const M = [
+    [53, '10⁵³ g', '可观测宇宙总质量', 'var(--t)', 0, 30],
+    [94, '10⁹⁴ g/cm³', '普朗克时刻的宇宙密度', 'var(--p)', -80, 72],
+    [95, '10⁹⁵ g/cm³', '真空零点能密度（惠勒估算）', 'var(--r)', 30, 176],
+  ];
+  const mks = M.map(([e, v, l, col, dx, ty]) => {
+    const g = svg('g', { style: 'opacity:0;transition:opacity .6s' });
+    const x = px(e), lxp = x + dx, anchor = dx === 0 ? 'middle' : 'end', below = ty > AY;
+    g.append(svg('line', { x1: x, y1: AY, x2: lxp - (anchor === 'end' ? 20 : 0), y2: below ? ty - 30 : ty + 10, stroke: col, 'stroke-width': 1.5 }), svg('circle', { cx: x, cy: AY, r: 7, fill: col, stroke: '#fff', 'stroke-width': 2 }),
+      svg('text', { x: lxp, y: ty, class: 'lbl m big', fill: col, 'text-anchor': anchor }, v), svg('text', { x: lxp, y: ty - 16, class: 'lbl', 'text-anchor': anchor }, l));
+    s.append(g); return g;
+  });
+  root.append(el('div', { class: 'scrollx' }, s));
+  root.append(el('div', { class: 'cards', style: 'margin-top:14px' },
+    el('div', { class: 'card' }, el('div', { class: 'k' }, '普朗克时间'), el('h3', {}, '10⁻⁴³ s'), el('p', {}, '1000 亿亿亿亿亿分之一秒')),
+    el('div', { class: 'card' }, el('div', { class: 'k' }, '普朗克尺度'), el('h3', {}, '1.6×10⁻³⁵ m'), el('p', {}, '1600 亿亿亿分之一米')),
+    el('div', { class: 'card' }, el('div', { class: 'k' }, '普朗克温度'), el('h3', {}, '10³² K'), el('p', {}, '1 亿亿亿亿 K')),
+    el('div', { class: 'card' }, el('div', { class: 'k' }, '对比'), el('h3', {}, '×10 / ÷10⁴²'), el('p', {}, '1 cm³ 真空本底能量 ≈ 宇宙初始整体能量的 10 倍；可观测宇宙总质量 ≈ 它的 1/10⁴²')),
+  ));
+  let timers = [];
+  return { start() { timers = mks.map((m, i) => setTimeout(() => { m.style.opacity = 1; }, RM ? 0 : 300 + i * 500)); }, stop() { timers.forEach(clearTimeout); mks.forEach(m => { m.style.opacity = 0; }); } };
+});
+
+/* ======================================================================
+   06 气球表面：没有中心
+   ====================================================================== */
+reg('balloon', (root) => {
+  const W = 520, H = 320, cx = W / 2, cy = H / 2 + 10;
+  const N = 10, ANG = Array.from({ length: N }, (_, i) => (i / N) * Math.PI * 2 + 0.3);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const circle = svg('circle', { cx, cy, r: 60, fill: 'var(--p-soft)', stroke: 'var(--p)', 'stroke-width': 2, opacity: .7 }); s.append(circle);
+  const arrows = svg('g'); s.append(arrows);
+  const dots = ANG.map((a, i) => { const g = svg('g', { style: 'cursor:pointer' }); g.append(svg('circle', { r: 7, fill: 'var(--t)', stroke: '#fff', 'stroke-width': 2 })); g.addEventListener('click', () => { me = i; }); s.append(g); return g; });
+  const lab = svg('text', { x: cx, y: 24, class: 'lbl mid big' }, ''); s.append(lab);
+  const r0 = 50, r1 = 125; let me = 0;
+  root.append(s);
+  root.append(el('div', { class: 'src' }, '气球在吹大。箭头长度 ∝ 相对「我们」的退行速度，和距离成正比。'));
+  return loop((t) => {
+    const u = (t % 7) / 7; const r = lerp(r0, r1, u); circle.setAttribute('r', r);
+    const pos = ANG.map(a => [cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    dots.forEach((g, i) => { g.setAttribute('transform', `translate(${pos[i][0]},${pos[i][1]})`); g.querySelector('circle').setAttribute('fill', i === me ? 'var(--o)' : 'var(--t)'); g.querySelector('circle').setAttribute('r', i === me ? 10 : 7); });
+    arrows.innerHTML = '';
+    const [mx, my] = pos[me];
+    pos.forEach((p, i) => { if (i === me) return; const dx = p[0] - mx, dy = p[1] - my, L = Math.hypot(dx, dy); const k = 0.28; const ex = p[0] + dx / L * L * k, ey = p[1] + dy / L * L * k;
+      arrows.append(svg('line', { x1: p[0], y1: p[1], x2: ex, y2: ey, stroke: 'var(--r)', 'stroke-width': 2.5, 'stroke-linecap': 'round' }));
+      const ah = Math.atan2(dy, dx); arrows.append(svg('path', { d: `M${ex},${ey} l${-9 * Math.cos(ah - .5)},${-9 * Math.sin(ah - .5)} M${ex},${ey} l${-9 * Math.cos(ah + .5)},${-9 * Math.sin(ah + .5)}`, stroke: 'var(--r)', 'stroke-width': 2.5, fill: 'none', 'stroke-linecap': 'round' }));
+    });
+    lab.textContent = '从「我们」（橙点）看：所有星系都在离开，越远越快。点别的星系试试。';
+  });
+});
+
+/* ======================================================================
+   07 哈勃定律
+   ====================================================================== */
+reg('hubble', (root) => {
+  const Hs = [77, 74.2, 68.7, 82.4, 75.6]; let H = 75.6; const C = 299792; const MPC_LY = 3.26e6; const EDGE = 465e8 / MPC_LY; // Mpc
+  const out = el('div', { class: 'hub-out' });
+  const oD = el('b'), oV = el('b'), oC = el('b'), oLy = el('b');
+  out.append(el('div', { class: 'o' }, el('small', {}, '距离 D'), oD, el('small', {}, ''), oLy), el('div', { class: 'o' }, el('small', {}, '退行速度 V = HD'), oV, el('small', {}, '相当于光速的'), oC));
+  const W = 560, Hh = 220, L = 50, R = 20, B = 36;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${Hh}` });
+  const xs = (D) => L + Math.log10(D) / Math.log10(EDGE) * (W - L - R);
+  const ys = (v) => Hh - B - Math.min(1, v / (C * 4)) * (Hh - B - 20);
+  s.append(svg('line', { x1: L, y1: Hh - B, x2: W - R, y2: Hh - B, class: 'ax' }), svg('line', { x1: L, y1: 10, x2: L, y2: Hh - B, class: 'ax' }));
+  for (const k of [1, 2, 3, 4]) s.append(svg('line', { x1: L, y1: ys(C * k), x2: W - R, y2: ys(C * k), class: k === 1 ? 'ax' : 'gr', 'stroke-dasharray': k === 1 ? '5 4' : '' }), svg('text', { x: L - 6, y: ys(C * k) + 4, class: 'lbl m', 'text-anchor': 'end' }, k + 'c'));
+  for (const D of [1, 10, 100, 1000, 10000]) s.append(svg('text', { x: xs(D), y: Hh - B + 16, class: 'lbl m mid' }, D >= 1000 ? (D / 1000) + 'k' : D), svg('line', { x1: xs(D), y1: 10, x2: xs(D), y2: Hh - B, class: 'gr' }));
+  s.append(svg('text', { x: W - R, y: Hh - 4, class: 'lbl', 'text-anchor': 'end' }, 'D（Mpc，对数轴）'), svg('text', { x: xs(EDGE) - 6, y: 14, class: 'lbl', 'text-anchor': 'end' }, '465 亿光年 →'));
+  s.append(svg('line', { x1: xs(EDGE), y1: 16, x2: xs(EDGE), y2: Hh - B, stroke: 'var(--o)', 'stroke-dasharray': '3 3' }));
+  const curve = svg('path', { fill: 'none', stroke: 'var(--p)', 'stroke-width': 3 }); const pt = svg('circle', { r: 7, fill: 'var(--o)', stroke: '#fff', 'stroke-width': 2 }); s.append(curve, pt);
+  let D = 2;
+  const draw = () => {
+    let d = ''; for (let i = 0; i <= 100; i++) { const Di = Math.pow(10, i / 100 * Math.log10(EDGE)); d += (i ? 'L' : 'M') + xs(Di).toFixed(1) + ',' + ys(H * Di).toFixed(1); } curve.setAttribute('d', d);
+    const v = H * D; pt.setAttribute('cx', xs(D)); pt.setAttribute('cy', ys(v));
+    oD.textContent = fmt(D, D < 10 ? 2 : 0) + ' Mpc'; oLy.textContent = '≈ ' + (D * MPC_LY >= 1e8 ? fmt(D * MPC_LY / 1e8, 1) + ' 亿光年' : fmt(D * MPC_LY / 1e4, 0) + ' 万光年');
+    oV.textContent = fmt(v, 0) + ' km/s'; oC.textContent = (v / C < 0.01 ? (v / C).toFixed(4) : fmt(v / C, 2)) + ' c'; oC.classList.toggle('over', v > C);
+  };
+  const sl = range('距离', 0, 1000, 73, 1, (x) => { D = Math.pow(10, x / 1000 * Math.log10(EDGE)); draw(); }, () => '');
+  const sg = seg(Hs.map(h => h + (h === 75.6 ? '（平均）' : '')), (i) => { H = Hs[i]; draw(); }, 4);
+  root.append(el('div', { class: 'ctrl' }, sl, el('span', { class: 'tag' }, 'H（km/s/Mpc）'), sg), out, s);
+  root.append(el('div', { class: 'src' }, '原文算例：H ≈ 75.6 时，652 万光年（2 Mpc）处退行 151.2 km/s；465 亿光年处约 1,078,343 km/s ≈ 3.6 倍光速。本页用 1 Mpc ≈ 326 万光年换算，与原文数字略有四舍五入差异。'));
+  draw();
+  return {};
+});
+
+/* ======================================================================
+   08a 诺特：对称 → 守恒
+   ====================================================================== */
+reg('noether', (root) => {
+  const W = 560, H = 230;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'noe-svg' });
+  const grid = svg('g', { class: 'g', style: 'transform-origin:280px 115px' });
+  for (let x = 20; x <= W - 20; x += 40) grid.append(svg('line', { x1: x, y1: 20, x2: x, y2: H - 40, class: 'gr' }));
+  for (let y = 20; y <= H - 40; y += 40) grid.append(svg('line', { x1: 20, y1: y, x2: W - 20, y2: y, class: 'gr' }));
+  s.append(grid);
+  const lab = (x, y, t, cls = 'lbl mid') => svg('text', { x, y, class: cls }, t);
+  const lab1 = svg('g'), lab2 = svg('g');
+  const exp = (g, x, title) => { g.append(svg('rect', { x: x - 50, y: 60, width: 100, height: 70, rx: 10, fill: 'var(--surface-2)', stroke: 'var(--line)' }), svg('circle', { cx: x - 15, cy: 95, r: 10, fill: 'var(--p)' }), svg('path', { d: `M${x - 2},95 h30`, stroke: 'var(--muted)', 'stroke-width': 2, 'marker-end': '' }), svg('circle', { cx: x + 25, cy: 95, r: 6, fill: 'var(--t)' }), lab(x, 150, title), lab(x, 50, '同一个实验', 'lbl mid')); };
+  exp(lab1, 150, '今天'); exp(lab2, 410, '十年后');
+  s.append(lab1, lab2);
+  const res = lab(280, 185, '', 'lbl mid big'); const res2 = lab(280, 208, '', 'lbl mid'); s.append(res, res2);
+  const arrow = svg('path', { d: 'M215,95 H335', stroke: 'var(--muted)', 'stroke-width': 2, 'stroke-dasharray': '6 5' }); s.append(arrow); s.append(lab(280, 88, '时间平移'));
+  let mode = 0;
+  const apply = () => {
+    grid.style.transform = mode ? 'scale(1.18)' : 'scale(1)'; grid.querySelectorAll('line').forEach(l => l.setAttribute('stroke', mode ? 'var(--o)' : 'var(--grid)'));
+    lab2.querySelector('rect').setAttribute('stroke', mode ? 'var(--o)' : 'var(--line)');
+    res.textContent = mode ? '宇宙学尺度：背景本身在膨胀，对称性不再精确' : '结果相同 ⇒ 时间平移对称 ⇒ 能量守恒';
+    res2.textContent = mode ? '⇒ 能量不必守恒' : '（能量只是这个对称性导出的守恒量）';
+  };
+  root.append(el('div', { class: 'ctrl' }, seg(['日常尺度', '宇宙学尺度（膨胀）'], (i) => { mode = i; apply(); })), s);
+  apply();
+  return { start() {}, stop() {} };
+});
+
+/* ======================================================================
+   08b 膨胀的盒子
+   ====================================================================== */
+reg('box', (root) => {
+  const W = 560, H = 260; let a = 1;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}` });
+  const L0 = 70; const bx1 = 120, bx2 = 400, by = 130;
+  const boxA = svg('rect', { fill: 'var(--p-soft)', stroke: 'var(--p)', 'stroke-width': 2, rx: 6 }), boxB = svg('rect', { fill: 'var(--o-soft)', stroke: 'var(--o)', 'stroke-width': 2, rx: 6 });
+  s.append(boxA, boxB);
+  const dots = Array.from({ length: 12 }, (_, i) => { const d = svg('circle', { r: 4, fill: 'var(--p)' }); s.append(d); return { d, u: (i % 4 + .5) / 4, v: (Math.floor(i / 4) + .5) / 3 }; });
+  const wave = svg('path', { fill: 'none', 'stroke-width': 3 }); s.append(wave);
+  const t1 = svg('text', { x: bx1, y: 22, class: 'lbl mid big' }, '物质：质量不变'), t2 = svg('text', { x: bx2, y: 22, class: 'lbl mid big' }, '光子：波长被拉长'); s.append(t1, t2);
+  const e1 = svg('text', { x: bx1, y: H - 14, class: 'lbl mid m' }, ''), e2 = svg('text', { x: bx2, y: H - 14, class: 'lbl mid m' }, ''); s.append(e1, e2);
+  const bars = el('div', {});
+  const mkBar = (name, col) => { const f = el('div', { class: 'fill', style: `background:${col}` }); const v = el('div', { class: 'val' }); bars.append(el('div', { class: 'ebar' }, el('div', {}, name), el('div', { class: 'track' }, f), v)); return { f, v }; };
+  const bM = mkBar('物质总能量', 'var(--p)'), bP = mkBar('光子总能量', 'var(--o)');
+  const draw = () => {
+    const L = L0 * a * 0.85 + L0 * 0.15; // 视觉上温和放大
+    boxA.setAttribute('x', bx1 - L / 2); boxA.setAttribute('y', by - L / 2); boxA.setAttribute('width', L); boxA.setAttribute('height', L);
+    boxB.setAttribute('x', bx2 - L / 2); boxB.setAttribute('y', by - L / 2); boxB.setAttribute('width', L); boxB.setAttribute('height', L);
+    dots.forEach(({ d, u, v }) => { d.setAttribute('cx', bx1 - L / 2 + u * L); d.setAttribute('cy', by - L / 2 + v * L); });
+    const lam = 18 * a; let p = ''; for (let x = 0; x <= L; x += 2) { p += (x ? 'L' : 'M') + (bx2 - L / 2 + x).toFixed(1) + ',' + (by + Math.sin(x / lam * 6.283) * 14).toFixed(1); } wave.setAttribute('d', p);
+    const hue = 60 - (a - 1) * 25; wave.setAttribute('stroke', `hsl(${Math.max(0, hue)},85%,50%)`);
+    e1.textContent = `ε ∝ a⁻³, V ∝ a³ ⇒ E 不变`; e2.textContent = `ε ∝ a⁻⁴, V ∝ a³ ⇒ E ∝ 1/a`;
+    bM.f.style.width = '100%'; bM.v.textContent = '1.00'; bP.f.style.width = (100 / a) + '%'; bP.v.textContent = (1 / a).toFixed(2);
+  };
+  root.append(el('div', { class: 'ctrl' }, range('膨胀倍数 a', 1, 4, 1, 0.05, (v) => { a = v; draw(); }, (v) => v.toFixed(2))), s, bars);
+  root.append(el('div', { class: 'eq' }, 'E = h/λ ，λ → aλ ⇒ E → E/a ；ε = E/V ∝ a⁻¹ · a⁻³ = a⁻⁴ ⇒ E = εV ∝ a⁻¹'));
+  draw();
+  return {};
+});
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>

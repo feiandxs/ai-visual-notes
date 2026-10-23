@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>时间的本质</title>
+<meta name="description" content="Stephen Wolfram《On the Nature of Time》可视化讲解：时间是宇宙逐步做的计算，而我们只能一步步跟着算。">
+<style>
+:root{
+  --bg:#f5f3ec; --fg:#1e1d1a; --muted:#6c685f; --card:#fffdf7; --line:#e1dcd0; --soft:#efece3;
+  --accent:#3d4fd6; --accent-soft:#e4e7fb; --amber:#d47a06; --amber-soft:#fdebd2;
+  --teal:#15897a; --teal-soft:#d8f1ec; --red:#cf4b4b; --cell:#23221f; --cell-off:#ebe8df;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -12px rgba(30,29,26,.18);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111317; --fg:#e9e7e1; --muted:#9b988f; --card:#191c22; --line:#2b2f38; --soft:#20242c;
+    --accent:#8a98ff; --accent-soft:#232a4d; --amber:#f0a63a; --amber-soft:#3b2d14;
+    --teal:#3ec9b4; --teal-soft:#153630; --red:#ef7373; --cell:#e9e7e1; --cell-off:#262a33;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111317; --fg:#e9e7e1; --muted:#9b988f; --card:#191c22; --line:#2b2f38; --soft:#20242c;
+  --accent:#8a98ff; --accent-soft:#232a4d; --amber:#f0a63a; --amber-soft:#3b2d14;
+  --teal:#3ec9b4; --teal-soft:#153630; --red:#ef7373; --cell:#e9e7e1; --cell-off:#262a33;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Helvetica Neue",Arial,sans-serif;line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased}
+a{color:var(--accent)}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.92em}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:50;transition:width .15s linear}
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:28px;padding:0 24px} }
+nav.toc{display:none}
+@media (min-width:1024px){
+  nav.toc{display:block;position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:36px 0 36px 4px;font-size:13px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;padding:4px 8px;border-left:2px solid transparent;line-height:1.35;margin:1px 0}
+  nav.toc a.on{color:var(--fg);border-color:var(--accent);background:var(--accent-soft)}
+  nav.toc .t{font-weight:600;color:var(--fg);margin:0 0 10px 8px;font-size:14px}
+}
+main{padding:0 16px 80px;min-width:0}
+@media (min-width:1024px){ main{padding:0 0 100px} }
+.hero{padding:72px 0 36px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.hero .kicker{color:var(--accent);font-weight:600;letter-spacing:.08em;font-size:13px;text-transform:uppercase}
+.hero h1{font-size:clamp(32px,6vw,54px);line-height:1.12;margin:10px 0 14px;letter-spacing:-.01em}
+.hero p{font-size:17px;color:var(--muted);max-width:620px;margin:0 0 18px}
+.hero .meta{font-size:13px;color:var(--muted)}
+.hero .chain{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+.hero .chain span{background:var(--soft);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;opacity:0;transform:translateY(6px);transition:opacity .5s,transform .5s}
+.hero.in .chain span{opacity:1;transform:none}
+.sec{padding:56px 0 20px;border-bottom:1px solid var(--line)}
+.sec .num{display:inline-block;background:var(--accent-soft);color:var(--accent);font-family:ui-monospace,Menlo,monospace;font-size:12px;padding:3px 8px;border-radius:6px;letter-spacing:.06em}
+.sec h2{font-size:clamp(24px,4vw,34px);line-height:1.2;margin:12px 0 8px;letter-spacing:-.01em}
+.sec .lede{font-size:17px;margin:0 0 20px;max-width:700px}
+.sec .chap{font-size:12px;color:var(--muted);margin-left:10px}
+.fig{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow);overflow:hidden}
+.fig .cap{font-size:13px;color:var(--muted);margin:0 0 12px}
+.fig .cap b{color:var(--fg)}
+.fig .foot{font-size:12.5px;color:var(--muted);margin:12px 0 0;line-height:1.5}
+.notes{margin:18px 0 0;padding:0 0 0 18px;font-size:14.5px;color:var(--muted)}
+.notes li{margin:5px 0}
+.notes b{color:var(--fg);font-weight:600}
+.two{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:720px){ .two{grid-template-columns:1fr 1fr} }
+.three{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:720px){ .three{grid-template-columns:1fr 1fr 1fr} }
+.panel{background:var(--soft);border-radius:12px;padding:12px;min-width:0}
+.panel h4{margin:0 0 8px;font-size:14px;font-weight:600}
+.panel h4 small{color:var(--muted);font-weight:400;margin-left:6px}
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+button.b{font:inherit;font-size:13.5px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:7px 14px;border-radius:999px;cursor:pointer}
+button.b:hover{border-color:var(--accent)}
+button.b.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--card)}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--muted);padding:7px 12px;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.rng{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.rng input{accent-color:var(--accent);width:140px}
+.rng output{font-family:ui-monospace,Menlo,monospace;color:var(--fg);min-width:3ch}
+.status{font-size:13px;color:var(--muted);margin-top:8px;min-height:1.4em}
+.status b{color:var(--fg)}
+.tag{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--amber-soft);color:var(--amber);font-weight:600;vertical-align:middle}
+.tag.t{background:var(--teal-soft);color:var(--teal)}
+.tag.a{background:var(--accent-soft);color:var(--accent)}
+.tag.r{background:color-mix(in srgb,var(--red) 15%,transparent);color:var(--red)}
+canvas{display:block;max-width:100%}
+svg{display:block;max-width:100%;height:auto}
+svg text{font-family:inherit}
+.quote{border-left:3px solid var(--amber);padding:6px 14px;margin:14px 0 0;color:var(--fg);font-size:14.5px;background:var(--amber-soft);border-radius:0 10px 10px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px;font-size:12px}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* cell rows for observer demo */
+.cells{display:grid;grid-template-columns:repeat(24,1fr);gap:3px}
+.cells i{display:block;aspect-ratio:1;border-radius:3px;background:var(--cell-off);transition:background .2s,transform .2s}
+.cells i.on{background:var(--accent)}
+.cells i.u{background:var(--cell)}
+.cells i.ghost{background:var(--amber);opacity:.4}
+.row-l{display:grid;grid-template-columns:64px 1fr;gap:10px;align-items:center;margin:8px 0;font-size:13px}
+.row-l span{color:var(--muted)}
+/* summary chain */
+.chainv{display:flex;flex-direction:column;gap:8px}
+.chainv .node{border:1px solid var(--line);background:var(--soft);border-radius:12px;padding:10px 14px;font-size:14px;opacity:.45;transform:translateX(-6px);transition:opacity .4s,transform .4s,border-color .4s}
+.chainv .node.lit{opacity:1;transform:none;border-color:var(--accent)}
+.chainv .node b{display:block;font-size:15px}
+.chainv .node small{color:var(--muted)}
+.chainv .arrow{text-align:center;color:var(--muted);font-size:14px;line-height:1}
+.grid-out{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:720px){ .grid-out{grid-template-columns:1fr 1fr 1fr} }
+.grid-out .node{text-align:left}
+/* mobile toc */
+#tocBtn{position:fixed;right:14px;bottom:14px;z-index:60;font:inherit;font-size:13px;background:var(--fg);color:var(--bg);border:0;border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer}
+@media (min-width:1024px){ #tocBtn{display:none} }
+#tocDrawer{position:fixed;inset:auto 0 0 0;background:var(--card);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:16px 16px 24px;z-index:70;max-height:70vh;overflow:auto;transform:translateY(100%);transition:transform .3s;box-shadow:0 -10px 40px rgba(0,0,0,.2)}
+#tocDrawer.open{transform:none}
+#tocDrawer a{display:block;padding:8px 6px;color:var(--fg);text-decoration:none;border-bottom:1px solid var(--line);font-size:14px}
+#tocDrawer a:last-child{border-bottom:0}
+#tocDrawer .close{float:right;font:inherit;border:0;background:var(--soft);border-radius:8px;padding:4px 10px;cursor:pointer;color:var(--fg)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13.5px;margin:0}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0}
+.bar{height:14px;border-radius:7px;background:var(--cell-off);overflow:hidden;display:flex}
+.bar i{display:block;height:100%;transition:width .4s}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.fade{opacity:0;transform:translateY(10px);transition:opacity .6s,transform .6s}
+.in .fade{opacity:1;transform:none}
+.in .fade.d1{transition-delay:.15s}.in .fade.d2{transition-delay:.3s}.in .fade.d3{transition-delay:.45s}
+@media (prefers-reduced-motion: reduce){
+  .fade,.hero .chain span,.chainv .node{transition:none}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="toc" id="toc"><div class="t">时间的本质</div></nav>
+<main>
+<header class="hero" id="hero">
+  <div class="kicker">Stephen Wolfram · On the Nature of Time · 2024</div>
+  <h1>时间的本质<br><span style="color:var(--muted);font-weight:500">一个计算的视角</span></h1>
+  <p>时间不是一条可以随便跳来跳去的坐标轴。它是宇宙一步一步做的计算，而我们这些观察者算力有限，只能跟着一步一步走。</p>
+  <div class="meta">原文：Stephen Wolfram, “On the Nature of Time”, 2024-10-08。本页为可视化讲解，图示均为示意，观点忠于原文。</div>
+  <div class="chain">
+    <span>计算不可约性</span><span>→</span><span>计算受限的观察者</span><span>→</span><span>单线索的时间</span><span>→</span><span>时间之箭</span><span>→</span><span>多重历史</span><span>→</span><span>Ruliad</span>
+  </div>
+</header>
+
+<!-- 01 -->
+<section class="sec" id="s1">
+  <span class="num">01</span><span class="chap">时间的计算视图</span>
+  <h2>时间 = 宇宙逐步做计算</h2>
+  <p class="lede">传统科学把时间当成一个“像空间一样的坐标”。Wolfram 的起点不同：世界的下一个状态，是把某条计算规则作用到上一个状态上算出来的。时间的推进，就是“宇宙在一步步做计算”。</p>
+  <div class="fig">
+    <p class="cap"><b>左</b>：时间作为坐标，可以把 t 设成任何值。<b>右</b>：时间作为计算，每个状态都由上一个状态算出来。</p>
+    <div class="two">
+      <div class="panel">
+        <h4>传统视角<small>时间是一个坐标</small></h4>
+        <svg id="d1a" viewBox="0 0 320 120" aria-label="时间坐标轴"></svg>
+        <div class="status" id="d1a-s">t 可以“设定为任意值”</div>
+      </div>
+      <div class="panel">
+        <h4>计算视角<small>时间是规则的逐步应用</small></h4>
+        <svg id="d1b" viewBox="0 0 320 120" aria-label="状态链"></svg>
+        <div class="status" id="d1b-s">状态<sub>n+1</sub> = 规则(状态<sub>n</sub>)</div>
+      </div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li><b>“时间是坐标”</b>只是一个好用的数学描述，没有回答时间“本质上是什么”。</li>
+    <li>一旦用计算的方式思考，时间的进程就等于“宇宙逐步进行的计算”。但这不只是把“坐标”换成“步数”。关键在下一节。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="sec" id="s2">
+  <span class="num">02</span><span class="chap">时间的计算视图</span>
+  <h2>计算不可约性：时间不能“跳”</h2>
+  <p class="lede">有些系统可以直接算出第 t 步的样子（计算可约）。但很多系统没有捷径：想知道第 t 步，只能老老实实跑完 t 步（计算不可约）。宇宙充满后者，这让时间有了“鲁棒性”。</p>
+  <div class="fig">
+    <p class="cap">拖动 t，然后点“跳到第 t 步”。左边的 Rule 90 有公式可以直接算出任意一行；右边的 Rule 30 只能一行一行往下算。</p>
+    <div class="ctrl">
+      <label class="rng">t <input type="range" id="d2-t" min="1" max="100" value="60"><output id="d2-o">60</output></label>
+      <button class="b pri" id="d2-go">跳到第 t 步</button>
+      <button class="b" id="d2-reset">重置</button>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <h4>计算可约 <span class="tag t">Rule 90</span><small>第 t 行 = C(t,k) 的奇偶性</small></h4>
+        <canvas id="d2a"></canvas>
+        <div class="status" id="d2a-s">等待…</div>
+      </div>
+      <div class="panel">
+        <h4>计算不可约 <span class="tag">Rule 30</span><small>没有比逐步运行更快的办法</small></h4>
+        <canvas id="d2b"></canvas>
+        <div class="status" id="d2b-s">等待…</div>
+      </div>
+    </div>
+    <p class="foot">示意：Rule 90 从单个细胞出发时每行是二项式系数的奇偶，可以直接写出；Rule 30 通常被认为计算不可约。这正是原文配图想表达的对比。</p>
+  </div>
+  <ul class="notes">
+    <li><b>不能“跳到未来”</b>：知道未来唯一的办法，是把中间那些不可约的计算步骤全部做完。</li>
+    <li>纯周期之类的简单系统是可约的，那里没有“鲁棒的时间进程”。但<b>计算等价原理</b>意味着宇宙必然充满不可约性，于是时间的进程是鲁棒的。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="sec" id="s3">
+  <span class="num">03</span><span class="chap">观察者的角色</span>
+  <h2>我们为什么觉得未来“逐步展开”</h2>
+  <p class="lede">如果规则是确定的，原则上整个未来都是定好的。可我们只能眼看着未来一点点发生。原因是：我们这种观察者<b>算力有限</b>，没法把系统那些不可约的计算抢先做完，只能和宇宙并排、同步地算。</p>
+  <div class="fig">
+    <p class="cap">上排是宇宙本身的计算，下排是观察者跟着算。试试“抢跑到未来”，再试试“假如观察者算力无限”。</p>
+    <div class="ctrl">
+      <button class="b pri" id="d3-jump">尝试抢跑到未来</button>
+      <div class="seg" id="d3-mode"><button class="on" data-v="b">算力有限（我们）</button><button data-v="u">算力无限（假想）</button></div>
+      <button class="b" id="d3-reset">重来</button>
+    </div>
+    <div class="row-l"><span>宇宙</span><div class="cells" id="d3-u"></div></div>
+    <div class="row-l"><span>观察者</span><div class="cells" id="d3-o"></div></div>
+    <div class="status" id="d3-s">观察者只能跟在宇宙旁边一步一步算。</div>
+  </div>
+  <ul class="notes">
+    <li>我们体验到时间，是<b>观察者的计算有界性</b>与<b>宇宙过程的计算不可约性</b>相互作用的结果。</li>
+    <li>如果我们算力无限，就能“一口气感知整个未来”，根本不需要时间这个概念；如果底层没有不可约性，也不会有“未来逐步揭示”这回事。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="sec" id="s4">
+  <span class="num">04</span><span class="chap">观察者的角色</span>
+  <h2>时间为什么只朝一个方向流</h2>
+  <p class="lede">记住过去比预测未来容易得多。这和热力学第二定律同源：有序的初态经过不可约的演化，会被“加密”到算力有限的观察者认不出来。微观定律可逆，但不可约性是“更强的力量”。</p>
+  <div class="fig">
+    <p class="cap">粒子从有序排列开始，按确定性规则运动。切到“观察者视角”看粗粒化后的密度：有序迅速变成“均匀的无序”。“反转速度”可以让它回去，但这需要精确知道每个粒子的状态。</p>
+    <div class="ctrl">
+      <button class="b pri" id="d4-play">播放</button>
+      <button class="b" id="d4-rev">反转所有速度</button>
+      <button class="b" id="d4-reset">重置为有序</button>
+      <div class="seg" id="d4-view"><button class="on" data-v="micro">微观</button><button data-v="macro">观察者视角（粗粒化）</button></div>
+    </div>
+    <canvas id="d4"></canvas>
+    <div class="status" id="d4-s">初态：全部粒子整齐排在左侧。</div>
+    <p class="foot">示意：这是一个简化的可逆运动模型。“反转速度”对应“底层定律可逆，结构在某种意义上还在”；但算力有限的观察者既无法识别那个被加密的结构，也无法事先准备出一个“反热力学”的状态。</p>
+  </div>
+  <ul class="notes">
+    <li>观察者感知到的，是从“准备好的有序”到“观察到的无序”的明确流动。这就是时间之箭。</li>
+    <li>要制造“反热力学”行为，就得预测一个计算不可约的过程。算力有限的观察者做不到。</li>
+  </ul>
+</section>
+
+<!-- 05 -->
+<section class="sec" id="s5">
+  <span class="num">05</span><span class="chap">观察者的角色</span>
+  <h2>时空：时间原子与因果图</h2>
+  <p class="lede">在 Wolfram 物理项目里，空间是一张离散的<b>超图（hypergraph）</b>，时间是对它的逐步改写。每一次“重写事件”就是一个时间原子；事件之间的依赖关系构成<b>因果图</b>。把因果图切成一层层“同时性曲面”，就得到不同的参考系。</p>
+  <div class="fig">
+    <p class="cap">圆点是重写事件，箭头表示“一个事件的输出是另一个事件的输入”。切换参考系，看同一张因果图被切成不同的“时刻”序列。</p>
+    <div class="ctrl">
+      <div class="seg" id="d5-frame"><button class="on" data-v="a">参考系 A</button><button data-v="b">参考系 B</button></div>
+      <button class="b" id="d5-play">按时刻播放</button>
+    </div>
+    <div class="scroll-x"><svg id="d5" viewBox="0 0 640 300" style="min-width:520px" aria-label="因果图与同时性切片"></svg></div>
+    <div class="status" id="d5-s">同一张因果图，不同的切法 = 不同的参考系。</div>
+  </div>
+  <ul class="notes">
+    <li><b>时间</b>代表宇宙中的“计算进展”，<b>空间</b>代表“数据结构的布局”。完整的因果图把两者捆在一起。</li>
+    <li>和相对论一样，切片方式不唯一，于是有不同参考系。但不管怎么切，时间总对应某串“在计算上相互依存”的事件。</li>
+    <li>从因果图推出爱因斯坦方程，同样依赖“我们是计算受限的观察者”这一点。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="sec" id="s6">
+  <span class="num">06</span><span class="chap">观察者的角色</span>
+  <h2>时间什么时候会“停下来”</h2>
+  <p class="lede">我们感知时间流逝的速率，大致就是我们往内在感知里“添加东西”的速率。睡着、被麻醉、死亡时，时间对我们停止。另一种极端：宇宙某处“活动太多”，超图再也没有可做的重写，时间在那里停止。</p>
+  <div class="fig">
+    <div class="two">
+      <div class="panel">
+        <h4>观察者内部<small>感知的累积速率</small></h4>
+        <div class="ctrl"><div class="seg" id="d6-aw"><button class="on" data-v="1">清醒</button><button data-v="0">睡着 / 麻醉</button></div></div>
+        <svg id="d6a" viewBox="0 0 300 120" aria-label="感知计数"></svg>
+        <div class="status" id="d6a-s">内在感知持续增加 → 感到时间在流逝</div>
+      </div>
+      <div class="panel">
+        <h4>宇宙底层<small>超图的改写活动</small></h4>
+        <div class="ctrl"><label class="rng">活动密度（≈能量–动量） <input type="range" id="d6-e" min="0" max="100" value="30"><output id="d6-eo">30</output></label></div>
+        <svg id="d6b" viewBox="0 0 300 120" aria-label="超图重写"></svg>
+        <div class="status" id="d6b-s">重写不断发生 → 时间推进</div>
+      </div>
+    </div>
+    <p class="foot">右图拉到最大：对应“活动过多（能量–动量过大）”，到达一个<b>定点</b>，没有更多计算可做。这类似广义相对论里的类空奇点（黑洞），但现在有了直接的计算解释。</p>
+  </div>
+</section>
+
+<!-- 07 -->
+<section class="sec" id="s7">
+  <span class="num">07</span><span class="chap">多重时间线</span>
+  <h2>底层的时间其实是多线程的</h2>
+  <p class="lede">我们的体验是时间只有一条线。但在超图上，每一步常常有多个可以做的更新，每一种选择顺序就是一条“历史路径”。把所有路径画在一起、把相同的状态合并，就是<b>多路图（multiway graph）</b>。</p>
+  <div class="fig">
+    <p class="cap">一个字符串改写系统：规则 <code>A → BBB</code>、<code>BB → A</code>，从 <code>A</code> 出发。同一层里相同的字符串会被合并，所以分出去的线又会汇回来。<b>橙色</b> = 多条路径汇合到同一个状态。</p>
+    <div class="ctrl">
+      <button class="b pri" id="d7-play">逐层展开</button>
+      <div class="seg" id="d7-slice"><button class="on" data-v="0">不显示切片</button><button data-v="1">显示分支空间切片</button></div>
+    </div>
+    <div class="scroll-x"><svg id="d7" viewBox="0 0 640 362" style="min-width:520px" aria-label="多路图"></svg></div>
+    <div class="status" id="d7-s">点击“逐层展开”。</div>
+  </div>
+  <ul class="notes">
+    <li>多条历史路径的存在，正是<b>量子力学</b>的来源；而我们最终只感知到一条，对应量子力学里一向神秘的“测量”。</li>
+    <li>把多路图切成一层层“瞬时切片”，每个切片不是普通空间的状态，而是<b>分支空间（branchial space）</b>的状态。</li>
+    <li>普通空间由事件的“光锥”重叠编织而成；分支空间由影响不同历史分支的事件编织而成，对应的是<b>纠缠锥</b>。</li>
+  </ul>
+</section>
+
+<!-- 08 -->
+<section class="sec" id="s8">
+  <span class="num">08</span><span class="chap">多重时间线</span>
+  <h2>“分支的心灵”如何只看到一条线</h2>
+  <p class="lede">我们本身就是系统的一部分，宇宙在分支，我们也在分支。但算力有限的观察者必须把大量细节“等价化”，才能塞进有限的心灵。于是和气体、和空间一样，多条历史被聚合成一条。</p>
+  <div class="fig">
+    <p class="cap">拖动“等价化程度”。三个例子的底层都是不可约的细节，观察者看到的却是简单、可约的聚合特征。</p>
+    <div class="ctrl"><label class="rng">等价化程度 <input type="range" id="d8-k" min="0" max="100" value="0"><output id="d8-ko">0</output></label></div>
+    <div class="three">
+      <div class="panel"><h4>气体<small>分子 → 流体</small></h4><canvas id="d8a"></canvas><div class="status" id="d8a-s">无数分子乱撞</div></div>
+      <div class="panel"><h4>空间<small>空间原子 → 连续空间</small></h4><canvas id="d8b"></canvas><div class="status" id="d8b-s">离散网络不断变化</div></div>
+      <div class="panel"><h4>历史<small>多条分支 → 一条线索</small></h4><canvas id="d8c"></canvas><div class="status" id="d8c-s">许多历史线并行</div></div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li>我们的心灵是“大”的：横跨很多条历史分支；又是算力有限的：只能感知聚合特征。一阶近似下，涌现出来的就是<b>单一聚合的历史线</b>。</li>
+    <li>足够精细的测量能看到多条线索并存的“量子效应”；但在直接的人类层面，我们总是聚合到只剩一条。</li>
+    <li>这还依赖一个假设：我们相信自己<b>持续存在</b>。每一刻我们都由不同的空间原子、不同的分支构成，却仍认为“还是同一个我”。通常这样做并不矛盾。</li>
+  </ul>
+</section>
+
+<!-- 09 -->
+<section class="sec" id="s9">
+  <span class="num">09</span><span class="chap">多重时间线</span>
+  <h2>为什么大家看到同一个“客观现实”</h2>
+  <p class="lede">一个心灵能把历史看成一条线，可不同的人、不同的仪器为什么能达成一致？Wolfram 的答案：我们在分支空间里<b>彼此足够靠近</b>。就像在物理空间里，所有人类身边都是同一颗恒星。</p>
+  <div class="fig">
+    <p class="cap">分支空间很大，人类（有共同起源）只占一小块。切换“质量”看看会怎样。</p>
+    <div class="ctrl"><div class="seg" id="d9-m"><button class="on" data-v="1">质量 &gt; 0（我们）</button><button data-v="0">质量 = 0（假想）</button></div></div>
+    <svg id="d9" viewBox="0 0 640 260" aria-label="分支空间中的人类"></svg>
+    <div class="status" id="d9-s">有质量 → 效应不会以最大纠缠速度向四面八方散开 → 我们待在一起。</div>
+  </div>
+  <ul class="notes">
+    <li>物理空间里效应最多以光速传播；分支空间里的类比是<b>最大纠缠速度</b>（数值未知，由普朗克单位与基本长度、基本时间换算相关）。</li>
+    <li>超图里事件的密度决定能量（质量）；多路图里事件的密度决定作用量。有质量，效应就“待在附近”。<b>非零质量</b>大概是成为“像我们这样的观察者”的关键条件。</li>
+    <li>原则上可以想象能同时体验多条历史的观察者（像理想量子计算机的内部），但门槛极高：不仅要应付计算不可约性，还要应付<b>多计算不可约性</b>。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="sec" id="s10">
+  <span class="num">10</span><span class="chap">Ruliad 中的时间</span>
+  <h2>Ruliad：所有可能计算的纠缠极限</h2>
+  <p class="lede">前面都假设“规则是固定的”，那为什么是这条规则？<b>Ruliad</b> 不做选择：它是遵循所有可能计算规则得到的东西，唯一且抽象必然，就像 1 + 1 = 2 一样。从外面看它是一个永恒的整体，没有时间；但我们嵌在里面，只能一步步探索。</p>
+  <div class="fig">
+    <p class="cap">同一个 Ruliad，两种看法。</p>
+    <div class="ctrl"><div class="seg" id="d10-v"><button data-v="out">从外部看（不可能做到）</button><button class="on" data-v="in">从内部看（我们）</button></div><button class="b" id="d10-re">重走一遍</button></div>
+    <svg id="d10" viewBox="0 0 640 300" aria-label="Ruliad"></svg>
+    <div class="status" id="d10-s">我们只能用有限的计算“在 Ruliad 空间中一步步移动”。这就给了我们时间。</div>
+  </div>
+  <ul class="notes">
+    <li>只要对“我们是什么样的观察者”做一点点假设，对 Ruliad 的感知就会遵循已知的核心物理定律：第二定律、爱因斯坦方程、量子力学的路径积分。</li>
+    <li>每个心灵走的路径都不同，但我们在 Ruliad 空间里彼此很近，形成一个紧密的“群体”，所以共享客观现实。</li>
+    <li>Ruliad 也包含<b>所有可能的数学</b>。做数学更像是在元数学空间里“扩展”，而不是沿一条路“前进”，这类探索不一定对应时间的推进。</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section class="sec" id="s11">
+  <span class="num">11</span><span class="chap">那么时间到底是什么</span>
+  <h2>时间像“热”：不依赖基底的抽象量</h2>
+  <p class="lede">计算等价原理说，计算不可约性本质上只有一种。于是不同系统“积累计算效应”的方式是一样的，这让时间可以被抽象地定义，不管底下是什么规则、什么材料。这和“热”如出一辙。</p>
+  <div class="fig">
+    <div class="two">
+      <div class="panel">
+        <h4>热<small>不同材料 → 同一个量</small></h4>
+        <svg id="d11a" viewBox="0 0 300 150" aria-label="热的普适性"></svg>
+        <div class="status">分子运动细节各不相同，但都能只用“多少热”来刻画。</div>
+      </div>
+      <div class="panel">
+        <h4>时间<small>不同时钟 → 同一个量</small></h4>
+        <svg id="d11b" viewBox="0 0 300 150" aria-label="时间的普适性"></svg>
+        <div class="status">不用管时钟内部怎么工作，都能说“过去了多少时间”。</div>
+      </div>
+    </div>
+  </div>
+  <ul class="notes">
+    <li>这不只是概念类比：<b>热本身也是计算不可约性的结果</b>，它能被统一刻画，同样源于不可约性的普适性。</li>
+    <li>和热一样，鲁棒的时间概念依赖我们是算力有限的观察者。否则我们既能打破第二定律，也能打破时间的线性流动。</li>
+    <li>科学常想“跑赢时间”去预测未来。不可约性说做不到，但这恰恰<b>赋予时间意义</b>：如果总能跳到结果，“经历”本身就一无所获。</li>
+  </ul>
+</section>
+
+<!-- 12 -->
+<section class="sec" id="s12">
+  <span class="num">12</span><span class="chap">那么时间到底是什么</span>
+  <h2>时间之箭为什么对齐，时间旅行为什么不行</h2>
+  <p class="lede">底层定律正反都成立，Ruliad 也对“前进”“后退”对称。可我们的“经验之箭”（记得过去、猜不到未来）总和“热力学之箭”指向一致，因为两者都在<b>要求过去更简单</b>。时间旅行则需要状态精确重合，不可约性让这几乎不可能。</p>
+  <div class="fig">
+    <div class="two">
+      <div class="panel">
+        <h4>两支箭为什么同向</h4>
+        <svg id="d12a" viewBox="0 0 300 170" aria-label="时间之箭对齐"></svg>
+        <div class="status">经验：过去 = 能记住的（有界）。热力学：过去 = 能准备的（有界）。未来都可以不可约。</div>
+      </div>
+      <div class="panel">
+        <h4>闭合类时曲线需要什么</h4>
+        <div class="ctrl"><div class="seg" id="d12-sys"><button class="on" data-v="irr">不可约系统</button><button data-v="per">简单周期系统</button></div></div>
+        <svg id="d12b" viewBox="0 0 300 170" aria-label="状态是否重合"></svg>
+        <div class="status" id="d12b-s">状态永远对不上 → 没有回路 → 没有时间旅行。</div>
+      </div>
+    </div>
+    <p class="foot">只有当“现在的状态”与“以前的状态”在每一个特征上都相同，观察者才会把它们等同，因果图里才会出现回路。一个带记忆的观察者几乎不可能让状态重合；精心挑选路径去“回到过去”，就像麦克斯韦妖或超光速导航一样，是算力有限的观察者做不到的。</p>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="sec" id="s13">
+  <span class="num">13</span><span class="chap">那么时间到底是什么</span>
+  <h2>时间膨胀的“机械”解释，以及我们的尺度</h2>
+  <p class="lede">物体运动时，一部分超图重写要用来“把它在新位置重新造出来”，留给它自身演化的重写就少了，于是它的时间变慢。引力处活动更多，时间反而更快。至于我们把世界看成“一帧帧空间状态”，则是因为光子到达只要微秒，大脑处理却要毫秒。</p>
+  <div class="fig">
+    <div class="two">
+      <div class="panel">
+        <h4>重写预算<small>运动 → 时间变慢</small></h4>
+        <div class="ctrl"><label class="rng">速度 v/c <input type="range" id="d13-v" min="0" max="95" value="0"><output id="d13-vo">0.00</output></label></div>
+        <div class="bar" id="d13-bar"><i id="d13-int" style="width:100%;background:var(--accent)"></i><i id="d13-mov" style="width:0;background:var(--amber)"></i></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>用于自身演化（内在时间）</span><span><i style="background:var(--amber)"></i>用于在新位置重建自己</span></div>
+        <svg id="d13a" viewBox="0 0 300 110" aria-label="时钟对比"></svg>
+        <div class="status" id="d13a-s">静止：全部重写都用于自身演化。</div>
+      </div>
+      <div class="panel">
+        <h4>我们为什么看到“一帧帧”的世界</h4>
+        <div class="ctrl"><div class="seg" id="d13-brain"><button class="on" data-v="slow">大脑：毫秒级（我们）</button><button data-v="fast">大脑快一百万倍</button></div></div>
+        <svg id="d13b" viewBox="0 0 300 150" aria-label="光子到达与感知"></svg>
+        <div class="status" id="d13b-s">光子不到一微秒就到，大脑要几毫秒才登记 → 整个场景被打包成“同一时刻的空间状态”。</div>
+      </div>
+    </div>
+    <p class="foot">左图比例按 √(1−v²/c²) 画，原文说明这种定性描述可以做得严格并重新得到通常的时间膨胀公式。右图：如果大脑快一百万倍，或者场景大到天文尺度，我们就不会再用“连续时刻上的空间状态”来理解世界。但这只改变时间“作用于什么”，不改变时间本身。</p>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="sec" id="s14">
+  <span class="num">14</span><span class="chap">总结</span>
+  <h2>那么，时间到底是什么？</h2>
+  <p class="lede">时间，就是应用计算规则时推进的那个东西。它可以抽象地定义，不依赖具体规则或基底。让这一切成立的，是计算等价原理，以及它所蕴含的无处不在的计算不可约性。</p>
+  <div class="fig">
+    <p class="cap">把全文的链条串起来。</p>
+    <div class="chainv" id="d14">
+      <div class="grid-out">
+        <div class="node"><b>计算规则</b><small>世界的下一个状态由上一个算出</small></div>
+        <div class="node"><b>计算等价原理</b><small>不可约性只有一种，而且无处不在</small></div>
+        <div class="node"><b>计算受限的观察者</b><small>我们算力有限，并相信自己持续存在</small></div>
+      </div>
+      <div class="arrow">↓ 相互作用</div>
+      <div class="grid-out">
+        <div class="node"><b>时间不能跳</b><small>只能沿一条链一步步走</small></div>
+        <div class="node"><b>时间之箭</b><small>过去被要求更简单，未来不可约</small></div>
+        <div class="node"><b>单一线索</b><small>多路分支被等价化成一条</small></div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="grid-out">
+        <div class="node"><b>不依赖基底</b><small>像热一样，是抽象普适的量</small></div>
+        <div class="node"><b>没有时间旅行</b><small>状态永远对不上</small></div>
+        <div class="node"><b>时间有分量</b><small>经历本身不可被跳过</small></div>
+      </div>
+    </div>
+    <div class="quote">时间是宇宙产生连续状态的那个计算过程。计算不可约性让它对我们这样的观察者显得刚硬；计算等价原理让它不依赖于基底：无论是作为观察者的我们、日常的物理世界，还是整个宇宙。<small>依据原文结尾段落概括</small></div>
+  </div>
+  <ul class="notes">
+    <li>原文：Stephen Wolfram (2024), “On the Nature of Time”, Stephen Wolfram Writings。本页由 Claude Code 基于原文生成，仅供学习；所有图示为示意。</li>
+  </ul>
+</section>
+
+</main>
+</div>
+<button id="tocBtn">目录</button>
+<div id="tocDrawer"><button class="close" id="tocClose">关闭</button><div style="font-weight:600;margin-bottom:8px">目录</div><div id="tocList"></div></div>
+<script>
+(function(){
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const NS='http://www.w3.org/2000/svg';
+const css = n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const C = ()=>({fg:css('--fg'),muted:css('--muted'),accent:css('--accent'),amber:css('--amber'),teal:css('--teal'),red:css('--red'),line:css('--line'),cell:css('--cell'),off:css('--cell-off'),soft:css('--soft'),card:css('--card'),asoft:css('--accent-soft')});
+function el(tag,attrs={},parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function txt(parent,x,y,s,attrs={}){const t=el('text',Object.assign({x,y,'font-size':11,fill:css('--muted')},attrs),parent);t.textContent=s;return t;}
+function seg(id,cb){const s=$(id);if(!s)return;s.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$$('button',s).forEach(x=>x.classList.toggle('on',x===b));cb(b.dataset.v);});}
+function segVal(id){const b=$(id+' button.on');return b?b.dataset.v:null;}
+function fitCanvas(c,aspect){const w=c.parentElement.clientWidth-0;const h=Math.round(w*aspect);const r=Math.min(devicePixelRatio||1,2);c.width=Math.round(w*r);c.height=Math.round(h*r);c.style.width=w+'px';c.style.height=h+'px';const g=c.getContext('2d');g.setTransform(r,0,0,r,0,0);return {g,w,h};}
+// seeded random for determinism
+function rng(seed){let s=seed>>>0;return()=>{s=(s*1664525+1013904223)>>>0;return s/4294967296;};}
+const demos={};
+const timers=new Set();
+function loop(fn){let id,run=true;const step=t=>{if(!run)return;fn(t);id=requestAnimationFrame(step);};id=requestAnimationFrame(step);return()=>{run=false;cancelAnimationFrame(id);};}
+
+/* ---------- D1: coordinate vs computation ---------- */
+demos.s1={
+ init(){
+  const c=C();
+  const a=$('#d1a');a.innerHTML='';
+  el('line',{x1:20,y1:70,x2:300,y2:70,stroke:c.line,'stroke-width':2},a);
+  el('path',{d:'M292 64 L300 70 L292 76',fill:'none',stroke:c.line,'stroke-width':2},a);
+  for(let i=0;i<=8;i++){el('line',{x1:20+i*35,y1:66,x2:20+i*35,y2:74,stroke:c.muted},a);txt(a,16+i*35,90,'t='+i);}
+  this.knob=el('circle',{cx:20,cy:70,r:7,fill:c.amber},a);
+  this.lbl=txt(a,20,40,'直接设定 t',{'text-anchor':'middle','font-size':12,fill:c.fg});
+  const b=$('#d1b');b.innerHTML='';
+  this.boxes=[];
+  // 6 small states as 1D CA rows (rule 110 from a seed)
+  let row=[0,0,0,1,0,1,1,0,1];
+  for(let i=0;i<5;i++){
+    const g=el('g',{opacity:0},b);const x=10+i*63,y=38;
+    for(let k=0;k<9;k++)el('rect',{x:x+k*5.4,y,width:4.8,height:14,rx:1.2,fill:row[k]?c.cell:c.off},g);
+    txt(b,x+24,68,'状态'+i,{'text-anchor':'middle','font-size':10});
+    if(i<4){const ar=el('g',{opacity:0},b);el('path',{d:`M${x+51} 45 L${x+61} 45`,stroke:c.accent,'stroke-width':2},ar);el('path',{d:`M${x+58} 42 L${x+61} 45 L${x+58} 48`,fill:'none',stroke:c.accent,'stroke-width':2},ar);txt(b,x+56,32,'规则',{'text-anchor':'middle','font-size':9,fill:c.accent});this.boxes.push(ar);}
+    this.boxes.push(g);
+    row=row.map((v,k)=>{const l=row[(k+8)%9],r=row[(k+1)%9];const n=(l<<2)|(v<<1)|r;return (110>>n)&1;});
+  }
+  txt(b,160,100,'每一步都要真的算出来',{'text-anchor':'middle','font-size':12,fill:c.fg});
+ },
+ start(){
+  this.init();
+  const r=rng(7);let i=0;
+  const total=this.boxes.length;
+  const tick=()=>{
+    // left: knob jumps randomly
+    const t=Math.floor(r()*9);this.knob.setAttribute('cx',20+t*35);this.lbl.setAttribute('x',20+t*35);this.lbl.textContent='直接设定 t='+t;
+    // right: reveal chain progressively
+    this.boxes.forEach((g,k)=>g.setAttribute('opacity',k<=i?1:0.12));
+    i=(i+1)%(total+3);
+  };
+  if(RM){this.boxes.forEach(g=>g.setAttribute('opacity',1));return;}
+  tick();this.t=setInterval(tick,650);timers.add(this.t);
+ },
+ stop(){clearInterval(this.t);}
+};
+
+/* ---------- D2: cellular automata reducible vs irreducible ---------- */
+demos.s2={
+ init(){
+  this.ca=$('#d2a');this.cb=$('#d2b');this.W=161;this.H=101;
+  this.rowsB=null;this.busy=false;
+  $('#d2-t').addEventListener('input',e=>{$('#d2-o').textContent=e.target.value;});
+  $('#d2-go').addEventListener('click',()=>this.go());
+  $('#d2-reset').addEventListener('click',()=>{this.stopRun();this.drawA(0);this.drawB(0);$('#d2a-s').textContent='等待…';$('#d2b-s').textContent='等待…';});
+  addEventListener('resize',()=>{if(this.inited){this.drawA(this.lastA||0);this.drawB(this.lastB||0);}});
+  this.inited=true;
+ },
+ rowB(n){ // rule 30 rows up to n, cached
+  if(!this.rowsB){const r0=new Uint8Array(this.W);r0[(this.W-1)/2]=1;this.rowsB=[r0];}
+  while(this.rowsB.length<=n){const p=this.rowsB[this.rowsB.length-1];const q=new Uint8Array(this.W);for(let x=0;x<this.W;x++){const l=x?p[x-1]:0,c=p[x],r=x<this.W-1?p[x+1]:0;q[x]=(30>>((l<<2)|(c<<1)|r))&1;}this.rowsB.push(q);}
+  return this.rowsB[n];
+ },
+ cellA(r,x){ // rule 90 from single seed: offset x from center, |x|<=r, parity match
+  const off=x;if(Math.abs(off)>r||((off+r)&1))return 0;const k=(off+r)/2;return ((k&r)===k)?1:0;
+ },
+ drawA(t,hl){
+  this.lastA=t;const {g,w,h}=fitCanvas(this.ca,this.H/this.W);const c=C();const s=w/this.W;g.fillStyle=c.off;g.fillRect(0,0,w,h);
+  g.fillStyle=c.cell;
+  for(let r=0;r<=t&&r<this.H;r++){const faint=hl&&r!==t;g.globalAlpha=faint?0.3:1;for(let x=-r;x<=r;x++){if(this.cellA(r,x)){g.fillRect((x+(this.W-1)/2)*s,r*s,Math.max(s,1),Math.max(s,1));}}}
+  g.globalAlpha=1;
+  if(hl){g.fillStyle=c.teal;g.globalAlpha=.35;g.fillRect(0,t*s-1,w,Math.max(s,1)+2);g.globalAlpha=1;}
+ },
+ drawB(t,hl){
+  this.lastB=t;const {g,w,h}=fitCanvas(this.cb,this.H/this.W);const c=C();const s=w/this.W;g.fillStyle=c.off;g.fillRect(0,0,w,h);g.fillStyle=c.cell;
+  for(let r=0;r<=t&&r<this.H;r++){const row=this.rowB(r);for(let x=0;x<this.W;x++)if(row[x])g.fillRect(x*s,r*s,Math.max(s,1),Math.max(s,1));}
+  if(hl){g.fillStyle=c.amber;g.globalAlpha=.35;g.fillRect(0,t*s-1,w,Math.max(s,1)+2);g.globalAlpha=1;}
+ },
+ stopRun(){if(this.stopB){this.stopB();this.stopB=null;}},
+ go(){
+  this.stopRun();const t=+$('#d2-t').value;
+  this.drawA(t,true);$('#d2a-s').innerHTML=`<b>瞬间得到第 ${t} 行</b>：按公式直接写出，不用算中间行。`;
+  $('#d2b-s').innerHTML=`正在逐行计算… <b>0 / ${t}</b>`;
+  if(RM){this.drawB(t,true);$('#d2b-s').innerHTML=`<b>算完 ${t} 行才知道第 ${t} 行</b>：中间一行都不能省。`;return;}
+  let r=0,last=0;const t0=performance.now();
+  this.stopB=loop(now=>{const target=Math.min(t,Math.floor((now-t0)/40));if(target!==last){last=target;this.drawB(target,target===t);$('#d2b-s').innerHTML=`正在逐行计算… <b>${target} / ${t}</b>`;}if(target>=t){this.stopRun();$('#d2b-s').innerHTML=`<b>算完 ${t} 行才知道第 ${t} 行</b>：中间一行都不能省。`;}});
+ },
+ start(){if(!this.inited)this.init();this.drawA(this.lastA||0);this.drawB(this.lastB||0);if(!this.auto){this.auto=true;setTimeout(()=>this.go(),400);}},
+ stop(){this.stopRun();}
+};
+
+/* ---------- D3: bounded observer ---------- */
+demos.s3={
+ init(){
+  this.N=24;const u=$('#d3-u'),o=$('#d3-o');u.innerHTML='';o.innerHTML='';
+  this.u=[];this.o=[];for(let i=0;i<this.N;i++){this.u.push(u.appendChild(document.createElement('i')));this.o.push(o.appendChild(document.createElement('i')));}
+  this.mode='b';this.i=0;
+  seg('#d3-mode',v=>{this.mode=v;this.render();$('#d3-s').innerHTML=v==='u'?'<b>算力无限</b>：整个未来一口气全部“看到”，没有“逐步展开”，也就不需要时间的概念。':'<b>算力有限</b>：观察者只能跟在宇宙旁边一步一步算。';});
+  $('#d3-reset').addEventListener('click',()=>{this.i=0;this.render();});
+  $('#d3-jump').addEventListener('click',()=>this.jump());
+  this.inited=true;
+ },
+ render(){
+  this.u.forEach((c,k)=>{c.className=k<this.i?'u':'';});
+  this.o.forEach((c,k)=>{c.className=(this.mode==='u'||k<this.i)?'on':'';});
+ },
+ jump(){
+  if(this.mode==='u'){$('#d3-s').innerHTML='算力无限时根本不需要“抢跑”：未来已经全部在眼前。';return;}
+  const from=this.i,to=Math.min(this.N-1,this.i+8);
+  for(let k=from;k<=to;k++)this.o[k].classList.add('ghost');
+  $('#d3-s').innerHTML=`想直接跳到第 ${to+1} 步？<b style="color:var(--red)">✕ 不行</b>：中间 ${to-from+1} 步是不可约的计算，必须一步步做完。`;
+  setTimeout(()=>{this.o.forEach(c=>c.classList.remove('ghost'));this.render();},900);
+ },
+ start(){if(!this.inited)this.init();this.render();
+  if(RM){this.i=14;this.render();return;}
+  this.t=setInterval(()=>{this.i=(this.i+1)%(this.N+4);this.render();},420);timers.add(this.t);},
+ stop(){clearInterval(this.t);}
+};
+
+/* ---------- D4: second law particles ---------- */
+demos.s4={
+ init(){
+  this.cv=$('#d4');this.view='micro';this.playing=false;this.dir=1;
+  seg('#d4-view',v=>{this.view=v;this.draw();});
+  $('#d4-play').addEventListener('click',()=>{this.playing=!this.playing;$('#d4-play').textContent=this.playing?'暂停':'播放';});
+  $('#d4-rev').addEventListener('click',()=>{this.p.forEach(p=>{p.vx=-p.vx;p.vy=-p.vy;});this.dir=-this.dir;this.playing=true;$('#d4-play').textContent='暂停';$('#d4-s').innerHTML=this.dir<0?'速度全部反转：底层可逆，粒子会<b>退回有序</b>。但做到这一点需要知道每个粒子的精确状态。':'再次反转：继续走向无序。';});
+  $('#d4-reset').addEventListener('click',()=>{this.reset();this.draw();});
+  addEventListener('resize',()=>this.draw());
+  this.reset();this.inited=true;
+ },
+ reset(){
+  const r=rng(42);this.p=[];this.steps=0;this.dir=1;this.playing=false;$('#d4-play').textContent='播放';
+  for(let i=0;i<10;i++)for(let j=0;j<8;j++){const a=r()*Math.PI*2,sp=.9+r()*.6;this.p.push({x:.04+i*.025,y:.12+j*.1,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp});}
+  $('#d4-s').textContent='初态：全部粒子整齐排在左侧。';
+ },
+ step(){
+  const dt=.0045;
+  for(const p of this.p){p.x+=p.vx*dt;p.y+=p.vy*dt;
+    if(p.x<0){p.x=-p.x;p.vx=-p.vx;}if(p.x>1){p.x=2-p.x;p.vx=-p.vx;}
+    if(p.y<0){p.y=-p.y;p.vy=-p.vy;}if(p.y>1){p.y=2-p.y;p.vy=-p.vy;}}
+  this.steps+=this.dir;
+ },
+ draw(){
+  const {g,w,h}=fitCanvas(this.cv,0.42);const c=C();g.fillStyle=c.soft;g.fillRect(0,0,w,h);
+  if(this.view==='macro'){
+    const nx=12,ny=5;const cnt=new Array(nx*ny).fill(0);for(const p of this.p){const i=Math.min(nx-1,Math.floor(p.x*nx)),j=Math.min(ny-1,Math.floor(p.y*ny));cnt[j*nx+i]++;}
+    const mx=Math.max(4,...cnt);
+    for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const v=cnt[j*nx+i]/mx;g.fillStyle=c.accent;g.globalAlpha=.08+v*.85;g.fillRect(i*w/nx+1,j*h/ny+1,w/nx-2,h/ny-2);}
+    g.globalAlpha=1;g.fillStyle=c.fg;g.font='12px sans-serif';g.fillText('粗粒化密度：观察者只看到“每格有多少”',10,h-8);
+  }else{
+    g.fillStyle=c.cell;for(const p of this.p){g.beginPath();g.arc(p.x*w,p.y*h,3,0,Math.PI*2);g.fill();}
+  }
+  // order gauge
+  const left=this.p.filter(p=>p.x<.3).length/this.p.length;
+  const ent=1-Math.abs(left-.3)/.7;
+  g.fillStyle=c.off;g.fillRect(w-150,8,140,8);g.fillStyle=c.amber;g.fillRect(w-150,8,140*ent,8);
+  g.fillStyle=c.muted;g.font='11px sans-serif';g.fillText('无序程度',w-150,30);
+ },
+ start(){if(!this.inited)this.init();this.draw();
+  if(RM){for(let k=0;k<900;k++)this.step();this.draw();$('#d4-s').textContent='演化后：观察者看到均匀的无序。';return;}
+  this.stopL=loop(()=>{if(this.playing){for(let k=0;k<3;k++)this.step();this.draw();if(this.dir>0&&this.steps===600)$('#d4-s').innerHTML='有序结构被不可约演化<b>“加密”</b>了：它在底层“仍然在”，但算力有限的观察者认不出来。';if(this.dir<0&&this.steps<=0){this.playing=false;$('#d4-play').textContent='播放';$('#d4-s').innerHTML='回到了有序初态。这正是可逆性；但“准备一个会反热力学演化的状态”需要预测不可约过程，观察者做不到。';}}});
+  if(!this.auto){this.auto=true;setTimeout(()=>{this.playing=true;$('#d4-play').textContent='暂停';},500);}
+ },
+ stop(){if(this.stopL)this.stopL();}
+};
+
+/* ---------- D5: causal graph & frames ---------- */
+demos.s5={
+ init(){
+  const s=$('#d5');s.innerHTML='';const c=C();const r=rng(5);
+  const L=7,K=5;this.nodes=[];this.edges=[];
+  for(let l=0;l<L;l++)for(let i=0;i<K;i++){this.nodes.push({l,i,x:60+i*120+(l%2?40:0)+ (r()-.5)*14,y:40+l*36+(r()-.5)*8});}
+  const at=(l,i)=>this.nodes[l*K+i];
+  for(let l=0;l<L-1;l++)for(let i=0;i<K;i++){const opts=[i,i+1].filter(j=>j<K);const n=opts.length>1&&r()<.75?2:1;for(let k=0;k<n;k++)this.edges.push([at(l,i),at(l+1,opts[k])]);if(n===1&&opts.length>1&&r()<.5){this.edges.pop();this.edges.push([at(l,i),at(l+1,opts[1])]);}}
+  this.gS=el('g',{},s);this.gE=el('g',{},s);this.gN=el('g',{},s);
+  for(const [a,b] of this.edges){el('line',{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:c.line,'stroke-width':1.4},this.gE);}
+  for(const n of this.nodes){n.el=el('circle',{cx:n.x,cy:n.y,r:6,fill:c.cell},this.gN);}
+  txt(s,20,290,'时间 ↓',{fill:c.muted});txt(s,560,290,'空间 →',{fill:c.muted});
+  seg('#d5-frame',v=>{this.frame=v;this.render();$('#d5-s').innerHTML=v==='a'?'参考系 A：按层水平切片。':'参考系 B：倾斜地切片。<b>哪些事件“同时”</b>变了，但事件之间的因果关系一点没变。';});
+  $('#d5-play').addEventListener('click',()=>this.play());
+  this.frame='a';this.inited=true;
+ },
+ sl(n){return this.frame==='a'?n.l:n.l+n.i;},
+ render(hl){
+  const c=C();const S=this.frame==='a'?6:10;this.gS.innerHTML='';
+  const pal=[c.accent,c.teal,c.amber,c.red];
+  for(let k=0;k<=S;k++){const pts=this.nodes.filter(n=>this.sl(n)===k).sort((a,b)=>a.x-b.x);if(pts.length<1)continue;const d=pts.map((p,i)=>(i?'L':'M')+p.x+' '+p.y).join(' ');el('path',{d,fill:'none',stroke:pal[k%4],'stroke-width':10,'stroke-opacity':hl===undefined?.18:(k===hl?.55:.08),'stroke-linecap':'round','stroke-linejoin':'round'},this.gS);}
+  for(const n of this.nodes){const k=this.sl(n);n.el.setAttribute('fill',hl===undefined?pal[k%4]:(k===hl?pal[k%4]:(k<hl?c.cell:c.off)));n.el.setAttribute('r',hl!==undefined&&k===hl?8:6);}
+ },
+ play(){
+  if(this.stopP)this.stopP();const S=this.frame==='a'?6:10;let k=0;const self=this;
+  if(RM){this.render();return;}
+  this.render(0);this.stopP=(()=>{const id=setInterval(()=>{k++;if(k>S){clearInterval(id);self.render();return;}self.render(k);$('#d5-s').innerHTML=`时刻 <b>${k}</b>：这一切片上的事件“同时发生”。`;},RM?0:520);timers.add(id);return()=>clearInterval(id);})();
+ },
+ start(){if(!this.inited)this.init();this.render();if(!this.auto){this.auto=true;setTimeout(()=>this.play(),300);}},
+ stop(){if(this.stopP)this.stopP();}
+};
+
+/* ---------- D6: perception rate & fixed point ---------- */
+demos.s6={
+ init(){
+  const c=C();const a=$('#d6a');a.innerHTML='';this.aw=1;this.count=0;this.dots=[];
+  for(let i=0;i<40;i++){this.dots.push(el('rect',{x:12+(i%20)*14,y:30+Math.floor(i/20)*16,width:10,height:10,rx:2,fill:c.off},a));}
+  this.cnt=txt(a,150,90,'感知计数 0',{'text-anchor':'middle','font-size':14,fill:c.fg});
+  this.clk=txt(a,150,108,'感到的时间：在流动',{'text-anchor':'middle','font-size':11});
+  seg('#d6-aw',v=>{this.aw=+v;$('#d6a-s').innerHTML=this.aw?'内在感知持续增加 → 感到时间在流逝':'<b>不再添加感知 → 时间对这个观察者停止</b>（睡着、麻醉、死亡）';this.clk.textContent=this.aw?'感到的时间：在流动':'感到的时间：停止';});
+  const b=$('#d6b');b.innerHTML='';this.e=30;const r=rng(9);this.hn=[];this.he=[];
+  for(let i=0;i<14;i++)this.hn.push({x:30+r()*240,y:20+r()*80});
+  for(let i=0;i<14;i++)for(let j=i+1;j<14;j++){const d=Math.hypot(this.hn[i].x-this.hn[j].x,this.hn[i].y-this.hn[j].y);if(d<95)this.he.push(el('line',{x1:this.hn[i].x,y1:this.hn[i].y,x2:this.hn[j].x,y2:this.hn[j].y,stroke:c.line,'stroke-width':1.5},b));}
+  this.hn.forEach(n=>n.el=el('circle',{cx:n.x,cy:n.y,r:4,fill:c.cell},b));
+  this.rate=txt(b,150,115,'',{'text-anchor':'middle','font-size':11});
+  $('#d6-e').addEventListener('input',e=>{this.e=+e.target.value;$('#d6-eo').textContent=this.e;this.upd();});
+  this.upd();this.inited=true;
+ },
+ upd(){
+  const c=C();
+  if(this.e>=100){$('#d6b-s').innerHTML='<b style="color:var(--red)">定点</b>：活动过多，没有可做的重写 → 这里的时间停止（类比类空奇点）。';this.rate.textContent='重写速率：0（没有可做的了）';this.hn.forEach(n=>n.el.setAttribute('fill',c.red));}
+  else{const txtv=this.e>70?'活动很多 → 重写更密集 → 时间“走得更快”（对应引力红移的方向）':'重写不断发生 → 时间推进';$('#d6b-s').textContent=txtv;this.rate.textContent='重写速率：'+(this.e<5?'很低':this.e<40?'中等':this.e<70?'较高':'极高');this.hn.forEach(n=>n.el.setAttribute('fill',c.cell));}
+ },
+ start(){if(!this.inited)this.init();const c=C();if(RM){this.dots.slice(0,22).forEach(d=>d.setAttribute('fill',c.accent));this.cnt.textContent='感知计数 22';return;}
+  let f=0;this.t=setInterval(()=>{f++;
+    if(this.aw){this.count++;this.dots[this.count%40].setAttribute('fill',c.accent);if(this.count%40===0)this.dots.forEach(d=>d.setAttribute('fill',c.off));this.cnt.textContent='感知计数 '+this.count;}
+    if(this.e<100){const p=Math.max(1,Math.round(8-this.e/14));if(f%p===0){const k=Math.floor(Math.random()*this.he.length);const e=this.he[k];e.setAttribute('stroke',c.amber);e.setAttribute('stroke-width',3);setTimeout(()=>{e.setAttribute('stroke',c.line);e.setAttribute('stroke-width',1.5);},180);}}
+  },120);timers.add(this.t);},
+ stop(){clearInterval(this.t);}
+};
+
+/* ---------- D7: multiway graph ---------- */
+demos.s7={
+ init(){
+  this.levels=[['A']];const rules=[['A','BBB'],['BB','A']];
+  for(let l=0;l<6;l++){const nx=new Set();for(const s of this.levels[l]){for(const [a,b] of rules){let i=s.indexOf(a);while(i>=0){nx.add(s.slice(0,i)+b+s.slice(i+a.length));i=s.indexOf(a,i+1);}}}this.levels.push(Array.from(nx).sort());}
+  // edges
+  this.ed=[];for(let l=0;l<6;l++){for(const s of this.levels[l]){for(const [a,b] of rules){let i=s.indexOf(a);while(i>=0){const t=s.slice(0,i)+b+s.slice(i+a.length);this.ed.push([l,s,t]);i=s.indexOf(a,i+1);}}}}
+  seg('#d7-slice',v=>{this.slice=v==='1';this.render();});
+  $('#d7-play').addEventListener('click',()=>this.play());
+  this.slice=false;this.shown=7;this.inited=true;this.render();
+ },
+ pos(l,s){const row=this.levels[l];const i=row.indexOf(s);const n=row.length;return {x:320+(i-(n-1)/2)*110,y:34+l*50};},
+ render(){
+  const s=$('#d7');s.innerHTML='';const c=C();
+  if(this.slice){for(let l=0;l<7;l++){el('rect',{x:20,y:34+l*50-18,width:600,height:36,rx:8,fill:[c.accent,c.teal,c.amber][l%3],opacity:l<this.shown?.13:.04},s);txt(s,24,34+l*50+4,'切片 '+l,{'font-size':9});}
+    txt(s,620,352,'每个切片 = 分支空间的一个瞬时状态',{'text-anchor':'end','font-size':11,fill:c.fg});}
+  for(const [l,a,b] of this.ed){if(l+1>=this.shown)continue;const p=this.pos(l,a),q=this.pos(l+1,b);el('path',{d:`M${p.x} ${p.y+10} C ${p.x} ${p.y+30}, ${q.x} ${q.y-30}, ${q.x} ${q.y-10}`,fill:'none',stroke:c.line,'stroke-width':1.6},s);}
+  for(let l=0;l<Math.min(7,this.shown);l++){for(const st of this.levels[l]){const p=this.pos(l,st);const merged=this.ed.filter(e=>e[0]===l-1&&e[2]===st).length>1;
+    el('rect',{x:p.x-34,y:p.y-11,width:68,height:22,rx:11,fill:merged?c.amber:c.card,stroke:merged?c.amber:c.line,'stroke-width':1.2},s);
+    txt(s,p.x,p.y+4,st,{'text-anchor':'middle','font-size':11,fill:merged?'#fff':c.fg,'font-family':'ui-monospace,Menlo,monospace'});}}
+ },
+ play(){if(this.stopP)this.stopP();this.shown=1;this.render();if(RM){this.shown=7;this.render();return;}let l=1;const id=setInterval(()=>{this.shown=++l;this.render();$('#d7-s').innerHTML=`第 ${l-1} 层：<b>${this.levels[l-1].length}</b> 个不同状态。`;if(l>=7){clearInterval(id);$('#d7-s').innerHTML='多条“历史路径”并存，又不断汇合：这就是多路图。';}},600);timers.add(id);this.stopP=()=>clearInterval(id);},
+ start(){if(!this.inited)this.init();if(!this.auto){this.auto=true;setTimeout(()=>this.play(),300);}else this.render();},
+ stop(){if(this.stopP)this.stopP();this.shown=7;this.render();}
+};
+
+window.__demos=demos;window.__RM=RM;window.__C=C;window.__el=el;window.__txt=txt;window.__seg=seg;window.__fit=fitCanvas;window.__rng=rng;window.__loop=loop;window.__timers=timers;
+})();
+</script>
+<script>
+(function(){
+'use strict';
+const demos=window.__demos,RM=window.__RM,C=window.__C,el=window.__el,txt=window.__txt,seg=window.__seg,fitCanvas=window.__fit,rng=window.__rng,loop=window.__loop,timers=window.__timers;
+const $=(s,r=document)=>r.querySelector(s);const $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+
+/* ---------- D8: coarse graining ---------- */
+demos.s8={
+ init(){
+  this.k=0;const r=rng(3);
+  this.gas=Array.from({length:90},()=>({x:r(),y:r(),vx:(r()-.5)*.02,vy:(r()-.5)*.02}));
+  this.mesh=Array.from({length:60},()=>({x:r(),y:r(),ph:r()*6.28}));
+  this.branches=Array.from({length:14},()=>({ph:r()*6.28,amp:.08+r()*.18,f:1+r()*2}));
+  $('#d8-k').addEventListener('input',e=>{this.k=+e.target.value/100;$('#d8-ko').textContent=e.target.value;this.msg();});
+  addEventListener('resize',()=>this.draw(this.tt||0));
+  this.inited=true;this.msg();
+ },
+ msg(){const k=this.k;const hi=k>.66,mid=k>.33;
+  $('#d8a-s').textContent=hi?'只看到：一团流体，几个可约的量（密度、流速）':mid?'细节在模糊…':'无数分子乱撞（计算不可约）';
+  $('#d8b-s').textContent=hi?'只看到：连续、平滑的空间':mid?'网络的细节被等价化…':'离散的空间原子网络不断改写';
+  $('#d8c-s').textContent=hi?'只看到：一条历史线索':mid?'分支被聚合…':'许多条历史线并行（多计算不可约）';},
+ draw(t){
+  const c=C();const k=this.k;
+  // gas
+  {const {g,w,h}=fitCanvas($('#d8a'),.7);g.fillStyle=c.soft;g.fillRect(0,0,w,h);
+   g.globalAlpha=1-k;g.fillStyle=c.cell;for(const p of this.gas){g.beginPath();g.arc(p.x*w,p.y*h,2.2,0,6.28);g.fill();}
+   g.globalAlpha=k;const gr=g.createLinearGradient(0,0,w,0);gr.addColorStop(0,c.accent);gr.addColorStop(1,c.teal);g.fillStyle=gr;g.fillRect(0,0,w,h);
+   g.strokeStyle='#fff';g.lineWidth=2;for(let i=0;i<4;i++){const y=h*(i+.5)/4;g.beginPath();g.moveTo(w*.15,y);g.lineTo(w*.85,y);g.lineTo(w*.78,y-6);g.moveTo(w*.85,y);g.lineTo(w*.78,y+6);g.stroke();}
+   g.globalAlpha=1;}
+  // mesh
+  {const {g,w,h}=fitCanvas($('#d8b'),.7);g.fillStyle=c.soft;g.fillRect(0,0,w,h);
+   g.globalAlpha=1-k;g.strokeStyle=c.muted;g.lineWidth=1;const m=this.mesh.map(p=>({x:(p.x+Math.sin(t*.002+p.ph)*.02)*w,y:(p.y+Math.cos(t*.0023+p.ph)*.02)*h}));
+   for(let i=0;i<m.length;i++)for(let j=i+1;j<m.length;j++){const d=Math.hypot(m[i].x-m[j].x,m[i].y-m[j].y);if(d<w*.17){g.beginPath();g.moveTo(m[i].x,m[i].y);g.lineTo(m[j].x,m[j].y);g.stroke();}}
+   g.fillStyle=c.cell;for(const p of m){g.beginPath();g.arc(p.x,p.y,2,0,6.28);g.fill();}
+   g.globalAlpha=k;g.strokeStyle=c.accent;g.lineWidth=1.2;for(let i=1;i<6;i++){const x=w*i/6,y=h*i/6;g.beginPath();g.moveTo(x,0);g.lineTo(x,h);g.stroke();if(i<5){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}}
+   g.globalAlpha=1;}
+  // branches
+  {const {g,w,h}=fitCanvas($('#d8c'),.7);g.fillStyle=c.soft;g.fillRect(0,0,w,h);
+   g.globalAlpha=1-k;g.strokeStyle=c.muted;g.lineWidth=1;for(const b of this.branches){g.beginPath();for(let x=0;x<=w;x+=4){const y=h/2+Math.sin(x/w*b.f*4+b.ph+t*.001)*b.amp*h+(x/w)*(b.ph-3)*h*.08;g.lineTo(x,y);}g.stroke();}
+   g.globalAlpha=k;g.strokeStyle=c.accent;g.lineWidth=4;g.beginPath();g.moveTo(0,h/2);g.lineTo(w,h/2);g.stroke();
+   g.globalAlpha=1;}
+ },
+ start(){if(!this.inited)this.init();
+  if(RM){this.k=.8;$('#d8-k').value=80;$('#d8-ko').textContent=80;this.msg();this.draw(0);return;}
+  let t0=performance.now();let autop=!this.auto;this.auto=true;
+  this.stopL=loop(now=>{const t=now-t0;this.tt=t;for(const p of this.gas){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>1)p.vx=-p.vx;if(p.y<0||p.y>1)p.vy=-p.vy;}
+   if(autop&&t>600&&t<3600){this.k=Math.min(1,(t-600)/3000);$('#d8-k').value=Math.round(this.k*100);$('#d8-ko').textContent=Math.round(this.k*100);this.msg();}
+   this.draw(t);});},
+ stop(){if(this.stopL)this.stopL();}
+};
+
+/* ---------- D9: shared reality in branchial space ---------- */
+demos.s9={
+ init(){
+  const s=$('#d9');s.innerHTML='';const c=C();const r=rng(11);
+  el('ellipse',{cx:320,cy:130,rx:300,ry:115,fill:c.soft,stroke:c.line},s);
+  txt(s,40,40,'分支空间（branchial space）',{'font-size':12,fill:c.fg});
+  // faint far points
+  for(let i=0;i<60;i++){const a=r()*6.28,d=Math.sqrt(r());el('circle',{cx:320+Math.cos(a)*285*d,cy:130+Math.sin(a)*105*d,r:1.6,fill:c.line},s);}
+  this.patch=el('circle',{cx:420,cy:150,r:22,fill:c.asoft,stroke:c.accent,'stroke-dasharray':'3 3'},s);
+  this.lab=txt(s,420,190,'人类：共同起源，一小块',{'text-anchor':'middle','font-size':11,fill:c.accent});
+  this.pts=[];for(let i=0;i<18;i++){const a=r()*6.28,d=Math.sqrt(r())*14;const p={x:420+Math.cos(a)*d,y:150+Math.sin(a)*d,a:r()*6.28};p.el=el('circle',{cx:p.x,cy:p.y,r:3,fill:c.accent},s);this.pts.push(p);}
+  this.mass=1;seg('#d9-m',v=>{this.mass=+v;this.t0=performance.now();$('#d9-s').innerHTML=this.mass?'有质量 → 效应不会以最大纠缠速度向四面八方散开 → 我们待在一起，看到<b>一致的历史</b>。':'<b>质量为零</b> → 各自以最大纠缠速度飞向不同方向 → 不再共享同一个“客观现实”。';});
+  this.inited=true;
+ },
+ start(){if(!this.inited)this.init();const c=C();this.t0=performance.now();
+  if(RM)return;
+  this.stopL=loop(now=>{const t=(now-this.t0)/1000;for(const p of this.pts){if(this.mass){const j=Math.sin(t*2+p.a)*1.5;p.el.setAttribute('cx',p.x+j);p.el.setAttribute('cy',p.y+Math.cos(t*1.7+p.a)*1.5);}
+   else{const d=Math.min(1,t/2.2)*260;const x=420+Math.cos(p.a)*d*.95,y=150+Math.sin(p.a)*d*.38;p.el.setAttribute('cx',Math.max(30,Math.min(610,x)));p.el.setAttribute('cy',Math.max(25,Math.min(235,y)));}}
+   this.patch.setAttribute('opacity',this.mass?1:Math.max(0,1-t/1.5));this.lab.setAttribute('opacity',this.mass?1:Math.max(0,1-t/1.5));});},
+ stop(){if(this.stopL)this.stopL();}
+};
+
+/* ---------- D10: ruliad ---------- */
+demos.s10={
+ init(){
+  const s=$('#d10');s.innerHTML='';const c=C();const r=rng(21);this.view='in';
+  this.nodes=[];for(let i=0;i<70;i++)this.nodes.push({x:30+r()*580,y:25+r()*250});
+  this.edges=[];for(let i=0;i<70;i++){const ds=this.nodes.map((n,j)=>({j,d:Math.hypot(n.x-this.nodes[i].x,n.y-this.nodes[i].y)})).filter(o=>o.j!==i).sort((a,b)=>a.d-b.d).slice(0,4);for(const o of ds)if(i<o.j)this.edges.push([i,o.j]);}
+  this.gE=el('g',{},s);this.gN=el('g',{},s);
+  this.edges.forEach(e=>{e.el=el('line',{x1:this.nodes[e[0]].x,y1:this.nodes[e[0]].y,x2:this.nodes[e[1]].x,y2:this.nodes[e[1]].y,stroke:c.line,'stroke-width':1.2},this.gE);});
+  this.nodes.forEach(n=>{n.el=el('circle',{cx:n.x,cy:n.y,r:3.5,fill:c.off,stroke:c.line},this.gN);});
+  // path: greedy walk from leftmost toward right
+  // BFS from the leftmost node; walk to the farthest reachable node
+  const start=this.nodes.reduce((a,b,i)=>this.nodes[a].x<b.x?a:i,0);const adj=this.nodes.map(()=>[]);for(const [a,b] of this.edges){adj[a].push(b);adj[b].push(a);}
+  const dist=new Array(70).fill(-1),prev=new Array(70).fill(-1);dist[start]=0;const q=[start];while(q.length){const u=q.shift();for(const v of adj[u])if(dist[v]<0){dist[v]=dist[u]+1;prev[v]=u;q.push(v);}}
+  let far=start;for(let i=0;i<70;i++)if(dist[i]>dist[far])far=i;this.path=[];for(let v=far;v>=0;v=prev[v])this.path.unshift(v);
+  this.lbl=txt(s,320,292,'',{'text-anchor':'middle','font-size':12,fill:c.fg});
+  seg('#d10-v',v=>{this.view=v;this.play();});
+  $('#d10-re').addEventListener('click',()=>this.play());
+  this.inited=true;
+ },
+ play(){
+  if(this.stopP)this.stopP();const c=C();
+  this.nodes.forEach(n=>{n.el.setAttribute('fill',c.off);n.el.setAttribute('r',3.5);});this.edges.forEach(e=>{e.el.setAttribute('stroke',c.line);e.el.setAttribute('stroke-width',1.2);});
+  if(this.view==='out'){this.nodes.forEach(n=>n.el.setAttribute('fill',c.teal));this.edges.forEach(e=>e.el.setAttribute('stroke',c.teal));this.lbl.textContent='整个 Ruliad 作为一个完整、永恒的对象“一直在那里”：没有时间的概念。';$('#d10-s').innerHTML='Ruliad 是<b>抽象必然</b>的：给定“计算”的定义，它就必然存在，像 1 + 1 = 2。但没有人能从外部看它。';return;}
+  $('#d10-s').innerHTML='我们嵌在 Ruliad 里，只能用有限的计算<b>一步一步</b>探索它。这就是时间。';this.lbl.textContent='观察者的路径：逐步点亮';
+  let k=0;const step=()=>{if(k>=this.path.length){return;}const i=this.path[k];this.nodes[i].el.setAttribute('fill',c.accent);this.nodes[i].el.setAttribute('r',6);
+    if(k>0){const a=this.path[k-1];const e=this.edges.find(e=>(e[0]===a&&e[1]===i)||(e[0]===i&&e[1]===a));if(e){e.el.setAttribute('stroke',c.accent);e.el.setAttribute('stroke-width',3);}}
+    // neighbors dimly visible
+    this.edges.filter(e=>e[0]===i||e[1]===i).forEach(e=>{const j=e[0]===i?e[1]:e[0];if(this.nodes[j].el.getAttribute('fill')===c.off)this.nodes[j].el.setAttribute('fill',c.asoft);});
+    k++;};
+  if(RM){while(k<this.path.length)step();return;}
+  const id=setInterval(()=>{step();if(k>=this.path.length)clearInterval(id);},380);timers.add(id);this.stopP=()=>clearInterval(id);
+ },
+ start(){if(!this.inited)this.init();this.play();},
+ stop(){if(this.stopP)this.stopP();}
+};
+
+/* ---------- D11: heat / time universality ---------- */
+demos.s11={
+ init(){
+  const c=C();const a=$('#d11a');a.innerHTML='';const r=rng(13);
+  const mats=['金属','气体','液体'];this.mol=[];
+  mats.forEach((m,i)=>{const x=20+i*95;el('rect',{x,y:20,width:70,height:60,rx:8,fill:c.soft,stroke:c.line},a);txt(a,x+35,96,m,{'text-anchor':'middle'});
+    for(let k=0;k<12;k++){const p={x0:x+10+(k%4)*16+(i===0?0:r()*6),y0:30+Math.floor(k/4)*16+(i===0?0:r()*6),ph:r()*6.28,amp:i===0?1.2:i===1?4:2.5};p.el=el('circle',{cx:p.x0,cy:p.y0,r:2.5,fill:c.cell},a);this.mol.push(p);}
+    el('path',{d:`M${x+35} 104 L${x+35} 120`,stroke:c.muted,'stroke-width':1.5},a);});
+  el('rect',{x:95,y:122,width:110,height:22,rx:11,fill:c.amber},a);txt(a,150,137,'“热”：一个量',{'text-anchor':'middle',fill:'#fff','font-size':12,'font-weight':'600'});
+  el('path',{d:'M55 120 L95 133 M245 120 L205 133',stroke:c.muted,'stroke-width':1.5,fill:'none'},a);
+  const b=$('#d11b');b.innerHTML='';const clks=['摆钟','石英钟','元胞自动机'];this.cl=[];
+  clks.forEach((m,i)=>{const x=20+i*95;el('rect',{x,y:20,width:70,height:60,rx:8,fill:c.soft,stroke:c.line},b);txt(b,x+35,96,m,{'text-anchor':'middle'});
+    const g=el('g',{},b);this.cl.push({i,g,x});
+    if(i===0){el('line',{x1:x+35,y1:28,x2:x+35,y2:70,stroke:c.cell,'stroke-width':2},g);el('circle',{cx:x+35,cy:70,r:5,fill:c.cell},g);g.setAttribute('transform-origin',`${x+35} 28`);}
+    if(i===1){this.qt=txt(g,x+35,56,'00:00',{'text-anchor':'middle','font-size':14,fill:c.fg,'font-family':'ui-monospace,Menlo,monospace'});}
+    if(i===2){this.cells=[];for(let rr=0;rr<5;rr++)for(let k=0;k<9;k++)this.cells.push(el('rect',{x:x+6+k*6.5,y:27+rr*9,width:5.5,height:8,fill:c.off},g));}
+    el('path',{d:`M${x+35} 104 L${x+35} 120`,stroke:c.muted,'stroke-width':1.5},b);});
+  el('rect',{x:85,y:122,width:130,height:22,rx:11,fill:c.accent},b);txt(b,150,137,'“时间”：一个量',{'text-anchor':'middle',fill:'#fff','font-size':12,'font-weight':'600'});
+  el('path',{d:'M55 120 L85 133 M245 120 L215 133',stroke:c.muted,'stroke-width':1.5,fill:'none'},b);
+  this.inited=true;
+ },
+ start(){if(!this.inited)this.init();const c=C();if(RM)return;let t0=performance.now();let row=[0,0,0,0,1,0,0,0,0];const hist=[];
+  this.stopL=loop(now=>{const t=(now-t0)/1000;for(const p of this.mol){p.el.setAttribute('cx',p.x0+Math.sin(t*7+p.ph)*p.amp);p.el.setAttribute('cy',p.y0+Math.cos(t*6+p.ph*1.3)*p.amp);}
+   this.cl[0].g.setAttribute('transform',`rotate(${Math.sin(t*3.14)*28})`);
+   const s=Math.floor(t);this.qt.textContent='00:'+String(s%60).padStart(2,'0');
+   const n=Math.floor(t*2);if(n!==this.lastN){this.lastN=n;hist.push(row.slice());if(hist.length>5)hist.shift();row=row.map((v,k)=>{const l=row[(k+8)%9],r=row[(k+1)%9];return (30>>((l<<2)|(v<<1)|r))&1;});this.cells.forEach((cell,i)=>{const rr=Math.floor(i/9),k=i%9;const h=hist[rr];cell.setAttribute('fill',h&&h[k]?c.cell:c.off);});}
+  });},
+ stop(){if(this.stopL)this.stopL();}
+};
+
+/* ---------- D12: arrows & time travel ---------- */
+demos.s12={
+ init(){
+  const c=C();const a=$('#d12a');a.innerHTML='';
+  const arrow=(y,label,l,r,col)=>{el('line',{x1:40,y1:y,x2:250,y2:y,stroke:col,'stroke-width':3},a);el('path',{d:`M242 ${y-6} L252 ${y} L242 ${y+6}`,fill:col},a);txt(a,20,y-10,label,{'font-size':12,fill:c.fg,'font-weight':'600'});txt(a,40,y+16,l,{'font-size':10.5});txt(a,250,y+16,r,{'font-size':10.5,'text-anchor':'end'});};
+  arrow(40,'经验之箭','过去：能记住的（有界）','未来：猜不到（不可约）',c.accent);
+  arrow(100,'热力学之箭','过去：能准备的有序态（有界）','未来：加密成无序（不可约）',c.amber);
+  el('rect',{x:40,y:135,width:210,height:24,rx:12,fill:c.soft,stroke:c.line},a);txt(a,145,151,'两者都在“要求过去更简单” → 方向对齐',{'text-anchor':'middle','font-size':11,fill:c.fg});
+  this.b=$('#d12b');this.sys='irr';seg('#d12-sys',v=>{this.sys=v;this.render();});
+  this.inited=true;this.render();
+ },
+ render(){
+  const c=C();const b=this.b;b.innerHTML='';const r=rng(this.sys==='irr'?17:1);
+  const now=Array.from({length:16},()=>r()<.5?1:0);
+  const before=this.sys==='per'?now.slice():now.map(v=>r()<.35?1-v:v);
+  const strip=(y,label,bits,cmp)=>{txt(b,12,y+4,label,{'font-size':11,fill:c.fg});bits.forEach((v,i)=>{const bad=cmp&&cmp[i]!==v;el('rect',{x:80+i*13,y:y-6,width:11,height:12,rx:2,fill:v?c.cell:c.off,stroke:bad?c.red:'none','stroke-width':2},b);});};
+  strip(40,'以前的状态',before);strip(70,'现在的状态',now,before);
+  const diff=now.filter((v,i)=>v!==before[i]).length;
+  if(diff===0){el('path',{d:'M290 40 C 300 55, 300 55, 290 70',fill:'none',stroke:c.teal,'stroke-width':2.5},b);el('path',{d:'M293 65 L290 70 L285 66',fill:'none',stroke:c.teal,'stroke-width':2.5},b);
+    txt(b,150,110,'每一个特征都相同 → 观察者把两者等同 → 因果图出现回路',{'text-anchor':'middle','font-size':11,fill:c.teal});txt(b,150,128,'（闭合类时曲线，只在简单周期系统里）',{'text-anchor':'middle','font-size':10.5});
+    $('#d12b-s').innerHTML='<b>周期系统</b>：状态能精确重合，可以有回路。但这样的系统里装不下一个带记忆的观察者。';}
+  else{txt(b,150,110,`${diff} 个位置对不上 → 不是同一个状态 → 没有回路`,{'text-anchor':'middle','font-size':11,fill:c.red});txt(b,150,128,'不可约演化下，状态几乎不可能完全重合',{'text-anchor':'middle','font-size':10.5});
+    $('#d12b-s').innerHTML='<b>不可约系统</b>：状态永远对不上 → 没有回路 → 没有“回到过去”。';}
+  txt(b,150,158,'红框 = 不同的位',{'text-anchor':'middle','font-size':10});
+ },
+ start(){if(!this.inited)this.init();},stop(){}
+};
+
+/* ---------- D13: time dilation & scale ---------- */
+demos.s13={
+ init(){
+  const c=C();this.v=0;
+  $('#d13-v').addEventListener('input',e=>{this.v=+e.target.value/100;$('#d13-vo').textContent=this.v.toFixed(2);this.upd();});
+  const a=$('#d13a');a.innerHTML='';
+  const clock=(x,label)=>{el('circle',{cx:x,cy:50,r:30,fill:c.soft,stroke:c.line,'stroke-width':2},a);const h=el('line',{x1:x,y1:50,x2:x,y2:26,stroke:c.accent,'stroke-width':3,'stroke-linecap':'round'},a);txt(a,x,98,label,{'text-anchor':'middle','font-size':11,fill:c.fg});return h;};
+  this.h1=clock(80,'静止的时钟');this.h2=clock(220,'运动的时钟');this.a1=0;this.a2=0;
+  this.ticks=txt(a,150,55,'',{'text-anchor':'middle','font-size':10});
+  this.brain='slow';seg('#d13-brain',v=>{this.brain=v;this.drawB();$('#d13b-s').innerHTML=v==='slow'?'光子不到一微秒就到，大脑要几毫秒才登记 → 整个场景被打包成“同一时刻的空间状态”。':'<b>大脑快一百万倍</b>：能分辨不同距离的光子先后到达 → 不再用“连续时刻上的空间状态”看世界。';});
+  this.upd();this.drawB();this.inited=true;
+ },
+ upd(){const f=Math.sqrt(1-this.v*this.v);$('#d13-int').style.width=(f*100)+'%';$('#d13-mov').style.width=((1-f)*100)+'%';this.f=f;
+  $('#d13a-s').innerHTML=this.v===0?'静止：全部重写都用于自身演化。':`v = ${this.v.toFixed(2)}c：约 <b>${Math.round((1-f)*100)}%</b> 的重写用来“在新位置重新造出自己”，内在时间只剩 <b>${Math.round(f*100)}%</b> 的速度。`;},
+ drawB(){
+  const c=C();const b=$('#d13b');b.innerHTML='';
+  el('circle',{cx:30,cy:75,r:12,fill:c.soft,stroke:c.fg},b);txt(b,30,110,'眼睛/大脑',{'text-anchor':'middle','font-size':10});
+  const objs=[[120,40,'近'],[200,75,'中'],[280,110,'远']];this.ph=[];
+  objs.forEach(([x,y,l])=>{el('rect',{x:x-8,y:y-8,width:16,height:16,rx:3,fill:c.cell},b);txt(b,x,y-13,l,{'text-anchor':'middle','font-size':10});el('line',{x1:x,y1:y,x2:42,y2:75,stroke:c.line,'stroke-dasharray':'2 3'},b);this.ph.push({x,y,el:el('circle',{cx:x,cy:y,r:3.5,fill:c.amber},b)});});
+  this.frame=el('rect',{x:10,y:12,width:280,height:118,rx:8,fill:'none',stroke:c.accent,'stroke-width':2,'stroke-dasharray':'5 4',opacity:0},b);
+  this.flab=txt(b,150,146,'',{'text-anchor':'middle','font-size':11,fill:c.accent});
+ },
+ start(){if(!this.inited)this.init();if(RM){this.ph.forEach(p=>{p.el.setAttribute('cx',42);p.el.setAttribute('cy',75);});return;}
+  let t0=performance.now();let lastTick=-1;
+  this.stopL=loop(now=>{const t=(now-t0)/1000;this.a1=t*120;this.a2+=0;const a2=t*120*this.f;
+   this.h1.setAttribute('transform',`rotate(${this.a1} 80 50)`);this.h2.setAttribute('transform',`rotate(${a2} 220 50)`);
+   this.ticks.textContent=`${(t*2).toFixed(0)} : ${(t*2*this.f).toFixed(0)} 次滴答`;
+   // photons
+   const cyc=this.brain==='slow'?2.4:2.4;const u=(t%cyc)/cyc;
+   this.ph.forEach((p,i)=>{const d=Math.hypot(p.x-42,p.y-75);const speed=330;const arrive=d/speed*(this.brain==='slow'?.25:1.6);const k=Math.min(1,u*cyc/Math.max(arrive,.01));p.el.setAttribute('cx',p.x+(42-p.x)*k);p.el.setAttribute('cy',p.y+(75-p.y)*k);});
+   const allIn=u*cyc>1.6;
+   if(this.brain==='slow'){this.frame.setAttribute('opacity',allIn?1:0);this.flab.textContent=allIn?'一帧：“此刻的空间状态”':'';}
+   else{this.frame.setAttribute('opacity',0);const n=this.ph.filter((p,i)=>u*cyc>Math.hypot(p.x-42,p.y-75)/330*1.6).length;this.flab.textContent=n?`已到达 ${n}/3：各自是不同的“时刻”`:'';}
+  });},
+ stop(){if(this.stopL)this.stopL();}
+};
+
+/* ---------- D14: summary chain ---------- */
+demos.s14={
+ init(){this.nodes=$$('#d14 .node');this.inited=true;},
+ start(){if(!this.inited)this.init();if(RM){this.nodes.forEach(n=>n.classList.add('lit'));return;}this.nodes.forEach(n=>n.classList.remove('lit'));let k=0;this.t=setInterval(()=>{if(k<this.nodes.length)this.nodes[k++].classList.add('lit');else clearInterval(this.t);},260);timers.add(this.t);},
+ stop(){clearInterval(this.t);}
+};
+
+/* ---------- boot ---------- */
+function boot(){
+  // toc
+  const secs=$$('.sec');const toc=$('#toc'),list=$('#tocList');
+  secs.forEach(s=>{const n=$('.num',s).textContent,h=$('h2',s).textContent;const a=document.createElement('a');a.href='#'+s.id;a.textContent=n+'  '+h;toc.appendChild(a);const b=a.cloneNode(true);b.addEventListener('click',()=>$('#tocDrawer').classList.remove('open'));list.appendChild(b);});
+  $('#tocBtn').addEventListener('click',()=>$('#tocDrawer').classList.add('open'));$('#tocClose').addEventListener('click',()=>$('#tocDrawer').classList.remove('open'));
+  // progress
+  const prog=$('#progress');const onScroll=()=>{const h=document.documentElement;const p=h.scrollTop/(h.scrollHeight-h.clientHeight);prog.style.width=(p*100)+'%';};addEventListener('scroll',onScroll,{passive:true});onScroll();
+  // hero
+  const hero=$('#hero');setTimeout(()=>hero.classList.add('in'),100);
+  // observers
+  const active=new Set();
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{const s=e.target;const d=demos[s.id];if(e.isIntersecting){s.classList.add('in');if(d&&!active.has(s.id)){active.add(s.id);try{d.start();}catch(err){console.error(s.id,err);}}}else{if(d&&active.has(s.id)){active.delete(s.id);try{d.stop();}catch(err){console.error(s.id,err);}}}});},{rootMargin:'0px 0px -10% 0px',threshold:.08});
+  secs.forEach(s=>io.observe(s));
+  const io2=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){$$('#toc a').forEach(a=>a.classList.toggle('on',a.getAttribute('href')==='#'+e.target.id));}});},{rootMargin:'-40% 0px -55% 0px'});
+  secs.forEach(s=>io2.observe(s));
+  // theme change re-init static svgs
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>location.reload());
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);else boot();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>原子没有意识，人为什么有 · 可视化讲解</title>
+<link rel="icon" href="data:,">
+<style>
+:root{
+  --bg:#f6f4ef;--bg2:#ffffff;--bg3:#efece4;--fg:#1d1c1a;--fg2:#5a5752;--fg3:#8a867f;
+  --line:#dedad0;--accent:#4f46e5;--accent2:#0f9b8e;--warn:#e07b1a;--pink:#d6336c;--ok:#2f9e44;
+  --accent-soft:#e8e6fb;--accent2-soft:#d9f3ef;--warn-soft:#fdebd3;--pink-soft:#fde0ea;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",Roboto,sans-serif;
+  --r:14px;--shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px -12px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --bg:#141416;--bg2:#1d1d21;--bg3:#26262b;--fg:#ececea;--fg2:#b4b2ad;--fg3:#807e78;--line:#333338;
+  --accent:#8b84ff;--accent2:#38c8b8;--warn:#f0a04b;--pink:#f06595;--ok:#69db7c;
+  --accent-soft:#2a2850;--accent2-soft:#153c38;--warn-soft:#3f2c14;--pink-soft:#44202d;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -12px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--accent)}
+code,.mono{font-family:var(--mono);font-size:.92em}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:var(--accent);z-index:50;transition:width .1s linear}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:0;max-width:1180px;margin:0 auto}
+nav.toc{position:sticky;top:0;height:100vh;overflow:auto;padding:28px 16px 28px 20px;border-right:1px solid var(--line);font-size:13px}
+nav.toc .brand{font-weight:700;font-size:13px;color:var(--fg2);margin-bottom:14px;letter-spacing:.02em}
+nav.toc a{display:block;color:var(--fg2);text-decoration:none;padding:5px 8px;border-radius:8px;margin-bottom:2px;line-height:1.35}
+nav.toc a.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.toc a .n{display:inline-block;width:1.6em;color:var(--fg3);font-family:var(--mono);font-size:11px}
+main{padding:0 32px 80px;min-width:0}
+.hero{padding:72px 0 36px}
+.hero .kicker{color:var(--accent);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,4.2vw,44px);line-height:1.2;margin:10px 0 14px;letter-spacing:-.01em}
+.hero p{font-size:17px;color:var(--fg2);max-width:62ch;margin:0 0 10px}
+.hero .meta{font-size:13px;color:var(--fg3);margin-top:16px}
+.notice{background:var(--warn-soft);border-left:3px solid var(--warn);padding:10px 14px;border-radius:8px;font-size:13.5px;color:var(--fg2);margin-top:18px}
+section.ch{padding:56px 0 24px;border-top:1px solid var(--line)}
+section.ch .num{display:inline-block;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:6px;margin-bottom:10px}
+section.ch h2{font-size:clamp(22px,3vw,30px);line-height:1.25;margin:0 0 8px;letter-spacing:-.01em}
+section.ch .lead{font-size:17px;color:var(--fg2);margin:0 0 20px;max-width:70ch}
+.fig{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 18px 14px;margin:0 0 18px}
+.fig .cap{font-size:13px;color:var(--fg3);margin:10px 0 0;line-height:1.5}
+.fig .hint{font-size:13px;color:var(--fg2);margin:0 0 10px}
+.fig svg,.fig canvas{display:block;max-width:100%;height:auto}
+.fig .scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fig .scroll > svg{min-width:560px}
+.notes{margin:0;padding-left:1.2em;color:var(--fg2);font-size:14.5px}
+.notes li{margin:4px 0}
+.notes b{color:var(--fg)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--bg3);border-radius:12px;padding:14px 16px;font-size:14px}
+.card h4{margin:0 0 6px;font-size:14.5px}
+.card p{margin:0;color:var(--fg2);line-height:1.5}
+.card.ac{border-left:3px solid var(--accent)}
+.card.ac2{border-left:3px solid var(--accent2)}
+.card.wa{border-left:3px solid var(--warn)}
+.card.pk{border-left:3px solid var(--pink)}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.btn{appearance:none;border:1px solid var(--line);background:var(--bg3);color:var(--fg);padding:7px 14px;border-radius:999px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:active{transform:translateY(1px)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--bg3)}
+.seg button{appearance:none;border:0;background:transparent;color:var(--fg2);padding:7px 14px;font-size:13.5px;cursor:pointer;font-family:inherit}
+.seg button.on{background:var(--accent);color:#fff}
+.range{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--fg2)}
+.range input{accent-color:var(--accent)}
+.formula{font-family:var(--mono);background:var(--bg3);border-radius:10px;padding:10px 14px;font-size:14px;overflow-x:auto;white-space:nowrap}
+.formula .k{color:var(--accent);font-weight:600}
+.quote{border-left:3px solid var(--accent2);padding:6px 14px;color:var(--fg2);font-size:15px;margin:0 0 14px;background:var(--accent2-soft);border-radius:0 10px 10px 0}
+.quote .who{display:block;font-size:12px;color:var(--fg3);margin-top:4px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;background:var(--bg3);color:var(--fg3);vertical-align:middle;margin-left:6px}
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.reveal.in{opacity:1;transform:none}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+.flow .step{flex:1 1 120px;background:var(--bg3);border-radius:10px;padding:10px 12px;font-size:13.5px;text-align:center;position:relative;opacity:.45;transition:opacity .4s,background .4s}
+.flow .step.lit{opacity:1;background:var(--accent-soft)}
+.flow .step b{display:block;font-size:14px}
+.flow .arrow{align-self:center;color:var(--fg3);padding:0 6px;font-size:18px}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--fg3);font-size:13px}
+footer a{color:var(--fg2)}
+#tocBtn{display:none;position:fixed;right:16px;bottom:16px;z-index:60;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:10px 16px;font-size:14px;box-shadow:var(--shadow);cursor:pointer;font-family:inherit}
+@media (max-width:860px){
+  .layout{display:block}
+  nav.toc{position:fixed;inset:0;height:auto;z-index:55;background:var(--bg2);transform:translateX(-100%);transition:transform .25s;border-right:0;padding-top:48px}
+  nav.toc.open{transform:none}
+  #tocBtn{display:block}
+  main{padding:0 16px 80px}
+  .hero{padding:48px 0 24px}
+  .grid2,.grid3{grid-template-columns:1fr}
+  .fig{padding:14px 12px 12px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none;transition:none}
+  .pulse{animation:none}
+  *{animation-duration:.001s!important;transition-duration:.001s!important}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<button id="tocBtn" aria-label="目录">目录</button>
+<div class="layout">
+<nav class="toc"><div class="brand">原子没有意识，人为什么有 · 可视化讲解</div><div class="list"></div></nav>
+<main>
+<div class="hero">
+  <div class="kicker">神经科学 · 意识问题</div>
+  <h1>原子没有意识，人为什么有？</h1>
+  <p>答主清人的回答：这个问题"难到离谱，目前不可能有答案"。但有一个理论有希望把生物和物理两大领域统一起来，给意识一个还原论的解释：Karl Friston 的<b>自由能原理</b>。本页前半部分讲这个理论，后半部分讲同一问题下另一个回答：泛心论 vs 涌现论。</p>
+  <div class="meta">原文：清人 在知乎问题「原子没有意识，如果人体其实就是一堆原子组成的，人为什么有意识？」下的回答（知乎日报收录，5558 赞），2025 年 3 月；附同一问题下另一回答 · 本页为可视化讲解</div>
+</div>
+
+<section class="ch" id="s1" data-title="熵 vs 自由能">
+  <div class="num">01</div>
+  <h2>熵总是变大，自由能总是变小</h2>
+  <p class="lead">把"自由能"理解成和"熵"差不多的东西，只是方向相反：熵自发趋于最大（家里不收拾就越来越乱），自由能自发趋于最小（能坐着绝不站着）。</p>
+  <div class="fig reveal" data-demo="entropy">
+    <div class="grid2">
+      <div><canvas id="entC" width="320" height="220"></canvas><p class="cap">熵：整齐的房间不管它，自发变乱。</p></div>
+      <div><canvas id="feC" width="320" height="220"></canvas><p class="cap">自由能：系统自发滑向最省事的稳定状态。</p></div>
+    </div>
+    <p class="cap">自由能原理的核心：一个系统总是自发趋于稳定状态，<b>把不确定性转化为确定性</b>。这是个"懒人规则"，怎么省事怎么来。（原文不列公式，本页也不列。）</p>
+  </div>
+</section>
+
+<section class="ch" id="s2" data-title="懒人规则：餐厅">
+  <div class="num">02</div>
+  <h2>懒人规则：餐厅搬家了怎么办</h2>
+  <p class="lead">每次都去同一家餐厅，不用动脑，消耗最低，这就是稳定态。餐厅搬走了，"去哪吃"变成不确定事件，你查地图、查攻略，找到新店，再次稳定。</p>
+  <div class="fig reveal" data-demo="restaurant">
+    <div class="flow">
+      <div class="step"><b>老餐厅</b>每次都去，不动脑<br><span class="tag">稳定态</span></div><div class="arrow">→</div>
+      <div class="step"><b>餐厅搬家</b>去哪吃？<br><span class="tag">不确定性</span></div><div class="arrow">→</div>
+      <div class="step"><b>查地图、查攻略</b>调整自己的"模型"</div><div class="arrow">→</div>
+      <div class="step"><b>新餐厅</b>以后每次都去这家<br><span class="tag">新稳定态</span></div>
+    </div>
+    <p class="cap">"懒人一动不动，除非迫不得已。"神经网络也是同样的道理。</p>
+  </div>
+</section>
+
+<section class="ch" id="s3" data-title="神经网络与乒乓球实验">
+  <div class="num">03</div>
+  <h2>神经网络也是懒人：把预测调准，就是在找新餐厅</h2>
+  <p class="lead">神经网络趋于自由能最小化。外部环境会变，于是它根据变化调整模型参数：建立突触、调整动作电位阈值，让预测更准。神奇的是，这是<b>自发</b>完成的。</p>
+  <div class="grid2">
+    <div class="fig reveal" data-demo="predict">
+      <p class="hint">预测（虚线）向真实信号（实线）靠拢，误差缩小。点"环境变化"让信号突变，看它重新收敛。</p>
+      <div class="controls"><button class="btn primary" id="predBtn">环境变化</button></div>
+      <canvas id="predC" width="320" height="200"></canvas>
+      <p class="cap">示意图：预测误差随调整减小。</p>
+    </div>
+    <div class="fig reveal" data-demo="pong">
+      <p class="hint">2022 年实验（示意）：体外培养的神经元自发连成网络，接上电子乒乓球。接到球 → 返回有规律的电脉冲；没接到 → 返回乱码。</p>
+      <canvas id="pongC" width="320" height="200"></canvas>
+      <p class="cap" id="pongCap">它自己学会了打乒乓球。驱动它的，是那段有规律的脉冲：一种可预测的稳定态。"如果采访它，它会说：我喜欢规律，讨厌乱码。"</p>
+    </div>
+  </div>
+  <ul class="notes">
+    <li>实验出处：原文引用 <i>in vitro neurons learn and exhibit sentience when embodied in a simulated game-world</i>（2022）。画面与命中率曲线为示意。</li>
+  </ul>
+</section>
+
+<section class="ch" id="s4" data-title="从物理到社会">
+  <div class="num">04</div>
+  <h2>一个很底层的原理：从光线、电子到人类社会</h2>
+  <p class="lead">自由能最小化"就好比光总是走最短路线，是宇宙基础规律的一部分"，不止在生物学，在物理学中也普遍存在。上升到哲学高度：<b>一个系统的内禀属性就是对抗熵增，在复杂混乱的环境中寻找稳定的规律</b>。</p>
+  <div class="grid3">
+    <div class="card ac reveal"><h4>光</h4><p>总是走最短路线。</p></div>
+    <div class="card ac reveal"><h4>电子</h4><p>不施加特定能量，就一直处于基态，不跃迁。</p></div>
+    <div class="card ac2 reveal"><h4>生命</h4><p>薛定谔：生命以负熵为食。生物的本能就是对抗熵增。</p></div>
+  </div>
+  <div class="fig reveal" data-demo="order" style="margin-top:14px">
+    <p class="hint">《人类简史》：权力来源于故事。人们为什么愿意相信一个故事？因为人们需要秩序。点"讲一个故事"。</p>
+    <div class="controls"><button class="btn primary" id="ordBtn">讲一个故事</button><button class="btn" id="ordReset">没人相信了</button></div>
+    <canvas id="ordC" width="640" height="200"></canvas>
+    <p class="cap">人人遵守规则，每个人的行为大概率可以被预测，不确定性被消除，社会达到最基础的稳定态。"不管多么不靠谱的秩序，有总比没有好。"</p>
+  </div>
+  <div class="grid3">
+    <div class="card reveal"><h4>农民</h4><p>交出一部分粮食，因为他需要对剩余粮食的稳定态。</p></div>
+    <div class="card reveal"><h4>学生</h4><p>听从老师，因为他需要对学历和前途的稳定态。</p></div>
+    <div class="card reveal"><h4>员工</h4><p>服从上级，因为他需要对工作与薪水的稳定态。</p></div>
+  </div>
+</section>
+
+<section class="ch" id="s5" data-title="结论：自由意志？">
+  <div class="num">05</div>
+  <h2>所以意识是什么？答主的结论</h2>
+  <p class="lead">意识可能不是我们以为的自由意志，而是由底层的宇宙规律决定的。它有一定随机性（给我们造成认知上的假象），但就像量子力学：你无法预测某个电子的位置，其概率却可以计算。</p>
+  <div class="fig reveal" data-demo="flow2">
+    <div class="flow">
+      <div class="step"><b>自由能原理</b>趋于稳定、消除不确定</div><div class="arrow">→</div>
+      <div class="step"><b>神经网络</b>自发调整模型</div><div class="arrow">→</div>
+      <div class="step"><b>行为与意识</b>也是自由能最小化在起作用？</div><div class="arrow">→</div>
+      <div class="step"><b>"自由意志"</b>物理框架内的某种计算结果</div>
+    </div>
+  </div>
+  <div class="grid2">
+    <div class="card pk reveal"><h4>大胆的说法</h4><p>也许人脑在本质上就是一台图灵机。</p></div>
+    <div class="card ac2 reveal"><h4>谦虚的说法</h4><p>自由能原理为意识研究提供了一个<b>可能的</b>还原论解释框架。</p></div>
+  </div>
+</section>
+
+<section class="ch" id="s6" data-title="另一回答：两类答案">
+  <div class="num">06</div>
+  <h2>另一个回答：人类最聪明的大脑给出了两类答案</h2>
+  <p class="lead">同一问题下的另一位答主（摘录中未署名）把现有答案分成两类：要么单个粒子本就有"意识"，要么粒子系统"涌现"出意识。</p>
+  <div class="grid2">
+    <div class="card pk reveal"><h4>答案 1：泛心论（查尔默斯）</h4><p>基本粒子自带"原意识"，人脑中 1000 亿亿亿个粒子把原意识聚合起来。本质是笛卡尔二元论的延伸。<br><b>问题：</b>没有任何可重复实验证据；按此逻辑石头也有意识。<br><b>为何有拥趸：</b>它提供了心理慰藉，让人把永生的希望寄托在意识独立于物质之上。</p></div>
+    <div class="card ac2 reveal"><h4>答案 2：涌现论（主流科学界）</h4><p>单个粒子没有意识，但"粒子系统"可以有。整体大于部分之和：某些整体属性只在特定组织方式与规模下"突现"，无法还原为部件的简单加和。<br><b>证据：</b>清醒、麻醉、梦境、脑损伤都伴随神经活动变化；电刺激、药物、磁场能直接改变主观体验。</p></div>
+  </div>
+  <div class="fig reveal" data-demo="emerge" style="margin-top:14px">
+    <p class="hint">涌现的阶梯：部件没有的属性，系统有。</p>
+    <div class="scroll"><svg id="emS" viewBox="0 0 720 240"></svg></div>
+    <p class="cap">单个像素不显示图像，足够多的像素按规则排列能显示《蒙娜丽莎》；一只蚂蚁没脑子，蚁群能找最短路径；单个神经元毫无知觉，860 亿个让你能刷知乎；单个原子没有意识，1000 亿亿亿个粒子复杂交互就能涌现意识。</p>
+  </div>
+  <div class="grid2">
+    <div class="card wa reveal"><h4>挫折：欧盟"人脑计划"</h4><p>2009 年 Henry Markram 宣称能用计算机模拟近千亿神经元和 100 万亿个连接。2013 年 HBP 启动，历时十年、耗资约 6 亿欧元，2023 年 9 月未达目标收场。涌现"怎么发生"仍无统一说法。</p></div>
+    <div class="card wa reveal"><h4>质疑：成为一只蝙蝠是什么样？</h4><p>Nagel（1974）：蝙蝠用回声感知世界，无论我们多了解它的神经、化学、原子细节，都无法从人的视角体验那个第一人称世界。科学能研究"意识的神经相关物"，却难以在粒子运动与内在体验之间搭桥。</p></div>
+  </div>
+</section>
+
+<section class="ch" id="s7" data-title="注意力模式理论">
+  <div class="num">07</div>
+  <h2>一个乐观的方案：意识是大脑对自身注意力的简化表征</h2>
+  <p class="lead">Graziano 的注意力模式理论：意识并非神秘现象，而是大脑对自身注意过程的一种<b>简化心理表征</b>。看看一杯咖啡在物理世界和大脑里分别是什么。</p>
+  <div class="fig reveal" data-demo="coffee">
+    <div class="scroll"><svg id="cofS" viewBox="0 0 720 230"></svg></div>
+    <p class="cap">物理世界里没有"香味"和"白色雾气"，只有约 90 ℃ 的水分子散射光、甲硫醇等分子撞击嗅上皮受体、钙离子内流。脉冲抵达嗅球、岛叶、眶额皮层后，被压缩成一个极简信息："好香的咖啡味"。香与色都不是世界自带的属性，而是大脑构建的简化表征。</p>
+  </div>
+  <div class="grid3">
+    <div class="card reveal"><h4>对外界建模</h4><p>把每个点频率不同的反射光压缩成"白色汽车"。</p></div>
+    <div class="card reveal"><h4>对他人建模</h4><p>"他们是敌是友？安全还是危险？"</p></div>
+    <div class="card ac reveal"><h4>对自己的注意建模</h4><p>"我正在体会一杯香甜咖啡带来的幸福"：<b>对注意的注意，就是意识。</b></p></div>
+  </div>
+</section>
+
+<section class="ch" id="s8" data-title="进化阶梯">
+  <div class="num">08</div>
+  <h2>为什么会有这种简化机制？生存进化</h2>
+  <p class="lead">38 亿年里，粒子构建的神经系统越来越复杂有序，信息建模能力不断进化。不过滤信息的头脑被淘汰：猛兽的獠牙选择了"必须快速压缩感官洪流"的大脑，群体狩猎选择了"必须预测他人注意力"的大脑。</p>
+  <div class="fig reveal" data-demo="evo">
+    <div class="scroll"><svg id="evoS" viewBox="0 0 720 250"></svg></div>
+    <p class="cap">直到灵长类和智人，大脑复杂到不仅能压缩建模外界，还能用到自己身上，为自己的注意生成"关于注意的注意"："我觉察到我注意到了危险"。自我意识由此诞生。</p>
+  </div>
+</section>
+
+<section class="ch" id="s9" data-title="石头、向日葵与人">
+  <div class="num">09</div>
+  <h2>石头、向日葵与人：硬件相同，反应级别不同</h2>
+  <p class="lead">在硬件上，人与石头、向日葵、马没什么不同，都是基本粒子组成。不同的只是粒子系统的排列组合，使它们表现出高低不同的"反应级别"。</p>
+  <div class="fig reveal" data-demo="react">
+    <p class="hint">同一束阳光直射，三种粒子组态的反应链有多长？</p>
+    <svg id="reaS" viewBox="0 0 640 230"></svg>
+    <p class="cap">石头：温度升高，仅此而已。向日葵："刺激-压缩-反应"回路，茎尖弯向太阳。人：光子 → 视网膜 → 视皮层 → 前额叶生成"我意识到阳光太强烈" → 调动四肢找阴凉 → 进一步想怎么利用阳光。</p>
+  </div>
+  <div class="quote">人类的自由与尊严似乎从不来自身的基本物理属性，而在于我们有幸成为了宇宙中（也许是唯一）最为高度有序的粒子组合。不像墙角那把椅子只会呆坐，我们的粒子大军能让我们唱歌、跳舞、刷知乎，以及突然决定半夜去吃拉面。<span class="who">同一问题下另一回答的结语</span></div>
+</section>
+
+<footer>原文：清人，知乎回答（2025-03-21，专栏「神经科学的奇思妙想」）；第 06–09 节引自同一问题下另一回答。本页由 Claude Code 基于原文生成，仅供学习；动画为示意。</footer>
+
+</main>
+</div>
+<script>
+/* shared runtime: progress bar, TOC, reveal + demo triggers, helpers */
+window.RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+window.DEMOS = {};
+window.$ = (s, r) => (r || document).querySelector(s);
+window.$$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+window.css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+window.seg = function (el, cb) {
+  const bs = $$('button', el);
+  bs.forEach((b) => b.addEventListener('click', () => {
+    bs.forEach((x) => x.classList.remove('on')); b.classList.add('on'); cb(b.dataset.v, b);
+  }));
+  return { set(v) { const b = bs.find((x) => x.dataset.v === v); if (b) b.click(); }, get() { const b = bs.find((x) => x.classList.contains('on')); return b ? b.dataset.v : null; } };
+};
+/* canvas with devicePixelRatio */
+window.canvas2d = function (c, w, h) {
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = w * dpr; c.height = h * dpr; c.style.width = '100%'; c.style.aspectRatio = w + '/' + h;
+  const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); return ctx;
+};
+/* raf loop with visibility pause */
+window.loop = function (fn) {
+  let on = false, id = 0, t0 = 0;
+  function frame(t) { if (!on) return; fn((t - t0) / 1000); id = requestAnimationFrame(frame); }
+  return {
+    start() { if (on) return; on = true; t0 = performance.now(); id = requestAnimationFrame(frame); },
+    stop() { on = false; cancelAnimationFrame(id); },
+    get running() { return on; }
+  };
+};
+window.flowCycle = function (el, ms) {
+  const steps = $$('.step', el); let i = 0, timer = 0;
+  function tick() { steps.forEach((s, k) => s.classList.toggle('lit', k === i)); i = (i + 1) % steps.length; }
+  return {
+    start() { if (timer) return; tick(); timer = setInterval(tick, ms || 1400); },
+    stop() { clearInterval(timer); timer = 0; }
+  };
+};
+document.addEventListener('DOMContentLoaded', () => {
+  const secs = $$('section.ch');
+  const toc = $('nav.toc .list');
+  secs.forEach((s, i) => {
+    const a = document.createElement('a'); a.href = '#' + s.id;
+    a.innerHTML = '<span class="n">' + String(i + 1).padStart(2, '0') + '</span>' + s.dataset.title;
+    toc.appendChild(a);
+    a.addEventListener('click', () => $('nav.toc').classList.remove('open'));
+  });
+  const links = $$('nav.toc a');
+  const pb = $('#progress');
+  function onScroll() {
+    const h = document.documentElement; pb.style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + '%';
+    let cur = -1; secs.forEach((s, i) => { if (s.getBoundingClientRect().top < innerHeight * 0.4) cur = i; });
+    links.forEach((l, i) => l.classList.toggle('active', i === cur));
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+  $('#tocBtn').addEventListener('click', () => $('nav.toc').classList.toggle('open'));
+  /* reveal + demo lifecycle */
+  const io = new IntersectionObserver((es) => {
+    es.forEach((e) => {
+      const el = e.target;
+      if (e.isIntersecting) {
+        el.classList.add('in');
+        const d = el.dataset.demo; if (d && DEMOS[d]) { if (!el._inited) { el._inited = true; el._demo = DEMOS[d](el) || {}; } if (el._demo.start) el._demo.start(); }
+      } else if (el._demo && el._demo.stop) el._demo.stop();
+    });
+  }, { threshold: 0.18 });
+  $$('.reveal,[data-demo]').forEach((el) => io.observe(el));
+});
+
+</script>
+<script>
+/* ---------- 01 entropy / free energy ---------- */
+DEMOS.entropy = function () {
+  const W = 320, H = 220, e = canvas2d($('#entC'), W, H), f = canvas2d($('#feC'), W, H);
+  const N = 36; let ps = [], fs = [], t = 0, l;
+  function reset() {
+    ps = []; for (let i = 0; i < N; i++) ps.push({ x: 90 + (i % 6) * 28, y: 60 + Math.floor(i / 6) * 22, vx: 0, vy: 0 });
+    fs = []; for (let i = 0; i < N; i++) fs.push({ x: 30 + Math.random() * 260, y: 30 + Math.random() * 90, vx: 0, vy: 0 });
+    t = 0;
+  }
+  const well = (x) => 90 + 60 * Math.exp(-Math.pow((x - 160) / 70, 2));
+  function draw() {
+    const fg3 = css('--fg3'), acc = css('--accent'), pk = css('--pink'), fg = css('--fg');
+    e.clearRect(0, 0, W, H); f.clearRect(0, 0, W, H);
+    e.strokeStyle = fg3; e.strokeRect(20, 20, 280, 180);
+    e.fillStyle = fg; e.font = '13px ' + css('--sans'); e.fillText('熵 ↑  （越来越乱）', 24, 14);
+    ps.forEach((p) => { p.vx += (Math.random() - 0.5) * 0.6; p.vy += (Math.random() - 0.5) * 0.6; p.vx *= 0.96; p.vy *= 0.96; p.x += p.vx; p.y += p.vy; if (p.x < 26 || p.x > 294) p.vx *= -1; if (p.y < 26 || p.y > 194) p.vy *= -1; p.x = Math.max(26, Math.min(294, p.x)); p.y = Math.max(26, Math.min(194, p.y)); e.fillStyle = pk; e.beginPath(); e.arc(p.x, p.y, 5, 0, 7); e.fill(); });
+    f.fillStyle = fg; f.font = '13px ' + css('--sans'); f.fillText('自由能 ↓  （滑向稳定态）', 24, 14);
+    f.strokeStyle = fg3; f.lineWidth = 2; f.beginPath(); for (let x = 20; x <= 300; x += 4) { const y = well(x) + 40; x === 20 ? f.moveTo(x, y) : f.lineTo(x, y); } f.stroke();
+    fs.forEach((p) => { const g = (well(p.x + 1) - well(p.x - 1)) / 2; p.vx += g * 0.6 + (Math.random() - 0.5) * 0.3; p.vx *= 0.9; p.x += p.vx; p.x = Math.max(24, Math.min(296, p.x)); const ty = well(p.x) + 40 - 6; p.y += (ty - p.y) * 0.08; f.fillStyle = acc; f.beginPath(); f.arc(p.x, p.y, 5, 0, 7); f.fill(); });
+    f.fillStyle = fg3; f.font = '12px ' + css('--sans'); f.fillText('稳定态（最低点）', 112, 212);
+  }
+  l = loop((dt) => { t = dt; draw(); if (t > 12) reset(); });
+  reset(); draw();
+  return { start() { reset(); if (!RM) l.start(); }, stop() { l.stop(); } };
+};
+DEMOS.restaurant = (el) => flowCycle(el, 1500);
+DEMOS.flow2 = (el) => flowCycle(el, 1500);
+
+/* ---------- 03 predict ---------- */
+DEMOS.predict = function () {
+  const W = 320, H = 200, g = canvas2d($('#predC'), W, H);
+  let target = [], pred = [], l, err = 1;
+  const base = (i, k) => 0.5 + 0.3 * Math.sin(i / 8 + k) + 0.15 * Math.sin(i / 3 + k * 2);
+  let k = 0; function newTarget() { k = Math.random() * 6; target = []; for (let i = 0; i < 60; i++) target.push(base(i, k)); }
+  function init() { newTarget(); pred = target.map(() => 0.5 + (Math.random() - 0.5) * 0.6); }
+  function draw() {
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), pk = css('--pink');
+    g.clearRect(0, 0, W, H);
+    for (let i = 0; i < 60; i++) pred[i] += (target[i] - pred[i]) * 0.04 + (Math.random() - 0.5) * 0.01;
+    err = pred.reduce((s, p, i) => s + Math.abs(p - target[i]), 0) / 60;
+    const X = (i) => 20 + i / 59 * 280, Y = (v) => 150 - v * 110;
+    g.strokeStyle = fg; g.lineWidth = 2; g.beginPath(); target.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); g.stroke();
+    g.strokeStyle = acc; g.setLineDash([5, 4]); g.beginPath(); pred.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); g.stroke(); g.setLineDash([]);
+    g.fillStyle = fg3; g.font = '12px ' + css('--sans'); g.fillText('真实信号（环境）', 24, 20); g.fillStyle = acc; g.fillText('神经网络的预测', 160, 20);
+    g.fillStyle = fg3; g.fillText('预测误差', 20, 185); g.fillStyle = css('--bg3'); g.fillRect(80, 176, 200, 10); g.fillStyle = pk; g.fillRect(80, 176, Math.min(200, err * 600), 10);
+  }
+  l = loop(() => draw());
+  $('#predBtn').addEventListener('click', () => { newTarget(); draw(); });
+  init(); draw();
+  return { start() { if (!RM) l.start(); }, stop() { l.stop(); } };
+};
+
+/* ---------- 03 pong ---------- */
+DEMOS.pong = function () {
+  const W = 320, H = 200, g = canvas2d($('#pongC'), W, H);
+  let bx = 100, by = 60, vx = 2.2, vy = 1.6, px = 60, skill = 0.15, hits = 0, tot = 0, fb = 0, fbT = 0, hist = [], l;
+  function step() {
+    bx += vx; by += vy;
+    if (by < 8 || by > 100) vy *= -1;
+    if (bx > 212) vx *= -1;
+    // paddle AI: with prob skill track the ball
+    const aim = Math.random() < skill ? by : px + (Math.random() - 0.5) * 30;
+    px += (aim - px) * 0.2; px = Math.max(16, Math.min(96, px));
+    if (bx < 14) {
+      tot++; const hit = Math.abs(by - px) < 18; if (hit) { hits++; skill = Math.min(0.95, skill + 0.06); fb = 1; } else fb = -1;
+      fbT = 0; hist.push(hits / tot); if (hist.length > 40) hist.shift();
+      bx = 100; by = 20 + Math.random() * 70; vx = 2.2 * (0.8 + Math.random() * 0.4); vy = (Math.random() < 0.5 ? -1 : 1) * (1 + Math.random());
+    }
+    fbT += 1;
+  }
+  function draw() {
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), ok = css('--ok'), pk = css('--pink');
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = css('--bg3'); g.fillRect(6, 4, 212, 104);
+    g.fillStyle = acc; g.fillRect(8, px - 16, 5, 32);
+    g.fillStyle = fg; g.beginPath(); g.arc(bx, by, 4, 0, 7); g.fill();
+    g.fillStyle = fg3; g.font = '11px ' + css('--sans'); g.fillText('神经元控制球拍', 10, 122);
+    // feedback waveform
+    g.fillStyle = fg3; g.fillText('反馈信号', 230, 14);
+    g.strokeStyle = fb > 0 ? ok : (fb < 0 ? pk : fg3); g.lineWidth = 1.5; g.beginPath();
+    for (let x = 0; x < 84; x++) { const y = fb > 0 ? 50 + 18 * Math.sin(x / 4 + fbT / 3) : (fb < 0 ? 50 + (Math.random() - 0.5) * 40 : 50); x ? g.lineTo(230 + x, y) : g.moveTo(230 + x, y); }
+    g.stroke();
+    g.fillStyle = fb > 0 ? ok : (fb < 0 ? pk : fg3); g.fillText(fb > 0 ? '有规律 ✓' : (fb < 0 ? '乱码 ✗' : '…'), 230, 90);
+    // hit rate
+    g.fillStyle = fg3; g.fillText('命中率（示意）', 10, 142);
+    g.strokeStyle = fg3; g.beginPath(); g.moveTo(10, 190); g.lineTo(310, 190); g.stroke();
+    g.strokeStyle = acc; g.lineWidth = 2; g.beginPath(); hist.forEach((v, i) => { const x = 10 + i / 39 * 300, y = 190 - v * 40; i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+    if (tot) { g.fillStyle = fg; g.fillText(Math.round(hits / tot * 100) + '%', 280, 150); }
+  }
+  l = loop(() => { step(); draw(); });
+  draw();
+  return { start() { if (!RM) l.start(); }, stop() { l.stop(); } };
+};
+
+/* ---------- 04 order ---------- */
+DEMOS.order = function () {
+  const W = 640, H = 200, g = canvas2d($('#ordC'), W, H);
+  const N = 48; let ps = [], story = false, l;
+  for (let i = 0; i < N; i++) ps.push({ x: 40 + Math.random() * 560, y: 30 + Math.random() * 140, tx: 70 + (i % 12) * 46, ty: 50 + Math.floor(i / 12) * 36 });
+  function draw() {
+    const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), pk = css('--pink');
+    g.clearRect(0, 0, W, H);
+    ps.forEach((p) => {
+      if (story) { p.x += (p.tx - p.x) * 0.06; p.y += (p.ty - p.y) * 0.06; }
+      else { p.x += (Math.random() - 0.5) * 3; p.y += (Math.random() - 0.5) * 3; p.x = Math.max(20, Math.min(620, p.x)); p.y = Math.max(20, Math.min(180, p.y)); }
+      g.fillStyle = story ? acc : pk; g.beginPath(); g.arc(p.x, p.y, 6, 0, 7); g.fill();
+    });
+    g.fillStyle = fg; g.font = '13px ' + css('--sans');
+    g.fillText(story ? '有秩序：每个人的行为可以预测 → 不确定性消除 → 稳定态' : '没有共同的故事：行为不可预测', 20, 18);
+  }
+  l = loop(() => draw());
+  $('#ordBtn').addEventListener('click', () => { story = true; });
+  $('#ordReset').addEventListener('click', () => { story = false; });
+  draw();
+  return { start() { if (!RM) l.start(); }, stop() { l.stop(); } };
+};
+
+/* ---------- 06 emergence ladder ---------- */
+DEMOS.emerge = function () {
+  const s = $('#emS'); const fg3 = css('--fg3'), acc = css('--accent'), acc2 = css('--accent2'), fg = css('--fg'), bg3 = css('--bg3');
+  const rows = [['像素', '《蒙娜丽莎》'], ['一只蚂蚁', '蚁群找最短路径'], ['单个神经元', '860 亿个 → 刷知乎'], ['单个原子', '1000 亿亿亿个 → 意识']];
+  let g = `<text x="15" y="20" font-size="12" fill="${fg3}">规模与组织方式 →</text>`;
+  rows.forEach((r, i) => {
+    const x = 15 + i * 175, bh = 78, y = 230 - bh - i * 44, d = i * 0.4;
+    g += `<g opacity="0"><animate attributeName="opacity" values="0;1" begin="${d}s" dur=".5s" fill="freeze"/>
+    <rect x="${x}" y="${y}" width="165" height="${bh}" rx="10" fill="${bg3}"/>
+    <text x="${x + 12}" y="${y + 22}" font-size="11.5" fill="${fg3}">部件：${r[0]}</text>
+    <text x="${x + 12}" y="${y + 44}" font-size="12.5" fill="${fg}" font-weight="600">${r[1]}</text>
+    <text x="${x + 12}" y="${y + 64}" font-size="11" fill="${acc2}">部件没有的属性 ↑ 涌现</text></g>`;
+    if (i < 3) g += `<path d="M${x + 165} ${y + 20} L ${x + 175} ${y - 24}" stroke="${acc}" stroke-width="2" fill="none" opacity="0"><animate attributeName="opacity" values="0;1" begin="${d + 0.3}s" dur=".4s" fill="freeze"/></path>`;
+  });
+  s.innerHTML = g;
+  return {};
+};
+
+/* ---------- 07 coffee ---------- */
+DEMOS.coffee = function () {
+  const s = $('#cofS'); const fg3 = css('--fg3'), acc = css('--accent'), acc2 = css('--accent2'), fg = css('--fg'), bg3 = css('--bg3'), warn = css('--warn');
+  const box = (x, y, w, h, t1, t2, col, d) => `<g opacity="0"><animate attributeName="opacity" values="0;1" begin="${d}s" dur=".5s" fill="freeze"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${bg3}" stroke="${col}" stroke-width="1.5"/><text x="${x + 10}" y="${y + 22}" font-size="13" fill="${fg}" font-weight="600">${t1}</text>${t2.map((l, i) => `<text x="${x + 10}" y="${y + 42 + i * 17}" font-size="11.5" fill="${fg3}">${l}</text>`).join('')}</g>`;
+  const arrow = (x, d) => `<path d="M${x} 110 L ${x + 24} 110" stroke="${fg3}" stroke-width="2" marker-end="url(#ca)" opacity="0"><animate attributeName="opacity" values="0;1" begin="${d}s" dur=".4s" fill="freeze"/></path>`;
+  s.innerHTML = `<defs><marker id="ca" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0L8 4L0 8z" fill="${fg3}"/></marker></defs>
+  <text x="10" y="20" font-size="12" fill="${fg3}">物理世界：只有分子与电磁波</text>
+  ${box(10, 40, 200, 140, '一杯刚煮好的咖啡', ['约 90 ℃ 的水分子挣脱液面', '膨胀、冷却，散射可见光', '甲硫醇、糠硫醇分子', '以每秒数百米钻进鼻腔'], warn, 0)}
+  ${arrow(214, 0.5)}
+  ${box(242, 40, 200, 140, '感受器与神经脉冲', ['撞击嗅上皮的 G 蛋白偶联受体', '触发钙离子内流', '视网膜接收散射光', '脉冲传向嗅球、岛叶、眶额皮层'], acc2, 0.8)}
+  ${arrow(446, 1.3)}
+  ${box(474, 40, 236, 140, '大脑的简化表征', ['"好香的咖啡味"', '"一缕白色蒸汽"', '', '→ 对注意的注意：', '"我正在享受这杯咖啡"（意识）'], acc, 1.6)}
+  <text x="474" y="20" font-size="12" fill="${acc}">压缩掉海量细节</text>
+  <text x="10" y="215" font-size="12" fill="${fg3}">这种简化放过了大量细节，过滤掉了神经元发放等物理过程，直接把注意本身当作一个整体来描述。</text>`;
+  return {};
+};
+
+/* ---------- 08 evolution ---------- */
+DEMOS.evo = function () {
+  const s = $('#evoS'); const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), bg3 = css('--bg3'), acc2 = css('--accent2');
+  const steps = [['单细胞', '趋光、趋化', '输入 → 输出映射'], ['多细胞', '选择性增强', '注意力的雏形'], ['爬行动物', '切换注意模式', '觅食 vs 警戒'], ['哺乳动物', '对他人注意力建模', '注视追随实验'], ['灵长类 / 智人', '对自己的注意建模', '"关于注意的注意" = 自我意识']];
+  let g = `<line x1="30" y1="215" x2="700" y2="215" stroke="${fg3}"/><text x="30" y="236" font-size="11" fill="${fg3}">38 亿年前</text><text x="650" y="236" font-size="11" fill="${fg3}">现在</text>`;
+  steps.forEach((st, i) => {
+    const x = 30 + i * 136, h = 60 + i * 30, y = 210 - h, last = i === 4;
+    g += `<g opacity="0"><animate attributeName="opacity" values="0;1" begin="${i * 0.35}s" dur=".5s" fill="freeze"/>
+    <rect x="${x}" y="${y}" width="124" height="${h}" rx="10" fill="${last ? css('--accent-soft') : bg3}" stroke="${last ? acc : 'none'}"/>
+    <text x="${x + 10}" y="${y + 20}" font-size="13" fill="${fg}" font-weight="600">${st[0]}</text>
+    <text x="${x + 10}" y="${y + 38}" font-size="11.5" fill="${fg3}">${st[1]}</text>
+    <text x="${x + 10}" y="${y + 54}" font-size="11" fill="${acc2}">${st[2]}</text></g>`;
+  });
+  g += `<text x="30" y="30" font-size="12" fill="${fg3}">信息建模能力 ↑（不过滤信息的头脑被淘汰）</text>`;
+  s.innerHTML = g;
+  return {};
+};
+
+/* ---------- 09 reaction levels ---------- */
+DEMOS.react = function () {
+  const s = $('#reaS'); const fg3 = css('--fg3'), acc = css('--accent'), fg = css('--fg'), bg3 = css('--bg3'), warn = css('--warn'), ok = css('--ok');
+  const rows = [['石头', ['光子 → 温度升高'], fg3], ['向日葵', ['光子', '压缩', '茎尖弯向太阳'], ok], ['人', ['光子 → 视网膜', '视皮层', '前额叶："我意识到阳光太强"', '找阴凉', '想怎么利用阳光'], acc]];
+  let g = `<text x="20" y="22" font-size="12" fill="${warn}">☀ 同一束阳光</text>`;
+  rows.forEach((r, i) => {
+    const y = 50 + i * 60;
+    g += `<text x="20" y="${y + 18}" font-size="14" fill="${fg}" font-weight="600">${r[0]}</text><text x="20" y="${y + 36}" font-size="11" fill="${r[2]}">${['仅此而已', '回路', '意识'][i]}</text>`;
+    let x = 90;
+    r[1].forEach((t, j) => {
+      const w = 14 + t.length * 11.5;
+      g += `<g opacity="0"><animate attributeName="opacity" values="0;1" begin="${i * 0.4 + j * 0.3}s" dur=".4s" fill="freeze"/><rect x="${x}" y="${y}" width="${w}" height="34" rx="8" fill="${bg3}" stroke="${r[2]}"/><text x="${x + 7}" y="${y + 22}" font-size="11.5" fill="${fg}">${t}</text></g>`;
+      x += w + 10;
+      if (j < r[1].length - 1) { g += `<text x="${x - 9}" y="${y + 22}" font-size="12" fill="${fg3}">›</text>`; }
+    });
+  });
+  s.innerHTML = g;
+  return {};
+};
+
+</script>
+</body>
+</html>
