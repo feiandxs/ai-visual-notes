@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>三分之二同意加装电梯后</title>
+<meta name="description" content="以一则知乎回答的五步反对策略为骨架，补上《民法典》第 278 条的双三分之二、双四分之三表决规则、地方加梯办法与 2023 年最高法典型案例：表决比例计算器、出资分摊计算器、一楼不同意的处理路径流程图、各地做法对比与案例筛选。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ===== 本页专用 ===== */
+.orig{border-left:3px solid var(--p);background:var(--p-soft);border-radius:0 10px 10px 0;padding:10px 14px;font-size:14px;margin:10px 0}
+.orig .k{display:inline-block;font-size:11px;font-weight:700;color:var(--p);letter-spacing:.05em;margin-bottom:2px}
+.prose{font-size:15px;margin:10px 0;max-width:760px}
+.prose + .prose{margin-top:8px}
+/* 楼栋计算器 */
+.bld{display:grid;gap:4px;max-width:440px;margin:6px auto 0}
+.floor{display:grid;grid-template-columns:34px 1fr;gap:6px;align-items:stretch}
+.floor .fl{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:flex-end}
+.units{display:grid;gap:4px}
+.hh{border:1.5px solid var(--line);border-radius:8px;padding:5px 4px;font-size:12px;text-align:center;cursor:pointer;background:var(--surface-2);line-height:1.25;min-width:0;user-select:none;transition:background .15s,border-color .15s}
+.hh small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.hh:focus-visible{outline:2px solid var(--p);outline-offset:1px}
+.hh.yes{background:var(--t-soft);border-color:var(--t)}
+.hh.no{background:var(--r-soft);border-color:var(--r)}
+.hh.abs{background:var(--y-soft);border-color:var(--y)}
+.hh.out{background:transparent;border-style:dashed;color:var(--muted)}
+.ground{height:6px;border-radius:3px;background:var(--line);margin:2px 0 0 40px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin:8px 0}
+.legend span::before{content:"";display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px;border:1.5px solid var(--line)}
+.legend .y::before{background:var(--t-soft);border-color:var(--t)}
+.legend .n::before{background:var(--r-soft);border-color:var(--r)}
+.legend .a::before{background:var(--y-soft);border-color:var(--y)}
+.legend .o::before{border-style:dashed}
+.meter{margin:8px 0}
+.meter .row{display:flex;justify-content:space-between;font-size:13px;gap:8px}
+.meter .row{flex-wrap:wrap}
+.meter .row b{font-family:var(--mono);font-size:12px;white-space:nowrap;margin-left:auto}
+.mlbl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer}
+.mlbl input{accent-color:var(--p);width:16px;height:16px;flex:none}
+.bar{position:relative;height:12px;border-radius:6px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;margin-top:3px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--t);border-radius:6px;transition:width .3s}
+.bar.bad i{background:var(--r)}
+.bar u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ink);text-decoration:none}
+.verdict{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:14px;font-weight:600}
+.verdict.ok{background:var(--t-soft);color:var(--text)}
+.verdict.fail{background:var(--r-soft);color:var(--text)}
+.inputs{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;font-size:13px;color:var(--muted)}
+.inputs label{display:flex;align-items:center;gap:6px}
+.inputs input[type=number]{width:64px;font:inherit;color:var(--text);background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:4px 6px}
+.cmp{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+@media (min-width:640px){ .cmp{grid-template-columns:1fr 1fr} }
+.cmp > div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2)}
+.cmp h4{margin:0 0 4px;font-size:13px}
+/* 反对策略卡片 */
+.qs{display:grid;gap:8px;margin-top:8px}
+.q{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);overflow:hidden}
+.q > button{all:unset;box-sizing:border-box;display:flex;width:100%;gap:8px;align-items:flex-start;padding:9px 12px;cursor:pointer;font-size:14px}
+.q > button:focus-visible{outline:2px solid var(--p)}
+.q > button .ic{font-family:var(--mono);color:var(--p);flex:none;width:14px}
+.q .ans{display:none;padding:0 12px 10px 34px;font-size:13px;color:var(--muted)}
+.q.open .ans{display:block}
+.q .ans b{color:var(--text)}
+.q .ans .tag{margin-right:6px}
+.stepnav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.stepnav button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer}
+.stepnav button.on{background:var(--p);border-color:var(--p);color:#fff}
+.score{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;font-size:13px}
+.score span{padding:3px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+/* 分摊 */
+.share{display:grid;gap:5px;margin-top:10px}
+.share .r{display:grid;grid-template-columns:44px 1fr 92px;gap:8px;align-items:center;font-size:13px}
+.share .r .fl{font-family:var(--mono);color:var(--muted);text-align:right}
+.share .r .v{font-family:var(--mono);text-align:right}
+.share .bar i{background:var(--o)}
+/* 流程图 */
+.flow{display:grid;gap:0;max-width:640px;margin:0 auto}
+.fn{border:1.5px solid var(--line);background:var(--surface-2);border-radius:12px;padding:9px 12px;cursor:pointer;font-size:14px;position:relative}
+.fn small{display:block;color:var(--muted);font-size:12px}
+.fn:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.fn.sel{border-color:var(--p);background:var(--p-soft)}
+.fn.side{border-color:var(--r)}
+.fn.side.sel{background:var(--r-soft)}
+.fn.dec{border-style:dashed}
+.arrow{height:22px;display:flex;justify-content:center}
+.arrow svg{width:14px;height:22px}
+.arrow path{stroke:var(--muted);fill:none;stroke-width:1.5}
+.branch{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:560px){ .branch{grid-template-columns:1fr 1fr 1fr} }
+.flowinfo{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:var(--surface);font-size:14px;min-height:5em}
+.flowinfo h4{margin:0 0 4px;font-size:14px;color:var(--p)}
+.flowinfo .case{margin-top:6px;font-size:13px;color:var(--muted)}
+/* 地区对比 */
+.cities{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+@media (min-width:700px){ .cities{grid-template-columns:1fr 1fr} }
+.city{border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--surface-2);font-size:14px}
+.city h4{margin:0 0 4px;font-size:14px;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.city h4 .tag{font-weight:400}
+.city p{color:var(--text)}
+.city .na{color:var(--muted);font-style:italic}
+/* 案例 */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer;color:var(--muted)}
+.chips button.on{background:var(--t);border-color:var(--t);color:#fff}
+.cases{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+@media (min-width:760px){ .cases{grid-template-columns:1fr 1fr} }
+.case-c{border:1px solid var(--line);border-left:4px solid var(--t);border-radius:10px;padding:9px 12px;background:var(--surface-2);font-size:13px}
+.case-c.med{border-left-color:var(--o)}
+.case-c b{font-size:13.5px;display:block;color:var(--text)}
+.case-c .where{font-size:12px;color:var(--muted)}
+.case-c p{margin-top:4px}
+.kv{font-size:12px;color:var(--muted);margin-top:4px}
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">加装电梯的三分之二</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">社会 · 老旧小区 · 业主自治</div>
+  <h1>三分之二同意加装电梯后，是否无力回天？</h1>
+  <p class="sub">一则知乎回答给反对者写了一套「谈判」打法：表面支持、追问责任、挑拨分摊、渲染风险、拖到黄。本页保留它的骨架，再把每一步放回《民法典》的表决规则、地方加梯办法和法院判例里看一遍：这些招数在哪里有效，在哪里会撞墙。</p>
+  <div class="thesis">原文观点：谈判不是讲道理，而是「让问题复杂化」，让支持者意识到成本和责任；只要谈到钱，邻里就容易谈崩。<sup class="c">[1]</sup> 本页补上的另一半是：「三分之二」在现行法里只是<b>参与表决</b>的门槛，真正的同意门槛是参与者中的「双四分之三」；反对者能用的是投票、协商和诉讼，而不是阻挠施工。<sup class="c">[2][5]</sup></div>
+  <div class="authors">
+    <span class="au"><i>知</i>知乎答主（页面未存档作者名）</span>
+  </div>
+  <p class="meta">原文：知乎问题「三分之二同意加装电梯后，是否无力回天？」下的一则回答（剪藏未保存答主昵称与日期）。本页为<b>改写</b>：以原文的五步策略为骨架，重排为「表决门槛 → 五步追问 → 分摊 → 一楼不同意 → 各地做法 → 法院判例」，并加了多处标注为「本页改写 / 本页补充（非原文）」的法律条文、地方政策与司法案例。本页不构成法律意见，具体以所在地现行规定为准。</p>
+</header>
+
+<section class="ch" id="vote" data-title="表决门槛">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>「三分之二」到底是什么门槛</h2>
+    <p class="lead">题目问「三分之二同意之后是否无力回天」。可现行《民法典》里，三分之二只是「来参加表决」的门槛，同意要看另一个数。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：《民法典》第二百七十八条把「改建、重建建筑物及其附属设施」「改变共有部分的用途或者利用共有部分从事经营活动」列为业主共同决定事项（第七、八项），加装电梯通常按这一类处理。规则分两层：<b>① 参与</b>：专有部分面积占比三分之二以上、且人数占比三分之二以上的业主参与表决；<b>② 同意</b>：经参与表决专有部分面积四分之三以上、且参与表决人数四分之三以上的业主同意。<sup class="c">[2]</sup> 各地加梯办法普遍把「业主」的范围落到<b>本幢或本单元</b>，例如杭州第 324 号令第十条与宣城指导手册第 7 条都按「本单元」计算。<sup class="c">[6][7]</sup> 民法典第一千二百五十九条规定「以上」包括本数，所以恰好等于三分之二、四分之三也算达标。<sup class="c">[3]</sup></div>
+  <div class="note-add"><b>本页补充（非原文）</b>：题目里的「三分之二同意」很可能来自旧规则。民法典施行前，《物权法》（2007）第七十六条要求改建、重建须经专有部分占建筑物总面积三分之二以上、且占总人数三分之二以上的业主<b>同意</b>，分母是全体业主而不是参与者。<sup class="c">[4]</sup> 下面的计算器两套规则同时算，可以看到它们在哪些情形下结论相反。</div>
+  <div class="fig">
+    <div class="cap"><b>表决比例计算器。</b>设定楼层数、每层户数和两种户型面积，然后<b>点每一户</b>切换态度：同意 → 反对 → 弃权（到场但不表态） → 未参与。也可以用下方的情景按钮一键设置。门槛线（竖线）分别是 2/3 与 3/4。</div>
+    <div class="inputs">
+      <label>层数 <input type="number" id="vFloors" min="3" max="9" value="6" aria-label="层数"></label>
+      <label>每层户数 <input type="number" id="vPer" min="1" max="4" value="2" aria-label="每层户数"></label>
+      <label>A 户型 ㎡ <input type="number" id="vA" min="20" max="200" value="72" aria-label="A 户型面积"></label>
+      <label>B 户型 ㎡ <input type="number" id="vB" min="20" max="200" value="58" aria-label="B 户型面积"></label>
+    </div>
+    <div data-demo="vote"></div>
+  </div>
+</section>
+
+<section class="ch" id="tactics" data-title="五步反对策略">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>原文的五步：把问题复杂化</h2>
+    <p class="lead">原文认为，直接反对没用，要「表面支持、实则质疑」，用一连串追问让支持者看见成本和责任。这些追问真的没有答案吗？</p>
+  </div>
+  <div class="orig"><span class="k">原文</span><br>很多人误以为谈判就是讲道理，但真正的谈判是让问题复杂化，让支持者意识到潜在的成本和责任。如果讲道理有用，事情根本不会发展到需要谈判的地步。<sup class="c">[1]</sup></div>
+  <div class="fig">
+    <div class="cap"><b>逐步拆解。</b>选一步，再点每个问题，看它在地方办法、法律或判例里有没有现成的答案。绿色标签表示本页找到了可核对的制度答案，黄色表示需要当地协议约定、本页没有找到统一规定。</div>
+    <div data-demo="tactics"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：原文只列问题、不给答案，它的策略恰恰依赖「没人答得上来」。本页给每个问题配上能查到的制度回答，目的不是替任何一方站队，而是让读者分清：哪些是加梯协议本就该写清的正当关切，哪些只是拖延的说辞。</div>
+</section>
+
+<section class="ch" id="share" data-title="分摊：每层都吃亏？">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>让每层住户都觉得吃亏</h2>
+    <p class="lead">原文第三步问：维护费用如何分摊？高层用得多，低层为何要平摊？换一种分摊方式，各层的账会差多少？</p>
+  </div>
+  <div class="orig"><span class="k">原文</span><br>维护费用如何分摊？高层用得多，低层为何要平摊？电梯广告收益归谁所有？物业费是否要上涨？<sup class="c">[1]</sup></div>
+  <div class="fig">
+    <div class="cap"><b>分摊计算器。</b>输入总造价和补贴，切换三种分摊方式。「楼层系数」取自宣城 2022 年指导手册第 10 条的参考比例：一层 0、二层 0.5、三层 1.0，四层起每层加 0.2。<sup class="c">[7]</sup> 每户金额 = 该户系数 ÷ 全部系数之和 × 自筹总额。</div>
+    <div data-demo="share"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：各地政策并不要求平摊。杭州办法要求项目协议书写明「建设资金估算及分摊方案」和「电梯运行使用和维护保养资金分摊方案」（第十条第二款），并允许把电梯广告收入用于维保、检验（第二十八条）；北京 2022 年出了《既有多层住宅加装电梯不同楼层业主出资比例》指导区间，按楼层、面积、使用率等因素分摊，最终比例由出资业主协商确定。<sup class="c">[6][8]</sup> 原文说的「让每层都觉得吃亏」，在有系数参考的地方更难成立：一层通常是 0。</div>
+</section>
+
+<section class="ch" id="ground" data-title="一楼不同意怎么办">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>一层住户不同意时，路径有几条</h2>
+    <p class="lead">一楼不用电梯，却要承担采光、噪音、通行的影响。表决通过之后，他能做什么、不能做什么？</p>
+  </div>
+  <div class="orig"><span class="k">原文 · 成功案例</span><br>六楼住户买下一楼房子后，以新业主身份成功反对加装电梯，实现了从高层住户到一楼住户的转变。<sup class="c">[1]</sup></div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这则案例原文没有给出地点和时间，本页无法核实。按现行规则，买下一楼并不能「一票否决」。而且最高法关于建筑物区分所有权的司法解释第九条规定，业主人数按专有部分数量计算，但「同一买受人拥有一个以上专有部分的，按一人计算」，所以这位业主多得的只是一份面积，人数上仍是一人。<sup class="c">[11]</sup> 回到第 01 章计算器点「原文案例：六楼买下一楼」可以看到：6 层一梯两户的单元里，他一人反对挡不住；要让表决失败，得再争取到别的反对票（例如一二层 4 户都反对，同意人数比例 8/12，低于 3/4）。</div>
+  <div class="fig">
+    <div class="cap"><b>处理路径流程图。</b>主干是协商与调解，三条红框是一楼住户的法律选项和越界的后果。点任意一个节点看说明和对应的地方条款或判例。流程综合自杭州办法与最高法典型案例，各地环节名称不同。<sup class="c">[5][6]</sup></div>
+    <div data-demo="flow"></div>
+  </div>
+</section>
+
+<section class="ch" id="cities" data-title="各地做法对比">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>各地做法：表决、出资、补偿、维护</h2>
+    <p class="lead">原文的追问，有多少已经被地方办法写进了制度？换一个维度，并排看几座城市。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>地区对比。</b>选一个维度，下面并排列出各地写法。只收本页核对过来源的地区与年份；空白表示本页没查到可靠条文，不代表当地没有规定。</div>
+    <div data-demo="cities"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：表中「上海」一栏来自市级与浦东新区文件的公开转述，补贴口径近年有调整（市级、区级、街镇级可叠加），以所在区现行文件为准。<sup class="c">[9]</sup></div>
+</section>
+
+<section class="ch" id="courts" data-title="法院怎么判">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>「通过法律程序拖延时间」：法院怎么看</h2>
+    <p class="lead">原文第五步建议利用知情权投诉、起诉要求鉴定、用诉讼拖时间。2023 年最高人民法院与住建部一次发布了 11 个加梯典型案例，结果是什么？</p>
+  </div>
+  <div class="orig"><span class="k">原文</span><br>利用知情权进行投诉；起诉要求提供各种鉴定报告；通过法律程序拖延时间。<sup class="c">[1]</sup></div>
+  <div class="fig">
+    <div class="cap"><b>案例筛选。</b>按争议类型或处理方式筛选。左侧绿边为判决结案，橙边为调解或和解结案。案例要点摘自最高人民法院官网 2023-11-08 发布的「老旧小区既有住宅加装电梯典型案例」。<sup class="c">[5]</sup></div>
+    <div data-demo="cases"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这批案例里，阻挠施工的一方没有一例胜诉；法院反复使用的说法是相邻业主对依法加装的电梯负有「一定的容忍义务」，影响通风采光等问题可另行协商补偿，但不能以阻工代替主张。另一方面，未出资业主补交费用后仍可使用电梯（广州、南京两案），施工安全顾虑可以通过改进工艺与监测化解（浙江玉环案）。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="end" data-title="结语">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>回到题目：是否无力回天？</h2>
+    <p class="lead">原文的结论是「拖延战术：时间越长，事情越容易黄」，以及「只要谈到钱，亲兄弟都能谈崩」。</p>
+  </div>
+  <div class="orig"><span class="k">原文 · 核心策略</span><br>1. 让问题复杂化；2. 分化支持者；3. 利用人性弱点：人们对成本和责任的恐惧；4. 拖延战术。记住：只要谈到钱，亲兄弟都能谈崩，何况一盘散沙的邻里。<sup class="c">[1]</sup></div>
+  <div class="prose">原文说中了一件事：加梯失败，多数不是输在法律上，而是输在组织成本上。凑齐参与人数、谈拢分摊系数、写清维保责任，每一步都需要有人出力，而反对者只需要让过程变长。</div>
+  <div class="prose">但它高估了另一件事。现行规则下，三分之二只是「来开会」的门槛，反对票真正能起作用的地方是投票本身：一个 12 户的单元，4 户投反对就能让同意比例跌破四分之三。表决一旦依法通过，阻挠施工在案例里一律败诉，还可能赔钱、受治安处罚。<sup class="c">[5][6]</sup></div>
+  <div class="final">所以「三分之二同意之后」并非无力回天，但能回天的不是拖延，而是在表决中投出反对票、在公示期提出书面异议、在协商中把补偿和责任写进协议，以及在权益确实受损时去法院主张赔偿。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页以知乎问题「三分之二同意加装电梯后，是否无力回天？」下的一则回答为骨架重新组织（答主：知乎答主，页面未存档作者名；剪藏未保存原文链接与日期）。章节顺序、各问题的「制度回答」、计算器与地区对比为本页改写或补充，已逐处标注。原文无插图，本页图示均为内联 HTML/SVG 与 JS 绘制，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>知乎回答原文：《三分之二同意加装电梯后，是否无力回天？》，知乎答主（页面未存档作者名）。</li>
+    <li>《中华人民共和国民法典》（2020 年 5 月 28 日通过，2021 年 1 月 1 日施行）第二百七十八条：业主共同决定事项及「参与表决双三分之二」「第六至八项经参与表决双四分之三同意」的规则；第二百八十八条相邻关系原则。</li>
+    <li>《中华人民共和国民法典》第一千二百五十九条：「以上」「以下」「以内」「届满」包括本数。</li>
+    <li>《中华人民共和国物权法》（2007）第七十六条：改建、重建建筑物及其附属设施，须经专有部分占建筑物总面积三分之二以上的业主且占总人数三分之二以上的业主同意（民法典施行后废止）。</li>
+    <li>最高人民法院新闻局（2023-11-08）. <a href="https://www.court.gov.cn/zixun/xiangqing/417032.html">老旧小区既有住宅加装电梯典型案例</a>（最高人民法院、住房和城乡建设部联合发布，共 11 个案例）。</li>
+    <li>《杭州市老旧小区住宅加装电梯管理办法》（杭州市人民政府令第 324 号，2021-01-04 公布，2021-04-01 施行）第五、十、十三、十四、二十一、二十五、二十八、三十二条。</li>
+    <li>宣城市住房和城乡建设局（2022-07-19）. <a href="https://amr.xuancheng.gov.cn/OpennessContent/download/2575792.html">《宣城市中心城区既有多层住宅增设电梯》指导手册（政策问答）</a>：第 7 条表决比例、第 8 条异议处理、第 10 条出资比例参考系数。</li>
+    <li>北京市住房和城乡建设委员会等（2023-09）. <a href="https://www.beijing.gov.cn/zhengce/zhengcefagui/202309/W020230919328457442378.doc">《既有多层住宅加装电梯操作指引（试行）》</a>；新京报（2025-12-31）. <a href="https://www.bjnews.com.cn/detail/1767179944168633.html">2026 年「国补」扩容加装电梯、老旧电梯更新补贴「看层数」</a>：「谁受益、谁出资，谁使用、谁付费」原则与 2022 年出资比例指导区间。</li>
+    <li>上海市财政局等，沪财建〔2020〕28 号：按施工金额 40% 补贴、最高 28 万元/台、市区各半；浦东新区建交委，浦建委物管〔2024〕70 号：依据沪房更新〔2024〕30 号改为定额补贴，主体工程 28 万元/台（据公开文件转述，本页未逐字核对原文）。</li>
+    <li>《中华人民共和国特种设备安全法》（2013）第四十五条：电梯的维护保养应当由电梯制造单位或者依法取得许可的安装、改造、修理单位进行。</li>
+    <li>《最高人民法院关于审理建筑物区分所有权纠纷案件适用法律若干问题的解释》（法释〔2009〕7 号，2020 年修正）第八条（面积按不动产登记簿计算）、第九条（业主人数按专有部分数量计算；同一买受人拥有一个以上专有部分的按一人计算）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；计算器中的比例与金额均在页面内用 JS 现场计算，法律与政策细节以原文、法条与所在地现行文件为准，不构成法律意见。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const pct = (a, b) => b ? (a / b * 100) : 0;
+const f1 = (x) => x.toFixed(1);
+const meter = (label, num, den, thrN, thrD, unit) => {
+  const ok = den > 0 && num * thrD >= den * thrN;
+  const p = pct(num, den);
+  return el('div', { class: 'meter' },
+    el('div', { class: 'row' }, el('span', {}, label), el('b', {}, `${unit(num)} / ${unit(den)} = ${f1(p)}% ${ok ? '✓' : '✗'}`)),
+    el('div', { class: 'bar' + (ok ? '' : ' bad') }, el('i', { style: `width:${Math.min(100, p)}%` }), el('u', { style: `left:calc(${thrN / thrD * 100}% - 1px)` })));
+};
+
+/* ---------- 1. 表决比例计算器 ---------- */
+reg('vote', (node) => {
+  const ST = ['yes', 'no', 'abs', 'out'], LB = { yes: '同意', no: '反对', abs: '弃权', out: '未参与' };
+  const $ = (id) => document.getElementById(id);
+  const inF = $('vFloors'), inP = $('vPer'), inA = $('vA'), inB = $('vB');
+  let F = 6, P = 2, A = 72, B = 58, st = [], merge = false;
+  const clampv = (inp, lo, hi, d) => { let v = Math.round(+inp.value); if (!isFinite(v)) v = d; v = Math.max(lo, Math.min(hi, v)); return v; };
+  const idx = (f, u) => (f - 1) * P + u;           // f: 1..F
+  const area = (u) => (u % 2 === 0 ? A : B);
+  const bldBox = el('div', { class: 'bld', role: 'group', 'aria-label': '单元各户表决状态，从顶层到一层' });
+  const legend = el('div', { class: 'legend' }, el('span', { class: 'y' }, '同意'), el('span', { class: 'n' }, '反对'), el('span', { class: 'a' }, '弃权（参与但不同意）'), el('span', { class: 'o' }, '未参与'));
+  const mergeLbl = el('label', { class: 'mlbl' });
+  const mergeBox = el('input', { type: 'checkbox', 'aria-label': '顶层一户买下一层一户' });
+  mergeLbl.append(mergeBox, '顶层 1 号户买下了一层 1 号户（同一买受人，人数按一人计）');
+  const out = el('div');
+  const crit = el('div', { class: 'status' });
+  const scen = [
+    ['全部同意', () => st.fill('yes')],
+    ['一二层反对', () => { st.fill('yes'); for (let f = 1; f <= Math.min(2, F); f++) for (let u = 0; u < P; u++) st[idx(f, u)] = 'no'; }],
+    ['一二层不参与', () => { st.fill('yes'); for (let f = 1; f <= Math.min(2, F); f++) for (let u = 0; u < P; u++) st[idx(f, u)] = 'out'; }],
+    ['一层反对、二层弃权', () => { st.fill('yes'); for (let u = 0; u < P; u++) { st[idx(1, u)] = 'no'; if (F >= 2) st[idx(2, u)] = 'abs'; } }],
+    ['原文案例：六楼买下一楼', () => { st.fill('yes'); merge = true; mergeBox.checked = true; st[idx(F, 0)] = 'no'; st[idx(1, 0)] = 'no'; }],
+    ['一半人没来', () => { st.fill('yes'); for (let i = 0; i < st.length; i += 2) st[i] = 'out'; }],
+  ];
+  const scenRow = el('div', { class: 'ctrl' }, ...scen.map(([t, fn]) => el('button', { class: 'btn', type: 'button', onclick: () => { fn(); syncMerge(); draw(); } }, t)));
+  const syncMerge = () => { if (merge && F > 1) st[idx(1, 0)] = st[idx(F, 0)]; };
+  // 按「人」汇总：merge 时一层 1 号户与顶层 1 号户合为一人（态度相同），面积分别计入
+  const tally = (s) => {
+    let tN = 0, tS = 0, pN = 0, pS = 0, yN = 0, yS = 0;
+    for (let f = 1; f <= F; f++) for (let u = 0; u < P; u++) {
+      const i = idx(f, u), a = area(u), x = s[i];
+      const counted = !(merge && F > 1 && f === 1 && u === 0);  // 合并户的人数只在顶层计一次
+      tS += a; if (counted) tN++;
+      if (x !== 'out') { pS += a; if (counted) pN++; }
+      if (x === 'yes') { yS += a; if (counted) yN++; }
+    }
+    const part = pN * 3 >= tN * 2 && pS * 3 >= tS * 2;
+    const agree = pN > 0 && yN * 4 >= pN * 3 && yS * 4 >= pS * 3;
+    const old = yN * 3 >= tN * 2 && yS * 3 >= tS * 2;
+    return { tN, tS, pN, pS, yN, yS, part, agree, pass: part && agree, old };
+  };
+  const draw = () => {
+    bldBox.replaceChildren();
+    for (let f = F; f >= 1; f--) {
+      const units = el('div', { class: 'units', style: `grid-template-columns:repeat(${P},minmax(0,1fr))` });
+      for (let u = 0; u < P; u++) {
+        const i = idx(f, u), x = st[i];
+        const linked = merge && F > 1 && u === 0 && (f === 1 || f === F);
+        const b = el('div', { class: 'hh ' + x, tabindex: '0', role: 'button', 'aria-label': `${f} 层 ${u + 1} 号户，${area(u)} 平方米，当前${LB[x]}` },
+          `${f}0${u + 1}${linked ? ' ·合' : ''}`, el('small', {}, `${area(u)}㎡·${LB[x]}`));
+        const act = () => {
+          const target = (merge && F > 1 && f === 1 && u === 0) ? idx(F, 0) : i;
+          st[target] = ST[(ST.indexOf(st[target]) + 1) % ST.length]; syncMerge(); draw();
+        };
+        b.addEventListener('click', act);
+        b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
+        units.append(b);
+      }
+      bldBox.append(el('div', { class: 'floor' }, el('span', { class: 'fl' }, f + 'F'), units));
+    }
+    bldBox.append(el('div', { class: 'ground' }));
+    const t = tally(st);
+    const n = (x) => x + ' 人', m = (x) => x + '㎡';
+    out.replaceChildren(
+      el('div', { class: 'cmp' },
+        el('div', {}, el('h4', {}, '现行《民法典》第 278 条'),
+          meter('① 参与人数 ≥ 2/3', t.pN, t.tN, 2, 3, n),
+          meter('① 参与面积 ≥ 2/3', t.pS, t.tS, 2, 3, m),
+          meter('② 同意人数 / 参与人数 ≥ 3/4', t.yN, t.pN, 3, 4, n),
+          meter('② 同意面积 / 参与面积 ≥ 3/4', t.yS, t.pS, 3, 4, m),
+          el('div', { class: 'verdict ' + (t.pass ? 'ok' : 'fail') }, t.pass ? '通过：可以进入公示与报建' : (!t.part ? '未通过：参与表决的人不够，表决本身不成立' : '未通过：参与者中同意不足四分之三'))),
+        el('div', {}, el('h4', {}, '旧《物权法》第 76 条（2007–2020）'),
+          meter('同意人数 / 全体人数 ≥ 2/3', t.yN, t.tN, 2, 3, n),
+          meter('同意面积 / 全体面积 ≥ 2/3', t.yS, t.tS, 2, 3, m),
+          el('div', { class: 'verdict ' + (t.old ? 'ok' : 'fail') }, t.old ? '旧规则下：通过' : '旧规则下：未通过'),
+          el('p', { class: 'kv' }, t.old !== t.pass ? '注意：两套规则在这个情形下结论相反。' : '两套规则在这个情形下结论一致。'))));
+    // 临界：全员到场，自下而上 k 户投反对
+    const saveMerge = merge; let k = 0;
+    const trial = new Array(F * P).fill('yes');
+    const order = []; for (let f = 1; f <= F; f++) for (let u = 0; u < P; u++) order.push(idx(f, u));
+    for (k = 0; k <= order.length; k++) {
+      trial.fill('yes'); for (let j = 0; j < k; j++) trial[order[j]] = 'no';
+      merge = false; const r = tally(trial); merge = saveMerge;
+      if (!r.pass) break;
+    }
+    const ab = []; for (let k2 = 0; k2 <= order.length; k2++) { trial.fill('yes'); for (let j = 0; j < k2; j++) trial[order[j]] = 'out'; merge = false; const r = tally(trial); merge = saveMerge; if (!r.pass) { ab.push(k2); break; } }
+    crit.innerHTML = `这栋 ${F} 层、每层 ${P} 户的单元（不考虑合并户）：所有人到场时，从一层往上数 <b>${k}</b> 户投反对就会失败；如果这些人改成<b>不来投票</b>，要 <b>${ab[0] ?? '—'}</b> 户缺席才会失败。反对票比缺席更有力。`;
+  };
+  const rebuild = () => {
+    F = clampv(inF, 3, 9, 6); P = clampv(inP, 1, 4, 2); A = clampv(inA, 20, 200, 72); B = clampv(inB, 20, 200, 58);
+    st = new Array(F * P).fill('yes'); syncMerge(); draw();
+  };
+  [inF, inP, inA, inB].forEach((x) => x.addEventListener('change', rebuild));
+  mergeBox.addEventListener('change', () => { merge = mergeBox.checked; syncMerge(); draw(); });
+  node.append(scenRow, legend, bldBox, el('div', { class: 'ctrl' }, mergeLbl), out, crit);
+  rebuild();
+});
+
+/* ---------- 2. 五步反对策略 ---------- */
+reg('tactics', (node) => {
+  const S = [
+    ['表面支持，实则质疑', '不要直接反对，而是表示支持，但要「搞清楚问题」，以「为了楼上邻居好」为名不断追问。', [
+      ['以「为了大家好」为名追问细节，算不算正当？', 'ok', '正当的知情要求在流程里有专门的位置。杭州办法第十三条：方案公示期间有实名书面反对意见的，由相关当事人协商利益平衡、权益受损等事宜。区别在于：追问写成书面意见进入流程，还是停留在无限追问。[6]'],
+    ]],
+    ['追问技术责任', '核心问题：电梯出事了谁来修？', [
+      ['厂商保修期后怎么办？日常维护谁负责？', 'ok', '杭州办法第二十五条：加装电梯的申请人为电梯使用单位，负责日常使用和运行管理；可委托物业服务企业或其他管理人履行使用单位义务，未委托的由申请人协商确定的实际负责人履行安全使用管理义务。维保本身须由电梯制造单位或取得许可的安装、改造、修理单位进行（特种设备安全法第四十五条）。[6][10]'],
+      ['消防安全谁管理？', 'ok', '同上：使用单位（或其委托的物业）承担安全使用管理义务（杭州办法第二十五条第二款）。[6]'],
+      ['电梯清洁谁来做？', 'tbd', '本页未查到统一规定，属于加梯协议里的日常管理约定。'],
+      ['变电器超载如何处理？电网扩容谁去联系？', 'tbd', '属于施工方案与报建环节的技术事项，本页未查到统一规定，需看当地流程与施工合同。'],
+    ]],
+    ['质疑经济分摊', '让每层住户都觉得吃亏。', [
+      ['维护费用如何分摊？高层用得多，低层为何要平摊？', 'ok', '多数办法不要求平摊。杭州办法第十条第二款要求协议书写明建设资金与运行维护资金的分摊方案；宣城手册给出参考系数，一层为 0。见第 03 章计算器。[6][7]'],
+      ['电梯广告收益归谁所有？', 'ok', '杭州办法第二十八条：可利用电梯商业广告收入等资金用于维护保养、改造维修、检验检测。[6]'],
+      ['物业费是否要上涨？', 'tbd', '本页未查到统一规定；电梯运行费用通常由出资或使用业主在协议中约定分担，而不是并入全体物业费。具体看当地协议。'],
+      ['几万建设资金的安全性？提前收取是否合理？', 'tbd', '本页未查到统一的资金监管规定。宣城协议范本约定电梯建成后属全体出资业主所有，房屋转让时受让人承接原业主的分担义务。[7]'],
+    ]],
+    ['提出风险担忧', '灵魂拷问：建设公司倒闭怎么办？', [
+      ['建到一半成为半成品怎么办？', 'tbd', '本页未查到专门规定，属于施工合同的付款节点与违约责任约定。'],
+      ['保修期内公司倒闭、有限责任公司破产了找谁？', 'tbd', '本页未查到专门规定。可以确定的是维保主体不必是施工方，任何依法取得许可的维保单位都可以接手（特种设备安全法第四十五条）。[10]'],
+    ]],
+    ['法律和行政途径', '利用知情权投诉，起诉要求鉴定报告，通过法律程序拖延时间。', [
+      ['利用知情权投诉', 'ok', '杭州办法的路径是：公示期实名书面反对 → 当事人协商 → 社区调解 → 街道办事处或乡镇政府组织协调会、听证会（第十三、十四条）。投诉会进入调解，而不是自动叫停。[6]'],
+      ['起诉要求提供各种鉴定报告', 'ok', '浙江玉环案：被告担心房屋安全阻挠施工，最终调解约定采用钻孔灌注桩施工、进行三次安全监测，违约方赔偿 16 万元。安全顾虑能换来更稳妥的工艺，但换不来永久搁置。[5]'],
+      ['通过法律程序拖延时间', 'ok', '2023 年 11 个典型案例中，阻挠施工的一方没有一例胜诉。广州海珠案：业主多次进入施工现场阻挠，被判不得阻挠并赔偿 3600 元损失；杭州办法第三十二条：阻挠、扰乱、破坏施工构成违反治安管理行为的，由公安机关处理。[5][6]'],
+    ]],
+  ];
+  const opened = new Set();
+  const nav = el('div', { class: 'stepnav', role: 'tablist' });
+  const head = el('div', { class: 'orig' });
+  const list = el('div', { class: 'qs' });
+  const score = el('div', { class: 'score' });
+  const total = S.reduce((a, s) => a + s[2].length, 0), okTotal = S.reduce((a, s) => a + s[2].filter((q) => q[1] === 'ok').length, 0);
+  const upScore = () => {
+    const o = [...opened].map((k) => k.split('-').map(Number)).map(([a, b]) => S[a][2][b][1]);
+    score.replaceChildren(el('span', {}, `已展开 ${opened.size} / ${total} 个问题`), el('span', {}, `其中有制度答案的 ${o.filter((x) => x === 'ok').length}`), el('span', {}, `全部问题里有制度答案的：${okTotal} / ${total}`));
+  };
+  const show = (k) => {
+    nav.querySelectorAll('button').forEach((b, i) => { b.classList.toggle('on', i === k); b.setAttribute('aria-selected', i === k); });
+    head.replaceChildren(el('span', { class: 'k' }, `原文 · 第${'一二三四五'[k]}步：${S[k][0]}`), el('br'), S[k][1]);
+    list.replaceChildren(...S[k][2].map(([q, tag, a], j) => {
+      const key = k + '-' + j;
+      const box = el('div', { class: 'q' + (opened.has(key) ? ' open' : '') });
+      const btn = el('button', { type: 'button', 'aria-expanded': opened.has(key) ? 'true' : 'false' }, el('span', { class: 'ic' }, opened.has(key) ? '−' : '+'), el('span', {}, q));
+      btn.addEventListener('click', () => {
+        const on = !box.classList.contains('open'); box.classList.toggle('open', on); btn.setAttribute('aria-expanded', on);
+        btn.firstChild.textContent = on ? '−' : '+'; if (on) opened.add(key); upScore();
+      });
+      const t = el('span', { class: 'tag', style: tag === 'ok' ? 'background:var(--t-soft);color:var(--text);border-color:var(--t)' : 'background:var(--y-soft);color:var(--text);border-color:var(--y)' }, tag === 'ok' ? '有制度答案' : '看当地约定');
+      const ans = el('div', { class: 'ans' }, t);
+      ans.append(document.createTextNode(a));
+      box.append(btn, ans);
+      return box;
+    }));
+  };
+  S.forEach((s, i) => nav.append(el('button', { type: 'button', role: 'tab', onclick: () => show(i) }, `${i + 1}. ${s[0]}`)));
+  node.append(nav, head, list, score);
+  show(1); upScore();
+});
+
+/* ---------- 3. 出资分摊计算器 ---------- */
+reg('share', (node) => {
+  let cost = 50, sub = 0, F = 6, P = 2, mode = 0;
+  const modes = ['楼层系数（宣城参考）', '二层起平摊', '全员平摊'];
+  const coef = (f) => mode === 0 ? (f === 1 ? 0 : f === 2 ? 0.5 : 1 + 0.2 * (f - 3)) : mode === 1 ? (f === 1 ? 0 : 1) : 1;
+  const mk = (lbl, min, max, val, step, set) => {
+    const o = el('output', {}, val); const i = el('input', { type: 'range', min, max, value: val, step, 'aria-label': lbl });
+    i.addEventListener('input', () => { set(+i.value); o.textContent = i.value; draw(); });
+    return el('label', { class: 'range' }, lbl, i, o);
+  };
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '分摊方式' });
+  modes.forEach((m, i) => seg.append(el('button', { type: 'button', class: i === 0 ? 'on' : '', onclick: (e) => { mode = i; seg.querySelectorAll('button').forEach((b, j) => b.classList.toggle('on', j === i)); draw(); } }, m)));
+  const rows = el('div', { class: 'share' });
+  const st = el('div', { class: 'status' });
+  const draw = () => {
+    const net = Math.max(0, cost - sub);
+    let sum = 0; for (let f = 1; f <= F; f++) sum += coef(f) * P;
+    const per = (f) => sum ? coef(f) / sum * net : 0;
+    const max = Math.max(...Array.from({ length: F }, (_, i) => per(i + 1)), 0.0001);
+    rows.replaceChildren();
+    for (let f = F; f >= 1; f--) {
+      const v = per(f);
+      rows.append(el('div', { class: 'r' }, el('span', { class: 'fl' }, f + 'F ×' + coef(f).toFixed(1)), el('div', { class: 'bar' }, el('i', { style: `width:${v / max * 100}%` })), el('span', { class: 'v' }, (v * 10000).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' 元')));
+    }
+    const top = per(F), two = per(2);
+    st.innerHTML = `自筹 <b>${net}</b> 万元，${F * P} 户。` + (mode === 2 ? `全员平摊时一层也要出 <b>${(per(1) * 1e4).toFixed(0)}</b> 元，这正是原文说的「低层为何要平摊」。` : `一层出 0；顶层每户 <b>${(top * 1e4).toFixed(0)}</b> 元，是二层的 <b>${two ? (top / two).toFixed(1) : '—'}</b> 倍。`);
+  };
+  node.append(el('div', { class: 'ctrl' }, mk('总造价（万元）', 20, 80, 50, 1, (v) => cost = v), mk('政府补贴（万元）', 0, 30, 0, 1, (v) => sub = v)),
+    el('div', { class: 'ctrl' }, mk('层数', 4, 9, 6, 1, (v) => F = v), mk('每层户数', 1, 4, 2, 1, (v) => P = v)), seg, rows, st);
+  draw();
+});
+
+/* ---------- 4. 一楼不同意：处理路径流程图 ---------- */
+reg('flow', (node) => {
+  const N = {
+    vote: ['表决达标', '本单元双 2/3 参与、双 3/4 同意', '对应第 01 章。一层住户此时能做的最有力的事是投反对票：在 12 户单元里 4 户反对即可让同意比例跌破 3/4。拟占用某户专有部分的，还须该户本人同意（杭州办法第十条、宣城手册第 7 条）。', ''],
+    show: ['方案公示', '可提交实名书面异议', '杭州办法第十三条：公示期间有实名制书面反对意见的，由相关当事人协商解决利益平衡、权益受损等事宜。这是「知情权」真正生效的位置。', ''],
+    talk: ['协商与补偿', '采光、通行、噪音的利益平衡', '补偿没有全国统一标准，多为协商。最高法典型案例中多次出现「影响问题可另行协商补偿」的说法。', '南宁青秀案：二楼业主以通风采光为由阻挠，法院判加装合法；之后楼上业主集资 7639 元为其免费增设连廊并免交部分费用，双方和解。[5]'],
+    comm: ['社区调解', '居委会组织', '杭州办法第十四条：协商不成的，社区居民委员会应当组织调解。宣城手册第 8 条：异议可自行协商，也可在街道办事处调解下解决。', ''],
+    hear: ['街道协调会 / 听证会', '街道办或乡镇政府组织', '杭州办法第十四条：当事人拒绝调解或调解未果的，由街道办事处或乡镇人民政府组织协调会、听证会等方式调解。', '杭州上城某小区：单元近 4 年未就加梯达成共识，2021 年 7 月经公开听证会调解达成一致，同年 10 月完工。[5]'],
+    build: ['联合审查、施工', '其他单位和个人应当提供必要的便利', '杭州办法第二十一条第三款：对联合审查同意的项目，其他单位和个人应当提供必要的便利。', '成都武侯案：加装电梯占用公共绿地面积小、无明显不利影响，阻挠业主被判停止阻扰。[5]'],
+    sue: ['诉讼：要求拆除', '主张程序违法或权益受损', '可以起诉，但要拿出证据。法院会审查表决程序是否合法、对低层的影响是否超出合理限度。', '北京朝阳案：一层业主称未经同意、影响通风采光，要求拆除；因未提交充分证据被驳回，法院认为程序合法时低楼层住户负有适度容忍义务。[5]'],
+    dmg: ['协商不成：主张赔偿', '针对实际损害', '容忍义务不等于白白承受。确有采光、通风损害的，可以协商补偿或依法主张赔偿，但这与「阻止施工」是两回事。', '无锡案：相邻楼栋业主以采光受影响阻工，被判停止阻挠；判决同时指出影响问题可另行协商补偿。[5]'],
+    block: ['阻挠施工', '越界：要承担后果', '杭州办法第三十二条：阻挠、扰乱、破坏加装电梯施工构成违反治安管理行为的，由公安机关依照治安管理处罚法处理。', '广州海珠案：业主多次进入施工现场阻挠，被判不得阻挠、破坏施工，并赔偿 3600 元损失。[5]'],
+  };
+  const info = el('div', { class: 'flowinfo', 'aria-live': 'polite' });
+  const nodes = {};
+  const mk = (k, cls = '') => {
+    const [t, s] = N[k];
+    const b = el('div', { class: 'fn ' + cls, tabindex: '0', role: 'button' }, el('b', {}, t), el('small', {}, s));
+    const act = () => { Object.values(nodes).forEach((x) => x.classList.remove('sel')); b.classList.add('sel'); const [tt, , d, c] = N[k]; info.replaceChildren(el('h4', {}, tt), el('div', {}, d), c ? el('div', { class: 'case' }, '案例：' + c) : ''); };
+    b.addEventListener('click', act); b.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } });
+    nodes[k] = b; return b;
+  };
+  const arrow = () => el('div', { class: 'arrow', 'aria-hidden': 'true' }, svg('svg', { viewBox: '0 0 14 22' }, svg('path', { d: 'M7 0 V20 M2 15 L7 20 L12 15' })));
+  node.append(el('div', { class: 'flow' }, mk('vote', 'dec'), arrow(), mk('show'), arrow(), mk('talk'), arrow(), mk('comm'), arrow(), mk('hear'), arrow(), mk('build'),
+    el('p', { class: 'kv', style: 'margin:14px 0 6px;text-align:center' }, '一楼住户在任何阶段都可能走向的三条支线（红框）'),
+    el('div', { class: 'branch' }, mk('sue', 'side'), mk('dmg', 'side'), mk('block', 'side'))), info);
+  nodes.talk.click();
+});
+
+/* ---------- 5. 各地做法对比 ---------- */
+reg('cities', (node) => {
+  const C = [['全国', '民法典 · 最高法'], ['杭州', '2021 · 市政府令第 324 号'], ['宣城', '2022 · 住建局指导手册'], ['北京', '2022–2023 · 操作指引等'], ['上海', '2020 / 2024 · 补贴文件']];
+  const D = {
+    '表决口径': ['参与：面积与人数各 ≥ 2/3；同意：参与者中面积与人数各 ≥ 3/4（第 278 条）。人数按专有部分计，同一买受人多套按一人（司法解释第九条）。[2][11]', '本单元双 2/3 参与、双 3/4 同意后签订项目协议书；拟占用某户专有部分的还须该户同意（第十条）。[6]', '本单元双 2/3 参与，参与者中面积与人数各 3/4 以上书面同意（第 7 条）。[7]', '', ''],
+    '出资分摊': ['无全国统一比例。', '建设、运行、维护资金由相关业主共同承担（第五条）；协议书写明建设与运行维护资金分摊方案（第十条）。[6]', '可自行协商，或参照系数：一层 0、二层 0.5、三层 1.0，四层起每层加 0.2（第 10 条）。[7]', '「谁受益、谁出资，谁使用、谁付费」；2022 年发布不同楼层出资比例指导区间，按楼层、面积、使用率协商；可用公积金、专项维修资金。[8]', ''],
+    '低层与异议': ['典型案例：相邻业主对依法加装负有一定容忍义务，影响可另行协商补偿；阻挠施工须停止并可能赔偿。[5]', '公示期实名书面反对 → 协商 → 社区调解 → 街道协调会、听证会（第十三、十四条）；阻挠施工违反治安管理的由公安处理（第三十二条）。[6]', '邻里充分协商，实施主体协调，也可在街道办事处调解下解决（第 8 条）。[7]', '操作指引附有业主协商工作指引等示范文本（具体条文本页未逐条核对）。[8]', ''],
+    '维护管理': ['电梯维保须由制造单位或取得许可的安装、改造、修理单位进行（特种设备安全法第四十五条）。[10]', '申请人为使用单位，可委托物业（第二十五条）；广告收入可用于维保与检验（第二十八条）。[6]', '事先协商维保方式与费用分摊（第 9 条）；房屋转让时受让人承接分担义务（协议范本第五条）。[7]', '「谁使用、谁付费」。[8]', ''],
+    '政府补贴': ['', '', '', '有政府「奖补」资金（新京报 2025 年报道）。[8]', '2020 年：按施工金额 40% 补贴，最高 28 万元/台，市区各半；2024 年起改为定额补贴，浦东主体工程 28 万元/台。[9]'],
+  };
+  const keys = Object.keys(D);
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '对比维度' });
+  const grid = el('div', { class: 'cities' });
+  const st = el('div', { class: 'status' });
+  const show = (k) => {
+    seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.textContent === k));
+    grid.replaceChildren(...C.map(([n, y], i) => {
+      const v = D[k][i];
+      return el('div', { class: 'city' }, el('h4', {}, n, el('span', { class: 'tag' }, y)), v ? el('p', {}, v) : el('p', { class: 'na' }, '本页未查到可靠条文'));
+    }));
+    const have = D[k].filter(Boolean).length;
+    st.innerHTML = `「${k}」：<b>${have}</b> / ${C.length} 个地区查到了可核对的写法。`;
+  };
+  keys.forEach((k) => seg.append(el('button', { type: 'button', onclick: () => show(k) }, k)));
+  node.append(el('div', { class: 'scrollx' }, seg), grid, st);
+  show('低层与异议');
+});
+
+/* ---------- 6. 司法案例筛选 ---------- */
+reg('cases', (node) => {
+  const K = [
+    ['徐某等六人诉范某排除妨害纠纷案', '江苏无锡', '阻挠施工', '判决', '相邻楼栋业主以采光受影响为由阻挠施工；判决停止阻挠，二审维持。相邻业主对合法合理的加装行为有一定容忍义务，影响问题可另行协商补偿。'],
+    ['康某等人诉刘某等人排除妨害纠纷案', '四川成都武侯区', '阻挠施工', '判决', '加装电梯占用公共绿地，其他业主阻挠；判决停止阻扰，二审维持。占地小且无明显不利影响时，其他业主应给予便利。'],
+    ['刘某诉某经济联合社侵权责任纠纷案', '北京朝阳区', '要求拆除', '判决', '一层业主称未经其同意、影响通风采光，要求拆除；未提交充分证据被驳回。程序合法时低楼层住户负有适度容忍义务。'],
+    ['某公司诉钟某排除妨碍纠纷案', '广东广州海珠区', '阻挠施工', '判决', '业主多次进入施工现场阻挠，工程无法开工；判令不得阻挠、破坏施工，并赔偿 3600 元损失。'],
+    ['郭某与谢某等建筑物区分所有权纠纷案', '广东广州荔湾区', '未出资者使用', '判决', '未出资的高龄业主要求使用电梯，32 户出资业主反对；判决其支付集资款后可使用，二审驳回上诉。'],
+    ['张某等八人诉李某、任某排除妨碍纠纷案', '浙江玉环', '阻挠施工', '调解', '被告担心房屋安全阻扰施工；调解约定采用钻孔灌注桩施工、进行三次安全监测，违约方赔偿 16 万元。'],
+    ['赵某诉唐某、樊某等合同纠纷案', '江苏南京玄武区', '未出资者使用', '调解', '未出资的三楼业主要求使用电梯；一审判其有权按协议使用，二审调解设立维护基金，原告撤回上诉。'],
+    ['苏某、吴某诉谌某等十人排除妨碍纠纷案', '福建漳州南靖', '位置与方案', '调解', '停靠点设置与原商定方案不一致，原告要求拆除重建；一审驳回，二审调解后撤回上诉。'],
+    ['王某、窦某诉骆某、阳某等侵权责任纠纷案', '广西南宁青秀区', '阻挠施工', '判决', '二楼业主以通风采光为由阻挠；判决加装合法，此后楼上业主集资 7639 元为其增设连廊并免交部分费用，双方和解。'],
+    ['何某诉万某排除妨碍纠纷案', '浙江杭州上城区', '位置与方案', '调解', '三楼业主反对电梯位置并坐在施工现场阻挠；经法院、住建部门与人民调解委员会联合调解，电梯适度移位，原告撤诉。'],
+    ['浙江杭州某小区加装电梯纠纷', '浙江杭州上城区', '意愿难统一', '调解', '单元近 4 年未达成共识；2021 年 7 月经公开听证会调解一致，同年 10 月完工。'],
+  ];
+  let ft = '全部', fo = '全部';
+  const types = ['全部', ...new Set(K.map((k) => k[2]))], outs = ['全部', '判决', '调解'];
+  const c1 = el('div', { class: 'chips', role: 'group', 'aria-label': '争议类型' }), c2 = el('div', { class: 'chips', role: 'group', 'aria-label': '处理方式', style: 'margin-top:6px' });
+  const list = el('div', { class: 'cases' }), st = el('div', { class: 'status' });
+  const draw = () => {
+    c1.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.textContent === ft));
+    c2.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.textContent === fo));
+    const r = K.filter((k) => (ft === '全部' || k[2] === ft) && (fo === '全部' || k[3] === fo));
+    list.replaceChildren(...r.map(([t, w, ty, o, d]) => el('div', { class: 'case-c' + (o === '调解' ? ' med' : '') }, el('b', {}, t), el('span', { class: 'where' }, `${w} · ${ty} · ${o}`), el('p', {}, d))));
+    const blk = r.filter((k) => k[2] === '阻挠施工' || k[2] === '要求拆除').length;
+    st.innerHTML = `显示 <b>${r.length}</b> / ${K.length} 个案例` + (blk ? `；其中阻挠施工或要求拆除的 ${blk} 个，反对方均未获判决支持，或经调解改为加固、移位等方案。` : '。');
+  };
+  types.forEach((t) => c1.append(el('button', { type: 'button', onclick: () => { ft = t; draw(); } }, t)));
+  outs.forEach((t) => c2.append(el('button', { type: 'button', onclick: () => { fo = t; draw(); } }, t)));
+  node.append(c1, c2, list, st);
+  draw();
+});
+
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

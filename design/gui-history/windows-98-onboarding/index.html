@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Windows 98 的新用户引导</title>
+<meta name="description" content="根据 Benjamin Brandall《Why Windows 98's User Onboarding is Better Than Yours》（优设网译）制作：亲手点一遍「欢迎使用 Windows 98」引导流程，对比 Windows 3.1、渐进式档案、回收站空状态、典型安装、小练习与一致性原则。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页追加令牌：Windows 98 线框配色（浅/深成对） ===== */
+:root{ --w-face:#c3c3c3; --w-hi:#ffffff; --w-dk:#808080; --w-dd:#3a3a3a; --w-t1:#0a1f8f; --w-t2:#2a7fd0; --w-text:#111; --w-field:#ffffff; --w-desk:#1f8a8a; --w-sel:#0a1f8f; }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --w-face:#4b4f59; --w-hi:#80848f; --w-dk:#2a2d34; --w-dd:#15171b; --w-t1:#1c2c86; --w-t2:#3d6fb0; --w-text:#eef0f4; --w-field:#2a2d35; --w-desk:#164f50; --w-sel:#5a6fe0; }
+}
+:root[data-theme="dark"]{ --w-face:#4b4f59; --w-hi:#80848f; --w-dk:#2a2d34; --w-dd:#15171b; --w-t1:#1c2c86; --w-t2:#3d6fb0; --w-text:#eef0f4; --w-field:#2a2d35; --w-desk:#164f50; --w-sel:#5a6fe0; }
+
+/* Win98 线框组件 */
+.w98{background:var(--w-face);color:var(--w-text);border:2px solid;border-color:var(--w-hi) var(--w-dd) var(--w-dd) var(--w-hi);box-shadow:inset -1px -1px 0 var(--w-dk),inset 1px 1px 0 var(--w-face);font-size:13px;line-height:1.5;max-width:100%}
+.w98 .tb{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,var(--w-t1),var(--w-t2));color:#fff;font-weight:700;font-size:12.5px;padding:3px 4px 3px 6px;white-space:nowrap;overflow:hidden}
+.w98 .tb span{flex:1;overflow:hidden;text-overflow:ellipsis}
+.w98 .tb i{font-style:normal;width:16px;height:14px;background:var(--w-face);color:var(--w-text);font-size:10px;line-height:12px;text-align:center;border:1px solid;border-color:var(--w-hi) var(--w-dd) var(--w-dd) var(--w-hi);flex:none}
+.w98 .body{padding:10px}
+.wbtn{font:inherit;font-size:13px;color:var(--w-text);background:var(--w-face);border:2px solid;border-color:var(--w-hi) var(--w-dd) var(--w-dd) var(--w-hi);padding:3px 12px;cursor:pointer;min-width:72px}
+.wbtn:active,.wbtn.down{border-color:var(--w-dd) var(--w-hi) var(--w-hi) var(--w-dd)}
+.wbtn:focus-visible{outline:1px dotted var(--w-text);outline-offset:-5px}
+.wbtn[disabled]{opacity:.55;cursor:default}
+.well{background:var(--w-field);border:2px solid;border-color:var(--w-dk) var(--w-hi) var(--w-hi) var(--w-dk);padding:8px}
+.desk{background:var(--w-desk);padding:14px;border-radius:6px;position:relative;overflow:hidden}
+.dicon{display:inline-flex;flex-direction:column;align-items:center;gap:2px;width:72px;color:#fff;font-size:11.5px;text-align:center;cursor:pointer;border:1px dashed transparent;padding:4px 2px;background:none;font-family:inherit}
+.dicon:focus-visible,.dicon.sel{border-color:#fff;background:rgba(10,31,143,.45)}
+.dicon svg{width:32px;height:32px}
+
+/* 欢迎屏 */
+.welcome{display:grid;grid-template-columns:1fr;gap:0}
+.welcome .menu{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:8px;background:var(--w-t1)}
+.welcome .menu button{display:flex;align-items:center;gap:6px;text-align:left;background:transparent;border:1px solid transparent;color:#fff;font:inherit;font-size:12.5px;padding:6px;cursor:pointer;border-radius:2px}
+.welcome .menu button:hover,.welcome .menu button.on{border-color:#fff;background:rgba(255,255,255,.12)}
+.welcome .menu button b{display:inline-flex;width:20px;height:20px;border-radius:50%;background:#fff;color:var(--w-t1);font-size:11px;align-items:center;justify-content:center;flex:none}
+.welcome .menu button.done b{background:#3fbf7f;color:#fff}
+.welcome .menu button.skip b{background:#d9a72c;color:#fff}
+.welcome .pane{padding:12px;min-height:250px;display:flex;flex-direction:column;gap:8px}
+.welcome .pane h4{margin:0;font-size:16px}
+.welcome .foot{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;border-top:1px solid var(--w-dk);flex-wrap:wrap;font-size:12px}
+@media (min-width:640px){ .welcome{grid-template-columns:190px 1fr} .welcome .menu{grid-template-columns:1fr;align-content:start} .welcome .foot{grid-column:1/3} }
+.arena{position:relative;height:150px;background:var(--w-field);border:2px solid;border-color:var(--w-dk) var(--w-hi) var(--w-hi) var(--w-dk);overflow:hidden;touch-action:none;user-select:none}
+.tgt{position:absolute;width:44px;height:44px;border-radius:50%;background:var(--o);color:#fff;border:0;font:inherit;font-size:11px;cursor:pointer}
+.dragbox{position:absolute;width:52px;height:40px;background:var(--y);color:#111;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:grab;border:1px solid var(--w-dd)}
+.dropzone{position:absolute;right:10px;top:40px;width:80px;height:66px;border:2px dashed var(--w-dk);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--w-text);text-align:center}
+.dropzone.hot{border-color:var(--t);background:var(--t-soft)}
+.prog{height:14px;border:2px solid;border-color:var(--w-dk) var(--w-hi) var(--w-hi) var(--w-dk);background:var(--w-field);overflow:hidden}
+.prog > div{height:100%;width:0;background:repeating-linear-gradient(90deg,var(--w-sel) 0 9px,transparent 9px 11px);transition:width .3s}
+
+/* 现代线框 */
+.mock{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:12px;font-size:13px}
+.mock .bar{height:8px;border-radius:4px;background:var(--surface-2);margin:6px 0}
+.mock .field{border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:11.5px;color:var(--muted);margin:3px 0;background:var(--bg)}
+.mock .cta{display:inline-block;border-radius:8px;background:var(--p);color:#fff;padding:5px 12px;font-size:12px;margin-top:6px}
+.mock .ghost{display:inline-block;border-radius:8px;border:1px solid var(--line);padding:5px 12px;font-size:12px;margin-top:6px}
+.fields2{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+.tip{position:relative;display:inline-block;background:var(--ink);color:var(--bg);font-size:11.5px;padding:5px 9px;border-radius:8px;margin-top:8px}
+.verdict{font-size:12.5px;margin-top:8px;padding:6px 10px;border-radius:8px}
+.verdict.bad{background:var(--r-soft);color:var(--r)}
+.verdict.good{background:var(--t-soft);color:var(--t)}
+
+/* 渐进式时间轴 */
+.pp{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.pp .col{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface-2);min-height:150px}
+.pp .col h5{margin:0 0 6px;font-size:12px;color:var(--muted);font-weight:600}
+.pp .chip{font-size:11.5px;border-radius:6px;padding:4px 6px;margin:4px 0;background:var(--p-soft);color:var(--p);transition:all .35s}
+.pp .chip.opt{background:var(--y-soft);color:var(--text)}
+@media (max-width:560px){ .pp{grid-template-columns:1fr 1fr} .pp .col{min-height:0} }
+
+/* 回收站 */
+.rb{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:700px){ .rb{grid-template-columns:200px 1fr} }
+.rbside{background:linear-gradient(180deg,var(--w-field),var(--w-face));padding:10px;font-size:12px;border-right:1px solid var(--w-dk)}
+.rbside h4{margin:0 0 6px;font-size:18px;color:var(--w-sel)}
+.rblist{min-height:110px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+.file{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--w-dk);background:var(--w-field);color:var(--w-text);font:inherit;font-size:12px;padding:3px 8px;cursor:pointer}
+.file.sel{background:var(--w-sel);color:#fff}
+
+/* 安装类型 */
+.radios{display:grid;gap:6px}
+.radios label{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start;cursor:pointer;font-size:13px}
+.radios small{display:block;opacity:.75;font-size:11.5px}
+.comps{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px 10px;font-size:12px;margin-top:6px}
+.comps label{display:flex;gap:6px;align-items:center}
+
+/* 类比卡片与柱状图 */
+.pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pair{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px;cursor:pointer;text-align:center;font:inherit;color:var(--text);min-height:118px}
+.pair svg{width:56px;height:56px;margin:0 auto 4px}
+.pair .k{font-weight:700}
+.pair .v{font-size:12px;color:var(--muted)}
+.pair.on{border-color:var(--o);background:var(--o-soft)}
+
+/* 一致性小游戏 */
+.dlgwrap{display:flex;justify-content:center;padding:10px 0}
+.dlg{width:min(340px,100%)}
+.dlg .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.score{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.score div{background:var(--surface-2);border-radius:10px;padding:8px 10px;font-size:13px}
+.score b{display:block;font-family:var(--mono);font-size:18px}
+
+/* 人群路径 */
+.path{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.path .st{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 10px;font-size:12.5px}
+.path .st.hi{background:var(--t-soft);border-color:var(--t);color:var(--t);font-weight:600}
+.path .ar{color:var(--muted)}
+.hero-mini{margin-top:20px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Windows 98 的新用户引导</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · 用户引导</div>
+  <h1>二十年前的 Windows 98，新用户引导做得比很多今天的产品好</h1>
+  <p class="sub">注册不强求，上网设置可以晚点再说，默认选项替你做完大部分决定，不会用鼠标就先做几个小练习。这页把原文里提到的每一招都画成能点的线框，你可以亲手从「欢迎使用 Windows 98」走到桌面。</p>
+  <div class="thesis">好的新用户引导（onboarding）不靠厚手册，靠的是：少问、晚问、给默认值、让人边做边学、随时能跳过，并且不对用户的水平做任何假设。Windows 98 在 1998 年就做到了这些。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>B</i>Benjamin Brandall（原作者）</span>
+    <span class="au"><i style="background:var(--t)">优</i>优设网（中译，陈子木）</span>
+  </div>
+  <p class="meta">原文：Benjamin Brandall，〈Why Windows 98's User Onboarding is Better Than Yours〉，Usersnap 博客（2016-09-27）；中译〈20年前的Windows 98，有一套不俗的新用户引导流程〉，优设网（uisdc.com）。本页忠实于原文的叙述顺序，界面截图均改为示意线框（不是像素还原），并加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="s1" data-title="3.1 与 98 的第一眼">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>第一次开机，你看到的是什么</h2>
+    <p class="lead">同样是「刚装好系统」，Windows 3.1 和 Windows 98 给新手的第一眼差在哪？</p>
+  </div>
+  <p>作者说，今天读微软当年的界面文档就像考古：设计者和开发者手里有一本 381 页的指南。和「混乱粗陋」的 Windows 3.1 比，Windows 98 的进步一眼可见。3.1 进去之后是一堆程序组图标，没有任何「从这里开始」的提示；98 则在第一次启动时弹出一个欢迎窗口，把注册、上网、学习、维护四件事摆在你面前，每一件都可以不做。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>切换两个系统的首次开机画面</b>（示意线框）。点画面上的东西，看系统有没有告诉你下一步该干什么。</div>
+    <div data-demo="firstboot"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：英文原文说的「381 页」是微软 1995 年出版的《The Windows Interface Guidelines for Software Design》，写给给 Windows 开发应用程序的设计师和开发者，不是给 98 准备的「引导内容」；中译把它说成「1998 年的用户界面」和「为整个系统准备的 381 页引导内容」，略有偏差。<sup class="c">[1][3]</sup></div>
+</section>
+
+<section class="ch" id="s2" data-title="今天的三条引导原则">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>先看今天：注册表单、空状态、交互教学</h2>
+    <p class="lead">硬件强了二十年，好引导的原则变了吗？</p>
+  </div>
+  <p>作者先举了几个当下的例子：Process Street 的注册页（字段少，可用第三方账号）、Spotify 和 Trello 的空状态（没有数据时告诉你为什么空、怎么填）、GitHub 和 TeamGantt 的入门（用真实示例项目和提示框带你走一遍，而不是丢给你一份手册）。他的结论是：限制少了，可能性多了，但原则没变。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>三条原则，各看一组「反例 / 正例」</b>。原文的产品截图在这里改成了不带品牌的示意线框。</div>
+    <div data-demo="modern"></div>
+  </div>
+</section>
+
+<section class="ch" id="s3" data-title="渐进式档案">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>渐进式档案：一次只问一点</h2>
+    <p class="lead">Windows 98 什么时候才向你要信息？</p>
+  </div>
+  <p>原文把 Windows 98 的做法叫作渐进式档案（Progressive Profiling）：把建档要填的信息拆散到使用过程中的不同时刻，避免一上来信息过载。注册不是强制的；作者第一次被要求设密码，是在第一次注销的时候；调制解调器（当年拨号上网用的「猫」）也可以等到第一次打开 Outlook 或 IE 需要联网时再设置。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同样三件事，换个时机问</b>。切换模式，看进入桌面之前你必须面对几项。</div>
+    <div data-demo="profiling"></div>
+  </div>
+</section>
+
+<section class="ch" id="s4" data-title="回收站的空状态">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>回收站：一个贴心的空状态</h2>
+    <p class="lead">一个系统里几乎没有空白页面，那空状态该在哪里练手？</p>
+  </div>
+  <p>Windows 98 自带大量快捷方式和文件，几乎看不到完全空着的界面。回收站是例外：它经常被清空。扔进去、还原、彻底清空，这套动作和现实中的废纸篓一样好懂，左侧边栏的说明文字再把正确用法讲清楚。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>删几个文件试试</b>：点桌面上的文件把它扔进回收站，再在回收站里还原或清空，留意左侧说明怎么随状态变化。</div>
+    <div data-demo="recycle"></div>
+  </div>
+</section>
+
+<section class="ch" id="s5" data-title="典型安装">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>便捷的默认设置：典型安装</h2>
+    <p class="lead">不想做选择的人，最少要做几个决定才能装好？</p>
+  </div>
+  <p>如果你不想一项项定制组件，选「典型安装」就能快速完成。和 Windows 3.1 不同，98 已经替普通用户准备好一套起步组件，让人走阻力最小的路，不必做太多决定。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>模拟安装程序的「安装类型」一步</b>。切换选项，看你接下来还要回答多少个组件问题。</div>
+    <div data-demo="setup"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文只提到「典型安装」与可定制两条路。Windows 95 的安装程序提供 Typical / Portable / Compact / Custom 四种类型，98 沿用了同样的安装类型（无人值守安装参数 InstallType 里 0 对应 Compact）；本页线框据此画出四项。组件清单为示意，不是 98 的完整组件表。<sup class="c">[5][6]</sup></div>
+</section>
+
+<section class="ch" id="s6" data-title="亲手走一遍欢迎流程">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>通过小练习学会使用 Windows 98</h2>
+    <p class="lead">不会用鼠标的人，怎样在不被系统「控制」的情况下学会它？</p>
+  </div>
+  <p>有的用户已经会用键盘鼠标，有的还不会。原文引用 GUI 设计准则：「用户应当始终感到自己在控制软件，而不是被软件控制。」所以 98 用一串小练习带新手熟悉鼠标和键盘；觉得自己会了，随时可以跳过；最后还有个小测验，看你练完理解了多少。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>可点击的「欢迎使用 Windows 98」重演</b>（示意线框）。左侧四项都可以点：注册和上网都能推迟，「探索 Windows 98」里有三个鼠标小练习和一个测验，任何时候都能跳过。</div>
+    <div data-demo="welcome"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文没有画出欢迎窗口本身。据微软《Windows 98 Getting Started Guide》，欢迎屏在 Windows 98 首次启动时出现，提供「现在注册」（Register Now）、「连接到 Internet」（Connect to the Internet）和「探索 Windows 98」（Discover Windows 98，涵盖计算机基本技能、Windows 98 基础与新功能、更多资源）等入口；第四项「维护您的计算机」（Maintain Your Computer）来自二手资料。本页练习内容为示意，不是对原版教程的逐屏还原。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="s7" data-title="类比现实世界">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>把电脑比作打字机和电视</h2>
+    <p class="lead">为什么 98 要把电脑类比成你家里已有的东西，而今天的系统不这么做了？</p>
+  </div>
+  <p>1998 年电脑远没有今天普及，微软在引导里把电脑和用户熟悉的东西放在一起讲：屏幕像电视，键盘像打字机。原文给出的数字是：那时 64% 的美国家庭没有电脑，到原文写作时只剩 16%。作者把这和拟物化（Skeuomorphism）联系起来，并引用 Tim Worstall 的定义：物件保留了过去版本的装饰性元素，而这些元素对功能并无加成。拟物在乔布斯时代的苹果很流行，iOS 7 之后才转向。作者认为 98 谈不上一套系统的美学，但它借用用户已有的经验，正是它的界面元素好认的原因；今天大家都熟悉这些元素，自然不需要这种引导了。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点卡片翻面</b>：左边是电脑里的概念，翻过来是 1998 年的新手已经熟悉的现实物件。</div>
+    <div data-demo="analogy"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>美国家庭电脑拥有率</b>（本页补充，美国人口普查局数据）。点年份看当年「没有电脑的家庭」占多少。</div>
+    <div data-demo="census"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文的 64% 没有注明出处。美国人口普查局 1997 年 10 月的调查显示，36.6% 的家庭拥有电脑（1984 年 8.2%、1989 年 15.0%、1993 年 22.8%），即约 63% 的家庭没有，与原文的 64% 基本一致。原文的「16%」指写作时（2016 年前后），本页没有找到对应的原始数据，图中以虚线柱标为原文数字。<sup class="c">[7]</sup></div>
+</section>
+
+<section class="ch" id="s8" data-title="1995 指南与一致性">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>是什么让 Windows 98 进步这么快</h2>
+    <p class="lead">为什么「不要随便改动用户已经熟悉的元素」这条规矩这么重要？</p>
+  </div>
+  <p>作者认为，3.1 与 95/98 之间的质量差距，从文档上就能看出来：3.1 时期的设计者对用户体验的理解远不如后来深入。1995 年的 Windows 界面指南写道：</p>
+  <div class="quote">除非界面原本不支持某项功能，否则不要添加新的元素或行为。更重要的是，避免改变现有的常见元素和行为。用户对界面怎么运作是有预期的，不一致会让人困惑，也会增加界面的复杂度。<sup class="c">[1][3]</sup></div>
+  <div class="fig">
+    <div class="cap"><b>一致性小测</b>：每一轮都请你点「取消」。先在「按惯例」模式下点 6 轮，再换「每次都变」模式，比较平均用时和点错次数。</div>
+    <div data-demo="consistency"></div>
+  </div>
+</section>
+
+<section class="ch" id="s9" data-title="不对用户做假设">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>不对市场做过高的假设</h2>
+    <p class="lead">一个引导流程，怎么同时照顾老手、3.1 用户、Mac 用户和从没摸过鼠标的人？</p>
+  </div>
+  <p>原文的结论：98 能把系统设计提到新高度，很大程度上是因为微软没有对用户做过高的假设。简短设置之后就能用；有经验的人可以轻松跳过教程，没用过的人能在练习里快速上手；Windows 3.1 用户、Mac 用户、从没用过键盘鼠标的人，各有单独的帮助。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>选一种身份</b>，看 98 的引导给你安排的路线（示意）。</div>
+    <div data-demo="persona"></div>
+    <div class="final">作者在文末对比了被他妈妈称为「垃圾」的 Windows 8：它忽略了许多设计准则，对用户预设太多。想做出真正好的体验，设计师要有同理心；用户没法快速上手，就会很快离开。</div>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Benjamin Brandall 发表在 Usersnap 博客的〈<a href="https://usersnap.com/blog/windows-98-user-onboarding/">Why Windows 98's User Onboarding is Better Than Yours</a>〉（2016-09-27）及其中译〈<a href="https://www.uisdc.com/windows-98s-onboarding-better">20年前的Windows 98，有一套不俗的新用户引导流程</a>〉（优设网，译者署名陈子木）制作。原文中的截图与插图均已改用内联 SVG / HTML 示意线框重绘，未引用外链图片，也不是像素还原。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>原文：Benjamin Brandall，〈Why Windows 98's User Onboarding is Better Than Yours〉，Usersnap 博客（2016-09-27）；中译：优设网〈20年前的Windows 98，有一套不俗的新用户引导流程〉。</li>
+    <li>原文引用的当代产品案例：Process Street、Spotify、Trello、GitHub、TeamGantt（本页以无品牌示意线框表现）。</li>
+    <li>Microsoft (1995). <i>The Windows Interface Guidelines for Software Design</i>. Microsoft Press.（原文所说的 381 页指南）</li>
+    <li>Microsoft. <a href="https://technet.microsoft.com/en-us/library/cc750185.aspx">Windows 98 Getting Started Guide</a>（TechNet 存档）：欢迎屏与 Discover Windows 98。</li>
+    <li>Microsoft. <a href="https://technet.microsoft.com/en-us/library/cc751081.aspx">Windows 95 Setup Overview</a>（TechNet 存档）：Typical、Compact、Portable、Custom 四种安装类型。</li>
+    <li>Microsoft. <a href="https://technet.microsoft.com/en-us/library/cc768165.aspx">Windows 98 Resource Kit, Appendix D – Msbatch.inf Parameters</a>（TechNet 存档）：InstallType 参数。</li>
+    <li>Newburger, E. C. (1999). <a href="https://www.census.gov/content/dam/Census/library/publications/1999/demo/p20-522.pdf">Computer Use in the United States: October 1997</a>. <i>Current Population Reports</i> P20-522. U.S. Census Bureau.</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面均为示意线框，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+/* ---------- 公共小工具 ---------- */
+const seg = (labels, on, onPick) => {
+  const box = el('div', { class: 'seg', role: 'tablist' });
+  const bs = labels.map((t, i) => el('button', { type: 'button', role: 'tab', class: i === on ? 'on' : '', 'aria-selected': String(i === on), onclick: () => { bs.forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-selected', String(j === i)); }); onPick(i); } }, t));
+  box.append(...bs); return box;
+};
+const win = (title, ...kids) => el('div', { class: 'w98' }, el('div', { class: 'tb' }, el('span', {}, title), el('i', { 'aria-hidden': 'true' }, '×')), ...kids);
+const keyAct = (n, fn) => { n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } }); };
+/* 示意图标：全部用简单几何画，不还原原版像素图标 */
+const ico = (k) => {
+  const s = svg('svg', { viewBox: '0 0 32 32', 'aria-hidden': 'true' });
+  const R = (x, y, w, h, f, extra = {}) => s.append(svg('rect', Object.assign({ x, y, width: w, height: h, fill: f, stroke: '#222', 'stroke-width': '1' }, extra)));
+  if (k === 'pc') { R(5, 4, 22, 16, '#d8d8d8'); R(8, 7, 16, 10, '#2a7fd0'); R(9, 22, 14, 4, '#d8d8d8'); }
+  else if (k === 'folder') { R(3, 9, 26, 18, '#f2c94c'); R(3, 6, 11, 5, '#f2c94c'); }
+  else if (k === 'doc') { R(7, 3, 18, 26, '#ffffff'); [9, 13, 17, 21].forEach((y) => s.append(svg('line', { x1: 10, x2: 22, y1: y, y2: y, stroke: '#2a7fd0', 'stroke-width': '1.5' }))); }
+  else if (k === 'bin') { R(8, 8, 16, 20, '#cfd8dc'); R(6, 5, 20, 3, '#90a4ae'); [12, 16, 20].forEach((x) => s.append(svg('line', { x1: x, x2: x, y1: 11, y2: 25, stroke: '#546e7a' }))); }
+  else if (k === 'ie') { s.append(svg('circle', { cx: 16, cy: 16, r: 11, fill: '#2a7fd0', stroke: '#222' })); s.append(svg('ellipse', { cx: 16, cy: 16, rx: 15, ry: 5, fill: 'none', stroke: '#f2c94c', 'stroke-width': '2' })); }
+  else if (k === 'net') { R(3, 6, 12, 9, '#d8d8d8'); R(17, 17, 12, 9, '#d8d8d8'); s.append(svg('path', { d: 'M9 15v6h8', fill: 'none', stroke: '#fff', 'stroke-width': '1.5' })); }
+  else if (k === 'kbd') { R(2, 11, 28, 12, '#d8d8d8'); for (let i = 0; i < 6; i++) R(4 + i * 4.3, 14, 3, 3, '#ffffff'); R(8, 19, 16, 2, '#ffffff'); }
+  else if (k === 'group') { R(4, 6, 24, 20, '#d8d8d8'); [8, 15, 22].forEach((x) => R(x - 2, 12, 5, 5, '#2a7fd0')); R(6, 20, 20, 2, '#808080'); }
+  return s;
+};
+
+/* ---------- 01 首次开机对比 ---------- */
+reg('firstboot', (node) => {
+  const stage = el('div');
+  const status = el('div', { class: 'status' });
+  const show = (i) => {
+    stage.innerHTML = '';
+    if (i === 0) {
+      const groups = [['主群组', '文件管理器、控制面板、MS-DOS 提示符……'], ['附件', '写字板、画笔、计算器……'], ['游戏', '纸牌、扫雷'], ['启动', '（空）']];
+      const body = el('div', { class: 'body' }, el('div', { class: 'well', style: 'display:flex;flex-wrap:wrap;gap:6px;min-height:110px' },
+        ...groups.map(([g, inside]) => { const b = el('button', { type: 'button', class: 'dicon', style: 'color:var(--w-text)' }, ico('group'), g); b.onclick = () => { status.innerHTML = `打开了「${g}」程序组：里面是 ${inside}又一排图标，<b>没有一句话告诉新手先做什么</b>。`; }; return b; })));
+      stage.append(el('div', { class: 'desk' }, win('程序管理器（Program Manager）', el('div', { class: 'body', style: 'padding:4px 6px;font-size:12px' }, '文件  选项  窗口  帮助'), body)));
+      status.innerHTML = 'Windows 3.1：屏幕上专门给新手的引导入口 <b>0</b> 个。点程序组试试。';
+    } else {
+      const icons = [['pc', '我的电脑'], ['folder', '我的文档'], ['ie', 'Internet Explorer'], ['net', '网上邻居'], ['bin', '回收站']];
+      const col = el('div', { style: 'display:flex;flex-direction:column;gap:4px;float:left;margin-right:10px' }, ...icons.map(([k, t]) => { const b = el('button', { type: 'button', class: 'dicon' }, ico(k), t); b.onclick = () => { status.innerHTML = `点了「${t}」。欢迎窗口里的「探索 Windows 98」会教你这些图标是干什么的（第 6 章可以亲手试）。`; }; return b; }));
+      const items = ['现在注册', '连接到 Internet', '探索 Windows 98', '维护您的计算机'];
+      const w = win('欢迎使用 Windows 98', el('div', { class: 'body' }, el('b', {}, '欢迎！'), el('p', { style: 'font-size:12px;margin:4px 0 6px' }, '从下面任意一项开始，也可以直接关闭本窗口。'),
+        ...items.map((t, j) => { const b = el('button', { type: 'button', class: 'wbtn', style: 'display:block;width:100%;text-align:left;margin:3px 0' }, (j + 1) + '. ' + t); b.onclick = () => { status.innerHTML = `「${t}」：可以现在做，也可以以后再做。<b>四项都不是强制的</b>。`; }; return b; })));
+      w.style.cssText = 'overflow:hidden;max-width:300px;margin-left:auto';
+      stage.append(el('div', { class: 'desk' }, col, w, el('div', { style: 'clear:both' })));
+      status.innerHTML = 'Windows 98：首次启动自动弹出欢迎窗口，引导入口 <b>4</b> 个，全部可跳过。';
+    }
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(['Windows 3.1 首次开机', 'Windows 98 首次开机'], 0, show)), stage, status);
+  show(0);
+});
+
+/* ---------- 02 今天的三条原则 ---------- */
+reg('modern', (node) => {
+  let tab = 0, good = 0, step = 0;
+  const stage = el('div');
+  const draw = () => {
+    stage.innerHTML = '';
+    const m = el('div', { class: 'mock' });
+    if (tab === 0) {
+      if (!good) {
+        const fs = ['名', '姓', '邮箱', '确认邮箱', '密码', '确认密码', '手机', '公司', '职位', '行业', '公司规模', '国家', '省份', '城市', '街道地址', '邮编', '生日', '性别', '从哪里得知我们', '兴趣标签'];
+        m.append(el('b', {}, '创建账户'), el('div', { class: 'fields2' }, ...fs.map((f) => el('div', { class: 'field' }, f + ' *'))), el('span', { class: 'cta' }, '提交'));
+        stage.append(m, el('div', { class: 'verdict bad' }, `反例：${fs.length} 个必填字段，在用户还没看到产品之前就要求全部填完。`));
+      } else {
+        m.append(el('b', {}, '开始使用'), el('div', { class: 'field' }, '邮箱'), el('div', { class: 'field' }, '密码'), el('span', { class: 'cta' }, '注册'), ' ', el('span', { class: 'ghost' }, '用第三方账号继续'));
+        stage.append(m, el('div', { class: 'verdict good' }, '正例：2 个字段，或者一键用已有账号登录；其余信息以后再问。'));
+      }
+    } else if (tab === 1) {
+      m.append(el('b', {}, '我的订阅'));
+      if (!good) { m.append(el('div', { style: 'height:120px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px' }, '（空白）')); stage.append(m, el('div', { class: 'verdict bad' }, '反例：一片空白。用户不知道这里为什么空，也不知道下一步做什么。')); }
+      else {
+        m.append(el('div', { style: 'text-align:center;padding:14px 0' }, el('div', { style: 'font-size:28px' }, '◎'), el('div', {}, '你还没有订阅任何节目'), el('div', { style: 'font-size:12px;color:var(--muted)' }, '订阅后，新的一集会出现在这里。'), el('span', { class: 'cta' }, '浏览推荐')));
+        stage.append(m, el('div', { class: 'verdict good' }, '正例：解释为什么空、空了之后会出现什么，再给一个按钮把人带去填数据。'));
+      }
+    } else {
+      if (!good) {
+        m.append(el('b', {}, '欢迎！开始之前请阅读文档'), ...Array.from({ length: 7 }, (_, i) => el('div', { class: 'bar', style: `width:${92 - (i % 3) * 14}%` })), el('span', { class: 'ghost' }, '打开 120 页用户手册'));
+        stage.append(m, el('div', { class: 'verdict bad' }, '反例：先读完抽象的概念说明，再自己摸索。'));
+      } else {
+        const tips = ['① 这是一个示例项目，点这里继续', '② 每张卡片是一项任务，点一下它', '③ 把它拖到「进行中」……你已经会用了'];
+        const cols = ['待办', '进行中', '完成'].map((c, ci) => el('div', { style: 'flex:1;min-width:0;background:var(--surface-2);border-radius:8px;padding:6px;font-size:11.5px' }, el('b', {}, c),
+          ...(ci === (step >= 2 ? 1 : 0) ? [el('div', { class: 'field', style: step >= 1 ? 'border-color:var(--p);color:var(--p)' : '' }, '示例任务：写周报')] : [])));
+        m.append(el('b', {}, '示例项目'), el('div', { style: 'display:flex;gap:6px;margin-top:6px' }, ...cols), el('div', { class: 'tip' }, tips[step]));
+        m.style.cursor = 'pointer'; m.tabIndex = 0; m.setAttribute('role', 'button'); m.setAttribute('aria-label', '推进示例项目提示');
+        const adv = () => { step = (step + 1) % 3; draw(); stage.querySelector('.mock')?.focus(); };
+        m.onclick = adv; keyAct(m, adv);
+        stage.append(m, el('div', { class: 'verdict good' }, `正例：用真实的示例项目和提示框带你做一遍（点线框推进提示，第 ${step + 1} / 3 步）。`));
+      }
+    }
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(['注册表单', '空状态', '交互而非手册'], 0, (i) => { tab = i; step = 0; draw(); }), seg(['反例', '正例'], 0, (i) => { good = i; draw(); })), stage);
+  draw();
+});
+
+/* ---------- 03 渐进式档案 ---------- */
+reg('profiling', (node) => {
+  const moments = ['安装 / 进入桌面前', '首次进入桌面', '第一次注销', '第一次上网'];
+  const asks = [
+    { t: '注册信息', opt: true, at: 1, why: '注册不是强制的：欢迎屏里「现在注册」可以一直不点。' },
+    { t: '设置密码', opt: false, at: 2, why: '作者第一次被要求设密码，是在第一次注销的时候。' },
+    { t: '调制解调器设置', opt: false, at: 3, why: '等到第一次打开 Outlook 或 IE 需要联网时再配。' },
+  ];
+  let mode = 1;
+  const grid = el('div', { class: 'pp' });
+  const status = el('div', { class: 'status' });
+  const draw = () => {
+    grid.innerHTML = '';
+    const cols = moments.map((m) => { const c = el('div', { class: 'col' }, el('h5', {}, m)); grid.append(c); return c; });
+    asks.forEach((a) => {
+      const chip = el('div', { class: 'chip' + (a.opt ? ' opt' : ''), tabindex: '0', role: 'button' }, a.t + (a.opt ? '（可跳过）' : ''));
+      const say = () => { status.innerHTML = `<b>${a.t}</b>：${mode ? a.why : '在「一次问完」模式里，它被挤到了最前面。'}`; };
+      chip.onclick = say; keyAct(chip, say);
+      cols[mode ? a.at : 0].append(chip);
+    });
+    const must = mode ? 0 : asks.length;
+    status.innerHTML = mode ? '渐进式：进入桌面前必须面对 <b>0</b> 项；三件事被分散到真正需要它们的时刻。点色块看原因。'
+      : `一次问完：进入桌面前就要面对 <b>${must}</b> 项，其中还有当下根本用不上的上网设置。`;
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(['一次问完', '渐进式（Windows 98）'], 1, (i) => { mode = i; draw(); })), el('div', { class: 'scrollx' }, grid), status);
+  draw();
+});
+
+/* ---------- 04 回收站空状态 ---------- */
+reg('recycle', (node) => {
+  const all = ['报告.doc', '照片.bmp', '旧笔记.txt', '草稿.wri'];
+  let desk = [...all], bin = [], gone = 0, sel = null;
+  const deskBox = el('div', { class: 'desk', style: 'display:flex;flex-wrap:wrap;gap:4px;min-height:88px' });
+  const side = el('div', { class: 'rbside' });
+  const list = el('div', { class: 'rblist well' });
+  const bRestore = el('button', { class: 'wbtn', type: 'button' }, '还原');
+  const bEmpty = el('button', { class: 'wbtn', type: 'button' }, '清空回收站');
+  const bReset = el('button', { class: 'btn', type: 'button' }, '重置');
+  const status = el('div', { class: 'status' });
+  const draw = (msg) => {
+    deskBox.innerHTML = '';
+    if (!desk.length) deskBox.append(el('span', { style: 'color:#fff;font-size:12px' }, '桌面上的文件都删完了。'));
+    desk.forEach((f) => { const b = el('button', { type: 'button', class: 'dicon', title: '删除 ' + f }, ico('doc'), f); b.onclick = () => { desk = desk.filter((x) => x !== f); bin.push(f); sel = null; draw(`把「${f}」扔进了回收站。它还没真的消失。`); }; deskBox.append(b); });
+    list.innerHTML = '';
+    if (!bin.length) list.append(el('span', { style: 'font-size:12px;opacity:.75' }, '（此文件夹为空）'));
+    bin.forEach((f) => { const b = el('button', { type: 'button', class: 'file' + (sel === f ? ' sel' : '') }, f); b.onclick = () => { sel = f; draw(`选中了「${f}」。`); }; list.append(b); });
+    side.innerHTML = '';
+    side.append(el('h4', {}, '回收站'));
+    if (!bin.length) side.append(el('p', {}, '回收站是空的。'), el('p', { style: 'margin-top:6px' }, '你删除的文件会先放到这里，需要时还能还原；清空回收站才会把它们永久删除。'));
+    else if (!sel) side.append(el('p', {}, `回收站里有 ${bin.length} 个项目。`), el('p', { style: 'margin-top:6px' }, '选中一个项目可以把它还原到原来的位置。「清空回收站」会永久删除全部内容。'));
+    else side.append(el('p', {}, `已选中：${sel}`), el('p', { style: 'margin-top:6px' }, '点「还原」把它放回原处。'));
+    bRestore.disabled = !sel; bEmpty.disabled = !bin.length;
+    status.innerHTML = (msg ? msg + ' ' : '') + `桌面 <b>${desk.length}</b> 个 · 回收站 <b>${bin.length}</b> 个 · 已永久删除 <b>${gone}</b> 个。`;
+  };
+  bRestore.onclick = () => { if (!sel) return; bin = bin.filter((x) => x !== sel); desk.push(sel); const f = sel; sel = null; draw(`「${f}」已还原到桌面。`); };
+  bEmpty.onclick = () => { gone += bin.length; bin = []; sel = null; draw('回收站已清空，现在你看到的就是它的空状态：说明文字告诉你这里是干什么的。'); };
+  bReset.onclick = () => { desk = [...all]; bin = []; gone = 0; sel = null; draw('已重置。'); };
+  const w = win('回收站', el('div', { class: 'rb' }, side, el('div', { class: 'body' }, list, el('div', { class: 'ctrl' }, bRestore, bEmpty))));
+  node.append(el('div', { class: 'cap', style: 'margin:0 0 6px' }, '桌面（点文件即删除）'), deskBox, el('div', { style: 'height:10px' }), w, el('div', { class: 'ctrl' }, bReset), status);
+  draw('');
+});
+
+/* ---------- 05 典型安装 ---------- */
+reg('setup', (node) => {
+  const types = [
+    ['典型（推荐）', '为大多数计算机安装常用组件。', 0],
+    ['便携', '为便携式计算机安装合适的组件。', 0],
+    ['压缩', '只装最少的组件，适合磁盘空间很小的机器。', 0],
+    ['自定义', '你自己决定每一个组件装不装，适合有经验的用户。', 1],
+  ];
+  const comps = ['辅助选项', '附件', '通讯', '桌面主题', 'Internet 工具', '多语言支持', '多媒体', '联机服务', 'Outlook Express', '系统工具', '屏幕保护程序'];
+  let pick = 0;
+  const radios = el('div', { class: 'radios' });
+  const compBox = el('div', { class: 'comps well' });
+  const status = el('div', { class: 'status' });
+  const bar = el('div'); const prog = el('div', { class: 'prog' }, bar);
+  let timer = null;
+  const draw = () => {
+    compBox.style.display = types[pick][2] ? '' : 'none';
+    const n = types[pick][2] ? comps.length : 0;
+    status.innerHTML = n ? `自定义：接下来还要逐项决定 <b>${n}</b> 个组件类别（每个类别里还有子项）。` : `「${types[pick][0]}」：接下来需要你做的组件决定 <b>0</b> 个，安装程序直接用默认值。`;
+  };
+  types.forEach(([t, d], i) => {
+    const r = el('input', { type: 'radio', name: 'w98setup', value: String(i) });
+    if (i === 0) r.checked = true;
+    r.onchange = () => { pick = i; draw(); };
+    radios.append(el('label', {}, r, el('span', {}, el('b', {}, t), el('small', {}, d))));
+  });
+  compBox.append(...comps.map((c) => el('label', {}, el('input', { type: 'checkbox' }), c)));
+  const go = el('button', { class: 'wbtn', type: 'button', onclick: () => {
+    clearInterval(timer); let p = 0; bar.style.width = '0';
+    const steps = types[pick][2] ? comps.length + 4 : 4;
+    timer = setInterval(() => { p++; bar.style.width = Math.min(100, p / steps * 100) + '%'; if (p >= steps) { clearInterval(timer); status.innerHTML = `模拟完成：这次安装你点了 <b>${steps - 3}</b> 次「下一步」类的确认。`; } }, RM ? 30 : 160);
+  } }, '下一步 >');
+  node.append(win('Windows 98 安装程序', el('div', { class: 'body' }, el('p', { style: 'margin-bottom:8px' }, '请选择安装类型：'), radios, compBox, el('div', { style: 'margin-top:10px' }, prog), el('div', { class: 'ctrl', style: 'justify-content:flex-end' }, go))), status);
+  draw();
+  return { stop() { clearInterval(timer); } };
+});
+
+/* ---------- 06 欢迎使用 Windows 98：可点击重演 ---------- */
+reg('welcome', (node) => {
+  const S = { reg: null, net: null, maint: null, lesson: 0, quiz: null, skipped: false, showAgain: true, closed: false, view: 'home' };
+  const menuDefs = [['reg', '现在注册'], ['net', '连接到 Internet'], ['disc', '探索 Windows 98'], ['maint', '维护您的计算机']];
+  const holder = el('div');
+  const status = el('div', { class: 'status' });
+  let cleanup = () => {};
+  const mark = (k) => k === 'disc' ? (S.skipped ? 'skip' : (S.quiz != null ? 'done' : '')) : (S[k] === 'done' ? 'done' : S[k] === 'skip' ? 'skip' : '');
+  const summary = () => {
+    const f = (v) => v === 'done' ? '已完成' : v === 'skip' ? '已推迟' : '未碰';
+    const d = S.skipped ? '已跳过' : S.quiz != null ? `已完成（测验 ${S.quiz}/2）` : S.lesson ? `练到第 ${S.lesson} 项` : '未碰';
+    status.innerHTML = `注册：${f(S.reg)} · 上网：${f(S.net)} · 探索：${d} · 维护：${f(S.maint)}。<b>被强制回答的问题：0</b>，随时可以关闭窗口去用电脑。`;
+  };
+  const pane = el('div', { class: 'pane' });
+  const lessons = ['单击', '双击', '拖放', '小测验'];
+  const lessonView = () => {
+    cleanup(); cleanup = () => {};
+    const i = S.lesson;
+    const bar = el('div'); bar.style.width = (i / 4 * 100) + '%';
+    const skip = el('button', { class: 'wbtn', type: 'button', onclick: () => { S.skipped = true; S.view = 'home'; render('你跳过了教程。没关系，「探索 Windows 98」以后随时能从这里再打开。'); } }, '跳过教程');
+    const head = el('div', {}, el('h4', {}, '探索 Windows 98 · 计算机基础'), el('div', { style: 'font-size:12px;margin:2px 0 6px' }, `练习 ${Math.min(i + 1, 4)} / 4：${lessons[Math.min(i, 3)]}`), el('div', { class: 'prog' }, bar));
+    const arena = el('div', { class: 'arena' });
+    const tip = el('div', { style: 'font-size:12.5px' });
+    const nextLesson = (msg) => { S.lesson++; render(msg); };
+    if (i === 0) {
+      let hits = 0;
+      const t = el('button', { class: 'tgt', type: 'button' }, '点我');
+      const place = () => { t.style.left = (8 + Math.random() * 70) + '%'; t.style.top = (10 + Math.random() * 55) + '%'; };
+      t.onclick = () => { hits++; tip.textContent = `单击命中 ${hits} / 3。`; if (hits >= 3) nextLesson('单击练习完成：鼠标左键按一下再松开就是「单击」。'); else place(); };
+      place(); arena.append(t); tip.textContent = '把指针移到橙色圆上，按一下左键。命中 3 次进入下一项。';
+    } else if (i === 1) {
+      let hits = 0;
+      const t = el('button', { class: 'tgt', type: 'button', style: 'left:42%;top:30%;width:56px;height:56px' }, '双击');
+      const hit = () => { hits++; tip.textContent = `双击成功 ${hits} / 2。`; if (hits >= 2) nextLesson('双击练习完成：在 Windows 98 里，双击图标通常就是「打开」。'); };
+      t.addEventListener('dblclick', hit);
+      t.addEventListener('click', () => { if (hits < 2) tip.textContent = `那是单击。要快速连按两下。（已成功 ${hits} / 2；键盘用户按 Enter 也算）`; });
+      t.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); hit(); } });
+      arena.append(t); tip.textContent = '快速连按两下左键。成功 2 次进入下一项。';
+    } else if (i === 2) {
+      const box = el('div', { class: 'dragbox', tabindex: '0', role: 'button', 'aria-label': '文件，按 Enter 放入文件夹' }, '文件');
+      const zone = el('div', { class: 'dropzone' }, '文件夹');
+      box.style.left = '12px'; box.style.top = '50px';
+      let drag = null;
+      const done = () => nextLesson('拖放练习完成：按住左键不放、移动、再松开，就是「拖放」。');
+      const inZone = () => { const a = box.getBoundingClientRect(), b = zone.getBoundingClientRect(); const cx = a.left + a.width / 2, cy = a.top + a.height / 2; return cx > b.left && cx < b.right && cy > b.top && cy < b.bottom; };
+      box.addEventListener('pointerdown', (e) => { const r = arena.getBoundingClientRect(); drag = { dx: e.clientX - box.offsetLeft - r.left, dy: e.clientY - box.offsetTop - r.top }; box.setPointerCapture(e.pointerId); });
+      box.addEventListener('pointermove', (e) => { if (!drag) return; const r = arena.getBoundingClientRect(); box.style.left = Math.max(0, Math.min(r.width - 52, e.clientX - r.left - drag.dx)) + 'px'; box.style.top = Math.max(0, Math.min(r.height - 40, e.clientY - r.top - drag.dy)) + 'px'; zone.classList.toggle('hot', inZone()); });
+      box.addEventListener('pointerup', () => { if (!drag) return; drag = null; if (inZone()) done(); else tip.textContent = '还没放进文件夹，再试一次。'; });
+      keyAct(box, done);
+      arena.append(zone, box); tip.textContent = '按住黄色「文件」不放，把它拖进右边的文件夹再松开。（键盘：聚焦后按 Enter）';
+    } else {
+      const qs = [['想打开桌面上的「我的电脑」，通常怎么做？', ['单击一下', '双击它', '按住拖走'], 1], ['不小心删掉的文件，在哪里能找回来？', ['回收站', '控制面板', '找不回来了'], 0]];
+      let score = 0, k = 0;
+      const qBox = el('div');
+      const ask = () => {
+        qBox.innerHTML = '';
+        if (k >= qs.length) { S.quiz = score; S.view = 'home'; render(`测验结束：答对 ${score} / ${qs.length}。练习加测验，新手就能放心进入一个陌生的系统了。`); return; }
+        const [q, opts, ans] = qs[k];
+        qBox.append(el('p', { style: 'margin-bottom:6px' }, q), ...opts.map((o, j) => el('button', { class: 'wbtn', type: 'button', style: 'display:block;margin:4px 0;width:100%;text-align:left', onclick: () => { if (j === ans) score++; k++; ask(); } }, o)));
+      };
+      ask(); arena.style.height = 'auto'; arena.style.padding = '8px'; arena.append(qBox); tip.textContent = '最后一步：两道小题，看看练完记住了多少。';
+    }
+    pane.append(head, arena, tip, el('div', { class: 'ctrl', style: 'justify-content:flex-end;margin:0' }, skip));
+  };
+  const views = {
+    home: () => pane.append(el('h4', {}, '欢迎使用 Windows 98'), el('p', {}, '以下四项都可以现在做，也可以以后再做。点左侧任意一项开始；或者直接点「关闭」，马上开始使用你的电脑。'), el('p', { style: 'font-size:12px;opacity:.8' }, '绿色＝已完成，黄色＝已推迟或跳过。')),
+    reg: () => pane.append(el('h4', {}, '现在注册'), el('p', {}, '注册后可以获得产品支持和更新信息。不注册也能正常使用 Windows 98。'),
+      el('label', { style: 'font-size:12px' }, '姓名', el('input', { class: 'well', style: 'display:block;width:100%;font:inherit;color:var(--w-text);padding:3px 6px', 'aria-label': '姓名' })),
+      el('div', { class: 'ctrl', style: 'margin:0' }, el('button', { class: 'wbtn', type: 'button', onclick: () => { S.reg = 'done'; S.view = 'home'; render('注册完成（模拟）。'); } }, '注册'), el('button', { class: 'wbtn', type: 'button', onclick: () => { S.reg = 'skip'; S.view = 'home'; render('注册已推迟：98 不会因此拦住你。'); } }, '以后再说'))),
+    net: () => pane.append(el('h4', {}, '连接到 Internet'), el('p', {}, 'Internet 连接向导会帮你设置调制解调器和拨号信息。现在不需要上网的话，可以等第一次打开 Internet Explorer 或 Outlook Express 时再设置。'),
+      el('div', { class: 'ctrl', style: 'margin:0' }, el('button', { class: 'wbtn', type: 'button', onclick: () => { S.net = 'done'; S.view = 'home'; render('已设置拨号连接（模拟），听见了那声「嘀——嘎——」。'); } }, '现在设置'), el('button', { class: 'wbtn', type: 'button', onclick: () => { S.net = 'skip'; S.view = 'home'; render('上网设置已推迟到真正需要联网的那一刻，这就是「渐进式」。'); } }, '等我要上网时再说'))),
+    disc: lessonView,
+    maint: () => pane.append(el('h4', {}, '维护您的计算机'), el('p', {}, '维护向导可以定期运行磁盘清理、磁盘扫描和碎片整理，让电脑保持良好状态。'),
+      el('div', { class: 'ctrl', style: 'margin:0' }, el('button', { class: 'wbtn', type: 'button', onclick: () => { S.maint = 'done'; S.view = 'home'; render('已按默认设置安排维护（模拟）。'); } }, '使用默认设置'), el('button', { class: 'wbtn', type: 'button', onclick: () => { S.maint = 'skip'; S.view = 'home'; render('维护已推迟。'); } }, '以后再说'))),
+  };
+  const render = (msg) => {
+    holder.innerHTML = ''; pane.innerHTML = '';
+    if (S.closed) {
+      holder.append(el('div', { class: 'desk', style: 'min-height:200px;display:flex;flex-direction:column;justify-content:space-between' },
+        el('div', { style: 'color:#fff;font-size:13px' }, '你已经在桌面上了。', el('br'), S.showAgain ? '下次开机，欢迎屏还会出现。' : '你取消了「每次启动时显示」，下次开机不再打扰。'),
+        el('div', { class: 'w98', style: 'display:flex;gap:6px;align-items:center;padding:3px' }, el('button', { class: 'wbtn', type: 'button', style: 'font-weight:700;min-width:0' }, '开始'), el('span', { style: 'flex:1' }), el('button', { class: 'wbtn', type: 'button', onclick: () => { S.closed = false; S.view = 'home'; render('重新打开了欢迎屏（开始菜单里也能找到它）。'); } }, '重新打开欢迎屏'))));
+      summary(); if (msg) status.innerHTML = msg + '<br>' + status.innerHTML; return;
+    }
+    const menu = el('div', { class: 'menu' }, ...menuDefs.map(([k, t], i) => el('button', { type: 'button', class: (S.view === k ? 'on ' : '') + mark(k), onclick: () => { if (k === 'disc' && (S.skipped || S.quiz != null)) { S.skipped = false; S.quiz = null; S.lesson = 0; } S.view = k; render(); } }, el('b', {}, mark(k) === 'done' ? '✓' : String(i + 1)), t)));
+    views[S.view]();
+    const cb = el('input', { type: 'checkbox' }); cb.checked = S.showAgain; cb.onchange = () => { S.showAgain = cb.checked; };
+    const foot = el('div', { class: 'foot' }, el('label', { style: 'display:flex;gap:6px;align-items:center' }, cb, '每次 Windows 98 启动时显示此屏幕'), el('button', { class: 'wbtn', type: 'button', onclick: () => { S.closed = true; render('窗口关了，你直接进入桌面。'); } }, '关闭'));
+    holder.append(win('欢迎使用 Windows 98', el('div', { class: 'welcome' }, menu, pane, foot)));
+    summary(); if (msg) status.innerHTML = msg + '<br>' + status.innerHTML;
+  };
+  node.append(holder, status);
+  render();
+  return { stop() { cleanup(); } };
+});
+
+/* ---------- 07 类比现实 ---------- */
+reg('analogy', (node) => {
+  const P = [
+    ['显示器', '像一台电视：画面显示在屏幕上', 'tv', true],
+    ['键盘', '像一台打字机：按键就出字', 'type', true],
+    ['回收站', '像废纸篓：扔进去还能捡回来', 'bin', false],
+    ['文件夹', '像牛皮纸文件夹：把文件归在一起', 'folder', false],
+    ['桌面', '像办公桌面：常用的东西摆在手边', 'desk', false],
+  ];
+  const pic = (k) => {
+    const s = svg('svg', { viewBox: '0 0 56 56', 'aria-hidden': 'true' });
+    const st = { fill: 'none', stroke: 'var(--ink)', 'stroke-width': '2', 'stroke-linejoin': 'round' };
+    if (k === 'tv') { s.append(svg('rect', Object.assign({ x: 6, y: 14, width: 44, height: 30, rx: 6 }, st)), svg('path', Object.assign({ d: 'M20 6l8 8 8-8M18 50h20' }, st))); }
+    else if (k === 'type') { s.append(svg('rect', Object.assign({ x: 6, y: 26, width: 44, height: 20, rx: 3 }, st)), svg('rect', Object.assign({ x: 16, y: 8, width: 24, height: 18 }, st))); for (let i = 0; i < 6; i++) s.append(svg('circle', { cx: 12 + i * 6.4, cy: 36, r: 2, fill: 'var(--ink)' })); }
+    else if (k === 'bin') { s.append(svg('path', Object.assign({ d: 'M14 16h28l-3 32H17zM10 16h36M22 10h12' }, st))); }
+    else if (k === 'folder') { s.append(svg('path', Object.assign({ d: 'M6 16h16l4 5h24v25H6z' }, st))); }
+    else { s.append(svg('path', Object.assign({ d: 'M4 24h48M10 24v22M46 24v22M18 24v-8h10v8M34 18h8v6' }, st))); }
+    return s;
+  };
+  const FRONT = { '显示器': 'pc', '键盘': 'kbd', '回收站': 'bin', '文件夹': 'folder', '桌面': 'net' };
+  const status = el('div', { class: 'status' }, '点任意卡片。');
+  const box = el('div', { class: 'pairs' });
+  P.forEach(([k, v, p, orig]) => {
+    const b = el('button', { type: 'button', class: 'pair' });
+    let flipped = false;
+    const draw = () => { b.innerHTML = ''; b.classList.toggle('on', flipped); if (!flipped) b.append(ico(FRONT[k]), el('div', { class: 'k' }, k), el('div', { class: 'v' }, '电脑里的概念')); else b.append(pic(p), el('div', { class: 'k' }, v.split('：')[0]), el('div', { class: 'v' }, v.split('：')[1])); };
+    b.onclick = () => { flipped = !flipped; draw(); status.innerHTML = flipped ? `<b>${k}</b> ${v}。${orig ? '（这一组出自原文）' : '（本页补充的常见桌面隐喻，非原文）'}` : `「${k}」翻回去了。`; };
+    draw(); box.append(b);
+  });
+  node.append(box, status);
+});
+
+reg('census', (node) => {
+  const D = [['1984', 8.2, 0], ['1989', 15.0, 0], ['1993', 22.8, 0], ['1997', 36.6, 0], ['原文写作时', 84, 1]];
+  const W = 520, H = 230, L = 40, B = 190, bw = 62, gap = (W - L - 10 - bw * D.length) / (D.length - 1);
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '美国家庭电脑拥有率柱状图' });
+  [0, 25, 50, 75, 100].forEach((v) => { const y = B - v * 1.6; root.append(svg('line', { x1: L, x2: W - 6, y1: y, y2: y, stroke: 'var(--grid)' }), svg('text', { x: L - 6, y: y + 4, class: 'lbl', 'text-anchor': 'end' }, v + '%')); });
+  const status = el('div', { class: 'status' });
+  const bars = [];
+  const pick = (i) => {
+    bars.forEach((g, j) => g.setAttribute('opacity', j === i ? '1' : '.55'));
+    const [y, v, a] = D[i];
+    const none = (100 - v).toFixed(1);
+    status.innerHTML = a ? `原文说写作时（约 2016 年）只有 <b>16%</b> 的美国家庭没有电脑。这个数字原文未注出处，本页没有核对。`
+      : `${y} 年：<b>${v}%</b> 的家庭有电脑，<b>${none}%</b> 没有。${y === '1997' ? '这就是 Windows 98 面对的市场：多数家庭根本没用过电脑，与原文的「64%」基本吻合。' : ''}`;
+  };
+  D.forEach(([y, v, a], i) => {
+    const x = L + 6 + i * (bw + gap), h = v * 1.6;
+    const g = svg('g', { class: 'pick', tabindex: '0', role: 'button', 'aria-label': `${y} ${v}%`, style: 'cursor:pointer' },
+      svg('rect', { x, y: B - 160, width: bw, height: 160, fill: 'var(--surface-2)', stroke: 'var(--line)' }),
+      svg('rect', Object.assign({ x, y: B - h, width: bw, height: h, fill: a ? 'none' : 'var(--t)', stroke: 'var(--t)' }, a ? { 'stroke-dasharray': '5 4', 'stroke-width': '2' } : {})),
+      svg('text', { x: x + bw / 2, y: B - h - 6, class: 'lbl mid' }, v + '%'),
+      svg('text', { x: x + bw / 2, y: B + 18, class: 'lbl mid' }, y));
+    g.addEventListener('click', () => pick(i)); keyAct(g, () => pick(i));
+    bars.push(g); root.append(g);
+  });
+  node.append(el('div', { class: 'scrollx' }, root), el('div', { class: 'src' }, '实心柱：美国人口普查局 CPS 调查（1984–1997）；虚线柱：原文数字（16% 没有电脑 ⇒ 约 84% 有）。'), status);
+  pick(3);
+});
+
+/* ---------- 08 一致性小测 ---------- */
+reg('consistency', (node) => {
+  let mode = 0, round = 0, running = false, t0 = 0, errs = 0, times = [];
+  const res = [null, null];
+  const files = ['报告.doc', '照片.bmp', '旧笔记.txt', '草稿.wri', '预算.xls', '信.doc'];
+  const text = el('p');
+  const btns = el('div', { class: 'btns' });
+  const start = el('button', { class: 'btn primary', type: 'button' }, '开始 6 轮');
+  const status = el('div', { class: 'status' }, '选好模式，点「开始」。每轮都点「取消」。');
+  const sA = el('b', {}, '—'), sB = el('b', {}, '—');
+  const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const show = () => {
+    text.textContent = `确实要把「${files[round % files.length]}」放入回收站吗？`;
+    btns.innerHTML = '';
+    let order = ['确定', '取消'];
+    if (mode) { order = shuffle(['确定', '取消', '是', '否'].slice(0, 2 + Math.floor(Math.random() * 3))); if (!order.includes('取消')) order[Math.floor(Math.random() * order.length)] = '取消'; btns.style.justifyContent = ['flex-start', 'center', 'flex-end'][Math.floor(Math.random() * 3)]; }
+    else btns.style.justifyContent = 'flex-end';
+    order.forEach((o) => btns.append(el('button', { class: 'wbtn', type: 'button', onclick: () => hit(o) }, o)));
+    t0 = performance.now();
+  };
+  const hit = (o) => {
+    if (!running) return;
+    if (o !== '取消') { errs++; status.innerHTML = `点成了「${o}」，算一次误操作（文件被删了）。`; }
+    else { times.push(performance.now() - t0); status.textContent = `第 ${round + 1} 轮完成。`; }
+    round++;
+    if (round >= 6) {
+      running = false; start.disabled = false;
+      const avg = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
+      res[mode] = { avg, errs };
+      (mode ? sB : sA).textContent = `${avg} ms · 错 ${errs}`;
+      status.innerHTML = res[0] && res[1] ? `两种模式都测完了：按惯例平均 <b>${res[0].avg} ms</b>、错 ${res[0].errs} 次；每次都变平均 <b>${res[1].avg} ms</b>、错 ${res[1].errs} 次。这就是 1995 年指南说的「不一致会让用户困惑」。` : `这一组测完：平均 ${avg} ms，误点 ${errs} 次。换另一种模式再来一组。`;
+      btns.innerHTML = ''; text.textContent = '（测验结束）';
+      return;
+    }
+    show();
+  };
+  start.onclick = () => { round = 0; errs = 0; times = []; running = true; start.disabled = true; status.textContent = '开始！每轮点「取消」。'; show(); };
+  node.append(el('div', { class: 'ctrl' }, seg(['按惯例（位置固定）', '每次都变'], 0, (i) => { if (!running) mode = i; else status.textContent = '这一组做完再切换模式。'; }), start),
+    el('div', { class: 'dlgwrap' }, el('div', { class: 'dlg' }, win('确认删除文件', el('div', { class: 'body' }, text, btns)))),
+    el('div', { class: 'score' }, el('div', {}, '按惯例', sA), el('div', {}, '每次都变', sB)), status);
+  text.textContent = '（点「开始」后出现对话框）';
+});
+
+/* ---------- 09 不做假设 ---------- */
+reg('persona', (node) => {
+  const P = [
+    ['从没用过电脑', ['典型安装', '欢迎屏', '探索 Windows 98：计算机基础', '鼠标与键盘小练习', '小测验', '桌面'], [2, 3, 4]],
+    ['Windows 3.1 用户', ['典型安装', '欢迎屏', '给 3.1 用户的单独帮助', '桌面'], [2]],
+    ['Mac 用户', ['典型安装', '欢迎屏', '给 Mac 用户的单独帮助', '桌面'], [2]],
+    ['老手', ['典型或自定义安装', '关闭欢迎屏', '桌面'], []],
+  ];
+  const path = el('div', { class: 'path' });
+  const status = el('div', { class: 'status' });
+  const show = (i) => {
+    const [who, steps, hi] = P[i];
+    path.innerHTML = '';
+    steps.forEach((s, j) => { if (j) path.append(el('span', { class: 'ar' }, '→')); path.append(el('span', { class: 'st' + (hi.includes(j) ? ' hi' : '') }, s)); });
+    status.innerHTML = hi.length ? `${who}：共 ${steps.length} 步，其中 <b>${hi.length}</b> 步是专门为你准备的（绿色），而且每一步都能跳过。` : `${who}：<b>${steps.length}</b> 步就到桌面，教程一个都不用看。`;
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(P.map((p) => p[0]), 0, show)), path, status);
+  show(0);
+});
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

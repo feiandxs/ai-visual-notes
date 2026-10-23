@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>暗网市场的安全模型：一次安全工程案例分析</title>
+<meta name="description" content="根据 Evan Boehs 的文章，拆解一个长寿暗网市场的安全设计：无 JavaScript 的验证码、PGP 签名镜像、PGP 双因素、分层私人镜像、托管与跑路风险、收货信息加密与 Monero。含可点击的验证码、签名校验、托管风险模拟等演示。">
+<style>
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ================= 本页组件 ================= */
+.vh{position:absolute;width:1px;height:1px;opacity:0;margin:0;overflow:hidden;clip:rect(0 0 0 0)}
+.warnbox{margin-top:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);font-size:13.5px;color:var(--muted)}
+.warnbox b{color:var(--text)}
+.prose{font-size:15.5px;margin:12px 0}
+.prose + .prose{margin-top:8px}
+code,.code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);border-radius:5px;padding:1px 5px}
+pre.code{display:block;padding:10px 12px;overflow-x:auto;white-space:pre;font-size:12.5px;line-height:1.55;margin:8px 0;border:1px solid var(--line)}
+/* 威胁地图 */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13.5px;transition:background .15s,border-color .15s}
+.chip:hover{border-color:var(--p)}
+.chip.on{background:var(--p);border-color:var(--p);color:#fff}
+.tcard{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);display:grid;gap:8px;font-size:14px}
+.tcard .row{display:grid;grid-template-columns:5.5em 1fr;gap:8px}
+.tcard .k{color:var(--muted);font-size:12.5px;padding-top:2px}
+.tcard a{font-size:13px}
+.bar-row{display:grid;grid-template-columns:7.5em 1fr;gap:10px;align-items:center;font-size:13px;margin:8px 0}
+.bar-track{height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:6px;transition:width .8s ease;width:0}
+.bar-track span{position:absolute;left:8px;top:2px;font-family:var(--mono);font-size:12px;color:var(--text)}
+/* 验证码 */
+.cap-svg{width:100%;max-width:420px;margin:0 auto;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:crosshair;touch-action:manipulation}
+.noise{stroke:var(--grid);stroke-width:1.2}
+.ring{fill:none;stroke:var(--ink);stroke-width:3}
+.hitmark{fill:var(--o);stroke:var(--surface);stroke-width:1.5}
+.reqbox{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;white-space:pre;line-height:1.6;margin-top:10px}
+.reqbox .ok{color:var(--t);font-weight:700}
+.reqbox .bad{color:var(--r);font-weight:700}
+.reqbox .dim{color:var(--muted)}
+/* 纯 CSS 旋转验证码 */
+.cc{position:relative;display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+@media (max-width:520px){ .cc{grid-template-columns:1fr;justify-items:center} }
+.cc-stage{width:132px;height:132px;border-radius:50%;background:var(--surface-2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center}
+.cc-pic{width:96px;height:96px;transition:transform .35s ease;transform:rotate(90deg)}
+.cc-pic path{fill:var(--p)}
+.cc-pic circle{fill:none;stroke:var(--line);stroke-width:3}
+#rot1:checked ~ .cc-stage .cc-pic{transform:rotate(180deg)}
+#rot2:checked ~ .cc-stage .cc-pic{transform:rotate(270deg)}
+#rot3:checked ~ .cc-stage .cc-pic{transform:rotate(360deg)}
+.cc-btns{position:relative;height:40px}
+.cc-btns label{display:none;position:absolute;left:0;top:0;cursor:pointer;user-select:none}
+#rot0:checked ~ .cc-side .cc-btns .l1,
+#rot1:checked ~ .cc-side .cc-btns .l2,
+#rot2:checked ~ .cc-side .cc-btns .l3,
+#rot3:checked ~ .cc-side .cc-btns .l0{display:inline-block}
+.cc-side .cc-st::before{content:"当前选中：rot0（指向右，未通过）";font-size:13px;color:var(--muted)}
+#rot1:checked ~ .cc-side .cc-st::before{content:"当前选中：rot1（指向下，未通过）"}
+#rot2:checked ~ .cc-side .cc-st::before{content:"当前选中：rot2（指向左，未通过）"}
+#rot3:checked ~ .cc-side .cc-st::before{content:"当前选中：rot3（箭头朝上，提交即可通过）";color:var(--t);font-weight:600}
+.cc input:focus-visible ~ .cc-side .cc-btns label{outline:2px solid var(--p);outline-offset:2px}
+/* 签名镜像 */
+.srcs{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:640px){ .srcs{grid-template-columns:1fr 1fr} }
+.srcbtn{text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:13.5px}
+.srcbtn small{display:block;color:var(--muted);font-size:12px}
+.srcbtn.on{border-color:var(--p);box-shadow:0 0 0 2px var(--p-soft)}
+textarea.signed{width:100%;min-height:118px;font-family:var(--mono);font-size:12.5px;line-height:1.55;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--text);padding:10px 12px;resize:vertical;margin-top:10px}
+.kv{display:grid;grid-template-columns:7em 1fr;gap:4px 10px;font-size:13px;margin-top:8px}
+.kv .k{color:var(--muted)}
+.kv .v{font-family:var(--mono);word-break:break-all}
+.verdict{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:14px;border:1px solid var(--line)}
+.verdict.ok{background:var(--t-soft);border-color:var(--t)}
+.verdict.bad{background:var(--r-soft);border-color:var(--r)}
+.verdict.warn{background:var(--y-soft);border-color:var(--y)}
+/* 登录流程 */
+.flow{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.flow button{flex:1 1 92px;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 6px;cursor:pointer;font-size:12.5px;text-align:center;line-height:1.35}
+.flow button .i{display:block;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.flow button.on{border-color:var(--p);background:var(--p-soft);color:var(--p);font-weight:600}
+.flow button.done{border-color:var(--t)}
+.panel{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);min-height:150px}
+.panel h3{font-size:16px;margin-bottom:6px}
+.panel .why{margin-top:8px;font-size:13px;color:var(--muted)}
+.panel .why b{color:var(--o)}
+.ubox{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.ubox button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 4px;cursor:pointer;font-family:var(--mono);font-size:12.5px}
+.ubox button.ok{border-color:var(--t);background:var(--t-soft)}
+.ubox button.no{border-color:var(--r);background:var(--r-soft)}
+.cipher{font-family:var(--mono);font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:8px;word-break:break-all;line-height:1.5}
+.inp{border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px;font-family:var(--mono);font-size:14px;width:9em}
+/* 分层镜像 */
+.tiers{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:700px){ .tiers{grid-template-columns:1fr 1.4fr 1.2fr} }
+.tier{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);transition:border-color .2s,background .2s}
+.tier h4{margin:0 0 4px;font-size:14px}
+.tier .u{font-family:var(--mono);font-size:11.5px;color:var(--muted);word-break:break-all}
+.pools{display:grid;gap:6px;margin-top:6px}
+.pool{border:1px solid var(--line);border-radius:8px;padding:6px 8px;background:var(--surface);transition:border-color .2s,background .2s}
+.pool .u{display:block;margin-bottom:4px}
+.dots{display:flex;flex-wrap:wrap;gap:4px}
+.dot{width:14px;height:14px;border-radius:50%;background:var(--t);transition:background .25s,transform .25s}
+.dot.down{background:var(--r);transform:scale(.8)}
+.dot.anon{background:var(--muted)}
+.hit{border-color:var(--r) !important;background:var(--r-soft) !important}
+/* 托管 */
+.bars3{display:grid;gap:4px;margin-top:6px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.stack{display:flex;height:22px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.stack div{height:100%;transition:width .5s ease}
+.keys{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin:10px 0}
+.key{border:2px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 14px;cursor:pointer;min-width:92px;text-align:center;font-size:14px}
+.key small{display:block;font-size:11.5px;color:var(--muted)}
+.key.on{border-color:var(--t);background:var(--t-soft)}
+/* 收货信息 */
+.hops{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+@media (min-width:640px){ .hops{grid-template-columns:repeat(3,1fr)} }
+.hop{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2);font-size:13px}
+.hop h4{margin:0 0 4px;font-size:14px}
+.hop .blob{font-family:var(--mono);font-size:12px;margin-top:6px;padding:6px 8px;border-radius:6px;word-break:break-all}
+.blob.plain{background:var(--r-soft);color:var(--text)}
+.blob.enc{background:var(--t-soft);color:var(--text)}
+table.who{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:10px}
+table.who td,table.who th{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left}
+table.who th{color:var(--muted);font-weight:500;font-size:12.5px}
+.yes{color:var(--r);font-weight:700}
+.no{color:var(--t);font-weight:700}
+/* 账本 */
+.ledger{display:grid;gap:6px;margin-top:10px}
+.tx{display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2);font-family:var(--mono);font-size:12px}
+@media (max-width:520px){ .tx{grid-template-columns:1fr auto 1fr} .tx .amt{grid-column:1 / -1} }
+.tx .arrow{color:var(--muted)}
+.tx .amt{font-weight:700}
+.tx .hid{color:var(--muted);font-style:italic}
+.tx .link{background:var(--y-soft);border-radius:4px;padding:0 3px}
+/* 纯 CSS 侧栏与弹窗 */
+.rs{position:relative;display:grid;grid-template-columns:110px 1fr;gap:6px 14px;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--surface-2)}
+.rs label{grid-column:1;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--muted)}
+.rs label:hover{background:var(--line);color:var(--text)}
+.rs .rs-p{display:none;grid-column:2;grid-row:1 / span 4;font-size:13.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.rs input:checked + label{background:var(--p);color:#fff;font-weight:600}
+.rs input:checked + label + .rs-p{display:block}
+.rs input:focus-visible + label{outline:2px solid var(--p);outline-offset:2px}
+.pop{display:none;position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px}
+.pop:target{display:flex}
+.pop-box{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);max-width:420px;width:100%;padding:16px 18px;font-size:14px}
+.pop-box h4{margin:0 0 6px;font-size:16px}
+a.btn{text-decoration:none;display:inline-block;color:var(--text)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">暗网市场的安全模型</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">软件 · 安全工程 · 威胁模型</div>
+  <h1>暗网市场的安全模型</h1>
+  <p class="sub">一个在对抗环境里活了四年多的网站，怎样在不写一行 JavaScript 的前提下做验证码、防钓鱼、做双因素认证，又怎样处理「平台本身可能卷款跑路」这种普通网站很少需要面对的威胁。</p>
+  <div class="thesis">暗网市场平均只活八个月，原文考察的那家却从 2020 年 5 月运行到写作时。作者认为它靠的是一套层层设防的运营安全：没有 JavaScript、用验证码逼用户读防钓鱼提示、PGP 签名的镜像列表与 PGP 双因素、分层分配的私人镜像、薄托管与 Monero。它在保护用户隐私上做得很好，运营者自己的身份保护却未必。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>E</i>Evan Boehs</span>
+  </div>
+  <p class="meta">原文：「The fascinating security model of dark web marketplaces」，Evan Boehs，boehs.org（2024-11-30）。本页按原文的叙述顺序做成中文讲解，并加了几处标注为「本页补充」的核对与延伸。</p>
+  <div class="warnbox"><b>阅读说明</b>：原文作者明确说，写这篇是把它当作一个技术上的奇观来考察安全模型，不美化、也不评论市场出售的东西；原文隐去了站点名称与网址，本页同样不提供任何站点名称、地址或使用方法。页面里出现的地址、密钥、密文都是虚构的示意数据，签名校验也是用简单哈希模拟的，不是真实密码学。</div>
+</header>
+
+<section class="ch" id="bg" data-title="短命的市场与进化">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>短命的市场，和一场「进化」</h2>
+    <p class="lead">丝绸之路（Silk Road）倒下后需求没有消失，新市场来来去去。为什么偏偏有一家活得特别久？</p>
+  </div>
+  <p class="prose">原文说，市场倒下无非三种原因：<b>体面退出</b>（clean exit）、<b>执法打击</b>、<b>跑路骗局</b>（exit scam，运营者卷走用户资金消失）。平均寿命只有八个月。这种兴衰循环带来一种「进化」：每个新市场都从前一个的漏洞里学习。原文考察的这家自 2020 年 5 月运行至今（指写作时），作者认为它的长寿和口碑来自格外出色的运营安全（operational security，opsec）。</p>
+  <div class="fig">
+    <div class="cap"><b>寿命对比</b>：平均寿命取原文的「八个月」；这家市场的运行时长按 2020-05 到原文发表的 2024-11 现场计算。</div>
+    <div data-demo="life"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>先看全局：每一项设计防的是谁？</b>点一个威胁，看原文描述的对策、它在本页哪一章，以及原文认为还剩下什么风险。这张表是本页把原文内容按「威胁 → 对策」重新整理的索引。</div>
+    <div data-demo="threats"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文提到互联网上的「第一笔交易」是 1970 年代初斯坦福与 MIT 学生之间通过 ARPANET 约定的一次大麻买卖，出处是原文链接的《卫报》2013 年报道。丝绸之路于 2011 年上线、2013 年 10 月被 FBI 关闭，创始人 Ross Ulbricht 被判终身监禁；原文开头提到的「特朗普承诺减刑」即指此事；原文发表后，特朗普于 2025 年 1 月签署了对他的完全赦免。<sup class="c">[7]</sup></div>
+</section>
+
+<section class="ch" id="captcha" data-title="没有 JavaScript 的验证码">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>一切从「没有 JavaScript」开始</h2>
+    <p class="lead">不能运行脚本的网页，怎么知道你在验证码图片上点了哪里？</p>
+  </div>
+  <p class="prose">这个圈子坚持尽一切可能避开 JavaScript：它天生容易出漏洞，也给浏览器指纹（fingerprinting）留了很多口子，哪怕 Tor 已经尽力防范。网站必须在<b>一行 JS 都没有</b>的情况下功能完整，于是出现了不少有创意的写法。第一个例子就是验证码：服务器生成一张图，任务是「点进那个带缺口的圆」。</p>
+  <div class="fig">
+    <div class="cap"><b>可点的验证码</b>：在图上点那个带缺口的圆。下方显示浏览器在没有 JS 的情况下会提交什么，以及服务器怎样凭会话里存的答案判断你对不对。图上方那句话模仿原文截图里的防钓鱼提示：做验证码的同时，你被迫读了一遍它。</div>
+    <div data-demo="imgcap"></div>
+  </div>
+  <p class="prose">诀窍是一个少有人知的表单控件 <code>&lt;input type="image"&gt;</code>（图像提交按钮）。它像 <code>&lt;input type="submit"&gt;</code> 一样，点一下就提交表单，但会额外带上点击位置的两个参数，形如 <code>?x=32&amp;y=46</code>。服务器借助 CSRF 令牌知道自己把那个开口圆放在哪，表单提交时就能核对你是否也知道。<sup class="c">[1][2]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：按 HTML 规范，图像按钮若有 <code>name</code> 属性（比如 <code>name="captcha"</code>），提交的字段名是 <code>captcha.x</code> 与 <code>captcha.y</code>；没有 <code>name</code> 时就是原文截图里的 <code>x</code>、<code>y</code>。坐标以图片左上角为原点、按图片的 CSS 像素计。本页上面的演示为了跑在普通网页里用 JS 计算坐标，真实做法完全不需要脚本。<sup class="c">[2]</sup></div>
+
+  <p class="prose">别的站点有别的玩法。一个用 <code>&lt;input type="range"&gt;</code> 滑块把图片挪到正确位置；作者觉得最厉害的一个，是把一串复选框叠放在<b>完全相同的位置</b>：勾选一个，它就隐藏、露出下一个；CSS 根据「当前勾到第几个」重新摆放图片。之后还要把图中被星号遮住的网址片段打出来，又是一道防钓鱼。</p>
+  <div class="fig">
+    <div class="cap"><b>纯 CSS 的多步验证码（本页重做的同类机制）</b>：把箭头转到朝上。那个「旋转」按钮其实是四个叠在同一位置的 <code>&lt;label&gt;</code>，每个对应一个单选框；选中第 k 个时，CSS 只显示第 k+1 个标签，并按 <code>:checked</code> 旋转图片。这个小部件本身不含一行脚本，状态文字也是 CSS 的 <code>content</code> 生成的。</div>
+    <div class="cc">
+      <input class="vh" type="radio" name="rot" id="rot0" value="0" checked aria-label="状态 rot0">
+      <input class="vh" type="radio" name="rot" id="rot1" value="1" aria-label="状态 rot1">
+      <input class="vh" type="radio" name="rot" id="rot2" value="2" aria-label="状态 rot2">
+      <input class="vh" type="radio" name="rot" id="rot3" value="3" aria-label="状态 rot3">
+      <div class="cc-stage"><svg class="cc-pic" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44"/><path d="M50 12 L74 44 L59 44 L59 86 L41 86 L41 44 L26 44 Z"/></svg></div>
+      <div class="cc-side">
+        <div class="cc-btns">
+          <label class="btn primary l1" for="rot1">旋转 90°</label>
+          <label class="btn primary l2" for="rot2">旋转 90°</label>
+          <label class="btn primary l3" for="rot3">旋转 90°</label>
+          <label class="btn primary l0" for="rot0">旋转 90°</label>
+        </div>
+        <div class="cc-st"></div>
+        <pre class="code">#rot0:checked ~ … .l1 { display:inline-block }
+#rot1:checked ~ … .cc-pic { transform:rotate(180deg) }
+/* 提交表单时，服务器只看 name="rot" 的值 */</pre>
+      </div>
+    </div>
+  </div>
+  <p class="prose">作者的评价：这些验证码可能更不利于无障碍访问，防机器人的效果大概也更差，但它们是「不用 JavaScript 也能做出很酷的东西」的惊人例子，而其中的防钓鱼手法值得普通网站借鉴。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="mirrors" data-title="PGP 签名的镜像列表">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>认不出的网址，用签名来认</h2>
+    <p class="lead">洋葱地址是一长串随机字符，没法像 google.com 那样一眼认出。链接是真是假，怎么判断？</p>
+  </div>
+  <p class="prose">镜像越多，这个问题越严重。解法是在验证码下方公布一份<b>用 PGP 私钥签名的镜像列表</b>；其他网站转贴这些镜像时，也连同签名一起贴出。只要签名始终能追溯到<b>同一把钥匙</b>，你就能知道手里的链接是真的。</p>
+  <div class="fig">
+    <div class="cap"><b>签名校验模拟</b>：你已经在本地固定（pin）了市场公钥的指纹。点选一个来源，再点「验证」；也可以直接改文本框里的任意一个字符再验证。签名由简单哈希模拟，只演示逻辑。</div>
+    <div data-demo="pgp"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这套做法的安全性全押在「第一次拿到的公钥是对的」上，这和 SSH 首次连接时确认主机指纹是同一个问题（trust on first use）。所以原文强调的是「总是追溯到同一把钥匙」：多个互不相干的来源贴出同一个指纹，才让人比较放心。</div>
+</section>
+
+<section class="ch" id="login" data-title="登录：PGP 双因素与防钓鱼页">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>登录：每一步都在逼你看一眼</h2>
+    <p class="lead">登录流程为什么要这么长？每一步各防一件什么事？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>登录流程步进</b>：按顺序点「下一步」，或直接点上方的步骤。第 3、4 步可以动手试：解密一段挑战码、在一排框里找到你的用户名。</div>
+    <div data-demo="login"></div>
+  </div>
+  <p class="prose">原文特别指出 PGP 双因素有<b>两个作用</b>：和大多数 2FA 一样，确保只有私钥持有人能登录；同时也确保用户<b>真的会用</b> GPG 工具，因为市场的通信本来就靠 PGP 加密。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="tiers" data-title="私人镜像与纵深防御">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>私人镜像：不同的人看到不同的门</h2>
+    <p class="lead">公开地址迟早会被冒充、被攻击。怎样让一扇门出事时，其余的门不受牵连？</p>
+  </div>
+  <p class="prose">登录后，设置里有「私人镜像」。分层是这样的：<b>公开镜像</b>给还没注册的人，因为公开，风险最大；登录后的用户被分到一个<b>池</b>，拿到这个池自己的镜像地址，每个人只看得到分给自己的那个，其余私有地址因此受到保护；完成交易后，用户所在的池再升级，如此往复。作者说，这大概就是所谓的<b>纵深防御</b>（defense in depth）。<sup class="c">[1][4]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>分层镜像模拟</b>：每个圆点是一个用户（灰色是尚未注册的访客）。选一种事件，看哪些用户的入口受影响（红色）。</div>
+    <div data-demo="tiers"></div>
+  </div>
+  <p class="prose">作者还观察到两个迹象，说明不同地址可能真的托管在不同地方：调查期间网站遭到 DDoS，部分地址仍然可用；在一个镜像上拿到的两步验证，拿到另一个镜像上用会失败。</p>
+</section>
+
+<section class="ch" id="wallet" data-title="钱包、托管与跑路">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>钱包：托管就是跑路的风险点</h2>
+    <p class="lead">市场的内置钱包充当托管（escrow）。可托管的钱，运营者随时可能卷走。怎么让「能卷走的钱」变少，甚至变成零？</p>
+  </div>
+  <p class="prose">内置钱包看着就有风险，事实也是如此：开发者完全可以在一次跑路骗局里把钱包清空。据说这家市场做了些预防：下单、价格确定<b>之后 3 小时内</b>再付款即可，卖家也可以<b>自动提现</b>。这样托管钱包里就不会长期压着很多钱，作者称之为「相当薄」。（作者补了一句：他不打算通过下单来验证这两条说法。）</p>
+  <div class="fig">
+    <div class="cap"><b>托管风险模拟（示意模型，参数非原文数据）</b>：把每天的成交额记为 1 份。拖动滑块，看「如果运营者此刻跑路，平台能卷走多少份钱」。中心化托管：买家习惯预存余额、货款压在托管里直到确认收货、卖家也不急着提现；薄托管：没有预存、卖家自动提现，只剩在途订单；多签：平台单方面一分也挪不动。</div>
+    <div data-demo="escrow"></div>
+  </div>
+  <p class="prose">更彻底的方案是加密货币的<b>多重签名</b>（multisig）：钱放在一个需要三方中任意两方同意才能动用的地址里，三方是买家、卖家和市场。这样的托管不怕跑路，但支持得不好，这家市场也没有采用。</p>
+  <div class="fig">
+    <div class="cap"><b>2-of-3 多签</b>：点钥匙给交易签名，看这笔钱能不能被转走、这对应现实中的哪种情况。</div>
+    <div data-demo="multisig"></div>
+  </div>
+</section>
+
+<section class="ch" id="ship" data-title="收货信息与 Monero">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>别把秘密交给平台保管</h2>
+    <p class="lead">收货信息为什么要自己加密？为什么不用比特币？</p>
+  </div>
+  <p class="prose">下单时，买家用<b>卖家的公钥</b>加密收货信息再发出。如果买家没加密，市场会用自己的密钥替你加密。原文说，依赖这一点「公认是个坏主意」：市场可以选择留存这些信息用来勒索，别的跑路骗局里就发生过这种事。</p>
+  <div class="fig">
+    <div class="cap"><b>谁能读到这段信息？</b>切换两种做法，看信息在每一跳是明文还是密文，以及各方能否读到。</div>
+    <div data-demo="ship"></div>
+  </div>
+  <p class="prose">和早期市场不同，这家不用比特币，而是围绕 <b>Monero</b>（门罗币）构建。它因匿名性很强而颇具争议。原文引用维基百科：「观察者无法辨认交易 Monero 的地址、交易金额、地址余额或交易历史。」<sup class="c">[5]</sup>作者推荐数学背景的读者去读《Zero to Monero》，看基础数学如何做出技术上惊人的结果。<sup class="c">[6]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一串交易，在两种账本上看到什么</b>：切换账本，比较公开链上能看到的字段。数据为虚构。</div>
+    <div data-demo="chain"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Monero 的三件主要工具：<b>环签名</b>把真实的花费来源混进一组诱饵里，观察者分不出是哪一个；<b>隐身地址</b>（stealth address）让每笔收款落到一次性地址上，公开地址不会出现在链上；<b>RingCT</b> 用承诺隐藏金额，同时仍可验证收支相等。详见《Zero to Monero》。原文作者另附一句：他觉得密码学（cryptography）很酷，加密货币（cryptocurrency）则无聊又烦人。<sup class="c">[6]</sup></div>
+</section>
+
+<section class="ch" id="ops" data-title="运营者：站点安全与身份安全">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>运营者：网站很安全，身份不一定</h2>
+    <p class="lead">一个把用户隐私保护得很好的系统，它的运营者是否同样安全？</p>
+  </div>
+  <p class="prose">原文这一节转述了运营者的背景与自述。与安全模型相关的要点如下（本页只做概括）：</p>
+  <div class="grid2">
+    <div class="fig">
+      <div class="cap"><b>站点层面：做得很好</b></div>
+      <p class="prose" style="margin:0">管理员关注 Monero 追踪研究，自称「每一步都规划好，让我的匿名不只今天成立，十年后也成立」，并用一条<b>内容安全策略</b>（Content Security Policy，CSP）把「不执行 JavaScript」落到实处。作者从零碎线索判断后端用 Ruby（但不是 Rails），样式用 Tailwind。<sup class="c">[1][3]</sup></p>
+      <pre class="code">Content-Security-Policy: script-src 'none'</pre>
+      <p class="src">上面这一行是本页给出的典型写法示意，原文没有贴出该站的具体 CSP。</p>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>身份层面：作者认为偏弱</b></div>
+      <p class="prose" style="margin:0">站点起源于欧洲；管理员接受过一家德国加密货币博客的采访，在论坛上高调发言，还夸耀曾入侵另一家市场（随后退款给那边的用户）以证明自己的安全能力。作者推测运营者或许把自己想象成殉道者，因此可能出现「把用户隐私保护得很扎实，却没保护好自己的隐私」的局面。作者也直言：为了证明安全能力去黑别的市场，很难让人觉得他们是好人。</p>
+    </div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这一章说明了威胁模型的一条常识：系统的安全边界和人的安全边界是两回事。再严密的技术栈，也挡不住运营者在公开场合留下的语言习惯、作息、经历等线索。原文在「运营者」一节的推理就是在用这类线索（英语水平、论坛活动、采访平台、数字格式用小数点而非逗号）做画像。</div>
+</section>
+
+<section class="ch" id="cssui" data-title="没有 JavaScript 的界面">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>没有 JavaScript，界面照样灵敏</h2>
+    <p class="lead">一个不能跑脚本的网站，侧边栏切换和弹窗是怎么做的？</p>
+  </div>
+  <p class="prose">作者发现它的侧边栏导航「灵敏得惊人」，于是去翻了 CSS：侧边栏是一组<b>单选按钮</b>，CSS 选中当前被选的按钮，再把它的<b>相邻兄弟</b>显示出来。弹窗则用元素的 <b>id</b> 实现，即 <code>:target</code> 伪类。下面两个小部件都是纯 HTML + CSS，没有脚本。</p>
+  <div class="grid2">
+    <div class="fig">
+      <div class="cap"><b>单选按钮侧边栏</b>：点左侧条目切换右侧内容。</div>
+      <div class="rs">
+        <input class="vh" type="radio" name="rs" id="rs1" checked><label for="rs1">订单</label><div class="rs-p">选中的单选框 <code>#rs1</code> 让它后面的 <code>label</code> 高亮，再让 <code>label</code> 后面的面板显示。</div>
+        <input class="vh" type="radio" name="rs" id="rs2"><label for="rs2">消息</label><div class="rs-p">切换完全靠浏览器原生的「同组单选只能选一个」，CSS 负责显隐。</div>
+        <input class="vh" type="radio" name="rs" id="rs3"><label for="rs3">钱包</label><div class="rs-p">缺点：状态不进网址，刷新后回到默认项；好处：零脚本、零指纹面。</div>
+        <input class="vh" type="radio" name="rs" id="rs4"><label for="rs4">设置</label><div class="rs-p">选择器：<code>input:checked + label + .panel { display:block }</code></div>
+      </div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>:target 弹窗</b>：链接指向一个 id，被指向的元素匹配 <code>:target</code> 而显示。</div>
+      <div class="ctrl"><a class="btn primary" href="#pop-demo">打开弹窗</a></div>
+      <pre class="code">&lt;a href="#pop"&gt;打开&lt;/a&gt;
+&lt;div id="pop" class="pop"&gt;…&lt;a href="#"&gt;关闭&lt;/a&gt;&lt;/div&gt;
+.pop{display:none} .pop:target{display:flex}</pre>
+    </div>
+  </div>
+  <p class="prose">文章结尾，作者摘录了页脚里随机显示的名人语录：席勒、格拉西安、安妮·弗兰克、笛卡尔、叔本华、塞涅卡、费尔巴哈、伏尔泰、康德、尼采、马克思、克尔凯郭尔、洛克、歌德……他打趣说「名单里德国人真多」。</p>
+  <div class="final">这个案例的可借鉴之处：把防钓鱼做成用户绕不过去的步骤，用签名而不是「看着眼熟」来认证地址，把公开入口和私有入口分层，尽量不替用户保管能被滥用的东西（资金和明文信息），以及在没有脚本的约束下，HTML 与 CSS 原生能力能走多远。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Evan Boehs 发表在 boehs.org 的文章「<a href="https://boehs.org/node/dark-web-security">The fascinating security model of dark web marketplaces</a>」（2024-11-30）制作。原文中的截图均已用内联 SVG、HTML 与 JS 示意性重绘，未引用外链图片；原文隐去的站点名称与地址，本页同样不提供。原文中指向采访页面与洋葱站点的链接，本页未收录。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Evan Boehs,「The fascinating security model of dark web marketplaces」, boehs.org (2024-11-30). <a href="https://boehs.org/node/dark-web-security">https://boehs.org/node/dark-web-security</a></li>
+    <li>MDN Web Docs: <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/image">&lt;input type="image"&gt;</a>（点击坐标以 x、y 或 name.x、name.y 随表单提交）。</li>
+    <li>MDN Web Docs: <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP">Content Security Policy (CSP)</a>.</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Defense_in_depth_(computing)">Defense in depth (computing)</a>.</li>
+    <li>Wikipedia 条目 Monero：原文引用的「观察者无法辨认……」一句。</li>
+    <li>koe, Kurt M. Alonso, Sarang Noether (2020). <i>Zero to Monero: Second Edition</i>. <a href="https://www.getmonero.org/library/Zero-to-Monero-2-0-0.pdf">getmonero.org</a></li>
+    <li>Gwern Branwen, <a href="https://gwern.net/silk-road">Silk Road 1: Theory &amp; Practice</a>；The Guardian (2013-04-19), 原文所引关于 ARPANET 上首笔交易的报道。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；页面中的地址、密钥、密文与数值均为虚构示意，技术细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<div id="pop-demo" class="pop" role="dialog" aria-label="纯 CSS 弹窗示例">
+  <div class="pop-box">
+    <h4>这是一个 :target 弹窗</h4>
+    <p>它出现，是因为网址的 #片段 现在等于这个元素的 id。没有任何脚本参与。</p>
+    <div class="ctrl"><a class="btn" href="#cssui">关闭</a></div>
+  </div>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const keyAct = (node, fn) => { node.addEventListener('click', fn); node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } }); };
+/* 32 位 FNV-1a，仅用于示意签名 */
+const fnv = (str) => { let h = 0x811c9dc5; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; } return h.toString(16).padStart(8, '0'); };
+const hex = (n) => Array.from({ length: n }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
+
+/* ---------- 01 寿命对比 ---------- */
+reg('life', (node) => {
+  const months = (2024 - 2020) * 12 + (11 - 5);
+  const max = months;
+  const rows = [['市场平均寿命', 8, 'var(--muted)'], ['这家市场（至原文发表）', months, 'var(--p)']];
+  const fills = [];
+  rows.forEach(([name, m, c]) => {
+    const f = el('div', { class: 'bar-fill', style: `background:${c};opacity:.35` });
+    fills.push([f, m]);
+    node.append(el('div', { class: 'bar-row' }, el('span', {}, name), el('div', { class: 'bar-track' }, f, el('span', {}, m + ' 个月'))));
+  });
+  node.append(el('div', { class: 'status', html: `约为平均寿命的 <b>${(months / 8).toFixed(1)}</b> 倍。` }));
+  const show = () => fills.forEach(([f, m]) => { f.style.width = (m / max * 100) + '%'; });
+  if (RM) show();
+  return { start: show };
+});
+
+/* ---------- 01 威胁 → 对策 ---------- */
+reg('threats', (node) => {
+  const T = [
+    ['钓鱼镜像', '假冒网址诱你登录，偷账号和资金。', '验证码里嵌入防钓鱼提示；PGP 签名的镜像列表；登录前的防钓鱼确认页；登录后分配私人镜像。', '#mirrors', '第一次拿到的公钥本身是否可信（首次信任问题）。'],
+    ['脚本漏洞与指纹', 'JavaScript 天生易出漏洞，也是浏览器指纹的主要来源。', '全站零 JavaScript，并用内容安全策略（CSP）禁止脚本执行；交互全靠 HTML 表单与 CSS。', '#captcha', '可用性与无障碍性下降。'],
+    ['机器人', '自动注册、撞库、刷接口。', '服务器生成图片的点选验证码，坐标靠 <input type="image"> 提交，答案存在会话里（CSRF 令牌）。', '#captcha', '原文认为它防机器人的效果「大概更差」。'],
+    ['账号被盗', '密码泄露后被人登录。', 'PGP 双因素：服务器用你的公钥加密挑战码，只有私钥持有人能解开；顺带确保用户会用 GPG。', '#login', '私钥本身的保管。'],
+    ['入口被攻击', '公开地址遭 DDoS、被封锁或被冒充。', '分层镜像：公开镜像 → 每个用户池的私人镜像 → 交易后升级的池；不同地址可能分开托管。', '#tiers', '最外层的公开镜像始终风险最大。'],
+    ['运营者跑路', '平台卷走托管里的钱（exit scam）。', '薄托管：下单后 3 小时内再付款、卖家自动提现（据称）。理想方案 2-of-3 多签，该市场未支持。', '#wallet', '托管里在途的钱仍然可以被卷走。'],
+    ['平台留存隐私', '平台保存收货信息，日后用来勒索。', '买家自己用卖家公钥加密收货信息，平台只经手密文。', '#ship', '买家若偷懒交给平台代加密，平台能看到明文。'],
+    ['链上追踪', '公开账本让地址、金额、历史都可分析。', '改用 Monero：地址、金额、余额与历史对外不可辨认。', '#ship', '原文提到管理员留意到有公司在尝试追踪 Monero。'],
+    ['运营者身份', '运营者本人被识别。', '原文没有看到对应的有效措施。', '#ops', '作者认为这是短板：站点安全，身份 opsec 偏弱。'],
+  ];
+  const chips = el('div', { class: 'chips', role: 'tablist' });
+  const card = el('div', { class: 'tcard', 'aria-live': 'polite' });
+  const btns = T.map((t, i) => {
+    const b = el('button', { class: 'chip', type: 'button' }, t[0]);
+    b.addEventListener('click', () => pick(i));
+    chips.append(b); return b;
+  });
+  const esc = (s) => s.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  function pick(i) {
+    btns.forEach((b, j) => b.classList.toggle('on', i === j));
+    const [n, what, fix, href, left] = T[i];
+    card.innerHTML = `<div class="row"><span class="k">威胁</span><span><b>${n}</b>：${esc(what)}</span></div>
+      <div class="row"><span class="k">原文对策</span><span>${esc(fix)}</span></div>
+      <div class="row"><span class="k">残余风险</span><span>${esc(left)}</span></div>
+      <div class="row"><span class="k">详见</span><span><a href="${href}">跳到对应章节</a></span></div>`;
+  }
+  pick(0);
+  node.append(chips, card);
+});
+
+/* ---------- 02 图像验证码 ---------- */
+reg('imgcap', (node) => {
+  const W = 320, H = 180;
+  const root = svg('svg', { class: 'cap-svg', viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '验证码图片：若干圆环，其中一个有缺口' });
+  const req = el('div', { class: 'reqbox' });
+  const status = el('div', { class: 'status' });
+  let sess = null;
+  function gen() {
+    while (root.firstChild) root.firstChild.remove();
+    for (let i = 0; i < 14; i++) root.append(svg('line', { class: 'noise', x1: Math.random() * W, y1: Math.random() * H, x2: Math.random() * W, y2: Math.random() * H }));
+    root.append(svg('text', { x: W / 2, y: 18, class: 'lbl mid' }, '先确认网址来自签名列表，再点带缺口的圆'));
+    const cs = [];
+    let guard = 0;
+    while (cs.length < 7 && guard++ < 500) {
+      const r = 14 + Math.random() * 8, x = r + 10 + Math.random() * (W - 2 * r - 20), y = 30 + r + Math.random() * (H - 2 * r - 40);
+      if (cs.every((c) => Math.hypot(c.x - x, c.y - y) > c.r + r + 8)) cs.push({ x, y, r });
+    }
+    const k = Math.floor(Math.random() * cs.length);
+    cs.forEach((c, i) => {
+      if (i !== k) { root.append(svg('circle', { class: 'ring', cx: c.x, cy: c.y, r: c.r })); return; }
+      const a0 = Math.random() * Math.PI * 2, a1 = a0 + Math.PI * 2 * 0.8;
+      const p = (a) => `${(c.x + c.r * Math.cos(a)).toFixed(1)} ${(c.y + c.r * Math.sin(a)).toFixed(1)}`;
+      root.append(svg('path', { class: 'ring', d: `M ${p(a0)} A ${c.r} ${c.r} 0 1 1 ${p(a1)}` }));
+    });
+    sess = { token: hex(16), c: cs[k] };
+    req.innerHTML = `<span class="dim">// 服务器端会话（浏览器看不到）</span>
+csrf_token = ${sess.token}
+answer     = 圆心 (${Math.round(sess.c.x)}, ${Math.round(sess.c.y)})，半径 ${Math.round(sess.c.r)}
+
+<span class="dim">// 等你点击……</span>`;
+    status.textContent = '在图上点一下。';
+  }
+  root.addEventListener('click', (e) => {
+    const pt = root.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const q = pt.matrixTransform(root.getScreenCTM().inverse());
+    const x = Math.round(q.x), y = Math.round(q.y);
+    root.querySelectorAll('.hitmark').forEach((m) => m.remove());
+    root.append(svg('circle', { class: 'hitmark', cx: x, cy: y, r: 5 }));
+    const d = Math.hypot(sess.c.x - x, sess.c.y - y), ok = d <= sess.c.r + 4;
+    req.innerHTML = `<span class="dim">// 浏览器提交（无需任何脚本）</span>
+POST /login
+csrf_token=${sess.token}&amp;captcha.x=${x}&amp;captcha.y=${y}
+
+<span class="dim">// 服务器：按 csrf_token 取出答案，算点击点到圆心的距离</span>
+distance = ${d.toFixed(1)}，允许 ≤ ${(sess.c.r + 4).toFixed(1)}
+结果：${ok ? '<span class="ok">通过</span>' : '<span class="bad">不通过，重新生成一张</span>'}`;
+    status.innerHTML = ok ? '<b>通过</b>。服务器只需比较两个数字，整个过程浏览器没有执行一行脚本。' : '没点中带缺口的圆。真实网站此时会换一张图。';
+  });
+  const again = el('button', { class: 'btn', type: 'button', onclick: gen }, '换一张');
+  node.append(root, el('div', { class: 'ctrl' }, again), status, req);
+  gen();
+});
+
+/* ---------- 03 签名镜像 ---------- */
+reg('pgp', (node) => {
+  const SK_M = 'market-secret-demo', SK_P = 'phisher-secret-demo';
+  const FP_M = fnv('pub:' + SK_M).toUpperCase(), FP_P = fnv('pub:' + SK_P).toUpperCase();
+  const fmt = (f) => f.replace(/(.{4})/g, '$1 ').trim();
+  const list = (a) => `镜像列表（虚构，${'2024-11'}）\n1. ${a[0]}.onion\n2. ${a[1]}.onion\n3. ${a[2]}.onion`;
+  const real = ['m1-demo-k3v9q2ad', 'm2-demo-x7tp4wle', 'm3-demo-r8nc5hzu'];
+  const tLegit = list(real);
+  const tTamper = list([real[0], 'm2-demo-x7tp4wIe', real[2]]);
+  const tPhish = list(['m1-demo-k3v9q2ad', 'p2-demo-f0ak3l1n', 'p3-demo-g9zz2y0x']);
+  const sign = (sk, t) => fnv(sk + '|' + t);
+  const S = [
+    ['验证码页下方', '市场自己公布的签名列表', tLegit, sign(SK_M, tLegit), FP_M],
+    ['论坛 A 转贴', '连同原签名一起转贴', tLegit, sign(SK_M, tLegit), FP_M],
+    ['论坛 B 转贴', '第 2 条地址里一个小写 l 被换成大写 I，签名照抄', tTamper, sign(SK_M, tLegit), FP_M],
+    ['某个「镜像导航」站', '内容看着差不多，用另一把钥匙签名', tPhish, sign(SK_P, tPhish), FP_P],
+  ];
+  const keyOf = { [FP_M]: SK_M, [FP_P]: SK_P };
+  const grid = el('div', { class: 'srcs' });
+  const ta = el('textarea', { class: 'signed', spellcheck: 'false', 'aria-label': '被签名的镜像列表文本' });
+  const kv = el('div', { class: 'kv' });
+  const verdict = el('div', { class: 'verdict', 'aria-live': 'polite' }, '选一个来源，再点「验证」。');
+  let cur = 0;
+  const bs = S.map((s, i) => {
+    const b = el('button', { class: 'srcbtn', type: 'button' }, s[0], el('small', {}, s[1]));
+    b.addEventListener('click', () => load(i)); grid.append(b); return b;
+  });
+  function load(i) {
+    cur = i; bs.forEach((b, j) => b.classList.toggle('on', i === j));
+    ta.value = S[i][2];
+    kv.innerHTML = `<span class="k">附带签名</span><span class="v">${S[i][3]}</span><span class="k">签名者指纹</span><span class="v">${fmt(S[i][4])}</span><span class="k">你固定的指纹</span><span class="v">${fmt(FP_M)}</span>`;
+    verdict.className = 'verdict'; verdict.textContent = '点「验证」。';
+  }
+  function verify() {
+    const [, , , sig, fp] = S[cur];
+    const valid = sign(keyOf[fp], ta.value) === sig;
+    if (!valid) { verdict.className = 'verdict bad'; verdict.innerHTML = '<b>签名无效</b>：文本与签名对不上，列表被改过（哪怕只改了一个字符）。不要用这里的地址。'; return; }
+    if (fp !== FP_M) { verdict.className = 'verdict warn'; verdict.innerHTML = '<b>签名本身有效，但来自另一把钥匙</b>：指纹和你固定的不一致。签名只证明「这把钥匙的主人签了它」，不证明主人是市场，这正是钓鱼站会做的事。'; return; }
+    verdict.className = 'verdict ok'; verdict.innerHTML = '<b>签名有效，且来自你固定的那把钥匙</b>：无论这份列表是从哪个网站转来的，内容都与市场签发时一致。';
+  }
+  node.append(grid, ta, kv, el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: verify }, '验证'), el('button', { class: 'btn', type: 'button', onclick: () => load(cur) }, '恢复原文')), verdict);
+  load(0);
+});
+
+/* ---------- 04 登录流程 ---------- */
+reg('login', (node) => {
+  const steps = ['入口验证码', '登录验证码', 'PGP 双因素', '防钓鱼页', '私人镜像'];
+  const flow = el('div', { class: 'flow' });
+  const panel = el('div', { class: 'panel', 'aria-live': 'polite' });
+  let k = 0;
+  const fb = steps.map((s, i) => { const b = el('button', { type: 'button' }, el('span', { class: 'i' }, '0' + (i + 1)), s); b.addEventListener('click', () => go(i)); flow.append(b); return b; });
+  const code = String(100000 + Math.floor(Math.random() * 900000));
+  const render = [
+    (p) => p.append(el('h3', {}, '① 进站先过验证码'), el('p', {}, '图片验证码旁边就印着防钓鱼提示和签名的镜像列表。要完成验证码，你就得先看这段文字。'), el('p', { class: 'why', html: '<b>防：</b>钓鱼镜像、机器人。设计意图是「逼你读一遍、想一想自己是不是在对的地方」。' })),
+    (p) => p.append(el('h3', {}, '② 输入用户名密码，登录按钮换成又一道验证码'), el('p', {}, '没有普通的「登录」按钮：提交动作本身就是第二个点选验证码。'), el('p', { class: 'why', html: '<b>防：</b>自动化撞库。' })),
+    (p) => {
+      const inp = el('input', { class: 'inp', inputmode: 'numeric', 'aria-label': '解密得到的挑战码', placeholder: '6 位数字' });
+      const out = el('div', { class: 'status' });
+      const plain = el('div', { class: 'cipher', style: 'display:none' });
+      p.append(el('h3', {}, '③ PGP 双因素'), el('p', {}, '注册时你上传了公钥。服务器生成一段随机挑战码，用你的公钥加密后显示出来；你在本地用私钥解密，再把明文填回。'),
+        el('div', { class: 'cipher' }, '-----BEGIN PGP MESSAGE-----（示意密文）\n' + hex(64) + '\n-----END PGP MESSAGE-----'),
+        el('div', { class: 'ctrl' }, el('button', { class: 'btn', type: 'button', onclick: () => { plain.style.display = 'block'; plain.textContent = '本地解密结果（只有私钥持有人能得到）：挑战码 ' + code; } }, '用我的私钥在本地解密')), plain,
+        el('div', { class: 'ctrl' }, inp, el('button', { class: 'btn primary', type: 'button', onclick: () => { out.innerHTML = inp.value.trim() === code ? '<b>验证通过</b>。' : '不对。没有私钥就解不出这串数字。'; } }, '提交')), out,
+        el('p', { class: 'why', html: '<b>防：</b>密码泄露后的盗号；同时确保你会用后面加密收货信息要用到的 GPG。' }));
+    },
+    (p) => {
+      const me = 'you_42';
+      const names = ['yuo_42', 'you_24', me, 'you-42', 'y0u_42', 'you_4z'].sort(() => Math.random() - .5);
+      const st = el('div', { class: 'status' }, '找到写着你用户名 ' + me + ' 的那个框。');
+      const g = el('div', { class: 'ubox' });
+      names.forEach((n) => { const b = el('button', { type: 'button' }, n); b.addEventListener('click', () => { g.querySelectorAll('button').forEach((x) => x.classList.remove('ok', 'no')); b.classList.add(n === me ? 'ok' : 'no'); st.innerHTML = n === me ? '<b>找到了</b>。真实页面上还会有几段文字告诉你去哪里找合法镜像列表。' : '这个看着像，但不是。钓鱼页最擅长的就是「看着像」。'; }); g.append(b); });
+      p.append(el('h3', {}, '④ 明确标着「anti-phishing」的确认页'), el('p', {}, '登录前最后一页：在一排框里找到写着你用户名的那个，并阅读如何找到合法镜像。'), g, st, el('p', { class: 'why', html: '<b>防：</b>钓鱼。又一次「先读、先想，再进去」。' }));
+    },
+    (p) => p.append(el('h3', {}, '⑤ 进入后：设置里的私人镜像'), el('p', {}, '登录后能看到分配给你的私人镜像地址，下次直接用它进来，不必再经过公开入口。'), el('p', { class: 'why', html: '<b>防：</b>公开入口被冒充或被攻击。详见下一章。' })),
+  ];
+  const nav = el('div', { class: 'ctrl' });
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => go(Math.max(0, k - 1)) }, '上一步');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => go(Math.min(steps.length - 1, k + 1)) }, '下一步');
+  nav.append(prev, next);
+  function go(i) {
+    k = i; fb.forEach((b, j) => { b.classList.toggle('on', j === i); b.classList.toggle('done', j < i); });
+    panel.replaceChildren(); render[i](panel);
+    prev.disabled = i === 0; next.disabled = i === steps.length - 1;
+  }
+  node.append(flow, panel, nav); go(0);
+});
+
+/* ---------- 05 分层镜像 ---------- */
+reg('tiers', (node) => {
+  const mk = () => 'demo-' + hex(6) + '….onion';
+  const pub = { u: mk(), dots: [] };
+  const pools = ['A', 'B', 'C'].map((n) => ({ n, u: mk(), dots: [], el: null }));
+  const vip = { u: mk(), dots: [], el: null };
+  const tierPub = el('div', { class: 'tier' }, el('h4', {}, '公开镜像'), el('div', { class: 'u' }, pub.u + '（虚构）'), el('p', { class: 'src' }, '未注册访客只能走这里'));
+  const pd = el('div', { class: 'dots', style: 'margin-top:6px' });
+  for (let i = 0; i < 8; i++) { const d = el('span', { class: 'dot anon' }); pub.dots.push(d); pd.append(d); }
+  tierPub.append(pd);
+  const tierPool = el('div', { class: 'tier' }, el('h4', {}, '注册用户池'), el('p', { class: 'src', style: 'margin:0' }, '每个池一个私人镜像，用户只看得到自己的'));
+  const pw = el('div', { class: 'pools' });
+  pools.forEach((p) => {
+    const ds = el('div', { class: 'dots' });
+    for (let i = 0; i < 5; i++) { const d = el('span', { class: 'dot' }); p.dots.push(d); ds.append(d); }
+    p.el = el('div', { class: 'pool' }, el('span', { class: 'u' }, '池 ' + p.n + '：' + p.u), ds); pw.append(p.el);
+  });
+  tierPool.append(pw);
+  const tierVip = el('div', { class: 'tier' }, el('h4', {}, '交易后升级的池'), el('p', { class: 'src', style: 'margin:0' }, '完成交易后换到更内层的镜像'));
+  const vd = el('div', { class: 'dots' });
+  for (let i = 0; i < 4; i++) { const d = el('span', { class: 'dot' }); vip.dots.push(d); vd.append(d); }
+  vip.el = el('div', { class: 'pool' }, el('span', { class: 'u' }, vip.u), vd);
+  tierVip.append(el('div', { class: 'pools' }, vip.el));
+  const status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const all = [...pub.dots, ...pools.flatMap((p) => p.dots), ...vip.dots];
+  const reset = () => { all.forEach((d) => d.classList.remove('down')); [tierPub, ...pools.map((p) => p.el), vip.el].forEach((x) => x.classList.remove('hit')); };
+  const E = [
+    ['公开镜像遭 DDoS', () => { tierPub.classList.add('hit'); pub.dots.forEach((d) => d.classList.add('down')); return `受影响 <b>${pub.dots.length}</b> 人，全是未注册访客；${all.length - pub.dots.length} 位注册用户照常用自己的私人镜像。`; }],
+    ['池 B 的地址被泄露并遭攻击', () => { const p = pools[1]; p.el.classList.add('hit'); p.dots.forEach((d) => d.classList.add('down')); return `只有池 B 的 <b>${p.dots.length}</b> 人受影响；泄露者只知道自己那个池的地址，其余池与内层地址仍然保密。运营者可以给池 B 换一个新地址。`; }],
+    ['钓鱼站冒充公开镜像', () => { tierPub.classList.add('hit'); pub.dots.forEach((d) => d.classList.add('down')); return '只能骗到从公开入口进来、还没有私人镜像的人。已有私人镜像的用户根本不经过公开入口。'; }],
+    ['假如只有一个地址', () => { all.forEach((d) => d.classList.add('down')); [tierPub, ...pools.map((p) => p.el), vip.el].forEach((x) => x.classList.add('hit')); return `对照组：所有 <b>${all.length}</b> 人共用一扇门，一处出事全体受影响。这就是分层要避免的局面。`; }],
+  ];
+  const ctrl = el('div', { class: 'ctrl' });
+  E.forEach(([n, f]) => ctrl.append(el('button', { class: 'btn', type: 'button', onclick: () => { reset(); status.innerHTML = f(); } }, n)));
+  ctrl.append(el('button', { class: 'btn', type: 'button', onclick: () => { reset(); status.textContent = '一切正常。'; } }, '复位'));
+  status.textContent = '选一种事件。';
+  node.append(el('div', { class: 'tiers' }, tierPub, tierPool, tierVip), ctrl, status);
+});
+
+/* ---------- 06 托管风险 ---------- */
+reg('escrow', (node) => {
+  const mkR = (label, min, max, val) => { const i = el('input', { type: 'range', min, max, value: val, step: '1', 'aria-label': label }); const o = el('output', {}, val); return { i, o, w: el('label', { class: 'range' }, label, i, o) }; };
+  const D = mkR('发货到确认收货（天）', 1, 21, 7), B = mkR('买家预存余额（天）', 0, 30, 10), V = mkR('卖家不提现（天）', 0, 30, 5);
+  const C = { b: 'var(--o)', d: 'var(--p)', v: 'var(--y)' };
+  const rows = el('div', { class: 'bars3' });
+  const status = el('div', { class: 'status' });
+  const models = [['中心化托管', (d, b, v) => ({ b, d, v })], ['薄托管（原文所述）', (d) => ({ b: 0, d, v: 0 })], ['2-of-3 多签', () => ({ b: 0, d: 0, v: 0 })]];
+  const parts = models.map(([n]) => { const st = el('div', { class: 'stack' }); const lab = el('span', { class: 'mono' }); rows.append(el('div', { class: 'bar-row' }, el('span', {}, n), el('div', {}, st, lab))); return { st, lab }; });
+  function upd() {
+    const d = +D.i.value, b = +B.i.value, v = +V.i.value;
+    D.o.textContent = d; B.o.textContent = b; V.o.textContent = v;
+    const max = 81;
+    const res = models.map(([, f]) => f(d, b, v));
+    res.forEach((r, i) => {
+      parts[i].st.replaceChildren(...['b', 'd', 'v'].map((k) => el('div', { style: `width:${r[k] / max * 100}%;background:${C[k]}` })));
+      const tot = r.b + r.d + r.v;
+      parts[i].lab.textContent = tot === 0 ? '0 份：平台单方面挪不动' : `${tot} 份（约 ${tot} 天成交额）`;
+    });
+    const t0 = res[0].b + res[0].d + res[0].v;
+    status.innerHTML = `薄托管把可卷走的钱从 <b>${t0}</b> 份压到 <b>${res[1].d}</b> 份，但在途订单的钱仍在平台手里；只有多签能降到 0。`;
+  }
+  [D, B, V].forEach((x) => x.i.addEventListener('input', upd));
+  node.append(el('div', { class: 'ctrl' }, D.w), el('div', { class: 'ctrl' }, B.w, V.w), rows,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:' + C.b }), '买家预存余额'), el('span', {}, el('i', { style: 'background:' + C.d }), '在途订单托管'), el('span', {}, el('i', { style: 'background:' + C.v }), '卖家未提现')), status);
+  upd();
+});
+
+/* ---------- 06 多签 ---------- */
+reg('multisig', (node) => {
+  const K = [['买家', '确认收货'], ['卖家', '发货方'], ['市场', '仲裁方']];
+  const on = [false, false, false];
+  const status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const wrap = el('div', { class: 'keys' });
+  const bs = K.map(([n, s], i) => { const b = el('button', { class: 'key', type: 'button', 'aria-pressed': 'false' }, n, el('small', {}, s)); b.addEventListener('click', () => { on[i] = !on[i]; b.classList.toggle('on', on[i]); b.setAttribute('aria-pressed', on[i]); upd(); }); wrap.append(b); return b; });
+  function upd() {
+    const n = on.filter(Boolean).length, key = on.map((x, i) => x ? i : '').join('');
+    const M = {
+      '': '没有人签名，钱留在多签地址里不动。',
+      '0': '只有买家签名：1/3，不够。', '1': '只有卖家签名：1/3，不够。',
+      '2': '只有市场签名：1/3，<b>挪不动</b>。这就是多签防跑路的关键：运营者单方面卷不走钱。',
+      '01': '<b>买家 + 卖家</b>：2/3，钱付给卖家。正常交易完全不需要市场参与。',
+      '02': '<b>买家 + 市场</b>：2/3，可以退款给买家。对应「卖家没发货，市场仲裁支持买家」。',
+      '12': '<b>卖家 + 市场</b>：2/3，钱付给卖家。对应「买家已收货却不确认，市场仲裁支持卖家」。',
+      '012': '三方都签了，当然可以。实际上两方就够。',
+    };
+    status.innerHTML = `${n}/3 签名。` + M[key];
+  }
+  node.append(wrap, status); upd();
+});
+
+/* ---------- 07 收货信息 ---------- */
+reg('ship', (node) => {
+  const seg = el('div', { class: 'seg', role: 'tablist' });
+  const hops = el('div', { class: 'hops' });
+  const table = el('table', { class: 'who' });
+  const status = el('div', { class: 'status' });
+  const enc = '-----BEGIN PGP MESSAGE----- ' + hex(40) + '…';
+  const plain = '张三 / 某市某路 1 号（虚构）';
+  const M = [
+    ['买家自己用卖家公钥加密', [['买家浏览器', '本地加密后才发出', enc, true], ['市场服务器', '只经手、只存储密文', enc, true], ['卖家', '用自己的私钥解密', plain, false]], [['卖家', true], ['市场运营者', false], ['服务器被攻破或查封后', false], ['跑路的运营者拿来勒索', false]]],
+    ['留给市场代加密', [['买家浏览器', '明文提交', plain, false], ['市场服务器', '收到明文，再由市场加密', plain, false], ['卖家', '收到密文并解密', plain, false]], [['卖家', true], ['市场运营者', true], ['服务器被攻破或查封后', true], ['跑路的运营者拿来勒索', true]]],
+  ];
+  const bs = M.map((m, i) => { const b = el('button', { type: 'button', role: 'tab' }, m[0]); b.addEventListener('click', () => show(i)); seg.append(b); return b; });
+  function show(i) {
+    bs.forEach((b, j) => { b.classList.toggle('on', i === j); b.setAttribute('aria-selected', i === j); });
+    hops.replaceChildren(...M[i][1].map(([h, s, blob, isEnc]) => el('div', { class: 'hop' }, el('h4', {}, h), el('span', {}, s), el('div', { class: 'blob ' + (isEnc ? 'enc' : 'plain') }, blob))));
+    table.replaceChildren(el('tr', {}, el('th', {}, '谁'), el('th', {}, '能读到收货信息吗')), ...M[i][2].map(([w, y]) => el('tr', {}, el('td', {}, w), el('td', { class: y ? 'yes' : 'no' }, y ? '能' : '不能'))));
+    status.innerHTML = i === 0 ? '平台从头到尾<b>只见过密文</b>，它想留存也没用。' : '平台在中途见过明文。原文说，在别的跑路骗局里，运营者就留存过这类信息用来勒索。';
+  }
+  node.append(seg, hops, table, status); show(0);
+});
+
+/* ---------- 07 账本对比 ---------- */
+reg('chain', (node) => {
+  const seg = el('div', { class: 'seg', role: 'tablist' });
+  const led = el('div', { class: 'ledger' });
+  const status = el('div', { class: 'status' });
+  const A = 'bc1q' + hex(6), Bv = 'bc1q' + hex(6), Cx = 'bc1q' + hex(6);
+  const btc = [[A, Bv, '0.042 BTC'], [Bv, Cx, '0.040 BTC'], [A, Bv, '0.013 BTC']];
+  const views = [
+    ['比特币式公开账本', () => btc.map(([f, t, a]) => el('div', { class: 'tx' }, el('span', { class: f === A ? 'link' : '' }, f), el('span', { class: 'arrow' }, '→'), el('span', { class: t === Bv ? 'link' : '' }, t), el('span', { class: 'amt' }, a))), '发送地址、接收地址、金额全部公开。同一个地址反复出现（黄色高亮），余额和交易历史都能顺着链条算出来。'],
+    ['Monero', () => btc.map(() => el('div', { class: 'tx' }, el('span', { class: 'hid' }, '环成员之一（共若干个）'), el('span', { class: 'arrow' }, '→'), el('span', { class: 'hid' }, '一次性地址 ' + hex(6)), el('span', { class: 'amt hid' }, '金额已隐藏'))), '链上看不出是谁付的、付给谁、付了多少；每笔收款都落到新的一次性地址，没有可以串起来的公共地址。'],
+  ];
+  const bs = views.map((v, i) => { const b = el('button', { type: 'button', role: 'tab' }, v[0]); b.addEventListener('click', () => show(i)); seg.append(b); return b; });
+  function show(i) { bs.forEach((b, j) => { b.classList.toggle('on', i === j); b.setAttribute('aria-selected', i === j); }); led.replaceChildren(...views[i][1]()); status.textContent = views[i][2]; }
+  node.append(seg, led, status); show(0);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

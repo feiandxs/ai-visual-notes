@@ -1,0 +1,1043 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>OIBench 与 CoreCodeBench：大模型编程能力的真实水平</title>
+<meta name="description" content="美团 Meituan-M17 团队两套代码评测基准的可视化讲解：可排序、可切换维度的 OIBench 榜单与伪代码提升、token 效率散点、人机对比、CorePipe 出题流程、单函数与多函数对比、函数顺序规划演示、六场景雷达图与相关性热力图。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+</style>
+
+<style>
+/* ===== 本页附加样式 ===== */
+.seg{flex-wrap:nowrap}
+.seg button{white-space:nowrap}
+.ctrl .lab{font-size:12px;color:var(--muted);margin-right:-2px}
+.chart{width:100%;min-height:40px}
+.chart svg{width:100%}
+.ax{stroke:var(--grid);stroke-width:1}
+.ax0{stroke:var(--line);stroke-width:1.2}
+.tk{fill:var(--muted);font-size:11px;font-family:var(--font)}
+.rl{fill:var(--text);font-size:12px;font-family:var(--font)}
+.rv{fill:var(--muted);font-size:11px;font-family:var(--mono)}
+.row-hit{cursor:pointer}
+.row-hit:focus{outline:none}
+.row-hit:focus .rl,.row-hit:hover .rl{fill:var(--p)}
+.row-hit.sel .rl{fill:var(--p);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin:6px 0 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.cards{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+@media (min-width:640px){ .cards{grid-template-columns:1fr 1fr} }
+.card{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:13.5px}
+.card b{display:block;margin-bottom:2px;color:var(--text)}
+.card p{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--p-soft);border-color:var(--p);color:var(--p);font-weight:600}
+.chip.ok{background:var(--t-soft);border-color:var(--t);color:var(--t)}
+.chip.bad{background:var(--r-soft);border-color:var(--r);color:var(--r)}
+.verdict{margin-top:10px;padding:10px 14px;border-radius:10px;font-size:14px;border:1px solid var(--line);background:var(--surface-2)}
+.verdict.ok{border-color:var(--t);background:var(--t-soft)}
+.verdict.bad{border-color:var(--r);background:var(--r-soft)}
+table.dt{border-collapse:collapse;width:100%;font-size:13px}
+table.dt th,table.dt td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right;white-space:nowrap}
+table.dt th:first-child,table.dt td:first-child{text-align:left}
+table.dt th{color:var(--muted);font-weight:600}
+pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto;margin:8px 0 0;white-space:pre}
+pre.code .hl{background:var(--o-soft);color:var(--o);border-radius:3px}
+pre.code .mk{background:var(--p-soft);color:var(--p);border-radius:3px}
+pre.code .cm{color:var(--muted)}
+.tree-n rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.tree-n text{fill:var(--text);font-size:12px;font-family:var(--mono);text-anchor:middle;dominant-baseline:central}
+.tree-n.on rect{fill:var(--p-soft);stroke:var(--p)}
+.tree-n.core rect{fill:var(--o-soft);stroke:var(--o)}
+.tree-n.grp rect{fill:var(--t-soft);stroke:var(--t)}
+.tree-n.dim{opacity:.35}
+.tree-e{stroke:var(--line);stroke-width:1.5;fill:none;transition:stroke .3s}
+.tree-e.on{stroke:var(--t);stroke-width:2.2}
+.order-fn rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.order-fn.done rect{fill:var(--t-soft);stroke:var(--t)}
+.order-fn.warn rect{fill:var(--r-soft);stroke:var(--r)}
+.order-fn text{font-family:var(--mono);font-size:12px;fill:var(--text);text-anchor:middle;dominant-baseline:central}
+.order-badge circle{fill:var(--p)}
+.order-badge text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;font-family:var(--font)}
+.hm-cell{cursor:pointer}
+.hm-cell:focus{outline:none}
+.hm-cell:focus rect,.hm-cell.sel rect{stroke:var(--text);stroke-width:2}
+.bub{cursor:pointer}
+.bub:focus{outline:none}
+.bub.sel ellipse,.bub:focus ellipse{stroke:var(--text);stroke-width:2.2}
+.small{font-size:12px;color:var(--muted)}
+.kpi{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.kpi div{flex:1 1 140px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface-2)}
+.kpi b{display:block;font-family:var(--mono);font-size:20px;color:var(--text)}
+.kpi span{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">OIBench 与 CoreCodeBench</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 代码评测基准</div>
+  <h1>OIBench 与 CoreCodeBench：大模型编程到底有多强</h1>
+  <p class="sub">宣传里的模型能过谷歌面试、能当中级工程师；换成没见过的奥赛题和真实仓库里的核心代码，分数会掉到什么程度？这页把美团两套基准的榜单做成可排序、可切换维度的图，数据你自己翻。</p>
+  <div class="thesis">OIBench 用 212 道私有的信息学奥赛级题目测算法推理，最高分的 o4-mini-high 也只有 36.35%；CoreCodeBench 从真实 Python 仓库自动出题测工程能力，模型在代码修复和多函数协作上普遍掉队，而且写多个函数时不会先想清楚顺序。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>M</i>Meituan-M17 团队（美团技术团队）</span>
+    <span class="au"><i style="background:var(--t)">交</i>联合上海交通大学等机构</span>
+  </div>
+  <p class="meta">原文：《美团开源 OIBench 与 CoreCodeBench：揭示大模型编程能力的真实水平》，Meituan-M17，美团技术团队博客（2025-07-17）。本页忠实于原文的叙述顺序。原文的表格和图都是图片，本页用两篇 arXiv 论文里的原始数据重画成可交互图表，另加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="gap" data-title="宣传与现实的鸿沟">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>背景：评测集为什么不够用了</h2>
+    <p class="lead">同一个 GPT-4o，在 HumanEval 上通过 87.2%，到 OIBench 只剩 2.6%。差距从哪里来？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文表 2、表 3 的重画。切换维度看 OIBench 和其他六个代码评测集的差别：<b>GPT-4o 通过率</b>说明难度，<b>题目数、每题测试数据量、标准解答行数</b>说明规模。题目数和测试数据量跨度太大，用对数轴。点任意一行看说明。<sup class="c">[2]</sup></div>
+    <div data-demo="bench"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>原文归纳的四个局限</b></div>
+    <div class="cards">
+      <div class="card"><b>饱和、区分度不足</b><p>HumanEval、MBPP 的通过率普遍超过 90%，分不出顶尖模型的高下。</p></div>
+      <div class="card"><b>数据泄漏</b><p>Codeforces、USACO、LeetCode 的题公开在网上，可能已被预训练「见过」，分数虚高。</p></div>
+      <div class="card"><b>人机对比难复现</b><p>用 Codeforces Elo 对比模型与真人，周期长、选手水平波动大。</p></div>
+      <div class="card"><b>效率指标粗糙</b><p>运行时间、内存只给一个平均数，看不出不同题型上的差异。</p></div>
+    </div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文开头的几组对比（GPT-4o 在奥赛题上「个位数」、Claude 3.5 Sonnet 动态规划错误率 80% 以上、国内模型 MBPP 九成而 Codeforces Div.2 C 不足 15%、人类选手平均 70%）没有给出处，本页未能找到原始来源，只照录，不作核实。上图的 GPT-4o 数字来自 OIBench 论文附录表 4：HumanEval 取自 EvalPlus 榜单，CodeElo 是 pass@8，其余取各自论文；OIBench 的「题目数 250」是论文表 1 的写法，原文正文说 250 道候选、经难度验证保留 212 道。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="build" data-title="OIBench 怎么出题">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>OIBench：一道题凭什么被收录</h2>
+    <p class="lead">题目要难、要私有、要有足够狠的测试数据。「难」怎么判断才不靠出题人的感觉？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>自动化难度闸门</b>：题目由 ACM-ICPC 和信息学奥赛的高校教练团队编写。每道候选题先交给四个标杆模型去做，<b>最多只有一个能解出</b>才收录。点下面的模型，标记它在这道候选题上「解出 / 没解出」。</div>
+    <div data-demo="gate"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>抗污染实验</b>：如果部分题目真的泄漏进训练数据，分数会虚高多少？论文从 OIBench 拿 100 道 C++ 题和官方解答，混进 10,000 条常规 SFT 数据，训练「泄漏版」与「基线版」两个模型对比，用 Risk Score 衡量提升了多少。拖动滑块感受这个公式。<sup class="c">[2]</sup></div>
+    <div data-demo="risk"></div>
+  </div>
+  <div class="cards">
+    <div class="card"><b>原创、私有</b><p>发布前逐题检索，确保没有在任何公开平台出现过。</p></div>
+    <div class="card"><b>测试用例与标准解答</b><p>每题配大数据量、边界情况的测试数据，以及通过全部测试的 C++ 标准解答。</p></div>
+    <div class="card"><b>难度标注</b><p>参照信息学竞赛与 Codeforces 难度评级，再叠加上面的模型闸门。</p></div>
+    <div class="card"><b>中英双语</b><p>每道题都有中文和英文版本。</p></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Risk Score 的公式与 0.00～0.01 的实测值来自 OIBench 论文 3.1 节与表 2，原文只说「风险分数几乎为零」。论文附录写明出题与翻译人员都按小时或按日计酬，人机对比的参赛者是来自国内高校、至少获过 CCPC 银牌的学生。原文说「数据均引用自 OIBench v1.0 论文（arxiv:2506.10481v3）」，但本页 2026-10 查询 arXiv 时该编号只有 v1；本页的数字取自 v1 的 HTML 版，与原文图片里的榜单一致。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="board" data-title="OIBench 主榜单">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>主榜单：18 个模型、4 种语言</h2>
+    <p class="lead">最强的模型能拿多少分？推理模型、闭源模型、不同编程语言之间差多少？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文表 1、表 4 的重画（论文表 3）。指标是 AC 率：一道题的全部测试用例都通过才算对。切换语言维度、换成「伪代码提示」版本，或者按类型分组；下方的分组平均值由本页现场计算。<sup class="c">[2]</sup></div>
+    <div data-demo="board"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>伪代码提示</b>：把标准解答用 DeepSeek-R1 转成与语言无关的伪代码，连同题面一起给模型。这时考的不再是「想出解法」，而是「读懂解法并写对代码」。每条线左端是原题，右端是给了伪代码之后。点一行看提升幅度。</div>
+    <div data-demo="pseudo"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文第 3 条结论「基础模型决定上限」在伪代码版本里看得更清楚：DeepSeek-V3-base 给了伪代码后达到 27.45%，与它的指令版 DeepSeek-V3-1226（32.67%）同一量级，而 Qwen2.5-72B-base 与 Qwen2.5-72B 分别是 18.50% 和 19.00%。论文附录表 6 给出各模型的置信区间约为 ±0.5～3 个百分点，相邻模型的名次差距常在误差内，论文本身也说不打算为接近的模型排座次。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="tokens" data-title="推理效率">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>推理效率：多想几千个 token 值不值</h2>
+    <p class="lead">长思维链能提分，但每个模型「想」得一样划算吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 1 的重画：横轴是每题平均输出 token 数（以 2 为底的对数轴），纵轴是测试用例通过率（不是 AC 率）。圆的位置是本页从论文矢量图上读出的<b>近似值</b>，只用来看相对位置。点任意一个圆。<sup class="c">[2]</sup></div>
+    <div data-demo="tokens"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文说 DeepSeek-V3-0324「推理 Token 数量也最多」。对照论文原图和 4.4 节原话，它是<b>非推理模型里</b>输出最长的（约 2¹⁰～2¹¹，即一两千 token），远少于 o1、R1、QwQ 这些推理模型（约 2¹³～2¹⁵）。论文还指出 Qwen3-32B 与 R1、QwQ-32B 与 o1 的通过率相近，但前者都要多花不少 token。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="human" data-title="模型 vs 人类选手">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>和 ACM 校队选手比一比</h2>
+    <p class="lead">o4-mini-high 大约能超过多少人类选手？为什么有的模型「时好时坏」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 2 是小提琴图：每道题里模型在人类选手中的排名是一个点，点的分布画成「琴身」。这里先用条形图列出论文标注的<b>平均超过人类的比例</b>，点一个模型，右侧画出它所属的分布类型。排名规则参照 IOI：先比通过的测试用例数，相同再比运行时间；人类以最后一次提交为准。<sup class="c">[2]</sup></div>
+    <div data-demo="human"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>OIBench 小结</b></div>
+    <div class="final">即使在模型突飞猛进的今天，真正高质量、高难度的算法题依然能难倒最先进的 AI。原文的判断是：未来的代码开发会是人机协同、优势互补，而不是谁单打独斗。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：人机对比只用了 OIBench 中的 44 道题，人类的匿名提交记录随数据集开源。论文把三种形态分别叫 Bass-shaped（低谷型）、Peanut-shaped（双峰型，形如花生）、Olive-shaped（橄榄型）；双峰型里只有 DeepSeek-V3-0324 不是长思维链模型。论文 5.2 节的错误分析指出，推理模型失败的主因是思维链太长，在 32,768 token 上限内没推完，并且出现明显的循环重复。右侧的琴身形状是按这三类画的示意，不是逐题实测密度。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="corepipe" data-title="CoreCodeBench 怎么出题">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>CoreCodeBench：从真实仓库里自动出「要害」题</h2>
+    <p class="lead">随机挖空会挖到无关紧要的代码，翻 PR 记录又太少太贵。怎么自动、大批量地出工程级题目？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 5 的重画：<b>CorePipe</b> 流程。点「下一步」，看一棵函数调用树如何一步步变成题目。<sup class="c">[3]</sup></div>
+    <div data-demo="pipe"></div>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 3 的三种场景。切换看同一个函数分别被做成什么题。代码是本页编的示意，不是数据集原题。</div>
+    <div data-demo="types"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：论文给出的筛选门槛是：半年内有更新、测试文件占代码库 30% 以上、代码超过 5,000 行且跨模块。最终 12 个仓库、6 类题共 1,545 题（单函数开发 511、修复 317、TDD 278；多函数开发 167、修复 10、TDD 152），另有 Difficult 子集 91 题。IG 过滤（信息增益）的含义是：给不给功能描述，基线模型的通过率差多少；差值大于 0 才说明描述有用。IG 过滤后保留 48.56% 的题，人工抽检合格率 78.55%。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="ccb" data-title="单函数 vs 多函数">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>单函数 vs 多函数：一到协作就掉队</h2>
+    <p class="lead">同一个模型，从写一个函数到同时写几个相互调用的函数，分数掉多少？修 Bug 是不是真的比写新代码难？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文表 5 的重画（论文表 3、表 4），16 个模型。每行两根条：上面是单函数，下面是多函数。切换场景和指标：<b>AC@1</b> 是第一次生成就通过全部单测的比例，<b>AC Rate</b> 衡量相对「什么都不改」时多通过了多少测试用例，更细。带 * 的模型开启了思考模式。<sup class="c">[3]</sup></div>
+    <div data-demo="ccb"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：多函数 BugFix 只有 10 道题，AC@1 除 o1-mini（20%，即 2 题）外全是 0，论文也说这一列「差异不明显」，读的时候别太当真。AC Rate 的公式是（模型通过的用例数 − 原样就能通过的用例数）/（总用例数 − 原样就能通过的用例数）。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="order" data-title="缺乏规划">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>模型不会安排先写哪个函数</h2>
+    <p class="lead">一次要实现三个互相调用的函数，人和模型的写法有什么不同？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">提示里函数的出现顺序是 <span class="mono">process → parse → validate</span>，但 process 调用了另外两个。选一种写法，点「写下一个」。红色表示写这个函数时，它要调用的函数还没实现。</div>
+    <div data-demo="order"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：论文 5.3 节原话是：除了 DeepSeek-Coder-V2-Lite（16B）之外，多数模型严格按提示里的顺序输出，而不是先写被调用的工具函数或者反过来自顶向下。论文把「先写工具函数」与「先写主函数」都视为人类工程师的合理习惯，关键是有没有基于依赖去安排。上面的三个函数是本页的示意例子。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="hard" data-title="极限挑战 Difficult">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>极限挑战：放开题目复杂度</h2>
+    <p class="lead">不限制一道多函数题里的函数个数，最强的模型还能做对多少？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 6 的重画：CoreCodeBench-Difficult 上的 AC Rate。虚线是 30%。点任意一根柱子。<sup class="c">[3]</sup></div>
+    <div data-demo="hard"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Difficult 子集是把多函数组合的上限参数 ν 设为无穷、调用树深度 d 保持 3 生成的，91 题，平均每题 4.75 个函数、65.66 行标准解答。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="radar" data-title="雷达图与相关性">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>六个场景的全景：雷达图与相关性</h2>
+    <p class="lead">有没有一个模型在所有场景都第一？哪些能力是一回事，哪些是两回事？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 7 的重画。最多选 3 个模型叠在一起比。「归一化」把每个场景在 16 个模型里的最低分映射到 0、最高分映射到 1（论文的雷达图也做了归一化，但只选了 9 个系列）；「原始」直接用 AC Rate。</div>
+    <div data-demo="radarc"></div>
+  </div>
+  <div class="fig">
+    <div class="cap">原文图 8 的重画：六个场景之间的皮尔逊相关系数。默认是原文图中的数值；也可以切到用论文表 3、表 4 的 16 个模型现场重算。点一个格子看解读。</div>
+    <div data-demo="heat"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：用论文表格里 16 个模型现场重算的相关系数与原文图 8 并不相同（例如多函数开发与单函数开发，原图约为 0，重算的 AC Rate 约 0.4），原文没说明热力图用了哪些模型、哪个指标，可能是论文更新版本里的另一组数据。不过定性结论大体一致：单函数三项之间高度相关；多函数开发与多函数 TDD 彼此相关；多函数 BugFix 与单函数任务的相关性高于与另两项多函数任务。</div>
+</section>
+
+<section class="ch" id="end" data-title="总结">
+  <div class="ch-head">
+    <span class="num">11</span>
+    <h2>总结与展望</h2>
+    <p class="lead">两套基准一起看，大模型写代码的边界在哪里？</p>
+  </div>
+  <div class="fig">
+    <div class="cards">
+      <div class="card"><b>算法推理</b><p>最强的推理模型在 OIBench 上 AC 率 36.35%，平均超过约 43% 的 ACM 校队选手，离顶尖选手还远。</p></div>
+      <div class="card"><b>工程协作</b><p>代码修复与多函数协作是普遍短板，单函数开发的 AC Rate 普遍在 70%～87%，多函数开发大多掉到 25% 以下。</p></div>
+      <div class="card"><b>规划能力</b><p>写多个函数时按提示顺序直接往下写，不根据依赖关系安排先后。</p></div>
+      <div class="card"><b>方向</b><p>原文期待模型从「代码片段生成器」进化为能分析、规划、解决复杂工程问题的开发伙伴，与人互补。</p></div>
+    </div>
+    <div class="final">换一套没见过、贴近真实的考题，大模型的编程能力就从「接近满分」回到了「还差得远」。这不是终点，而是指明了下一步该补什么。</div>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Meituan-M17 团队在美团技术团队博客发表的《<a href="https://tech.meituan.com/2025/07/17/meituan-m17-oibench-corecodebench.html">美团开源 OIBench 与 CoreCodeBench：揭示大模型编程能力的真实水平</a>》（2025-07-17）制作。原文的表格与插图均为图片，本页按两篇论文公开的数据用内联 SVG 和 JS 重绘，未引用外链图片；token 散点的坐标是从论文矢量图读出的近似值。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Meituan-M17，《美团开源 OIBench 与 CoreCodeBench：揭示大模型编程能力的真实水平》，美团技术团队博客（2025-07-17）。</li>
+    <li>Zhu, Y., Wang, J., Li, Y., Qiu, L., Wang, Z., Xu, J., Cao, X., Wei, Y., Wang, M., Cai, X. &amp; Ma, R. (2025). <a href="https://arxiv.org/abs/2506.10481">OIBench: Benchmarking Strong Reasoning Models with Olympiad in Informatics</a>. arXiv:2506.10481（本页用 v1，表 1～6、图 3～4）。</li>
+    <li>Fu, L., Guan, H., Zhang, B., Yuan, H., Zhu, Y., Xu, J., Wang, Z., Qiu, L., Cai, X., Cao, X., Liu, W., Zhang, W. &amp; Yu, Y. (2025). <a href="https://arxiv.org/abs/2507.05281">CoreCodeBench: A Configurable Multi-Scenario Repository-Level Benchmark</a>. arXiv:2507.05281（本页用 v1，表 2～4、图 3）。</li>
+    <li>数据集与代码：<a href="https://github.com/AGI-Eval-Official/OIBench">AGI-Eval-Official/OIBench</a>、<a href="https://huggingface.co/datasets/meituan/OIBench">meituan/OIBench（Hugging Face）</a>、<a href="https://github.com/AGI-Eval-Official/CoreCodeBench">AGI-Eval-Official/CoreCodeBench</a>。</li>
+    <li>AGI-Eval 评测社区榜单：<a href="https://agi-eval.cn/evaluation/detail?id=60">OIBench</a>、<a href="https://agi-eval.cn/evaluation/detail?id=64">CoreCodeBench</a>（原文称将长期维护更新，本页数字以论文为准）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；榜单数字与技术细节以原文与论文为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const seg = (opts, onPick, init = 0, label) => {
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', 'aria-pressed': i === init ? 'true' : 'false', onclick: () => { bs.forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); }); onPick(i, o); } }, o));
+  const s = el('div', { class: 'seg', role: 'group' }, bs);
+  if (label) s.setAttribute('aria-label', label);
+  return s;
+};
+const keyAct = (n, f) => { n.setAttribute('tabindex', '0'); n.setAttribute('role', 'button'); n.addEventListener('click', f); n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); };
+const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+const f2 = (x) => (Math.round(x * 100) / 100).toFixed(2);
+const pearson = (a, b) => { const ma = mean(a), mb = mean(b); let n = 0, da = 0, db = 0; for (let i = 0; i < a.length; i++) { n += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) ** 2; db += (b[i] - mb) ** 2; } return n / Math.sqrt(da * db); };
+/* 宽度自适应：容器宽度变化时重画 */
+const fit = (node, draw) => {
+  let lastW = 0;
+  const go = (force) => { const w = Math.max(280, Math.floor(node.clientWidth)); if (!force && w === lastW) return; lastW = w; node.replaceChildren(draw(w)); };
+  if ('ResizeObserver' in window) new ResizeObserver(() => go(false)).observe(node);
+  go(true);
+  return () => go(true);
+};
+
+/* ---------------- 横向条形图 ----------------
+   rows: {label, v, v2?, color, color2?, id}  opts: {max, log, ticks, fmt, sel, onPick, unit, ref} */
+function hbars(w, rows, o) {
+  const lw = Math.min(o.labelW || 170, Math.round(w * 0.36));
+  const dual = rows.some((r) => r.v2 != null && !o.dumbbell);
+  const rh = o.rowH || (dual ? 30 : 22), top = 8, bot = 24;
+  const h = top + rows.length * rh + bot;
+  const x0 = lw + 6, x1 = w - 44;
+  const sc = o.log ? (v) => x0 + (Math.log10(Math.max(v, o.min)) - Math.log10(o.min)) / (Math.log10(o.max) - Math.log10(o.min)) * (x1 - x0)
+                   : (v) => x0 + Math.max(0, v) / o.max * (x1 - x0);
+  const root = svg('svg', { viewBox: `0 0 ${w} ${h}`, width: w, height: h, role: 'img', 'aria-label': o.aria || '条形图' });
+  (o.ticks || []).forEach((t) => {
+    const x = sc(t);
+    root.append(svg('line', { x1: x, x2: x, y1: top - 4, y2: h - bot + 2, class: 'ax' }), svg('text', { x, y: h - 8, class: 'tk', 'text-anchor': 'middle' }, o.tfmt ? o.tfmt(t) : t));
+  });
+  root.append(svg('line', { x1: x0, x2: x0, y1: top - 4, y2: h - bot + 2, class: 'ax0' }));
+  if (o.ref != null) { const x = sc(o.ref); root.append(svg('line', { x1: x, x2: x, y1: top - 4, y2: h - bot + 2, stroke: 'var(--r)', 'stroke-dasharray': '4 3', 'stroke-width': 1.5 })); }
+  rows.forEach((r, i) => {
+    const y = top + i * rh;
+    const g = svg('g', { class: 'row-hit' + (o.sel === r.id ? ' sel' : ''), 'aria-label': r.label });
+    g.append(svg('rect', { x: 0, y, width: w, height: rh, fill: o.sel === r.id ? 'var(--p-soft)' : 'transparent', opacity: o.sel === r.id ? 0.55 : 1, rx: 4 }));
+    const mc = Math.floor(lw / 7.4), lab = r.label.length > mc ? r.label.slice(0, mc - 1) + '…' : r.label;
+    g.append(svg('text', { x: lw, y: y + rh / 2, class: 'rl', 'text-anchor': 'end', 'dominant-baseline': 'central' }, lab, svg('title', {}, r.label)));
+    if (r.v == null) {
+      g.append(svg('text', { x: x0 + 4, y: y + rh / 2, class: 'rv', 'dominant-baseline': 'central' }, '论文未给出'));
+    } else if (o.dumbbell) {
+      const a = sc(r.v), b = sc(r.v2);
+      g.append(svg('line', { x1: a, x2: b, y1: y + rh / 2, y2: y + rh / 2, stroke: r.color, 'stroke-width': 3, opacity: 0.45 }));
+      g.append(svg('circle', { cx: a, cy: y + rh / 2, r: 4.5, fill: 'var(--surface)', stroke: r.color, 'stroke-width': 2 }));
+      g.append(svg('circle', { cx: b, cy: y + rh / 2, r: 5, fill: r.color }));
+      g.append(svg('text', { x: Math.max(a, b) + 8, y: y + rh / 2, class: 'rv', 'dominant-baseline': 'central' }, '+' + f2(r.v2 - r.v)));
+    } else if (dual) {
+      const bh = (rh - 8) / 2;
+      g.append(svg('rect', { x: x0, y: y + 3, width: Math.max(1, sc(r.v) - x0), height: bh, rx: 2, fill: r.color }));
+      g.append(svg('rect', { x: x0, y: y + 4 + bh, width: Math.max(1, sc(r.v2) - x0), height: bh, rx: 2, fill: r.color2 }));
+      g.append(svg('text', { x: sc(r.v) + 4, y: y + 3 + bh / 2, class: 'rv', 'dominant-baseline': 'central' }, o.fmt(r.v)));
+      g.append(svg('text', { x: sc(r.v2) + 4, y: y + 4 + bh * 1.5, class: 'rv', 'dominant-baseline': 'central' }, o.fmt(r.v2)));
+    } else {
+      g.append(svg('rect', { x: x0, y: y + 4, width: Math.max(1, sc(r.v) - x0), height: rh - 8, rx: 3, fill: r.color }));
+      g.append(svg('text', { x: sc(r.v) + 4, y: y + rh / 2, class: 'rv', 'dominant-baseline': 'central' }, o.fmt(r.v)));
+    }
+    if (o.onPick) keyAct(g, () => o.onPick(r));
+    root.append(g);
+  });
+  return root;
+}
+
+/* ======================= 数据 ======================= */
+/* OIBench 论文表 3：Overall, C++, Java, Python, JS, En, Zh；伪代码同序。t: b 基座 / i 指令 / r 推理；c: 闭源 */
+const OI = [
+  ['DeepSeek-V3-base', 'b', 0, [2.85, 5.20, 4.20, 2.00, 0.00, 2.30, 3.40], [27.45, 41.60, 37.00, 29.40, 1.80, 28.20, 26.70]],
+  ['Qwen2.5-Coder-32B-Base', 'b', 0, [0.95, 0.60, 2.00, 1.00, 0.20, 0.90, 1.00], [17.80, 21.80, 22.80, 24.40, 2.20, 17.80, 17.80]],
+  ['Qwen2.5-72B-base', 'b', 0, [0.75, 1.20, 1.00, 0.40, 0.40, 0.80, 0.70], [18.50, 21.60, 25.60, 26.20, 0.60, 18.80, 18.20]],
+  ['Llama-3.1-405B-base', 'b', 0, [0.75, 1.20, 1.40, 0.40, 0.00, 0.60, 0.90], [18.40, 19.80, 25.60, 28.00, 0.20, 18.90, 17.90]],
+  ['Qwen2.5-Coder-32B', 'i', 0, [1.90, 1.00, 2.40, 2.80, 1.40, 1.40, 2.40], [22.90, 20.80, 26.40, 30.40, 14.00, 21.30, 24.50]],
+  ['Qwen2.5-72B', 'i', 0, [1.80, 1.20, 2.80, 2.40, 0.80, 1.50, 2.10], [19.00, 20.40, 24.40, 24.20, 7.00, 18.90, 19.10]],
+  ['Llama-3.1-405B', 'i', 0, [1.15, 1.60, 1.00, 1.20, 0.80, 1.40, 0.90], [28.45, 28.80, 32.00, 35.00, 18.00, 29.90, 27.00]],
+  ['DeepSeek-V3-1226', 'i', 0, [4.10, 4.80, 4.80, 3.80, 3.00, 3.90, 4.30], [32.67, 38.00, 36.80, 31.90, 24.00, 32.95, 32.40]],
+  ['DeepSeek-V3-0324', 'i', 0, [11.60, 13.20, 11.60, 13.80, 7.80, 11.30, 11.90], [32.15, 35.00, 36.80, 29.80, 27.00, 32.40, 31.90]],
+  ['Doubao-32k-pro', 'i', 1, [2.30, 1.40, 4.00, 2.40, 1.40, 1.90, 2.70], [22.50, 27.60, 14.00, 30.60, 17.80, 20.30, 24.70]],
+  ['GPT-4o', 'i', 1, [2.65, 1.80, 4.40, 2.80, 1.60, 2.70, 2.60], [21.45, 21.00, 23.80, 23.40, 17.60, 19.90, 23.00]],
+  ['Claude 3.5 Sonnet', 'i', 1, [3.45, 2.80, 6.20, 2.20, 2.60, 3.60, 3.30], [28.90, 37.00, 26.40, 27.00, 25.20, 25.80, 32.00]],
+  ['QwQ-32B', 'r', 0, [10.65, 10.60, 13.60, 8.40, 10.00, 10.30, 11.00], [31.70, 29.60, 33.00, 39.40, 24.80, 33.40, 30.00]],
+  ['DeepSeek-R1', 'r', 0, [20.50, 22.40, 23.20, 21.40, 15.00, 19.80, 21.20], [39.15, 46.20, 38.00, 39.20, 33.20, 37.50, 40.80]],
+  ['Qwen3-32B', 'r', 0, [18.95, 20.60, 21.40, 19.20, 14.60, 20.40, 17.50], [33.35, 34.40, 35.40, 35.20, 28.40, 35.60, 31.10]],
+  ['o1', 'r', 1, [15.40, 22.00, 21.20, 6.60, 11.80, 15.70, 15.10], [32.25, 44.80, 36.40, 18.20, 29.60, 30.70, 33.80]],
+  ['o3-mini-high', 'r', 1, [26.80, 31.80, 26.80, 28.40, 20.20, 27.30, 26.30], [44.90, 54.60, 44.00, 42.00, 39.00, 45.20, 44.60]],
+  ['o4-mini-high', 'r', 1, [36.35, 43.40, 37.20, 34.60, 30.20, 35.60, 37.10], [51.70, 58.80, 53.40, 49.80, 44.80, 52.80, 50.60]],
+].map(([name, t, c, s, p]) => ({ name, t, c, s, p }));
+const TYPE = { b: ['基座模型', 'var(--y)'], i: ['指令微调模型', 'var(--t)'], r: ['推理模型', 'var(--p)'] };
+const DIMS = ['总分', 'C++', 'Java', 'Python', 'JS', '英文题', '中文题'];
+
+/* CoreCodeBench 论文表 3（单函数）与表 4（多函数）：Dev ACR, Dev AC@1, Bug ACR, Bug AC@1, TDD ACR, TDD AC@1 */
+const CC = [
+  ['GPT-4o', 1, [82.09, 57.47, 57.95, 34.42, 84.09, 46.38], [17.31, 5.69, 21.17, 0, 18.44, 6.78]],
+  ['GPT-4.1', 1, [84.13, 61.90, 71.87, 50.90, 88.56, 60.96], [12.85, 3.77, 24.11, 0, 22.22, 8.11]],
+  ['o1-mini*', 1, [76.85, 47.02, 57.28, 32.68, 78.92, 54.74], [16.92, 2.62, 41.40, 20.00, 18.11, 3.89]],
+  ['o4-mini (high)*', 1, [86.66, 59.29, 69.51, 50.65, 87.13, 70.21], [20.85, 6.62, 25.64, 0, 34.11, 20.22]],
+  ['Claude-3.5-Sonnet', 1, [86.83, 61.41, 63.80, 40.47, 85.88, 60.56], [24.38, 7.77, 21.44, 0, 27.56, 9.56]],
+  ['Claude-3.7-Sonnet*', 1, [85.75, 63.59, 64.68, 43.51, 85.50, 61.37], [35.54, 13.85, 21.04, 0, 31.56, 17.11]],
+  ['Gemini-2.5-Pro-Preview', 1, [73.21, 48.06, 31.49, 22.63, 74.50, 51.60], [22.74, 6.85, 2.20, 0, 20.22, 6.89]],
+  ['Grok-3*', 1, [80.53, 56.16, 54.16, 33.93, 84.32, 53.68], [25.62, 14.46, 15.40, 0, 15.44, 7.44]],
+  ['Doubao-pro-4k', 1, [76.25, 43.54, 63.19, 39.43, 76.10, 31.24], [3.85, 0, 19.80, 0, 3.00, 1.56]],
+  ['Doubao-1.5-pro', 1, [84.22, 57.70, 64.69, 41.43, 83.26, 45.50], [3.08, 0, 16.39, 0, 0.22, 0]],
+  ['qwen-plus-latest', 1, [78.82, 52.96, 39.91, 22.05, 80.96, 40.02], [21.31, 8.00, 27.60, 0, 19.22, 6.89]],
+  ['Qwen2.5-max', 1, [83.06, 57.85, 50.87, 28.18, 82.83, 47.65], [23.46, 9.31, 23.11, 0, 23.89, 8.22]],
+  ['DeepSeek-Coder-V2-Lite-16B', 0, [64.85, 16.53, 27.31, 12.28, 65.85, 27.80], [0.34, 0, 0, 0, 1.22, 1.22]],
+  ['DeepSeek-R1*', 0, [84.58, 58.81, 66.48, 45.07, 79.23, 56.66], [20.23, 5.54, 22.40, 0, 23.56, 9.56]],
+  ['Llama3.1-70B', 0, [71.53, 41.00, 51.93, 28.64, 79.42, 37.33], [19.00, 4.92, 17.65, 0, 19.44, 6.56]],
+  ['Qwen3-8B', 0, [53.62, 8.25, 23.83, 6.18, 59.97, 18.91], [12.83, 3.75, 0, 0, 6.50, 2.65]],
+].map(([name, api, s, m]) => ({ name, api, s, m }));
+const SCN = ['开发 Development', '修复 BugFix', '测试驱动 TDD'];
+
+/* ======================= 01 评测集对比 ======================= */
+reg('bench', (node) => {
+  const B = [
+    { n: 'HumanEval', g: 87.2, p: 164, sz: 65.4e3, ln: 8.7, star: 1, src: '私有（OpenAI 手写）', d: 'OpenAI 2021 年手写的 164 道函数补全题，平均每题标准解答不到 9 行，早已被各家刷到很高。' },
+    { n: 'CodeContests', g: 34.7, p: 13300, sz: 91.7e3, ln: 52.5, star: 2, src: 'Codeforces', d: 'DeepMind AlphaCode 用的竞赛题集，1.33 万题，来自 Codeforces 等公开平台。' },
+    { n: 'USACO', g: 8.3, p: 307, sz: 59.8e3, ln: 28.7, star: 3, src: 'USACO', d: '美国计算机奥赛题，难度已经不低，但题目公开可检索。' },
+    { n: 'CodeElo', g: 16.8, p: 387, sz: null, ln: null, star: 2, src: 'Codeforces', d: '用 Codeforces 比赛给模型算 Elo；这里的 16.8 是 pass@8（8 次里对一次就算对）。' },
+    { n: 'LiveCodeBench', g: 41.9, p: 511, sz: 3.85e6, ln: null, star: 2, src: 'LeetCode 等', d: '持续收集新题以减少泄漏，单题测试数据较大。' },
+    { n: 'EffiBench', g: 50.8, p: 1000, sz: 82.5e3, ln: 16, star: 1, src: 'LeetCode', d: '关注代码效率（时间、内存），题目来自 LeetCode。' },
+    { n: 'OIBench', g: 2.6, p: 250, sz: 37.5e6, ln: 75.2, star: 4, src: '私有', d: '私有的奥赛级题目，中英双语；每题测试数据平均 37.5M，是其他集合的几十到几百倍，标准解答平均 75 行。' },
+  ];
+  const M = [
+    { k: 'g', name: 'GPT-4o 通过率', max: 100, ticks: [0, 25, 50, 75, 100], fmt: (v) => v + '%', tfmt: (t) => t + '%' },
+    { k: 'p', name: '题目数', log: true, min: 100, max: 20000, ticks: [100, 1000, 10000], fmt: (v) => v >= 1000 ? (v / 1000) + 'k' : String(v), tfmt: (t) => t >= 1000 ? t / 1000 + 'k' : t },
+    { k: 'sz', name: '每题测试数据', log: true, min: 1e4, max: 1e8, ticks: [1e4, 1e5, 1e6, 1e7, 1e8], fmt: (v) => v >= 1e6 ? (v / 1e6) + 'M' : (v / 1e3) + 'k', tfmt: (t) => t >= 1e6 ? t / 1e6 + 'M' : t / 1e3 + 'k' },
+    { k: 'ln', name: '标准解答行数', max: 80, ticks: [0, 20, 40, 60, 80], fmt: (v) => String(v), tfmt: (t) => t },
+    { k: 'star', name: '难度星级', max: 4, ticks: [0, 1, 2, 3, 4], fmt: (v) => '★'.repeat(v), tfmt: (t) => t },
+  ];
+  let mi = 0, sel = 'OIBench', sorted = true;
+  const chart = el('div', { class: 'chart' });
+  const status = el('div', { class: 'status' });
+  const say = () => { const b = B.find((x) => x.n === sel); status.innerHTML = `<b>${b.n}</b>（来源：${b.src}）：${b.d}`; };
+  const redraw = fit(chart, (w) => {
+    const m = M[mi];
+    let rows = B.map((b) => ({ id: b.n, label: b.n, v: b[m.k], color: b.n === 'OIBench' ? 'var(--o)' : 'var(--p)' }));
+    if (sorted) rows = rows.slice().sort((a, b) => (b.v ?? -1) - (a.v ?? -1));
+    return hbars(w, rows, { ...m, sel, labelW: 120, aria: 'GPT-4o 在七个评测集上的' + m.name, onPick: (r) => { sel = r.id; say(); redraw(); } });
+  });
+  node.append(el('div', { class: 'ctrl' }, seg(M.map((m) => m.name), (i) => { mi = i; redraw(); }, 0, '对比维度'),
+    seg(['排序', '原顺序'], (i) => { sorted = i === 0; redraw(); }, 0, '排序')), chart, status);
+  say();
+});
+
+/* ======================= 02 难度闸门 ======================= */
+reg('gate', (node) => {
+  const ms = ['GPT-4o', 'Qwen2.5-Coder-32B', 'Doubao-32k-pro', 'Llama3.1-405B'];
+  const solved = [false, false, false, false];
+  const chips = ms.map((m, i) => {
+    const c = el('button', { type: 'button', class: 'chip bad', 'aria-pressed': 'false' }, m + '：没解出');
+    c.addEventListener('click', () => { solved[i] = !solved[i]; upd(); });
+    return c;
+  });
+  const v = el('div', { class: 'verdict' });
+  const presets = el('div', { class: 'ctrl' }, el('span', { class: 'lab' }, '试试：'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { solved.fill(false); upd(); } }, '全没解出'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { solved.fill(false); solved[0] = true; upd(); } }, '只有 GPT-4o 解出'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { solved.fill(false); solved[0] = solved[1] = true; upd(); } }, '两个解出'));
+  function upd() {
+    chips.forEach((c, i) => { c.className = 'chip ' + (solved[i] ? 'ok' : 'bad'); c.textContent = ms[i] + (solved[i] ? '：解出' : '：没解出'); c.setAttribute('aria-pressed', solved[i] ? 'true' : 'false'); });
+    const k = solved.filter(Boolean).length;
+    const ok = k <= 1;
+    v.className = 'verdict ' + (ok ? 'ok' : 'bad');
+    v.innerHTML = `${k} 个标杆模型解出 → <b>${ok ? '收录' : '淘汰'}</b>。${ok ? (k === 0 ? '四个都做不出，题目足够难。' : '只有一个做出，仍算「硬核」，允许进入题库。') : '两个及以上模型能做出，说明对现有模型偏容易，不进入 OIBench。'}`;
+  }
+  node.append(el('div', { class: 'chips' }, chips), presets, v);
+  upd();
+});
+
+/* ======================= 02 Risk Score ======================= */
+reg('risk', (node) => {
+  const mk = (label, val) => { const out = el('output', {}, val + '%'); const inp = el('input', { type: 'range', min: '0', max: '60', step: '0.5', value: String(val), 'aria-label': label }); return { out, inp, lab: el('label', { class: 'range' }, label, inp, out) }; };
+  const a = mk('基线版得分', 20), b = mk('泄漏版得分', 20.5);
+  const eq = el('div', { class: 'eq' });
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    let sb = +a.inp.value, sc = +b.inp.value;
+    a.out.textContent = sb + '%'; b.out.textContent = sc + '%';
+    const r = (sc - sb) / (100 - sb);
+    eq.textContent = `Risk = (S泄漏 − S基线) / (1 − S基线) = (${(sc / 100).toFixed(3)} − ${(sb / 100).toFixed(3)}) / (1 − ${(sb / 100).toFixed(3)}) = ${r.toFixed(4)}`;
+    status.innerHTML = r <= 0.01 ? `风险分数 <b>${r.toFixed(3)}</b>：和论文实测同一量级（0.00～0.01），泄漏几乎没带来提升。` : `风险分数 <b>${r.toFixed(3)}</b>：若真出现这么大的提升，就说明题目「背得会」，评测会被污染。`;
+  };
+  [a, b].forEach((x) => x.inp.addEventListener('input', upd));
+  const tbl = el('div', { class: 'scrollx' }, el('table', { class: 'dt' },
+    el('tr', {}, el('th', {}, '模型'), ...['Llama3-8B', 'Qwen2.5-7B', 'Qwen2.5-14B', 'Qwen2.5-72B', 'Qwen2.5-Coder-32B', 'DeepSeek-V3'].map((m) => el('th', {}, m))),
+    el('tr', {}, el('td', {}, '论文实测 Risk'), ...['0.00', '0.00', '0.00', '0.01', '0.01', '0.01'].map((v) => el('td', { class: 'mono' }, v)))));
+  node.append(el('div', { class: 'ctrl' }, a.lab, b.lab), eq, status, tbl);
+  upd();
+});
+
+/* ======================= 03 主榜单 ======================= */
+reg('board', (node) => {
+  let di = 0, pseudo = false, order = 0, sel = 'o4-mini-high';
+  const show = { b: true, i: true, r: true };
+  const chart = el('div', { class: 'chart' });
+  const kpi = el('div', { class: 'kpi' });
+  const status = el('div', { class: 'status' });
+  const legend = el('div', { class: 'legend' }, ...Object.values(TYPE).map(([n, c]) => el('span', {}, el('i', { style: `background:${c}` }), n)), el('span', {}, '† 闭源'));
+  const val = (m) => (pseudo ? m.p : m.s)[di];
+  const redraw = fit(chart, (w) => {
+    let ms = OI.filter((m) => show[m.t]);
+    if (order === 0) ms = ms.slice().sort((a, b) => val(b) - val(a));
+    const rows = ms.map((m) => ({ id: m.name, label: m.name + (m.c ? ' †' : ''), v: val(m), color: TYPE[m.t][1] }));
+    return hbars(w, rows, { max: 60, ticks: [0, 10, 20, 30, 40, 50, 60], fmt: (v) => v.toFixed(2), tfmt: (t) => t + '%', sel, labelW: 175, aria: 'OIBench 榜单', onPick: (r) => { sel = r.id; say(); redraw(); } });
+  });
+  const say = () => {
+    const m = OI.find((x) => x.name === sel);
+    status.innerHTML = `<b>${m.name}</b>（${TYPE[m.t][0]}，${m.c ? '闭源' : '开源'}）${pseudo ? '伪代码版' : '原题'}：总分 ${m.s[0].toFixed(2)} → 伪代码 ${m.p[0].toFixed(2)}；C++ ${(pseudo ? m.p : m.s)[1].toFixed(2)}，Java ${(pseudo ? m.p : m.s)[2].toFixed(2)}，Python ${(pseudo ? m.p : m.s)[3].toFixed(2)}，JS ${(pseudo ? m.p : m.s)[4].toFixed(2)}。`;
+  };
+  const stats = () => {
+    const pick = (f) => mean(OI.filter(f).map(val));
+    const cj = mean(OI.map((m) => ((pseudo ? m.p : m.s)[1] + (pseudo ? m.p : m.s)[2]) / 2));
+    const pj = mean(OI.map((m) => ((pseudo ? m.p : m.s)[3] + (pseudo ? m.p : m.s)[4]) / 2));
+    const en = mean(OI.map((m) => (pseudo ? m.p : m.s)[5])), zh = mean(OI.map((m) => (pseudo ? m.p : m.s)[6]));
+    kpi.replaceChildren(
+      el('div', {}, el('b', {}, f2(pick((m) => m.t === 'r')) + '%'), el('span', {}, `推理模型平均（${DIMS[di]}）`)),
+      el('div', {}, el('b', {}, f2(pick((m) => m.t === 'i')) + '%'), el('span', {}, `指令微调模型平均（${DIMS[di]}）`)),
+      el('div', {}, el('b', {}, f2(pick((m) => m.c && m.t !== 'b')) + '% / ' + f2(pick((m) => !m.c)) + '%'), el('span', {}, '闭源 / 开源平均')),
+      el('div', {}, el('b', {}, f2(cj) + ' / ' + f2(pj)), el('span', {}, `C++&Java / Python&JS 平均（相对低 ${((1 - pj / cj) * 100).toFixed(0)}%）`)),
+      el('div', {}, el('b', {}, f2(en) + ' / ' + f2(zh)), el('span', {}, '英文题 / 中文题平均')));
+  };
+  const typeChips = Object.entries(TYPE).map(([k, [n]]) => {
+    const c = el('button', { type: 'button', class: 'chip on', 'aria-pressed': 'true' }, n);
+    c.addEventListener('click', () => { show[k] = !show[k]; c.classList.toggle('on', show[k]); c.setAttribute('aria-pressed', String(show[k])); redraw(); });
+    return c;
+  });
+  node.append(
+    el('div', { class: 'ctrl' }, seg(DIMS, (i) => { di = i; stats(); redraw(); }, 0, '维度')),
+    el('div', { class: 'ctrl' }, seg(['原题', '伪代码提示'], (i) => { pseudo = i === 1; stats(); say(); redraw(); }, 0, '题面'), seg(['按分数', '按类型'], (i) => { order = i; redraw(); }, 0, '排序')),
+    el('div', { class: 'ctrl' }, el('span', { class: 'lab' }, '显示：'), el('div', { class: 'chips' }, typeChips)),
+    legend, chart, status, kpi,
+    el('p', { class: 'small', style: 'margin-top:8px' }, '分组平均由本页按论文表 3 现场计算；原文所说「推理 21.4%、指令微调约 3.6%、闭源 14.5%、开源 6.3%」对应「总分 + 原题」。闭源平均只含闭源的指令与推理模型（基座模型全是开源）。'));
+  stats(); say();
+});
+
+/* ======================= 03 伪代码提升 ======================= */
+reg('pseudo', (node) => {
+  let sel = 'o4-mini-high';
+  const chart = el('div', { class: 'chart' });
+  const status = el('div', { class: 'status' });
+  const say = () => { const m = OI.find((x) => x.name === sel); const d = m.p[0] - m.s[0]; status.innerHTML = `<b>${m.name}</b>：${m.s[0].toFixed(2)}% → ${m.p[0].toFixed(2)}%，提升 <b>${d.toFixed(2)}</b> 个百分点，约为原来的 ${(m.p[0] / Math.max(m.s[0], 0.01)).toFixed(1)} 倍。`; };
+  const redraw = fit(chart, (w) => {
+    const rows = OI.slice().sort((a, b) => b.p[0] - a.p[0]).map((m) => ({ id: m.name, label: m.name, v: m.s[0], v2: m.p[0], color: TYPE[m.t][1] }));
+    return hbars(w, rows, { dumbbell: true, max: 60, ticks: [0, 20, 40, 60], tfmt: (t) => t + '%', sel, labelW: 175, aria: '伪代码提示前后对比', onPick: (r) => { sel = r.id; say(); redraw(); } });
+  });
+  const gapS = mean(OI.filter((m) => m.t === 'r').map((m) => m.s[0])) - mean(OI.filter((m) => m.t === 'i').map((m) => m.s[0]));
+  const gapP = mean(OI.filter((m) => m.t === 'r').map((m) => m.p[0])) - mean(OI.filter((m) => m.t === 'i').map((m) => m.p[0]));
+  node.append(el('div', { class: 'legend' }, el('span', {}, '○ 原题'), el('span', {}, '● 给伪代码'), ...Object.values(TYPE).map(([n, c]) => el('span', {}, el('i', { style: `background:${c}` }), n))), chart, status,
+    el('p', { class: 'small', style: 'margin-top:6px' }, `本页现场计算：推理模型与指令微调模型的平均差距，原题是 ${gapS.toFixed(1)} 个百分点，给了伪代码后是 ${gapP.toFixed(1)} 个百分点。差距缩小了，但推理模型仍领先。`));
+  say();
+});
+
+/* ======================= 04 token vs 通过率 ======================= */
+reg('tokens', (node) => {
+  /* 近似值：x = log2(token 数)，y = 测试用例通过率 %，从论文图 3 读出 */
+  const P = [
+    ['o4-mini-high', 'r', 13.2, 55.7, 1, 0], ['o3-mini-high', 'r', 14.45, 37.0, 1, 0], ['DeepSeek-R1', 'r', 13.65, 35.0, -1, 0], ['o1', 'r', 13.6, 28.7, -1, 0],
+    ['Qwen3-32B', 'r', 14.45, 29.3, 1, 0], ['QwQ-32B', 'r', 14.25, 21.5, 1, 0], ['DeepSeek-V3-0324', 'i', 10.7, 23.8, 1, 0], ['DeepSeek-V3-1226', 'i', 9.87, 15.4, 1, -6],
+    ['Claude 3.5 Sonnet', 'i', 9.8, 14.6, -1, -6], ['GPT-4o', 'i', 9.45, 11.6, -1, 0], ['Doubao-32k-pro', 'i', 9.5, 8.2, 1, -2], ['Qwen2.5-Coder-32B', 'i', 9.35, 6.8, 1, 8],
+    ['Llama-3.1-405B', 'i', 9.05, 4.8, 1, 14], ['Qwen2.5-72B', 'i', 10.3, 4.9, 1, -12],
+  ];
+  let sel = 'o4-mini-high';
+  const chart = el('div', { class: 'chart' });
+  const status = el('div', { class: 'status' });
+  const say = () => { const p = P.find((x) => x[0] === sel); const tok = Math.round(2 ** p[2] / 100) * 100; status.innerHTML = `<b>${p[0]}</b>：约 2<sup>${p[2]}</sup> ≈ ${tok.toLocaleString()} 个输出 token，测试用例通过率约 ${p[3]}%，每千 token 约换来 ${(p[3] / (2 ** p[2] / 1000)).toFixed(2)} 个百分点。`; };
+  const redraw = fit(chart, (w) => {
+    const h = Math.round(Math.min(420, Math.max(280, w * 0.55)));
+    const L = 40, R = w - 12, T = 12, Bm = h - 34;
+    const sx = (v) => L + (v - 8.5) / (15.5 - 8.5) * (R - L), sy = (v) => Bm - v / 60 * (Bm - T);
+    const root = svg('svg', { viewBox: `0 0 ${w} ${h}`, width: w, height: h, role: 'img', 'aria-label': '推理 token 数与通过率散点图' });
+    for (let k = 9; k <= 15; k++) root.append(svg('line', { x1: sx(k), x2: sx(k), y1: T, y2: Bm, class: 'ax' }), svg('text', { x: sx(k), y: Bm + 16, class: 'tk', 'text-anchor': 'middle' }, '2^' + k));
+    [0, 20, 40, 60].forEach((v) => root.append(svg('line', { x1: L, x2: R, y1: sy(v), y2: sy(v), class: 'ax' }), svg('text', { x: L - 6, y: sy(v), class: 'tk', 'text-anchor': 'end', 'dominant-baseline': 'central' }, v + '%')));
+    root.append(svg('text', { x: R, y: h - 4, class: 'tk', 'text-anchor': 'end' }, '输出 token 数（对数轴）→'));
+    P.slice().sort((a, b) => (a[0] === sel) - (b[0] === sel)).forEach((p) => {
+      const g = svg('g', { class: 'bub' + (p[0] === sel ? ' sel' : ''), 'aria-label': p[0] });
+      g.append(svg('ellipse', { cx: sx(p[2]), cy: sy(p[3]), rx: 9, ry: 9, fill: TYPE[p[1]][1], 'fill-opacity': 0.7, stroke: 'var(--surface)', 'stroke-width': 1.2 }));
+      if (p[0] === sel || w > 620) { const d = p[0] === sel && w <= 620 ? (p[2] > 13 ? -1 : 1) : p[4]; g.append(svg('text', { x: sx(p[2]) + d * 12, y: sy(p[3]) + (w > 620 ? p[5] : 0), class: p[0] === sel ? 'rl' : 'tk', 'text-anchor': d < 0 ? 'end' : 'start', 'dominant-baseline': 'central' }, p[0])); }
+      keyAct(g, () => { sel = p[0]; say(); redraw(); });
+      root.append(g);
+    });
+    return root;
+  });
+  node.append(el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), '推理模型'), el('span', {}, el('i', { style: 'background:var(--t)' }), '非推理（指令微调）模型')), chart, status);
+  say();
+});
+
+/* ======================= 05 人机对比 ======================= */
+reg('human', (node) => {
+  /* 论文图 4 标注的平均值（超过 X% 人类选手）与本页按论文文字所作的形态归类 */
+  const H = [['o4-mini-high', 42.64, 'o'], ['DeepSeek-R1', 36.86, 'p'], ['DeepSeek-V3-0324', 35.49, 'p'], ['o3-mini-high', 31.47, 'p'], ['Qwen3-32B', 27.80, 'p'], ['Claude 3.5 Sonnet', 27.47, 'b'], ['QwQ-32B', 25.49, 'p'], ['o1', 24.20, 'p'], ['DeepSeek-V3-1226', 21.00, 'b'], ['Qwen2.5-72B', 20.01, 'b'], ['Qwen2.5-Coder-32B', 17.95, 'b'], ['Doubao-32k-pro', 17.11, 'b'], ['Llama-3.1-405B', 16.59, 'b'], ['GPT-4o', 9.23, 'b']];
+  const K = { b: ['低谷型', 'var(--y)', '多数题排名靠后，大多只能超过不到 20% 的人类选手；都是没有长链推理能力的模型。', [[8, 1], [30, 0.25]]],
+              p: ['双峰型', 'var(--o)', '一部分题能超过约一半人类，另一部分题表现很差，像一颗花生；多数长链推理模型属于此类，说明它们只掌握了部分题型。', [[6, 0.9], [52, 0.75]]],
+              o: ['橄榄型', 'var(--t)', '排名分布更均匀，更接近人类整体的能力分布；目前只有 o4-mini-high 呈现这种全面而稳定的推理特征。', [[45, 1], [15, 0.45]]] };
+  let sel = 'o4-mini-high';
+  const wrap = el('div', { class: 'grid2' });
+  const chart = el('div', { class: 'chart' });
+  const vio = el('div', { class: 'chart' });
+  const status = el('div', { class: 'status' });
+  const drawViolin = () => {
+    const m = H.find((x) => x[0] === sel), k = K[m[2]];
+    const W = 260, Hh = 300, cx = 130, T = 14, Bt = 280, sy = (v) => Bt - v / 100 * (Bt - T);
+    const dens = (y) => k[3].reduce((s, [mu, a]) => s + a * Math.exp(-((y - mu) ** 2) / (2 * 11 ** 2)), 0);
+    let pts = []; for (let y = -5; y <= 100; y += 2.5) pts.push([y, dens(y)]);
+    const mx = Math.max(...pts.map((p) => p[1]));
+    const right = pts.map(([y, d]) => `${cx + d / mx * 80},${sy(y)}`), left = pts.slice().reverse().map(([y, d]) => `${cx - d / mx * 80},${sy(y)}`);
+    const root = svg('svg', { viewBox: `0 0 ${W} ${Hh}`, role: 'img', 'aria-label': k[0] + '示意', style: 'max-width:300px;margin:0 auto' });
+    [0, 20, 40, 60, 80, 100].forEach((v) => root.append(svg('line', { x1: 34, x2: W - 6, y1: sy(v), y2: sy(v), class: 'ax' }), svg('text', { x: 28, y: sy(v), class: 'tk', 'text-anchor': 'end', 'dominant-baseline': 'central' }, v + '%')));
+    root.append(svg('polygon', { points: right.concat(left).join(' '), fill: k[1], 'fill-opacity': 0.45, stroke: k[1], 'stroke-width': 2 }));
+    root.append(svg('line', { x1: cx - 40, x2: cx + 40, y1: sy(m[1]), y2: sy(m[1]), stroke: 'var(--text)', 'stroke-width': 2.5 }));
+    root.append(svg('text', { x: cx + 46, y: sy(m[1]), class: 'rl', 'dominant-baseline': 'central' }, m[1].toFixed(2)));
+    root.append(svg('text', { x: cx, y: Hh - 4, class: 'lbl mid' }, k[0] + '（示意形状）'));
+    return root;
+  };
+  const say = () => { const m = H.find((x) => x[0] === sel), k = K[m[2]]; status.innerHTML = `<b>${m[0]}</b>：平均超过 ${m[1].toFixed(2)}% 的人类选手，属于<b>${k[0]}</b>。${k[2]}`; vio.replaceChildren(drawViolin()); };
+  const redraw = fit(chart, (w) => hbars(w, H.map((m) => ({ id: m[0], label: m[0], v: m[1], color: K[m[2]][1] })), { max: 50, ticks: [0, 10, 20, 30, 40, 50], fmt: (v) => v.toFixed(2), tfmt: (t) => t + '%', sel, labelW: 150, aria: '模型平均超过人类选手的比例', onPick: (r) => { sel = r.id; say(); redraw(); } }));
+  wrap.append(chart, vio);
+  node.append(el('div', { class: 'legend' }, ...Object.values(K).map(([n, c]) => el('span', {}, el('i', { style: `background:${c}` }), n))), wrap, status);
+  say();
+});
+
+/* ======================= 06 CorePipe ======================= */
+reg('pipe', (node) => {
+  const N = { t: [210, 30, 'test_api.py'], a: [210, 100, 'Pipeline.run'], b: [90, 175, 'load_cfg'], c: [330, 175, 'transform'], d: [250, 250, 'normalize'], e: [420, 250, 'log_debug'] };
+  const E = [['t', 'a'], ['a', 'b'], ['a', 'c'], ['c', 'd'], ['c', 'e']];
+  const root = svg('svg', { viewBox: '0 0 520 290', role: 'img', 'aria-label': '函数调用树' });
+  const edges = {}, nodes = {};
+  E.forEach(([p, q]) => { const l = svg('line', { x1: N[p][0], y1: N[p][1] + 15, x2: N[q][0], y2: N[q][1] - 15, class: 'tree-e' }); edges[p + q] = l; root.append(l); });
+  Object.entries(N).forEach(([k, [x, y, t]]) => { const g = svg('g', { class: 'tree-n' }, svg('rect', { x: x - 72, y: y - 15, width: 144, height: 30, rx: 8 }), svg('text', { x, y }, t)); nodes[k] = g; root.append(g); });
+  const S = [
+    ['精选真实项目', '从 PyPI 对应的 GitHub 仓库里挑活跃度高、测试覆盖率高、技术复杂度高的开源项目。', () => {}],
+    ['构建函数调用树', '动态与静态追踪测试的执行，从测试文件出发画出跨文件的函数调用图。', (on) => { Object.values(nodes).forEach((g) => g.classList.add('on')); E.forEach(([p, q]) => edges[p + q].classList.add('on')); }],
+    ['定位核心代码', '过滤掉只做条件检查、打日志的辅助函数，再用 AST 在关键函数里截出连续的核心代码块，确认单测能检测到它的改动。', () => { nodes.c.classList.add('core'); nodes.d.classList.add('core'); nodes.e.classList.add('dim'); nodes.b.classList.add('dim'); }],
+    ['生成三类单函数题', '把核心代码块遮住或改写：给功能描述让模型开发（GPT-4o 写描述、Claude 3.5 Sonnet 挑刺）；用 LLM 植入隐蔽的逻辑错误让模型修；给单元测试让模型反向实现。', () => { nodes.c.classList.add('core'); nodes.d.classList.add('core'); }],
+    ['组合多函数题', '沿调用关系把有父子关系的单函数题拼成一道大题（至少 2 个，深度与数量上限可调），考察跨函数的组织与规划。', () => { ['c', 'd'].forEach((k) => nodes[k].classList.add('grp')); nodes.a.classList.add('grp'); edges.ac.classList.add('on'); edges.cd.classList.add('on'); }],
+  ];
+  const items = S.map(([t, p], i) => el('div', { class: 'tl-step' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, t), el('p', {}, p))));
+  let k = 0;
+  const status = el('div', { class: 'status' }, '点「下一步」开始。');
+  const paint = () => {
+    Object.values(nodes).forEach((g) => g.setAttribute('class', 'tree-n'));
+    Object.values(edges).forEach((l) => l.setAttribute('class', 'tree-e'));
+    if (k > 1) S[1][2]();
+    if (k > 0) S[k - 1][2]();
+    items.forEach((x, i) => x.classList.toggle('on', i < k));
+    status.innerHTML = k ? `第 ${k} / ${S.length} 步：<b>${S[k - 1][0]}</b>` : '点「下一步」开始。';
+  };
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (k < S.length) k++; paint(); next.disabled = k >= S.length; } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { k = 0; next.disabled = false; paint(); } }, '重置');
+  node.append(el('div', { class: 'grid2' }, el('div', {}, root, el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p-soft);border:1px solid var(--p)' }), '调用树节点'), el('span', {}, el('i', { style: 'background:var(--o-soft);border:1px solid var(--o)' }), '核心代码'), el('span', {}, el('i', { style: 'background:var(--t-soft);border:1px solid var(--t)' }), '组成一道多函数题'))), el('div', { class: 'steps' }, items)), el('div', { class: 'ctrl' }, next, reset), status);
+  paint();
+});
+
+/* ======================= 06 三种题型 ======================= */
+reg('types', (node) => {
+  const C = [
+    ['给出功能描述，模型补全被遮住的核心代码块。', `def normalize(scores, eps=1e-8):
+    <span class="cm">"""把分数缩放到 [0, 1]。"""</span>
+<span class="mk">    # &lt;MASK&gt; 功能描述：取最小值 lo、最大值 hi；
+    # 若 hi - lo 小于 eps，全部返回 0.0；
+    # 否则返回 (x - lo) / (hi - lo) 组成的列表。</span>`],
+    ['代码能跑，但藏着一个逻辑错误，模型要找出并改对。', `def normalize(scores, eps=1e-8):
+    lo, hi = min(scores), max(scores)
+    if hi - lo &lt; eps:
+        return [0.0] * len(scores)
+    return [(x - lo) / <span class="hl">(hi - eps)</span> for x in scores]
+<span class="cm">    # 分母本应是 (hi - lo)：语法没错，结果却不对</span>`],
+    ['只给单元测试，模型据此反向实现功能。', `def test_normalize():
+    assert normalize([2, 4, 6]) == [0.0, 0.5, 1.0]
+    assert normalize([3, 3]) == [0.0, 0.0]
+
+def normalize(scores, eps=1e-8):
+<span class="mk">    # &lt;MASK&gt; 让上面的测试全部通过</span>`],
+  ];
+  const desc = el('p', { class: 'status' });
+  const pre = el('pre', { class: 'code' });
+  const show = (i) => { desc.innerHTML = `<b>${SCN[i]}</b>：${C[i][0]}`; pre.innerHTML = C[i][1]; };
+  node.append(seg(SCN, show, 0, '题型'), desc, pre);
+  show(0);
+});
+
+/* ======================= 07 单函数 vs 多函数 ======================= */
+reg('ccb', (node) => {
+  let sc = 0, met = 0, order = 0, sel = 'Claude-3.7-Sonnet*';
+  const chart = el('div', { class: 'chart' });
+  const status = el('div', { class: 'status' });
+  const kpi = el('div', { class: 'kpi' });
+  const idx = () => sc * 2 + met;
+  const say = () => {
+    const m = CC.find((x) => x.name === sel); const i = idx();
+    status.innerHTML = `<b>${m.name}</b>（${m.api ? 'API' : '开源'}）${SCN[sc]} ${met ? 'AC@1' : 'AC Rate'}：单函数 ${m.s[i].toFixed(2)} → 多函数 ${m.m[i].toFixed(2)}，下降 ${(m.s[i] - m.m[i]).toFixed(2)} 个百分点。`;
+  };
+  const stats = () => {
+    const i = idx();
+    const drop = mean(CC.map((m) => m.s[i] - m.m[i]));
+    const worse = CC.filter((m) => m.m[i] < m.s[i]).length;
+    const bugLower = CC.filter((m) => m.s[2 + met] < m.s[0 + met]).length;
+    const top = (arr) => arr.reduce((a, b) => (b.v > a.v ? b : a));
+    const ts = top(CC.map((m) => ({ n: m.name, v: m.s[i] }))), tm = top(CC.map((m) => ({ n: m.name, v: m.m[i] })));
+    kpi.replaceChildren(
+      el('div', {}, el('b', {}, drop.toFixed(1)), el('span', {}, '单→多 平均下降（百分点）')),
+      el('div', {}, el('b', {}, `${worse} / ${CC.length}`), el('span', {}, '多函数分数低于单函数的模型数')),
+      el('div', {}, el('b', {}, `${bugLower} / ${CC.length}`), el('span', {}, `单函数 BugFix 低于 Development 的模型数（${met ? 'AC@1' : 'AC Rate'}）`)),
+      el('div', {}, el('b', { style: 'font-size:14px' }, `${ts.n} / ${tm.n}`), el('span', {}, '单函数第一 / 多函数第一')));
+  };
+  const redraw = fit(chart, (w) => {
+    const i = idx();
+    let ms = CC.slice();
+    if (order === 0) ms.sort((a, b) => b.s[i] - a.s[i]); else if (order === 1) ms.sort((a, b) => b.m[i] - a.m[i]); else if (order === 2) ms.sort((a, b) => (b.s[i] - b.m[i]) - (a.s[i] - a.m[i]));
+    return hbars(w, ms.map((m) => ({ id: m.name, label: m.name, v: m.s[i], v2: m.m[i], color: 'var(--p)', color2: 'var(--o)' })), { max: 100, ticks: [0, 25, 50, 75, 100], fmt: (v) => v.toFixed(1), tfmt: (t) => t + '%', sel, labelW: 190, aria: 'CoreCodeBench 单函数与多函数对比', onPick: (r) => { sel = r.id; say(); redraw(); } });
+  });
+  const upd = () => { stats(); say(); redraw(); };
+  node.append(
+    el('div', { class: 'ctrl' }, seg(SCN, (i) => { sc = i; upd(); }, 0, '场景'), seg(['AC Rate', 'AC@1'], (i) => { met = i; upd(); }, 0, '指标')),
+    el('div', { class: 'ctrl' }, el('span', { class: 'lab' }, '排序：'), seg(['单函数分', '多函数分', '降幅'], (i) => { order = i; redraw(); }, 0, '排序')),
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), '单函数'), el('span', {}, el('i', { style: 'background:var(--o)' }), '多函数')),
+    chart, status, kpi);
+  stats(); say();
+});
+
+/* ======================= 08 函数顺序 ======================= */
+reg('order', (node) => {
+  const F = { process: { x: 260, y: 40, calls: ['parse', 'validate'] }, parse: { x: 120, y: 150, calls: [] }, validate: { x: 400, y: 150, calls: [] } };
+  const plans = { model: ['process', 'parse', 'validate'], bottom: ['parse', 'validate', 'process'] };
+  let plan = 'model', k = 0;
+  const root = svg('svg', { viewBox: '0 0 520 200', role: 'img', 'aria-label': '三个函数的调用关系', style: 'max-width:560px;margin:0 auto' });
+  root.append(svg('defs', {}, svg('marker', { id: 'arr', viewBox: '0 0 10 10', refX: '9', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' }, svg('path', { d: 'M0,0 L10,5 L0,10 z', fill: 'var(--muted)' }))));
+  const ar = {};
+  ['parse', 'validate'].forEach((q) => { const l = svg('line', { x1: F.process.x + (q === 'parse' ? -40 : 40), y1: F.process.y + 18, x2: F[q].x, y2: F[q].y - 20, stroke: 'var(--muted)', 'stroke-width': 1.6, 'marker-end': 'url(#arr)' }); ar[q] = l; root.append(l); });
+  root.append(svg('text', { x: 260, y: 108, class: 'lbl mid' }, '调用'));
+  const G = {}, badges = {};
+  Object.entries(F).forEach(([n, f]) => {
+    const g = svg('g', { class: 'order-fn' }, svg('rect', { x: f.x - 70, y: f.y - 18, width: 140, height: 36, rx: 8 }), svg('text', { x: f.x, y: f.y }, n + '()'));
+    const b = svg('g', { class: 'order-badge', style: 'display:none' }, svg('circle', { cx: f.x + 70, cy: f.y - 18, r: 11 }), svg('text', { x: f.x + 70, y: f.y - 18 }, '1'));
+    G[n] = g; badges[n] = b; root.append(g, b);
+  });
+  const status = el('div', { class: 'status' });
+  const paint = () => {
+    const seq = plans[plan], done = new Set(seq.slice(0, k));
+    Object.keys(F).forEach((n) => { G[n].setAttribute('class', 'order-fn'); badges[n].style.display = 'none'; });
+    ['parse', 'validate'].forEach((q) => { ar[q].setAttribute('stroke', 'var(--muted)'); ar[q].removeAttribute('stroke-dasharray'); });
+    let msg = k ? '' : '点「写下一个」。';
+    seq.slice(0, k).forEach((n, i) => {
+      const before = new Set(seq.slice(0, i));
+      const missing = F[n].calls.filter((c) => !before.has(c));
+      G[n].setAttribute('class', 'order-fn ' + (missing.length ? 'warn' : 'done'));
+      badges[n].style.display = ''; badges[n].lastChild.textContent = String(i + 1);
+      missing.forEach((q) => { ar[q].setAttribute('stroke', 'var(--r)'); ar[q].setAttribute('stroke-dasharray', '5 4'); });
+      if (i === k - 1) msg = `第 ${i + 1} 个写 <b>${n}()</b>：` + (missing.length ? `它调用的 ${missing.map((m) => m + '()').join('、')} 还没实现，只能先假设它们的接口，写错了要回头改。` : F[n].calls.length ? '它依赖的函数都已写好，可以直接按真实接口调用。' : '它不依赖其他待写函数，可以独立完成。');
+    });
+    if (k === 3) msg += plan === 'model' ? ' 这就是论文观察到的「顺序执行」：照提示里出现的顺序往下写。' : ' 这是按依赖「自底向上」的写法：先写被调用的工具函数。';
+    status.innerHTML = msg;
+    next.disabled = k >= 3;
+  };
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (k < 3) k++; paint(); } }, '写下一个');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { k = 0; paint(); } }, '重来');
+  node.append(el('div', { class: 'ctrl' }, seg(['多数模型：按提示顺序', '按依赖：先写工具函数'], (i) => { plan = i ? 'bottom' : 'model'; k = 0; paint(); }, 0, '写法')), root, el('div', { class: 'ctrl' }, next, reset), status);
+  paint();
+});
+
+/* ======================= 09 Difficult ======================= */
+reg('hard', (node) => {
+  const D = [['Claude-3.7-Sonnet*', 28.08], ['DeepSeek-R1*', 21.89], ['Grok-3*', 15.71], ['GPT-4o', 14.71], ['Gemini-2.5-Pro-Preview', 13.60], ['Llama3.1-70B', 13.49], ['GPT-4.1', 11.77], ['o4-mini (high)*', 9.57], ['Qwen2.5-max', 7.51], ['Doubao-pro-4k', 3.52], ['Doubao-1.5-pro', 1.74], ['Qwen3-32B', 1.10]];
+  let sel = 'o4-mini (high)*';
+  const chart = el('div', { class: 'chart' });
+  const status = el('div', { class: 'status' });
+  const say = () => {
+    const d = D.find((x) => x[0] === sel); const m = CC.find((x) => x.name === sel);
+    status.innerHTML = `<b>${d[0]}</b>：Difficult 上 AC Rate ${d[1].toFixed(2)}%，离 30% 线还差 ${(30 - d[1]).toFixed(2)} 个百分点。` + (m ? ` 对照：它在单函数开发上的 AC Rate 是 ${m.s[0].toFixed(2)}%。` : ' 这个模型不在主榜单里。');
+  };
+  const redraw = fit(chart, (w) => hbars(w, D.map(([n, v]) => ({ id: n, label: n, v, color: n === sel ? 'var(--p)' : 'var(--t)' })), { max: 35, ref: 30, ticks: [0, 10, 20, 30], fmt: (v) => v.toFixed(2), tfmt: (t) => t + '%', sel, labelW: 190, aria: 'CoreCodeBench-Difficult 结果', onPick: (r) => { sel = r.id; say(); redraw(); } }));
+  node.append(chart, status, el('p', { class: 'small' }, '注意 o4-mini (high) 在主榜单里名列前茅，到 Difficult 上只有 9.57%；Qwen3-32B 只出现在这张图里，主榜单用的是 Qwen3-8B。'));
+  say();
+});
+
+/* ======================= 10 雷达图 ======================= */
+const AX = ['单·开发', '单·修复', '单·TDD', '多·开发', '多·修复', '多·TDD'];
+const vec = (m) => [m.s[0], m.s[2], m.s[4], m.m[0], m.m[2], m.m[4]];
+reg('radarc', (node) => {
+  let picked = ['Claude-3.7-Sonnet*', 'o4-mini (high)*', 'DeepSeek-R1*'], norm = true;
+  const cols = ['var(--p)', 'var(--o)', 'var(--t)'];
+  const chart = el('div', { class: 'chart', style: 'max-width:440px;margin:0 auto' });
+  const status = el('div', { class: 'status' });
+  const all = CC.map(vec);
+  const lo = AX.map((_, j) => Math.min(...all.map((v) => v[j]))), hi = AX.map((_, j) => Math.max(...all.map((v) => v[j])));
+  const chips = CC.map((m) => { const c = el('button', { type: 'button', class: 'chip' }, m.name); c.addEventListener('click', () => { if (picked.includes(m.name)) picked = picked.filter((x) => x !== m.name); else { picked.push(m.name); if (picked.length > 3) picked.shift(); } upd(); }); return [m.name, c]; });
+  const redraw = fit(chart, (w) => {
+    const S = Math.min(w, 440), c = S / 2, R = S / 2 - 58;
+    const root = svg('svg', { viewBox: `0 0 ${S} ${S}`, width: S, height: S, role: 'img', 'aria-label': '六场景雷达图' });
+    const pt = (j, r) => { const a = -Math.PI / 2 + j * Math.PI / 3; return [c + r * Math.cos(a), c + r * Math.sin(a)]; };
+    [0.25, 0.5, 0.75, 1].forEach((f) => root.append(svg('polygon', { points: AX.map((_, j) => pt(j, R * f).join(',')).join(' '), fill: 'none', class: 'ax' })));
+    AX.forEach((a, j) => { const [x, y] = pt(j, R); const [lx, ly] = pt(j, R + 26); root.append(svg('line', { x1: c, y1: c, x2: x, y2: y, class: 'ax' }), svg('text', { x: lx, y: ly, class: 'tk', 'text-anchor': 'middle', 'dominant-baseline': 'central' }, a)); });
+    if (!norm) [25, 50, 75, 100].forEach((v) => { const [x, y] = pt(0, R * v / 100); root.append(svg('text', { x: x + 4, y, class: 'tk' }, v)); });
+    picked.forEach((n, i) => {
+      const v = vec(CC.find((m) => m.name === n));
+      const f = v.map((x, j) => norm ? (hi[j] - lo[j] ? (x - lo[j]) / (hi[j] - lo[j]) : 0) : x / 100);
+      root.append(svg('polygon', { points: f.map((r, j) => pt(j, R * r).join(',')).join(' '), fill: cols[i], 'fill-opacity': 0.14, stroke: cols[i], 'stroke-width': 2 }));
+      f.forEach((r, j) => { const [x, y] = pt(j, R * r); root.append(svg('circle', { cx: x, cy: y, r: 3, fill: cols[i] })); });
+    });
+    return root;
+  });
+  function upd() {
+    chips.forEach(([n, c]) => { const i = picked.indexOf(n); c.className = 'chip' + (i >= 0 ? ' on' : ''); c.style.borderColor = i >= 0 ? cols[i] : ''; c.style.color = i >= 0 ? cols[i] : ''; });
+    redraw();
+    const best = AX.map((a, j) => { const top = CC.reduce((b, m) => (vec(m)[j] > vec(b)[j] ? m : b)); return `${a}：${top.name}`; });
+    status.innerHTML = picked.length ? `已选 ${picked.map((n, i) => `<span style="color:${cols[i]};font-weight:600">${n}</span>`).join('、')}。各场景 AC Rate 第一：${best.join('；')}。没有一个模型包揽六项。` : '选一个模型试试。';
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['归一化', '原始 AC Rate'], (i) => { norm = i === 0; redraw(); }, 0, '刻度')), el('div', { class: 'chips', style: 'margin-bottom:8px' }, chips.map((x) => x[1])), chart, status);
+  upd();
+});
+
+/* ======================= 10 相关性热力图 ======================= */
+reg('heat', (node) => {
+  const ORIG = [[1, 0.79, 0.73, -0.017, 0.71, 0.23], [0.79, 1, 0.8, -0.23, 0.85, 0.15], [0.73, 0.8, 1, -0.047, 0.75, 0.22], [-0.017, -0.23, -0.047, 1, -0.0075, 0.71], [0.71, 0.85, 0.75, -0.0075, 1, 0.4], [0.23, 0.15, 0.22, 0.71, 0.4, 1]];
+  const calc = (k) => { const cols = [0, 1, 2, 3, 4, 5].map((j) => CC.map((m) => (j < 3 ? m.s : m.m)[(j % 3) * 2 + k])); return cols.map((a) => cols.map((b) => pearson(a, b))); };
+  const SRC = [['原文图 8', ORIG], ['重算 · AC Rate', calc(0)], ['重算 · AC@1', calc(1)]];
+  let si = 0, sel = [3, 0];
+  const chart = el('div', { class: 'chart', style: 'max-width:520px;margin:0 auto' });
+  const status = el('div', { class: 'status' });
+  const tip = (i, j, r) => {
+    const a = AX[i], b = AX[j];
+    if (i === j) return `${a} 与自己的相关系数恒为 1。`;
+    const s = Math.abs(r) >= 0.7 ? '强相关' : Math.abs(r) >= 0.4 ? '中等相关' : '几乎不相关';
+    const key = [i, j].sort().join('');
+    const note = { '03': '原文据此说：多函数开发需要额外的规划能力，和单函数开发不是一回事。', '35': '原文：多函数开发与多函数 TDD 都考察复杂场景下的综合能力。', '14': '原文：修复任务在单、多函数间高度相关，调试更依赖通用的局部纠错能力。', '01': '原文：单函数任务之间相关性高，共享基础的理解与实现能力。', '02': '原文：单函数任务之间相关性高。', '12': '原文：单函数任务之间相关性高。', '34': '原文：多函数修复更像「单点排查」，和另两项多函数任务差异大。', '45': '原文：多函数修复更像「单点排查」，和另两项多函数任务差异大。' }[key] || '';
+    return `${a} × ${b}：r = <b>${r.toFixed(3)}</b>（${s}）。${note}`;
+  };
+  const redraw = fit(chart, (w) => {
+    const S = Math.min(w, 520), L = 64, T = 52, cs = (S - L - 6) / 6;
+    const M = SRC[si][1];
+    const root = svg('svg', { viewBox: `0 0 ${S} ${T + cs * 6 + 6}`, width: S, height: T + cs * 6 + 6, role: 'img', 'aria-label': '六场景相关系数热力图' });
+    AX.forEach((a, j) => { root.append(svg('text', { x: L + cs * j + cs / 2, y: T - 10, class: 'tk', 'text-anchor': 'middle' }, a)); root.append(svg('text', { x: L - 6, y: T + cs * j + cs / 2, class: 'tk', 'text-anchor': 'end', 'dominant-baseline': 'central' }, a)); });
+    M.forEach((row, i) => row.forEach((r, j) => {
+      const g = svg('g', { class: 'hm-cell' + (sel[0] === i && sel[1] === j ? ' sel' : ''), 'aria-label': `${AX[i]} 与 ${AX[j]}` });
+      g.append(svg('rect', { x: L + cs * j + 1, y: T + cs * i + 1, width: cs - 2, height: cs - 2, rx: 4, fill: r >= 0 ? 'var(--r)' : 'var(--p)', 'fill-opacity': Math.max(0.06, Math.abs(r) * 0.85) }));
+      g.append(svg('text', { x: L + cs * j + cs / 2, y: T + cs * i + cs / 2, class: 'rv', 'text-anchor': 'middle', 'dominant-baseline': 'central', style: 'fill:var(--text)' }, r.toFixed(2)));
+      keyAct(g, () => { sel = [i, j]; status.innerHTML = tip(i, j, r); redraw(); });
+      root.append(g);
+    }));
+    return root;
+  });
+  node.append(el('div', { class: 'ctrl' }, seg(SRC.map((s) => s[0]), (i) => { si = i; status.innerHTML = tip(sel[0], sel[1], SRC[si][1][sel[0]][sel[1]]); redraw(); }, 0, '数据来源')),
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--r)' }), '正相关'), el('span', {}, el('i', { style: 'background:var(--p)' }), '负相关'), el('span', {}, '颜色越深，|r| 越大')), chart, status);
+  status.innerHTML = tip(3, 0, ORIG[3][0]);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+void RM;
+})();
+</script>
+</body>
+</html>

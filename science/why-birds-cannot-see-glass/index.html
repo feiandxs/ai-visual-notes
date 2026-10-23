@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>为什么鸟类看不见玻璃</title>
+<meta name="description" content="从「假装擦玻璃」这句玩笑出发，讲人和鸟怎么看玻璃、反射与透视两种陷阱、每年鸟撞的数量估计，以及防撞标记的 2×2 / 2×4 间距规则，附可操作演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ===== 本页专用 ===== */
+.fig svg.sz{margin:0 auto}
+.joke{font-size:clamp(20px,3.6vw,28px);font-weight:700;text-align:center;padding:18px 12px;border-radius:var(--radius);background:var(--surface-2);margin:6px 0 4px}
+.joke small{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:6px}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;background:var(--surface-2);cursor:pointer;user-select:none}
+.chk input{accent-color:var(--p);margin:0}
+.verdict{display:inline-block;font-weight:700;padding:1px 8px;border-radius:6px}
+.verdict.ok{background:var(--t-soft);color:var(--t)}
+.verdict.bad{background:var(--r-soft);color:var(--r)}
+.verdict.mid{background:var(--y-soft);color:var(--y)}
+.scene-sky{fill:var(--p-soft)}
+.scene-ground{fill:var(--t-soft)}
+.wall{fill:var(--surface-2);stroke:var(--line)}
+.leaf{fill:var(--t)}
+.trunk{fill:var(--o)}
+.glass-frame{fill:none;stroke:var(--ink);stroke-width:5}
+.bird{fill:var(--ink)}
+.uvmark{fill:var(--p)}
+.mark{fill:var(--o)}
+.ray{stroke:var(--o);stroke-width:2;fill:none;stroke-dasharray:5 4}
+.fov-bin{fill:var(--t);opacity:.35}
+.fov-mono{fill:var(--p);opacity:.18}
+.fov-blind{fill:var(--r);opacity:.12}
+.bar-bg{fill:var(--surface-2)}
+.seg-pick{cursor:pointer}
+.seg-pick:focus{outline:none}
+.seg-pick:focus rect,.seg-pick:hover rect{stroke:var(--text);stroke-width:2}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+@keyframes wipe{0%{transform:translate(0,0)}25%{transform:translate(40px,-18px)}50%{transform:translate(70px,10px)}75%{transform:translate(30px,26px)}100%{transform:translate(0,0)}}
+.wiping{animation:wipe 2.4s ease-in-out infinite;transform-box:fill-box}
+.paused .wiping{animation-play-state:paused}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">鸟为什么看不见玻璃</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">科学 · 动物视觉 · 鸟撞</div>
+  <h1>为什么鸟类看不见玻璃？</h1>
+  <p class="sub">知乎上这个问题的一则高赞回答只有一句话加一张动图：「只要你假装擦玻璃，别人就会以为有玻璃。」这句玩笑其实点破了答案的一半：玻璃本来就是看不见的，人看见的只是线索。另一半是，鸟能用上的线索比人更少。</p>
+  <div class="thesis">干净的玻璃没有「样子」，人靠边框、污渍、反光和擦拭的动作推断它在那里；鸟的眼睛长在头两侧、飞行中未必盯着正前方，又看不懂人类建筑的语境，于是把玻璃里的倒影当成真树、把透过玻璃的景色当成通道。每年因此死去的鸟以亿计，而补救办法很朴素：在玻璃<b>外侧</b>加上间距足够小的标记。<sup class="c">[1][2][3]</sup></div>
+  <div class="authors">
+    <span class="au"><i>剁</i>剁椒鹿（知乎答主）</span>
+  </div>
+  <p class="meta">原文：知乎问题「为什么鸟类看不见玻璃？」下 剁椒鹿 的回答（编辑于 2025-02-24），正文是一张哑剧擦玻璃的动图和一句话。原文很短，本页按「改写」档处理：以那句话的观点为骨架，补充了鸟类视觉与鸟撞玻璃的研究，补充内容都放在标注为「本页补充（非原文）」的虚线框里。</p>
+</header>
+
+<section class="ch" id="mime" data-title="假装擦玻璃">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一、只要你假装擦玻璃，别人就会以为有玻璃</h2>
+    <p class="lead">人到底是怎么「看见」一块透明玻璃的？</p>
+  </div>
+  <div class="joke">「只要你假装擦玻璃，别人就会以为有玻璃。」<small>剁椒鹿的回答全文（配一张哑剧演员隔空擦玻璃的动图）<sup class="c">[1]</sup></small></div>
+  <div class="fig">
+    <div class="cap">下面是一扇门洞。先选「真相」：门洞里<b>有</b>还是<b>没有</b>玻璃；再逐个打开或关闭线索，看「你的大脑」会作出什么判断。关掉所有线索时，有没有玻璃在画面上完全一样。</div>
+    <div data-demo="mime"></div>
+  </div>
+  <p style="margin-top:14px">这就是回答的笑点，也是答案的核心：一块完全干净、没有反光的玻璃，在视网膜上什么也不留下。人之所以「看得见玻璃」，靠的是边框、指纹、高光、贴纸，还有最强的一条：常识。我们知道门洞、橱窗、窗框里通常装着玻璃。哑剧演员只给出「擦」这一个线索，观众就脑补出了整块玻璃。</p>
+  <div class="note-add"><b>本页改写（非原文）</b>：把动图里的哑剧拆成可开关的线索，是本页的演绎；原文没有展开解释。鸟类研究者也是这样描述问题的：人能把玻璃当障碍，是因为懂得建筑的语境，鸟没有这套常识，只能根据看到的景象行动。<sup class="c">[3][4]</sup></div>
+</section>
+
+<section class="ch" id="eyes" data-title="人眼与鸟眼">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>二、同一扇窗，人眼和鸟眼看到的不一样</h2>
+    <p class="lead">鸟的视力不是很好吗，为什么连人能注意到的线索都抓不住？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">切换「人眼 / 鸣禽的眼」。左边是俯视的视野示意（<b>示意图，角度未按实测比例</b>）：绿色是双眼重叠区，紫色是单眼区，红色是看不到的盲区。右边是同一扇贴了紫外线图案的窗户在两种眼睛里的样子。勾选「飞行中低头」看鸟在飞行时视线落在哪里。</div>
+    <div data-demo="eyes"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Graham Martin 在 2011 年的综述里从感官生态学角度分析鸟撞：许多鸟眼睛长在头两侧，正前方的双眼区较窄，分辨率更高的视觉在侧面；正前方视觉更擅长察觉运动而非细节；不少鸟飞行时会低头或侧头看地面，可能短暂「看不见」行进方向。他据此认为，防撞措施不能按人眼的感受来设计。<sup class="c">[4]</sup> 许多鸟能看见紫外线（人眼大约只能看到 400 nm 以上的光），这正是紫外线图案玻璃的设计依据。<sup class="c">[5][6]</sup></div>
+</section>
+
+<section class="ch" id="traps" data-title="镜子与通道">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>三、两种陷阱：玻璃是镜子，还是通道</h2>
+    <p class="lead">鸟撞上玻璃时，它以为自己正飞向哪里？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">玻璃上看到的东西 = <b>反射的室外景色</b> + <b>透过来的另一侧景色</b>。拖动三个滑块，或点预设场景。反射率按玻璃折射率 1.52、两个表面、非偏振光用菲涅尔公式现场计算；画面里倒影和透视景物的浓淡按两者的亮度之比绘制。</div>
+    <div data-demo="traps"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：研究者把鸟撞玻璃大致分为两种情形：<b>反射</b>，玻璃映出天空、树木和草地，鸟朝着倒影里的「栖息地」飞去；<b>透明</b>，鸟透过玻璃看到另一侧的植物或天空，比如转角玻璃、玻璃连廊、对穿的窗户，以为可以穿过去。美国鸟类保护协会（ABC）的说明里同时列了这两类：鸟应付不了城市里的反光窗户，也看不见住宅、学校、商店里的透明玻璃。<sup class="c">[3][8]</sup> 白天室外比室内亮得多，所以从外面看住宅窗户常常像镜子，这一点用上面的模拟就能算出来。</div>
+</section>
+
+<section class="ch" id="numbers" data-title="一年撞死多少">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>四、一年要撞死多少鸟</h2>
+    <p class="lead">这只是偶尔发生的意外，还是一个量级很大的死亡原因？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">美国的估计（Loss 等，2014）：点区间条看上下界与中位数，点下方的分段看各类建筑的占比。也可以切换到加拿大的估计。</div>
+    <div data-demo="numbers"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Loss、Will、Loss 与 Marra 2014 年在 <i>The Condor</i> 上汇总 23 项研究，估计美国每年有 3.65 亿到 9.88 亿只鸟死于撞建筑，中位数约 5.99 亿；其中低层建筑约占 56%，住宅约占 44%，高楼不到 1%。高楼单栋撞死的鸟最多，但住宅与低层建筑数量多得多，所以总量主要在它们身上。在美国人为造成的鸟类死亡里，撞建筑被认为仅次于散养与流浪猫。<sup class="c">[2]</sup> 加拿大 Machtans 等（2013）的首次估计是每年约 1600 万到 4200 万只，常被引用的中值约 2500 万只，其中约九成发生在住宅。<sup class="c">[7]</sup> 这些都是基于抽样与建模的估计，不是逐只计数；中国尚缺同等规模的全国估计，本页不作推算。</div>
+</section>
+
+<section class="ch" id="fix" data-title="怎么让鸟看见">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>五、怎么让鸟「看见」玻璃：把线索贴到鸟能用的地方</h2>
+    <p class="lead">既然人靠线索看见玻璃，能不能也给鸟准备一份它看得懂的线索？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">一块 40 × 30 cm 的玻璃。选标记样式、拖动间距，看最大的「空档」有多大，以及是否符合两种常见规则。<b>2×4 规则</b>：横条间距 ≤ 5 cm（2 英寸），竖条间距 ≤ 10 cm（4 英寸）；<b>2×2 规则</b>：任何方向 ≤ 5 cm。点数和覆盖率都是现场算的。</div>
+    <div data-demo="spacing"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：2×4 规则源自 Daniel Klem 的研究：多数鸟不会尝试穿过高度小于约 2 英寸的水平空隙、宽度小于约 4 英寸的竖直空隙。<sup class="c">[8]</sup> 现在的指南更常用更严格的 2×2 规则，例如美国鱼类及野生动物管理局要求外部标记的水平、竖直间距都不超过 2 英寸，加拿大 FLAP 也要求标记贴在<b>外侧</b>、间距不超过 2 英寸并覆盖整扇窗。<sup class="c">[9][10]</sup> 标记贴在室外一侧，才能盖住倒影；贴在室内一侧，白天常被反射淹没。</div>
+  <div class="fig">
+    <div class="cap"><b>紫外线玻璃管用吗？</b>拖动滑块设定紫外线图案在 300～400 nm 的反射率，看它落在实验给出的门槛的哪一边。</div>
+    <div data-demo="uv"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Klem 与 Saenger（2013）的野外实验认为，紫外线信号要起作用，在 300～400 nm 至少要反射 20%～40%；同一研究还发现，市售紫外线图案玻璃在野外的效果并不稳定，飞行隧道测试只适合初筛，不能作为最终结论。间隔约 10 cm 悬挂的伞绳则对透明窗和反光窗都有效。<sup class="c">[6]</sup> 所以紫外线玻璃的思路（人看不见、鸟看得见）没错，难点在于信号够不够强。</div>
+  <div class="final">玻璃本来就看不见，人是靠线索「猜」出它的。鸟缺少人的建筑常识，又不太盯着正前方，于是把倒影当真树、把透明当通道。把间距足够小的标记贴在玻璃外侧，就是替鸟补上它能看懂的那份线索。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页以知乎问题「为什么鸟类看不见玻璃？」下 剁椒鹿 的<a href="https://www.zhihu.com/question/639819407/answer/107670198826">回答</a>（编辑于 2025-02-24）为骨架重新组织。原文只有一张动图和一句话，本页的章节结构、交互演示和全部研究内容都是本页改写与补充，已逐处标注。原文动图未引用，示意图均为内联 SVG 和 JS 重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>剁椒鹿，知乎回答「为什么鸟类看不见玻璃？」（2025-02-24 编辑），收录于专栏「剁椒鹿动物园」。<a href="https://www.zhihu.com/question/639819407/answer/107670198826">链接</a></li>
+    <li>Loss, S. R., Will, T., Loss, S. S. &amp; Marra, P. P. (2014). Bird–building collisions in the United States: Estimates of annual mortality and species vulnerability. <i>The Condor</i> 116(1), 8–23. <a href="https://doi.org/10.1650/CONDOR-13-090.1">doi:10.1650/CONDOR-13-090.1</a></li>
+    <li>American Bird Conservancy, Preventing Collisions（反光窗与透明玻璃两类问题）。<a href="https://abcbirds.org/solutions/preventing-collisions/">链接</a></li>
+    <li>Martin, G. R. (2011). Understanding bird collisions with man-made objects: a sensory ecology approach. <i>Ibis</i> 153(2), 239–254.</li>
+    <li>Wikipedia 条目 Bird vision：许多鸟类具有对紫外线敏感的视锥细胞。</li>
+    <li>Klem, D. Jr. &amp; Saenger, P. G. (2013). Evaluating the effectiveness of select visual signals to prevent bird-window collisions. <i>The Wilson Journal of Ornithology</i> 125(2), 406–411. <a href="https://doi.org/10.1676/12-106.1">doi:10.1676/12-106.1</a></li>
+    <li>Machtans, C. S., Wedeles, C. H. R. &amp; Bayne, E. M. (2013). A first estimate for Canada of the number of birds killed by colliding with building windows. <i>Avian Conservation and Ecology</i> 8(2), 6.</li>
+    <li>Klem, D. Jr.，Muhlenberg College 鸟撞玻璃科普材料（2×4 规则的来源说明）。<a href="https://www.muhlenberg.edu/media/contentassets/pdf/academics/biology/faculty/klem/Brochure.pdf">PDF</a></li>
+    <li>U.S. Fish &amp; Wildlife Service, Bird-Friendly Window Dimensions（外部标记 2 × 2 英寸间距）。<a href="https://www.fws.gov/media/bird-friendly-window-dimensions">链接</a></li>
+    <li>FLAP Canada, How to Stop Birds from Hitting Windows（标记贴外侧、间距不超过 2 英寸）。<a href="https://www.flap.org/bird-safe-windows-2">链接</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；菲涅尔反射率、标记数量与覆盖率在页面内用 JS 现场计算，示意图不代表实测视野角度，研究细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+/* ---------- 共用：鸟剪影、树 ---------- */
+const BIRD = 'M-22,4 Q-10,-8 2,-4 L10,-14 Q14,-15 13,-10 L9,-3 Q18,-2 22,2 L14,3 Q6,10 -8,8 L-18,14 L-15,7 Z';
+const tree = (x, y, s = 1, cls = '') => svg('g', { transform: `translate(${x},${y}) scale(${s})`, class: cls },
+  svg('rect', { class: 'trunk', x: -5, y: 0, width: 10, height: 40 }),
+  svg('circle', { class: 'leaf', cx: 0, cy: -8, r: 26 }),
+  svg('circle', { class: 'leaf', cx: -18, cy: 8, r: 18 }),
+  svg('circle', { class: 'leaf', cx: 18, cy: 8, r: 18 }));
+const seg = (opts, onPick, init = 0) => {
+  const w = el('div', { class: 'seg', role: 'tablist' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); onPick(i); } }, o));
+  w.append(...bs); return w;
+};
+const keyAct = (g, f) => { g.addEventListener('click', f); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); };
+
+/* ---------- 1. 假装擦玻璃：线索开关 ---------- */
+reg('mime', (node) => {
+  const root = svg('svg', { viewBox: '0 0 480 300', role: 'img', 'aria-label': '一个门洞，可开关玻璃的各种线索', class: 'sz', style: 'max-width:520px' });
+  const clip = svg('clipPath', { id: 'doorClip' }, svg('rect', { x: 150, y: 40, width: 180, height: 240 }));
+  root.append(svg('defs', {}, clip));
+  root.append(svg('rect', { class: 'wall', x: 0, y: 0, width: 480, height: 300 }));
+  const view = svg('g', { 'clip-path': 'url(#doorClip)' },
+    svg('rect', { class: 'scene-sky', x: 150, y: 40, width: 180, height: 170 }),
+    svg('rect', { class: 'scene-ground', x: 150, y: 200, width: 180, height: 80 }),
+    tree(200, 170, 1), tree(290, 182, .7));
+  root.append(view, svg('rect', { x: 150, y: 40, width: 180, height: 240, fill: 'none', stroke: 'var(--line)', 'stroke-width': 6 }));
+  const cues = {
+    frame: svg('rect', { x: 156, y: 46, width: 168, height: 228, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 3 }),
+    smudge: svg('g', { opacity: .55 }, ...[[190, 150], [205, 160], [262, 120], [250, 230]].map(([x, y], i) => svg('ellipse', { cx: x, cy: y, rx: 9 + i, ry: 12, fill: 'var(--muted)', opacity: .35 }))),
+    glare: svg('g', {}, svg('polygon', { points: '170,60 200,60 160,140 150,140', fill: 'var(--surface)', opacity: .7 }), svg('polygon', { points: '215,60 228,60 182,160 170,160', fill: 'var(--surface)', opacity: .5 })),
+    sticker: svg('path', { d: BIRD, transform: 'translate(285,90) scale(1.3)', class: 'bird' }),
+    mime: svg('g', { class: 'mimeg' },
+      svg('g', { class: 'wiping' }, svg('rect', { x: 182, y: 120, width: 34, height: 40, rx: 12, fill: 'var(--o)' }), svg('rect', { x: 192, y: 158, width: 14, height: 70, fill: 'var(--o)', opacity: .8 }))),
+  };
+  const labels = { frame: '玻璃边框', smudge: '指纹污渍', glare: '反光高光', sticker: '防撞贴纸', mime: '有人在擦' };
+  Object.values(cues).forEach((c) => root.append(c));
+  const on = { frame: false, smudge: false, glare: false, sticker: false, mime: true };
+  let glass = false;
+  const status = el('div', { class: 'status' });
+  const boxes = {};
+  const ctrl2 = el('div', { class: 'ctrl' });
+  for (const k of Object.keys(labels)) {
+    const inp = el('input', { type: 'checkbox' }); inp.checked = on[k];
+    inp.addEventListener('change', () => { on[k] = inp.checked; upd(); });
+    boxes[k] = inp; ctrl2.append(el('label', { class: 'chk' }, inp, labels[k]));
+  }
+  const upd = () => {
+    for (const k of Object.keys(labels)) {
+      const needsGlass = k !== 'mime';
+      boxes[k].disabled = needsGlass && !glass;
+      if (needsGlass && !glass) { boxes[k].checked = false; on[k] = false; }
+      cues[k].style.display = on[k] ? '' : 'none';
+    }
+    const act = Object.keys(labels).filter((k) => on[k]);
+    const brain = act.length > 0;
+    let msg = `真相：门洞里<b>${glass ? '有' : '没有'}</b>玻璃。你的大脑判断：${brain ? '<b>有玻璃</b>（凭：' + act.map((k) => labels[k]).join('、') + '）' : '<b>什么都没有</b>，可以直接走过去'}。`;
+    if (glass && !brain) msg += ' <span class="verdict bad">会撞上</span> 一块干净、没反光的玻璃不留下任何线索，这就是鸟眼前的景象。';
+    else if (!glass && brain) msg += ' <span class="verdict mid">被骗了</span> 只有「擦」这个动作，大脑就补出了整块玻璃，这正是原文的笑点。';
+    else msg += ' <span class="verdict ok">判断正确</span>';
+    status.innerHTML = msg;
+  };
+  node.append(el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '真相'), seg(['没有玻璃', '有玻璃'], (i) => { glass = i === 1; upd(); })), root, ctrl2, status);
+  upd();
+  return { start() { node.classList.remove('paused'); }, stop() { node.classList.add('paused'); } };
+});
+
+/* ---------- 2. 人眼 vs 鸟眼 ---------- */
+reg('eyes', (node) => {
+  const wedge = (cx, cy, r, a0, a1, cls) => {
+    const p = (a) => [cx + r * Math.cos(a * Math.PI / 180), cy + r * Math.sin(a * Math.PI / 180)];
+    const [x0, y0] = p(a0), [x1, y1] = p(a1);
+    return svg('path', { class: cls, d: `M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${x1},${y1} Z` });
+  };
+  const fov = svg('svg', { viewBox: '0 0 240 240', role: 'img', 'aria-label': '俯视视野示意', class: 'sz', style: 'max-width:300px' });
+  const win = svg('svg', { viewBox: '0 0 240 240', role: 'img', 'aria-label': '同一扇窗在两种眼睛里', class: 'sz', style: 'max-width:300px' });
+  const status = el('div', { class: 'status' });
+  let bird = false, down = false;
+  const downBox = el('input', { type: 'checkbox' });
+  downBox.addEventListener('change', () => { down = downBox.checked; draw(); });
+  const draw = () => {
+    fov.replaceChildren();
+    const cx = 120, cy = 135, R = 100;
+    /* 前方 = 上方（-90°） */
+    const bin = bird ? 12 : 55, mono = bird ? 160 : 95;
+    fov.append(wedge(cx, cy, R, -90 + mono, 270 - mono, 'fov-blind'));
+    fov.append(wedge(cx, cy, R, -90 - mono, -90 - bin, 'fov-mono'), wedge(cx, cy, R, -90 + bin, -90 + mono, 'fov-mono'));
+    fov.append(wedge(cx, cy, R, -90 - bin, -90 + bin, 'fov-bin'));
+    fov.append(svg('text', { x: cx, y: 22, class: 'lbl mid' }, '前方（窗户在这里）'));
+    fov.append(svg('rect', { x: 80, y: 28, width: 80, height: 5, fill: 'var(--p)', opacity: .7 }));
+    if (bird) {
+      fov.append(svg('ellipse', { cx, cy, rx: 18, ry: 24, fill: 'var(--surface)', stroke: 'var(--ink)', 'stroke-width': 2 }),
+        svg('polygon', { points: `${cx - 5},${cy - 22} ${cx + 5},${cy - 22} ${cx},${cy - 36}`, fill: 'var(--o)' }),
+        svg('circle', { cx: cx - 16, cy: cy - 4, r: 4, fill: 'var(--ink)' }), svg('circle', { cx: cx + 16, cy: cy - 4, r: 4, fill: 'var(--ink)' }));
+    } else {
+      fov.append(svg('circle', { cx, cy, r: 24, fill: 'var(--surface)', stroke: 'var(--ink)', 'stroke-width': 2 }),
+        svg('circle', { cx: cx - 9, cy: cy - 17, r: 4, fill: 'var(--ink)' }), svg('circle', { cx: cx + 9, cy: cy - 17, r: 4, fill: 'var(--ink)' }));
+    }
+    if (bird && down) fov.append(svg('text', { x: cx, y: cy + 50, class: 'lbl mid' }, '低头看地面：正前方暂时'), svg('text', { x: cx, y: cy + 66, class: 'lbl mid' }, '落在视野边缘或之外'));
+    fov.append(svg('text', { x: cx, y: 232, class: 'lbl mid' }, '示意，非实测角度'));
+
+    win.replaceChildren();
+    const g = svg('g', { opacity: bird && down ? .3 : 1 });
+    g.append(svg('rect', { class: 'scene-sky', x: 30, y: 20, width: 180, height: 200 }), tree(90, 150, 1.1), tree(170, 165, .8));
+    for (let x = 42; x < 210; x += 18) for (let y = 32; y < 220; y += 18) g.append(svg('circle', { class: 'uvmark', cx: x, cy: y, r: 3.5, opacity: bird ? .9 : .06 }));
+    g.append(svg('rect', { class: 'glass-frame', x: 30, y: 20, width: 180, height: 200 }));
+    win.append(g, svg('text', { x: 120, y: 236, class: 'lbl mid' }, bird ? '紫外图案（以紫色示意）清晰可见' : '人眼：几乎看不到紫外图案'));
+    downBox.disabled = !bird;
+    status.innerHTML = bird
+      ? `鸣禽：眼睛在头两侧，<b>双眼重叠区窄</b>、总视野宽；看得见紫外线图案。${down ? '但飞行中低头时，<b>正前方的窗可能根本不在注意范围内</b>，再好的标记也得先被看见。' : '勾选「飞行中低头」看另一种情况。'}`
+      : '人：双眼朝前，<b>双眼重叠区宽</b>，擅长判断正前方物体的距离；还有「窗框里有玻璃」的常识。但人看不到紫外图案。';
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(['人眼', '鸣禽的眼'], (i) => { bird = i === 1; if (!bird) { down = false; downBox.checked = false; } draw(); }), el('label', { class: 'chk' }, downBox, '飞行中低头')),
+    el('div', { class: 'grid2' }, fov, win),
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--t);opacity:.6' }), '双眼区'), el('span', {}, el('i', { style: 'background:var(--p);opacity:.35' }), '单眼区'), el('span', {}, el('i', { style: 'background:var(--r);opacity:.3' }), '盲区')),
+    status);
+  draw();
+});
+
+/* ---------- 3. 镜子与通道：菲涅尔反射 ---------- */
+reg('traps', (node) => {
+  const n2 = 1.52;
+  const fres = (deg) => {
+    const ti = deg * Math.PI / 180, tt = Math.asin(Math.sin(ti) / n2);
+    const ci = Math.cos(ti), ct = Math.cos(tt);
+    const rs = ((ci - n2 * ct) / (ci + n2 * ct)) ** 2, rp = ((ct - n2 * ci) / (ct + n2 * ci)) ** 2;
+    const R = (rs + rp) / 2; return 2 * R / (1 + R); /* 两个表面，忽略吸收 */
+  };
+  const root = svg('svg', { viewBox: '0 0 480 260', role: 'img', 'aria-label': '窗户上的倒影与透视景物', class: 'sz', style: 'max-width:600px' });
+  root.append(svg('defs', {}, svg('clipPath', { id: 'winClip' }, svg('rect', { x: 40, y: 40, width: 220, height: 180 }))));
+  root.append(svg('rect', { class: 'wall', x: 20, y: 20, width: 260, height: 220 }));
+  const trans = svg('g', {}), refl = svg('g', {});
+  const inner = svg('g', { 'clip-path': 'url(#winClip)' }, svg('rect', { x: 40, y: 40, width: 220, height: 180, fill: 'var(--bg)' }), trans, refl);
+  root.append(inner, svg('rect', { class: 'glass-frame', x: 40, y: 40, width: 220, height: 180 }));
+  root.append(svg('rect', { class: 'scene-ground', x: 280, y: 200, width: 200, height: 60 }), tree(400, 160, 1.1), svg('text', { x: 400, y: 252, class: 'lbl mid' }, '室外的真树'));
+  const birdG = svg('path', { d: BIRD, class: 'bird', transform: 'translate(330,80) scale(-1,1)' });
+  const ray = svg('path', { class: 'ray' });
+  root.append(ray, birdG);
+  const status = el('div', { class: 'status' });
+  const mk = (label, min, max, val) => { const i = el('input', { type: 'range', min, max, value: val, step: 1, 'aria-label': label }); const o = el('output'); i.addEventListener('input', upd); return { i, o, w: el('label', { class: 'range' }, label, i, o) }; };
+  let otherOut = false;
+  const sOut = mk('室外亮度', 0, 100, 90), sIn = mk('另一侧亮度', 0, 100, 10), sAng = mk('视角', 0, 85, 30);
+  const lum = (v) => Math.pow(10, v / 25); /* 0..100 映射到 1..10000 的相对亮度 */
+  function upd() {
+    const Lo = lum(+sOut.i.value), Li = otherOut ? Lo : lum(+sIn.i.value), a = +sAng.i.value;
+    sIn.i.disabled = otherOut;
+    const R = fres(a), T = 1 - R, rL = R * Lo, tL = T * Li, f = rL / (rL + tL);
+    sOut.o.textContent = Lo.toFixed(0); sIn.o.textContent = Li.toFixed(0); sAng.o.textContent = a + '°';
+    trans.replaceChildren(svg('rect', { x: 40, y: 40, width: 220, height: 180, fill: otherOut ? 'var(--p-soft)' : 'var(--surface-2)' }));
+    if (otherOut) trans.append(svg('rect', { class: 'scene-ground', x: 40, y: 180, width: 220, height: 40 }), tree(110, 170, .9), tree(200, 178, .7));
+    else trans.append(svg('rect', { x: 120, y: 175, width: 40, height: 40, fill: 'var(--o)' }), svg('circle', { class: 'leaf', cx: 140, cy: 160, r: 24 }), svg('rect', { x: 40, y: 200, width: 220, height: 20, fill: 'var(--line)' }));
+    refl.replaceChildren(svg('rect', { x: 40, y: 40, width: 220, height: 180, class: 'scene-sky' }), svg('rect', { class: 'scene-ground', x: 40, y: 190, width: 220, height: 30 }), tree(170, 160, 1.1));
+    trans.setAttribute('opacity', (1 - f).toFixed(2)); refl.setAttribute('opacity', f.toFixed(2));
+    let kind, tx, ty;
+    if (f > 0.7) { kind = '<span class="verdict bad">镜子陷阱</span> 窗上主要是倒影：鸟看到的是一棵「树」和一片天空，朝倒影飞过去。'; tx = 170; ty = 140; }
+    else if (f < 0.3) { kind = otherOut ? '<span class="verdict bad">通道陷阱</span> 玻璃几乎完全透明，另一侧又是户外：在鸟看来这是一条可以穿过去的路。' : '<span class="verdict mid">透视</span> 能清楚看到室内的盆栽，鸟可能被另一侧的植物吸引。'; tx = otherOut ? 110 : 140; ty = 150; }
+    else { kind = '<span class="verdict mid">叠加</span> 倒影和透视景物叠在一起，两种误导同时存在。'; tx = 150; ty = 145; }
+    ray.setAttribute('d', `M318,84 Q240,${ty - 60} ${tx},${ty}`);
+    status.innerHTML = `两面反射率（${a}°）= <b>${(R * 100).toFixed(1)}%</b>，透射 ${(T * 100).toFixed(1)}%。反射进眼的光 : 透过来的光 = ${rL.toFixed(1)} : ${tL.toFixed(1)}，倒影占 <b>${(f * 100).toFixed(0)}%</b>。${kind}`;
+  }
+  const presets = [['白天·住宅窗', 90, 10, 30, false], ['傍晚·室内开灯', 20, 60, 30, false], ['玻璃连廊/转角', 80, 80, 10, true]];
+  const ps = seg(presets.map((p) => p[0]), (i) => { const [, o, n, a, out] = presets[i]; sOut.i.value = o; sIn.i.value = n; sAng.i.value = a; otherOut = out; upd(); });
+  node.append(el('div', { class: 'ctrl' }, ps), el('div', { class: 'scrollx' }, root), el('div', { class: 'ctrl' }, sOut.w, sIn.w, sAng.w), status);
+  upd();
+});
+
+/* ---------- 4. 一年撞死多少 ---------- */
+reg('numbers', (node) => {
+  const DATA = [
+    { name: '美国', max: 1000, lo: 365, md: 599, hi: 988, unit: '百万只/年', ref: 'Loss 等 2014',
+      share: [['低层建筑', 56, '约 56%', 'var(--p)'], ['住宅', 43.4, '约 44%', 'var(--t)'], ['高楼', 0.6, '不到 1%', 'var(--o)']],
+      notes: { lo: '下界约 3.65 亿只。', md: '中位数约 5.99 亿只', hi: '上界约 9.88 亿只，接近 10 亿。' } },
+    { name: '加拿大', max: 50, lo: 16.1, md: 25, hi: 42.2, unit: '百万只/年', ref: 'Machtans 等 2013',
+      share: [['住宅', 90, '约 90%', 'var(--t)'], ['其他建筑', 10, '约 10%', 'var(--p)']],
+      notes: { lo: '下界约 1610 万只。', md: '常被引用的中值约 2500 万只', hi: '上界约 4220 万只。' } },
+  ];
+  let k = 0;
+  const root = svg('svg', { viewBox: '0 0 480 190', role: 'img', 'aria-label': '鸟撞建筑年死亡数估计', class: 'sz', style: 'max-width:560px' });
+  const status = el('div', { class: 'status' });
+  const draw = () => {
+    const d = DATA[k], X = (v) => 30 + v / d.max * 420;
+    root.replaceChildren();
+    root.append(svg('line', { x1: 30, y1: 70, x2: 450, y2: 70, stroke: 'var(--line)', 'stroke-width': 2 }));
+    for (let t = 0; t <= 4; t++) { const v = d.max * t / 4; root.append(svg('line', { x1: X(v), y1: 64, x2: X(v), y2: 76, stroke: 'var(--line)' }), svg('text', { x: X(v), y: 92, class: 'lbl mid' }, String(v))); }
+    root.append(svg('rect', { x: X(d.lo), y: 56, width: X(d.hi) - X(d.lo), height: 28, rx: 6, fill: 'var(--r-soft)', stroke: 'var(--r)' }));
+    const pts = [['lo', d.lo], ['md', d.md], ['hi', d.hi]];
+    pts.forEach(([key, v]) => {
+      const g = svg('g', { class: 'seg-pick', tabindex: 0, role: 'button', 'aria-label': d.notes[key] },
+        svg('rect', { x: X(v) - 9, y: 44, width: 18, height: 52, rx: 4, fill: key === 'md' ? 'var(--r)' : 'var(--surface)', stroke: 'var(--r)' }),
+        svg('text', { x: X(v), y: 36, class: 'lbl mid big' }, v));
+      keyAct(g, () => {
+        const extra = key === 'md' ? `，摊到每天约 <b>${Math.round(v * 1e6 / 365).toLocaleString('zh-CN')}</b> 只。` : '';
+        status.innerHTML = `${d.name}（${d.ref}）：${d.notes[key]}${extra}`;
+      });
+      root.append(g);
+    });
+    root.append(svg('text', { x: 30, y: 18, class: 'lbl' }, `${d.name}每年死于撞建筑的鸟（${d.unit}，${d.ref}）`));
+    let x = 30;
+    root.append(svg('text', { x: 30, y: 122, class: 'lbl' }, '按建筑类型的占比（点色块）'));
+    d.share.forEach(([nm, v, txt, col]) => {
+      const w = v / 100 * 420;
+      const g = svg('g', { class: 'seg-pick', tabindex: 0, role: 'button', 'aria-label': nm + txt }, svg('rect', { x, y: 132, width: Math.max(w, 4), height: 26, fill: col, opacity: .8 }));
+      if (w > 60) g.append(svg('text', { x: x + w / 2, y: 149, class: 'lbl mid', style: 'fill:#fff' }, nm));
+      keyAct(g, () => { status.innerHTML = `${d.name}：<b>${nm}</b>占${txt}。${nm === '高楼' ? '单栋高楼撞死的鸟最多，但高楼数量少，总量反而最小。' : ''}${nm === '住宅' && k === 0 ? '住宅数量巨大，单栋撞死的不多，加起来却占四成以上。' : ''}`; });
+      root.append(g); x += w;
+    });
+    if (k === 0) root.append(svg('text', { x: 450, y: 176, class: 'lbl', 'text-anchor': 'end' }, '高楼 <1%（右端细条）'));
+    status.innerHTML = `点区间条上的三个标记，或下方的占比色块。${k === 0 ? '' : '加拿大的估计同样来自抽样加建模。'}`;
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(DATA.map((d) => d.name), (i) => { k = i; draw(); })), el('div', { class: 'scrollx' }, root), status);
+  draw();
+});
+
+/* ---------- 5. 标记间距 ---------- */
+reg('spacing', (node) => {
+  const W = 40, H = 30, S = 10, d = 1;
+  const root = svg('svg', { viewBox: `0 0 ${W * S + 20} ${H * S + 20}`, role: 'img', 'aria-label': '玻璃上的防撞标记', class: 'sz', style: 'max-width:480px' });
+  const status = el('div', { class: 'status' });
+  let mode = 0;
+  const gin = el('input', { type: 'range', min: 2, max: 15, step: 0.5, value: 8, 'aria-label': '标记间空隙' });
+  const gout = el('output');
+  gin.addEventListener('input', () => draw());
+  const draw = () => {
+    const g = +gin.value, p = g + d; gout.textContent = g.toFixed(1) + ' cm';
+    gin.disabled = mode === 3;
+    root.replaceChildren();
+    const o = 10;
+    root.append(svg('rect', { x: o, y: o, width: W * S, height: H * S, class: 'scene-sky' }), tree(o + 120, o + 200, 1.6), svg('rect', { class: 'glass-frame', x: o, y: o, width: W * S, height: H * S }));
+    let n = 0, area = 0, gapW, gapH;
+    if (mode === 0) {
+      for (let x = g / 2 + d / 2; x < W - d / 2; x += p) for (let y = g / 2 + d / 2; y < H - d / 2; y += p) { root.append(svg('circle', { class: 'mark', cx: o + x * S, cy: o + y * S, r: d / 2 * S })); n++; }
+      area = n * Math.PI * (d / 2) ** 2; gapW = g; gapH = g;
+    } else if (mode === 1) {
+      for (let y = g; y < H; y += p) { root.append(svg('rect', { class: 'mark', x: o, y: o + y * S, width: W * S, height: d * S })); n++; }
+      area = n * d * W; gapW = W; gapH = g;
+    } else if (mode === 2) {
+      for (let x = g; x < W; x += p) { root.append(svg('rect', { class: 'mark', x: o + x * S, y: o, width: d * S, height: H * S })); n++; }
+      area = n * d * H; gapW = g; gapH = H;
+    } else {
+      root.append(svg('path', { d: BIRD, transform: `translate(${o + W * S / 2},${o + H * S / 2}) scale(2.7)`, class: 'bird' }));
+      n = 1; area = 12 * 7 * 0.5; gapW = W; gapH = (H - 8) / 2;
+    }
+    /* 高亮一块典型空档 */
+    const hx = mode === 2 ? g + d : (mode === 0 ? g / 2 + d + p : 0), hy = mode === 1 ? g + d : (mode === 0 ? g / 2 + d + p : 0);
+    const hw = Math.min(gapW, W - hx), hh = Math.min(gapH, H - hy);
+    const r24 = mode === 1 ? gapH <= 5 : mode === 2 ? gapW <= 10 : mode === 0 ? (gapH <= 5 && gapW <= 10) : false;
+    const r22 = mode === 3 ? false : Math.min(gapW, gapH) <= 5 && (mode === 0 || mode === 1 || mode === 2);
+    const pass = r22;
+    root.append(svg('rect', { x: o + hx * S, y: o + hy * S, width: hw * S, height: hh * S, fill: 'none', stroke: pass ? 'var(--t)' : 'var(--r)', 'stroke-width': 3, 'stroke-dasharray': '6 4' }));
+    const cov = area / (W * H) * 100;
+    const v = (b) => `<span class="verdict ${b ? 'ok' : 'bad'}">${b ? '符合' : '不符合'}</span>`;
+    status.innerHTML = `${['圆点', '横条', '竖条', '单个老鹰剪影'][mode]}：${n} 个标记，覆盖玻璃 <b>${cov.toFixed(1)}%</b>；最大空档约 ${Math.min(gapW, W).toFixed(1)} × ${Math.min(gapH, H).toFixed(1)} cm（虚线框）。2×4 规则 ${v(r24)}　2×2 规则 ${v(r22)}${mode === 3 ? '　一个剪影周围留下大片空档，鸟会从旁边「穿过去」。' : ''}`;
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(['圆点', '横条', '竖条', '单个剪影'], (i) => { mode = i; draw(); })), root,
+    el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '标记间空隙', gin, gout)), status);
+  draw();
+});
+
+/* ---------- 6. 紫外线门槛 ---------- */
+reg('uv', (node) => {
+  const root = svg('svg', { viewBox: '0 0 480 120', role: 'img', 'aria-label': '紫外反射率与门槛', class: 'sz', style: 'max-width:560px' });
+  const inp = el('input', { type: 'range', min: 0, max: 60, step: 1, value: 10, 'aria-label': '紫外反射率' });
+  const out = el('output'); const status = el('div', { class: 'status' });
+  const X = (v) => 30 + v / 60 * 420;
+  const draw = () => {
+    const v = +inp.value; out.textContent = v + '%';
+    root.replaceChildren(
+      svg('rect', { class: 'bar-bg', x: 30, y: 40, width: 420, height: 26, rx: 6 }),
+      svg('rect', { x: X(20), y: 40, width: X(40) - X(20), height: 26, fill: 'var(--y-soft)', stroke: 'var(--y)' }),
+      svg('text', { x: (X(20) + X(40)) / 2, y: 30, class: 'lbl mid' }, '实验门槛 20%～40%'),
+      svg('rect', { x: 30, y: 40, width: X(v) - 30, height: 26, rx: 6, fill: 'var(--p)', opacity: .75 }));
+    for (let t = 0; t <= 60; t += 10) root.append(svg('text', { x: X(t), y: 86, class: 'lbl mid' }, t + '%'));
+    const g = svg('g', { transform: 'translate(0,92)' });
+    for (let i = 0; i < 14; i++) g.append(svg('circle', { cx: 50 + i * 30, cy: 14, r: 5, fill: 'var(--p)', opacity: Math.min(1, v / 40).toFixed(2) }));
+    root.append(g);
+    status.innerHTML = v < 20 ? '低于门槛：按 Klem 与 Saenger 的野外实验，这么弱的紫外信号<b>不足以</b>可靠地阻止撞击（下排圆点示意鸟眼中图案的醒目程度）。'
+      : v <= 40 ? '落在门槛区间：实验给出的最低要求是 20%～40%，<b>可能有效</b>，取决于具体条件。'
+      : '高于门槛上限：信号足够强，鸟更可能看见；人眼仍然看不见这层图案。';
+  };
+  inp.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '300～400 nm 反射率', inp, out)), el('div', { class: 'scrollx' }, root), status);
+  draw();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

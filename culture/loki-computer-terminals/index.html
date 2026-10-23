@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>《洛基》里的复古电脑终端</title>
+<meta name="description" content="《洛基》时间变异管理局（TVA）里哪台电脑是真的？大厅橙色终端的原型 Lear Siegler ADM-3A、少了 P 键的全息投影仪，以及可调的复古 CRT 效果演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.hero-art{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+.hero-art svg{max-width:460px;margin:0 auto}
+/* 翻牌 */
+.cards{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:640px){ .cards{grid-template-columns:1fr 1fr} }
+.flip{perspective:1000px;cursor:pointer;min-height:300px;outline:none}
+.flip .in{position:relative;width:100%;height:100%;min-height:300px;transition:transform .6s ease;transform-style:preserve-3d}
+.flip.on .in{transform:rotateY(180deg)}
+.flip .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:12px 14px;display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.flip .back{transform:rotateY(180deg);background:var(--surface)}
+.flip:focus-visible .face{border-color:var(--p)}
+.flip h3{font-size:16px}
+.flip p{font-size:13px;color:var(--muted)}
+.flip .face svg{max-height:130px;margin:0 auto}
+.verdict{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;align-self:flex-start}
+.verdict.real{background:var(--t-soft);color:var(--t)}
+.verdict.fake{background:var(--r-soft);color:var(--r)}
+.verdict.hint{background:var(--p-soft);color:var(--p)}
+.flip .tip{margin-top:auto;font-size:12px;color:var(--p)}
+@media (prefers-reduced-motion: reduce){ .flip .in{transition:none} }
+/* 终端模拟 */
+.term-wrap{background:#14110d;border-radius:12px;padding:10px;border:6px solid var(--o)}
+.term-wrap canvas{width:100%;border-radius:6px;outline:none}
+.term-wrap canvas:focus-visible{box-shadow:0 0 0 2px var(--p)}
+.keys{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.key{min-width:46px;border:1px solid var(--line);border-bottom-width:3px;background:var(--surface);border-radius:8px;padding:5px 8px;cursor:pointer;font-family:var(--mono);font-size:13px;line-height:1.2;text-align:center}
+.key small{display:block;font-size:10px;color:var(--o)}
+.key:active{transform:translateY(1px);border-bottom-width:2px}
+/* 比特帧 */
+.bits{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.bit{width:34px;text-align:center;border-radius:6px;border:1px solid var(--line);background:var(--surface-2);font-family:var(--mono);font-size:14px;padding:4px 0}
+.bit small{display:block;font-size:9px;color:var(--muted)}
+.bit.s{border-color:var(--o);background:var(--o-soft)}
+.bit.d{border-color:var(--t);background:var(--t-soft)}
+.bit.pa{border-color:var(--y);background:var(--y-soft)}
+.flow .nd rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.flow .nd.on rect{fill:var(--p-soft);stroke:var(--p)}
+.flow .wire{stroke:var(--line);stroke-width:3;fill:none}
+.flow .wire.on{stroke:var(--o)}
+.race{display:grid;grid-template-columns:110px 1fr 90px;gap:8px;align-items:center;font-size:13px;margin-top:8px}
+.bar{height:16px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--t)}
+.bar.slow i{background:var(--o)}
+@media (max-width:480px){ .race{grid-template-columns:80px 1fr 64px;font-size:12px} }
+/* 键盘 */
+.kb{display:flex;flex-direction:column;gap:5px;align-items:center;margin:8px 0}
+.kb .row{display:flex;gap:4px}
+.kb .k{width:clamp(22px,7vw,38px);height:clamp(24px,7vw,36px);border-radius:6px;background:var(--surface);border:1px solid var(--line);border-bottom-width:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:clamp(11px,2.6vw,14px);transition:background .2s}
+.kb .k.miss{border-style:dashed;border-color:var(--r);color:var(--r);background:transparent}
+.kb .k.hit{background:var(--t-soft);border-color:var(--t)}
+.kb .k.bad{background:var(--r-soft)}
+.kb .row.ghost .k{opacity:.35;border-style:dashed}
+.typed{font-family:var(--mono);font-size:18px;letter-spacing:.06em;background:var(--surface-2);border-radius:10px;padding:8px 12px;min-height:44px;word-break:break-all}
+.typed .x{color:var(--r);text-decoration:line-through;font-weight:700}
+.typed .ok{color:var(--t)}
+.tin{font:inherit;font-family:var(--mono);border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px;width:220px;max-width:100%;text-transform:uppercase}
+/* CRT */
+.crt-stage{display:flex;justify-content:center;padding:6px 0}
+.crt{--ph:#33ff66;--curve:6;--scan:.35;--glow:6;position:relative;width:100%;max-width:520px;aspect-ratio:4/3;background:#0a0c0a;overflow:hidden;
+  border-radius:calc(var(--curve)*1.6%)/calc(var(--curve)*2.2%);box-shadow:0 0 0 10px #2a2622,0 0 0 12px #3a352f}
+.crt .txt{position:absolute;inset:8% 9%;font-family:var(--mono);font-size:clamp(10px,2.6vw,15px);line-height:1.5;color:var(--ph);white-space:pre;overflow:hidden;
+  text-shadow:0 0 calc(var(--glow)*1px) var(--ph),0 0 calc(var(--glow)*2.4px) var(--ph);transform:scale(calc(1 + var(--curve)*.006))}
+.crt .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,var(--scan)) 0 2px,transparent 2px 4px)}
+.crt .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent calc(80% - var(--curve)*3%),rgba(0,0,0,.85) 100%)}
+.crt .glass{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 30% 20%,rgba(255,255,255,calc(var(--curve)*.012)),transparent 45%)}
+.crt.flicker .txt{animation:flick .12s steps(2) infinite}
+@keyframes flick{0%{opacity:1}50%{opacity:.86}}
+.cursor-blink{animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.sw{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">《洛基》的电脑终端</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">文化 · 影视道具 · 计算机史</div>
+  <h1>《洛基》里那些很酷的电脑终端，哪台是真的？</h1>
+  <p class="sub">漫威剧集《洛基》（Loki）的时间变异管理局满是 1950 到 1970 年代风格的机器。这些机器大多是剧组为拍摄做的，只有大厅里那排橙色终端，能对上一台真实存在的经典型号。</p>
+  <div class="thesis">只有一台电脑是真的，其余都是假的。大厅的橙色终端看起来是重新喷漆的 Lear Siegler ADM-3A；全息投影仪的键盘第一行只有 QWERTYUIO，没有 P 键，也没有数字行，所以不可能是真机。<sup class="c">[1]</sup></div>
+  <div class="hero-art">
+    <svg viewBox="0 0 360 230" role="img" aria-label="示意图：一台橙色外壳的 ADM-3A 风格终端，屏幕显示几行绿色字符">
+      <ellipse cx="180" cy="214" rx="150" ry="8" fill="var(--grid)"/>
+      <path d="M70 40 Q70 18 96 16 L264 16 Q290 18 290 40 L296 150 L64 150 Z" fill="var(--o)"/>
+      <path d="M64 150 L296 150 L326 200 Q328 208 318 208 L42 208 Q32 208 34 200 Z" fill="var(--o)" opacity=".85"/>
+      <rect x="96" y="34" width="168" height="104" rx="14" fill="#14110d"/>
+      <g fill="#7dffa0" font-family="ui-monospace,Menlo,monospace" font-size="9">
+        <text x="110" y="56">TIME VARIANCE AUTHORITY</text>
+        <text x="110" y="70">FOR ALL TIME. ALWAYS.</text>
+        <text x="110" y="84">STATUS: VARIANT</text>
+        <text x="110" y="98">&gt; _</text>
+      </g>
+      <g fill="var(--surface)" opacity=".9">
+        <rect x="82" y="160" width="196" height="9" rx="2"/>
+        <rect x="76" y="173" width="208" height="9" rx="2"/>
+        <rect x="70" y="186" width="220" height="9" rx="2"/>
+        <rect x="120" y="198" width="120" height="6" rx="2"/>
+      </g>
+      <text x="180" y="226" class="lbl mid">示意重绘，非剧照：大厅那排终端的轮廓与配色</text>
+    </svg>
+  </div>
+  <div class="authors"><span class="au"><i>S</i>Sascha Segan · PCMag</span></div>
+  <p class="meta">原文：「What Are the Cool Computer Terminals in Marvel's Loki?」，Sascha Segan，PCMag（2021-06-10）。原文很短，本页以它为骨架重新组织（改写档），补了每台机器背后的真实型号与技术背景，补充处都用橙色虚线框标出「本页补充（非原文）」。原文只谈第一集，无剧透。</p>
+</header>
+
+<section class="ch" id="tva" data-title="一真三假">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>TVA 的复古未来：一真三假</h2>
+    <p class="lead">一部 2021 年的剧，为什么满屏都是 1970 年代的机器？哪些是真实存在过的？</p>
+  </div>
+  <p style="margin-bottom:14px">时间变异管理局（Time Variance Authority，TVA）是一个跨维度的官僚机构。原文作者说它走的是复古未来（retrofuturist）路线，大量借用 1950 到 1970 年代的技术，「很有《辐射》（Fallout）的味道」。TVA 的职员用老式电动打字机，用一些「可能存在过、也可能没存在过」的电脑。作者看完第一集，只认出一台真机。</p>
+  <div class="fig">
+    <div class="cap"><b>翻牌对比</b>：点一张卡片（或用 Tab 选中后按回车），翻到背面看现实里有没有这台机器。</div>
+    <div data-demo="cards"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：剧集美术指导 Kasra Farahani 在 The Verge 的采访里解释过这种风格：「我们设想 TVA 的技术时，前提是……数字技术从未存在，模拟技术只是一路变得越来越精密。」<sup class="c">[3]</sup> 他和导演 Kate Herron 还把特瑞·吉列姆（Terry Gilliam）的电影《妙想天开》（Brazil）当作明显的参照，因为那部片子同样有时代错乱和沉重的官僚气。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="adm3a" data-title="大厅里的 ADM-3A">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>大厅里的橙色终端：Lear Siegler ADM-3A</h2>
+    <p class="lead">洛基走进 TVA 大厅时，作者脑子里「叮」了一下。那排橙色机器为什么一眼就能认出来？</p>
+  </div>
+  <p style="margin-bottom:14px">原文判断，大厅里那几台漂亮的橙色终端是<b>定制喷漆的 Lear Siegler ADM-3A</b>。这是 1970 年代中期的一款经典哑终端（dumb terminal），外形辨识度极高，也是那个年代最流行的终端之一，既能接个人电脑，也能接大型机。</p>
+  <div class="fig">
+    <div class="cap"><b>ADM-3A 模拟器（示意）</b>：点下面的键，或点一下屏幕后直接用键盘打字。ADM-3A 的 H、J、K、L 键帽上印着方向箭头，按 Ctrl 加这四个键移动光标；~ 键上印着 HOME。</div>
+    <div data-demo="term"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：ADM-3A 于 1976 年推出，售价 995 美元（套件版便宜 200 美元）；12 英寸单色显像管，基础版只显示 12 行，可选 24 行，每行 80 字符；字符是 5×7 点阵，荧光有琥珀、绿、白三种；内部用 7400 系列逻辑芯片，没有微处理器。广告里有时把 ADM 称作「American Dream Machine」。<sup class="c">[2]</sup><br>它最出名的后代是 vi 编辑器：伯克利把 Teletype 33 换成 ADM-3A 之后不久，vi 在那里诞生，vi 用 H、J、K、L 移动光标的习惯就来自这款键盘。Unix 里用 ~ 表示家目录，<b>可能</b>也和 ~ 键上的 HOME 字样有关，维基百科对此只说是「可能」。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="dumb" data-title="什么是哑终端">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>哑终端：为什么五十年前的终端还能接树莓派</h2>
+    <p class="lead">原文说 ADM-3A 至今还能接现代电脑甚至树莓派（Raspberry Pi）。一台没有 CPU 的机器，凭什么做到？</p>
+  </div>
+  <p style="margin-bottom:14px">原文提到，有耐心的话还能淘到 ADM-3A，接上现代电脑或树莓派，就能调出剧里那种画面。秘密在「哑」字：终端自己不做计算，只负责把按键变成串行比特发出去，再把收到的比特画成字符。只要另一端说同一种语言（ASCII 加串口），是 1976 年的小型机还是今天的树莓派，对它来说没有区别。</p>
+  <div class="fig">
+    <div class="cap"><b>一次按键的往返</b>：输入一个字符，按「下一步」看它怎么走完一圈。比特帧按 7 位 ASCII、偶校验、1 个起始位、1 个停止位现场计算（这是当年常见的设置之一）。</div>
+    <div data-demo="flow"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>刷满一屏要多久</b>：拖动波特率（ADM-3A 的 DIP 开关可设 75 到 19200 波特），再点「开始刷屏」，和每秒只能打 10 个字符的 Teletype 33 电传打字机赛跑。</div>
+    <div data-demo="race"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：1976 年 12 月，Teletype 33 KSR 售价 895 美元、每秒打印 10 个字符；ADM-3 售价 995 美元，每秒最多显示 1920 个字符。<sup class="c">[2]</sup> 多花 100 美元，速度高出两个数量级，这是视频终端取代电传打字机的直接原因。页面里的耗时按「每字符 10 比特」现场计算。</div>
+</section>
+
+<section class="ch" id="keyboard" data-title="少了 P 的键盘">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>全息投影仪：一台打不出 P 的键盘</h2>
+    <p class="lead">另一台出镜很多的带键盘电脑，作者花了一阵子才确定它是假的。破绽在哪？</p>
+  </div>
+  <p style="margin-bottom:14px">TVA 的全息投影仪（holographic projector）是件艺术品：红色球形的主机兼显示器，坐在一块贴合造型的白色键盘底座上。但键盘第一行写的是 QWERTYUIO，P 不见了，整台机器没法输入字母 P；它也没有数字行。</p>
+  <div class="fig">
+    <div class="cap"><b>在 TVA 键盘上打字</b>：输入任意英文或数字，或者点预设词。打不出来的字符会标红划掉。第一行与「没有数字行」来自原文；第二、三行原文没提，按标准 QWERTY 示意。</div>
+    <div data-demo="kb"></div>
+  </div>
+</section>
+
+<section class="ch" id="crt" data-title="红色泡泡屏与 CRT">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>红色泡泡屏，和让屏幕「显得老」的几个旋钮</h2>
+    <p class="lead">那台红色球形显示器「几乎是真的」。复古屏幕的那股味道，具体是由哪些东西构成的？</p>
+  </div>
+  <p style="margin-bottom:14px">原文认为《洛基》美术设计的高明之处，就在于这些机器「几乎是真的」。红色泡泡显示屏让人想起半个世纪以来的红色泡泡电视机；作者确信它有真实原型，但没找到屏幕这么小的红色泡泡电视，于是在文末请懂行的读者留言。</p>
+  <div class="fig">
+    <div class="cap"><b>复古 CRT 效果台</b>：调曲率、扫描线、辉光，切换荧光颜色，打开闪烁，看哪一项最「像」。全部是 CSS 效果，示意用。</div>
+    <div data-demo="crt"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：最常被拿来对照的「泡泡电视」是 JVC 的 Videosphere：一台做成宇航员头盔形状的显像管电视，1970 年推出，一直卖到 1980 年代初，外壳有白、红、黑、橙、灰几种颜色，屏幕是黑白的；据说造型受《2001 太空漫游》和 1969 年登月的启发。<sup class="c">[5]</sup> 没有找到剧组承认参考了它的资料，这里只说外形相似。<br>效果台里的几项是显像管的常识：电子束一行一行扫过荧光粉，行与行之间留下暗线；荧光粉被打亮后会向四周晕开；早期显像管的玻璃面是凸的，画面四角会弯、会暗。</div>
+</section>
+
+<section class="ch" id="end" data-title="总结">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>总结：一台真机，加一堆以假乱真的道具</h2>
+    <p class="lead">回到开头：TVA 里到底哪台电脑是真的？</p>
+  </div>
+  <p>原文的答案是：大厅里那排橙色终端是真机，原型是 Lear Siegler ADM-3A；电梯里的那台设备「肯定不存在」；全息投影仪少了 P 键和数字行，也是道具；另一台能玩纸牌（Solitaire）的电脑同样不存在，但作者说「纸牌给它加了大分」。漫威以前就爱混用真实和虚构的科技，PCMag 另有一篇《超级英雄的超级手机》专门盘点。</p>
+  <div class="final">《洛基》的道具好看，是因为它们都长在真实历史上：ADM-3A、红色泡泡电视、显像管扫描线，观众未必叫得出名字，但看着都眼熟。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页以 Sascha Segan 在 PCMag 发表的「<a href="https://www.pcmag.com/news/what-are-the-cool-computer-terminals-in-marvels-loki">What Are the Cool Computer Terminals in Marvel's Loki?</a>」（2021-06-10）为骨架重新组织并翻译成中文；ADM-3A 规格、哑终端原理、Videosphere 与美术指导访谈等为本页补充，已逐处标注。原文配图（剧照与产品照）均未引用，页面里的机器都是内联 SVG/CSS 示意重绘。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Sascha Segan, 「What Are the Cool Computer Terminals in Marvel's Loki?」, PCMag (2021-06-10).</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/ADM-3A">ADM-3A</a>：1976 年推出、995 美元、12/24 行 × 80 列、5×7 点阵、琥珀/绿/白荧光、7400 系列芯片、HJKL 箭头与 HOME/~ 键、vi 的起源、Teletype 33 KSR 的价格与速度对比。</li>
+    <li>Dan Moren, 「<a href="https://sixcolors.com/link/2021/07/the-retro-design-of-lokis-technology/">The retro design of Loki's technology</a>」, Six Colors (2021-07)，转引 The Verge 对美术指导 Kasra Farahani 的采访（2021-07-13）。</li>
+    <li>「<a href="https://www.fandom.com/articles/loki-mcu-marvel-production-design">From the TVA to The Void: Designing the Look of 'Loki'</a>」, Fandom：Farahani 与 Kate Herron 以《妙想天开》（Brazil）为参照。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Videosphere">Videosphere</a>：JVC 头盔形显像管电视，1970 年至 1980 年代初，外壳配色与造型来源。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；比特帧与刷屏耗时在页面内用 JS 现场计算，型号与年代细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const activate = (n, fn) => {
+  n.addEventListener('click', fn);
+  n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+};
+
+/* ---------- 1. 翻牌：剧中 vs 现实 ---------- */
+reg('cards', (node) => {
+  const S = (inner, label) => `<svg viewBox="0 0 200 120" role="img" aria-label="${label}">${inner}</svg>`;
+  const data = [
+    { t: '大厅的橙色终端', where: '第一集开场，TVA 大厅',
+      art: S(`<path d="M50 20 Q50 8 64 8 L136 8 Q150 8 150 20 L154 76 L46 76 Z" fill="var(--o)"/><path d="M46 76 L154 76 L170 106 L30 106 Z" fill="var(--o)" opacity=".8"/><rect x="66" y="18" width="68" height="48" rx="7" fill="#14110d"/><g fill="#7dffa0"><rect x="74" y="28" width="40" height="3"/><rect x="74" y="36" width="30" height="3"/><rect x="74" y="44" width="46" height="3"/></g>`, '橙色终端示意'),
+      v: ['real', '真的'], back: '原文判断是<b>定制喷漆的 Lear Siegler ADM-3A</b>：1970 年代中期的经典哑终端，那个年代最流行的终端之一。原厂没有这种橙色，颜色是剧组喷的。' },
+    { t: '全息投影仪', where: '审讯洛基的房间',
+      art: S(`<path d="M30 104 L60 66 L140 66 L170 104 Z" fill="var(--surface)" stroke="var(--line)"/><g fill="var(--line)">${[0,1,2,3,4,5,6,7,8].map((i)=>`<rect x="${66+i*8}" y="72" width="6" height="6" rx="1"/>`).join('')}<rect x="${66+9*8}" y="72" width="6" height="6" rx="1" fill="none" stroke="var(--r)" stroke-dasharray="2 1"/></g><circle cx="100" cy="40" r="32" fill="var(--r)"/><circle cx="100" cy="40" r="18" fill="#14110d"/>`, '红色球形显示器坐在白色键盘底座上'),
+      v: ['fake', '假的'], back: '红色球形主机兼显示器，配一块贴合造型的白色键盘。破绽在键盘：第一行只到 O，<b>没有 P 键</b>，也没有数字行。第 04 章可以亲手试。' },
+    { t: '电梯里的设备', where: 'TVA 的电梯',
+      art: S(`<rect x="60" y="10" width="80" height="100" rx="8" fill="var(--surface)" stroke="var(--line)"/><circle cx="100" cy="40" r="16" fill="var(--y-soft)" stroke="var(--y)"/><line x1="100" y1="40" x2="110" y2="30" stroke="var(--y)" stroke-width="2"/><g fill="var(--o)"><circle cx="80" cy="80" r="5"/><circle cx="100" cy="80" r="5"/><circle cx="120" cy="80" r="5"/></g><text x="100" y="104" class="lbl mid">?</text>`, '电梯里的设备，示意为带表盘的面板'),
+      v: ['fake', '假的'], back: '原文只用一句话带过：电梯里有台设备，「肯定不存在」。原文没有描述细节，左侧画面纯属示意。' },
+    { t: '能玩纸牌的电脑', where: '某位职员的办公桌',
+      art: S(`<rect x="50" y="10" width="100" height="74" rx="8" fill="var(--surface-2)" stroke="var(--line)"/><rect x="60" y="18" width="80" height="56" rx="4" fill="#0f5a2e"/><g fill="#fff" stroke="#999" stroke-width=".5"><rect x="66" y="24" width="12" height="17" rx="2"/><rect x="82" y="24" width="12" height="17" rx="2"/><rect x="112" y="24" width="12" height="17" rx="2"/><rect x="66" y="48" width="12" height="17" rx="2"/><rect x="82" y="52" width="12" height="17" rx="2"/></g><rect x="70" y="90" width="60" height="16" rx="3" fill="var(--surface)" stroke="var(--line)"/>`, '屏幕上是纸牌游戏的电脑示意'),
+      v: ['fake', '假的'], back: '这台电脑也不存在，但作者说<b>「纸牌给它加了大分」</b>。屏幕上跑的是纸牌（Solitaire），这个细节让作者很满意。' },
+  ];
+  const status = el('div', { class: 'status' }, '已翻开 0 / 4 张。');
+  const opened = new Set();
+  const wrap = el('div', { class: 'cards' });
+  data.forEach((d, i) => {
+    const f = el('div', { class: 'flip', tabindex: '0', role: 'button', 'aria-pressed': 'false', 'aria-label': d.t + '：点击翻面' },
+      el('div', { class: 'in' },
+        el('div', { class: 'face front' }, el('span', { class: 'verdict hint' }, '剧中'), el('h3', {}, d.t), el('p', {}, d.where), el('div', { html: d.art }), el('div', { class: 'tip' }, '点击翻面 ↻')),
+        el('div', { class: 'face back' }, el('span', { class: 'verdict ' + d.v[0] }, '现实中：' + d.v[1]), el('h3', {}, d.t), el('p', { html: d.back }), el('div', { class: 'tip' }, '再点翻回 ↺'))));
+    activate(f, () => {
+      const on = f.classList.toggle('on'); f.setAttribute('aria-pressed', on);
+      opened.add(i);
+      const real = [...opened].filter((k) => data[k].v[0] === 'real').length;
+      status.innerHTML = `已翻开 <b>${opened.size}</b> / 4 张，其中真机 <b>${real}</b> 台。` + (opened.size === 4 ? '一真三假，和原文副标题「一台是真的，其余都是假的」对上了。' : '');
+    });
+    wrap.append(f);
+  });
+  node.append(wrap, status);
+});
+
+/* ---------- 2. ADM-3A 模拟器 ---------- */
+reg('term', (node) => {
+  const COLS = 80;
+  let ROWS = 24, upper = false, cx = 0, cy = 0, buf, bellT = 0, raf = 0, on = false;
+  const PH = '#7dffa0', BG = '#0d120e';
+  const cv = el('canvas', { tabindex: '0', 'aria-label': 'ADM-3A 模拟屏幕，聚焦后可直接打字' });
+  const ctx = cv.getContext('2d');
+  const intro = ['TIME VARIANCE AUTHORITY', 'FOR ALL TIME. ALWAYS.', '', 'LEAR SIEGLER ADM-3A  (SIMULATED)', 'CTRL+H J K L  = LEFT DOWN UP RIGHT', 'CTRL+~ = HOME     CTRL+Z = CLEAR', '', '> '];
+  const reset = () => { buf = Array.from({ length: ROWS }, () => Array(COLS).fill(' ')); };
+  const load = () => { reset(); intro.forEach((s, r) => { if (r < ROWS) [...s].forEach((c, k) => { buf[r][k] = c; }); }); cy = Math.min(intro.length - 1, ROWS - 1); cx = 2; };
+  load();
+  const status = el('div', { class: 'status' });
+  const say = (msg) => { status.innerHTML = `光标：第 <b>${cy + 1}</b> 行，第 <b>${cx + 1}</b> 列（共 ${ROWS} × ${COLS}）。` + (msg || ''); };
+  function draw(blinkOn = true) {
+    const w = cv.clientWidth || 600, cw = w / COLS, ch = cw * 48 / ROWS;
+    const dpr = devicePixelRatio || 1, h = ch * ROWS;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.height = h + 'px'; }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = performance.now() < bellT ? '#2f4a36' : BG; ctx.fillRect(0, 0, w, h);
+    const fs = Math.min(cw * 1.6, ch * 0.9);
+    ctx.font = `${fs}px ui-monospace,Menlo,Consolas,monospace`; ctx.textBaseline = 'middle'; ctx.fillStyle = PH;
+    ctx.shadowColor = PH; ctx.shadowBlur = 3;
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const s = buf[r][c]; if (s !== ' ') ctx.fillText(s, c * cw, r * ch + ch / 2); }
+    ctx.shadowBlur = 0;
+    if (blinkOn) { ctx.globalAlpha = .7; ctx.fillRect(cx * cw, cy * ch + ch * .1, cw, ch * .8); ctx.globalAlpha = 1; }
+  }
+  const loop = () => { draw(RM || Math.floor(performance.now() / 530) % 2 === 0); raf = requestAnimationFrame(loop); };
+  const act = (op, ch) => {
+    let msg = '';
+    if (op === 'H') { cx = Math.max(0, cx - 1); msg = 'Ctrl+H：左移。vi 里的 h 也是左。'; }
+    else if (op === 'J') { cy = Math.min(ROWS - 1, cy + 1); msg = 'Ctrl+J：下移（J 也是换行符 LF 的控制码）。vi 里的 j 也是下。'; }
+    else if (op === 'K') { cy = Math.max(0, cy - 1); msg = 'Ctrl+K：上移。vi 里的 k 也是上。'; }
+    else if (op === 'L') { cx = Math.min(COLS - 1, cx + 1); msg = 'Ctrl+L：右移。vi 里的 l 也是右。'; }
+    else if (op === 'HOME') { cx = 0; cy = 0; msg = 'Ctrl+~：光标回到左上角 HOME。Unix 用 ~ 表示家目录，可能就源于这个键帽。'; }
+    else if (op === 'CLR') { reset(); cx = 0; cy = 0; msg = 'Ctrl+Z：清屏。'; }
+    else if (op === 'BEL') { bellT = performance.now() + 180; msg = 'Ctrl+G：响铃（BEL）。本页只闪一下屏幕，不出声。'; }
+    else if (op === 'CR') { cx = 0; cy = Math.min(ROWS - 1, cy + 1); msg = '回车换行。'; }
+    else if (op === 'BS') { cx = Math.max(0, cx - 1); buf[cy][cx] = ' '; }
+    else if (op === 'CH') { const c = upper ? ch.toUpperCase() : ch; buf[cy][cx] = c; if (cx < COLS - 1) cx++; else { cx = 0; cy = Math.min(ROWS - 1, cy + 1); } msg = upper ? '大写模式：早期 ADM-3 只能显示大写，存一个字符只需 6 比特。' : ''; }
+    say(msg); if (!on) draw();
+  };
+  cv.addEventListener('keydown', (e) => {
+    const k = e.key;
+    const map = { ArrowLeft: 'H', ArrowDown: 'J', ArrowUp: 'K', ArrowRight: 'L', Home: 'HOME', Enter: 'CR', Backspace: 'BS' };
+    if (e.ctrlKey && /^[hjklHJKL]$/.test(k)) { e.preventDefault(); act(k.toUpperCase()); return; }
+    if (e.ctrlKey && (k === '~' || k === '^' || k === '`')) { e.preventDefault(); act('HOME'); return; }
+    if (e.ctrlKey && (k === 'z' || k === 'Z')) { e.preventDefault(); act('CLR'); return; }
+    if (e.ctrlKey && (k === 'g' || k === 'G')) { e.preventDefault(); act('BEL'); return; }
+    if (map[k]) { e.preventDefault(); act(map[k]); return; }
+    if (k.length === 1 && !e.ctrlKey && !e.metaKey && k.charCodeAt(0) >= 32 && k.charCodeAt(0) < 127) { e.preventDefault(); act('CH', k); }
+  });
+  cv.addEventListener('click', () => cv.focus());
+  const key = (top, sub, op, label) => { const b = el('button', { class: 'key', type: 'button', 'aria-label': label }, top, sub ? el('small', {}, sub) : null); b.addEventListener('click', () => act(op)); return b; };
+  const keys = el('div', { class: 'keys' },
+    key('H', '←', 'H', 'Ctrl+H 左移'), key('J', '↓', 'J', 'Ctrl+J 下移'), key('K', '↑', 'K', 'Ctrl+K 上移'), key('L', '→', 'L', 'Ctrl+L 右移'),
+    key('~ ^', 'HOME', 'HOME', 'Ctrl+~ 回到 HOME'), key('Z', 'CLEAR', 'CLR', 'Ctrl+Z 清屏'), key('G', 'BELL', 'BEL', 'Ctrl+G 响铃'));
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '行数' });
+  [24, 12].forEach((n) => { const b = el('button', { type: 'button', class: n === 24 ? 'on' : '' }, n + ' 行'); b.addEventListener('click', () => { ROWS = n; seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); load(); say(n === 12 ? '基础版 ADM-3A 只显示 12 行，24 行是选配。' : '24 行 × 80 列 = 1920 个字符，后来成了终端的标准尺寸。'); if (!on) draw(); }); seg.append(b); });
+  const up = el('button', { class: 'btn', type: 'button', 'aria-pressed': 'false' }, '只显示大写：关');
+  up.addEventListener('click', () => { upper = !upper; up.textContent = '只显示大写：' + (upper ? '开' : '关'); up.setAttribute('aria-pressed', upper); say(upper ? '原始 ADM-3 只能显示大写字母，1976 年才加了小写选项。试着打几个小写字母。' : '已恢复大小写。'); });
+  node.append(el('div', { class: 'term-wrap' }, cv), keys, el('div', { class: 'ctrl' }, seg, up), status);
+  say('点一下屏幕，用键盘打字；方向键也映射到 Ctrl+H/J/K/L。');
+  const ro = new ResizeObserver(() => { if (!on) draw(); }); ro.observe(cv);
+  draw();
+  return { start() { if (!on) { on = true; loop(); } }, stop() { on = false; cancelAnimationFrame(raf); draw(); } };
+});
+
+/* ---------- 3. 一次按键的往返 ---------- */
+reg('flow', (node) => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const W = 640;
+  const nodesDef = [['term', 20, '终端', 'ADM-3A'], ['host', 470, '主机', '大型机 / PC / 树莓派']];
+  const s = document.createElementNS(NS, 'svg');
+  s.setAttribute('viewBox', `0 0 ${W} 170`); s.setAttribute('class', 'flow'); s.setAttribute('role', 'img'); s.setAttribute('aria-label', '终端与主机之间两条串口线：一条发送按键，一条回传字符');
+  s.innerHTML = `
+    <path class="wire" id="wTx" d="M170 55 L470 55"/><path class="wire" id="wRx" d="M470 115 L170 115"/>
+    <text x="320" y="45" class="lbl mid">发送线（TxD）：按键 → 主机</text>
+    <text x="320" y="137" class="lbl mid">接收线（RxD）：主机 → 屏幕</text>
+    ${nodesDef.map(([id, x, a, b]) => `<g class="nd" id="n_${id}"><rect x="${x}" y="25" width="150" height="120" rx="12"/><text x="${x + 75}" y="78" class="lbl big mid">${a}</text><text x="${x + 75}" y="98" class="lbl mid">${b}</text></g>`).join('')}
+    <circle id="pkt" r="9" cx="95" cy="55" fill="var(--o)" opacity="0"/>
+    <text id="pktT" x="95" y="59" text-anchor="middle" font-size="11" fill="#fff" font-family="ui-monospace,Menlo,monospace" opacity="0"></text>`;
+  const $ = (id) => s.querySelector('#' + id);
+  const inp = el('input', { class: 'tin', type: 'text', maxlength: '1', value: 'A', 'aria-label': '要发送的字符' });
+  inp.style.width = '64px';
+  const bits = el('div', { class: 'bits' });
+  const status = el('div', { class: 'status' });
+  const steps = [
+    '① 在终端上按下这个键。终端里没有处理器，键盘电路直接把它编成 7 位 ASCII 码。',
+    '② 串口把它拆成一串比特，沿发送线逐位送出：起始位、7 个数据位（低位在前）、校验位、停止位。',
+    '③ 主机收到字符，交给程序处理。终端「哑」就哑在这里：它完全不知道主机拿这个字符做什么。',
+    '④ 主机把要显示的东西（这里就是同一个字符，叫「回显」）沿接收线发回来。',
+    '⑤ 终端在光标处画出字符，光标右移一格。一圈结束。主机换成树莓派，这五步一步都不用改。',
+  ];
+  let k = -1, tm = 0;
+  const frame = (ch) => {
+    const code = ch.charCodeAt(0) & 127, data = Array.from({ length: 7 }, (_, i) => (code >> i) & 1);
+    const par = data.reduce((a, b) => a + b, 0) % 2;
+    return { code, cells: [['0', '起始', 's'], ...data.map((b, i) => [String(b), 'D' + i, 'd']), [String(par), '校验', 'pa'], ['1', '停止', 's']] };
+  };
+  const renderBits = () => {
+    const ch = (inp.value || 'A').slice(0, 1);
+    const f = frame(ch);
+    bits.replaceChildren(...f.cells.map(([v, l, c]) => el('div', { class: 'bit ' + c }, v, el('small', {}, l))));
+    return { ch, f };
+  };
+  const place = (x, y, txt, vis) => { const p = $('pkt'), t = $('pktT'); p.setAttribute('cx', x); p.setAttribute('cy', y); t.setAttribute('x', x); t.setAttribute('y', y + 4); t.textContent = txt; p.setAttribute('opacity', vis); t.setAttribute('opacity', vis); };
+  const show = () => {
+    const { ch, f } = renderBits();
+    $('n_term').classList.toggle('on', k === 0 || k === 4); $('n_host').classList.toggle('on', k === 2);
+    $('wTx').classList.toggle('on', k === 1); $('wRx').classList.toggle('on', k === 3);
+    const pos = [[95, 55], [320, 55], [545, 85], [320, 115], [95, 115]];
+    if (k >= 0) place(pos[k][0], pos[k][1], ch, 1); else place(95, 55, '', 0);
+    if (k < 0) { status.innerHTML = `字符 <b>${ch}</b> 的 ASCII 码是 <b>${f.code}</b>（二进制 ${f.code.toString(2).padStart(7, '0')}），上面是它在线上的 10 个比特。点「下一步」。`; return; }
+    status.innerHTML = `<b>第 ${k + 1} / 5 步</b>　` + steps[k];
+  };
+  const next = el('button', { class: 'btn primary', type: 'button' }, '下一步');
+  const rst = el('button', { class: 'btn', type: 'button' }, '重置');
+  next.addEventListener('click', () => { k = (k + 1) % 5; show(); });
+  rst.addEventListener('click', () => { k = -1; show(); });
+  inp.addEventListener('input', () => { k = -1; show(); });
+  node.append(el('div', { class: 'scrollx' }, s), el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '字符', inp), next, rst), bits, status);
+  show();
+  return { stop() { clearTimeout(tm); } };
+});
+
+/* ---------- 4. 刷屏赛跑 ---------- */
+reg('race', (node) => {
+  const BAUDS = [75, 110, 150, 300, 600, 1200, 2400, 4800, 9600, 19200];
+  const SCREEN = 80 * 24, TTY = 10;
+  const inp = el('input', { type: 'range', min: '0', max: String(BAUDS.length - 1), value: '8', step: '1', 'aria-label': '波特率' });
+  const out = el('output');
+  const eq = el('div', { class: 'eq' });
+  const bar1 = el('div', { class: 'bar' }, el('i')), bar2 = el('div', { class: 'bar slow' }, el('i'));
+  const t1 = el('span', { class: 'mono' }), t2 = el('span', { class: 'mono' });
+  const status = el('div', { class: 'status' });
+  const go = el('button', { class: 'btn primary', type: 'button' }, '开始刷屏');
+  let raf = 0, t0 = 0;
+  const cps = () => BAUDS[+inp.value] / 10;
+  const fmt = (s) => s < 60 ? s.toFixed(s < 10 ? 2 : 1) + ' 秒' : (s / 60).toFixed(1) + ' 分钟';
+  const upd = () => {
+    const b = BAUDS[+inp.value], c = cps(), t = SCREEN / c;
+    out.textContent = b + ' 波特';
+    eq.textContent = `${b} ÷ 10 = ${c} 字符/秒；刷满 80×24 = ${SCREEN} 字符需 ${fmt(t)}`;
+  };
+  const stop = () => { cancelAnimationFrame(raf); raf = 0; };
+  const frame = (now) => {
+    const el1 = (now - t0) / 1000, tA = SCREEN / cps(), tB = SCREEN / TTY;
+    const cap = Math.min(tA, 8);
+    const e = Math.min(el1, cap);
+    bar1.firstChild.style.width = Math.min(100, e / tA * 100) + '%';
+    bar2.firstChild.style.width = Math.min(100, e / tB * 100) + '%';
+    t1.textContent = Math.min(SCREEN, Math.floor(e * cps())) + ' 字';
+    t2.textContent = Math.min(SCREEN, Math.floor(e * TTY)) + ' 字';
+    if (el1 < cap) raf = requestAnimationFrame(frame);
+    else { raf = 0; status.innerHTML = e >= tA ? `终端用 <b>${fmt(tA)}</b> 刷满一屏时，Teletype 33 只打了 <b>${Math.floor(e * TTY)}</b> 个字符，它打完一屏要 <b>${fmt(tB)}</b>。速度相差 <b>${Math.round(cps() / TTY)}</b> 倍。` : `8 秒到了，演示停下。这个波特率下终端刷满一屏要 <b>${fmt(tA)}</b>，Teletype 要 ${fmt(tB)}。把波特率调高再试。`; }
+  };
+  go.addEventListener('click', () => { stop(); t0 = performance.now(); status.textContent = '刷屏中……'; if (RM) { t0 -= 8000; } raf = requestAnimationFrame(frame); });
+  inp.addEventListener('input', () => { stop(); upd(); bar1.firstChild.style.width = bar2.firstChild.style.width = '0'; t1.textContent = t2.textContent = '0 字'; status.textContent = '点「开始刷屏」。'; });
+  upd(); t1.textContent = t2.textContent = '0 字'; status.textContent = '点「开始刷屏」。';
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '波特率', inp, out), go), eq,
+    el('div', { class: 'race' }, el('span', {}, 'ADM-3A'), bar1, t1), el('div', { class: 'race' }, el('span', {}, 'Teletype 33'), bar2, t2), status);
+  return { stop };
+});
+
+/* ---------- 5. 少了 P 的键盘 ---------- */
+reg('kb', (node) => {
+  const rows = [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'], ['Z', 'X', 'C', 'V', 'B', 'N', 'M']];
+  const nums = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+  const keys = {};
+  const kb = el('div', { class: 'kb', 'aria-hidden': 'true' });
+  kb.append(el('div', { class: 'row ghost' }, ...nums.map((n) => { const k = el('div', { class: 'k miss' }, n); keys[n] = k; return k; })));
+  rows.forEach((r) => kb.append(el('div', { class: 'row' }, ...r.map((c) => { const k = el('div', { class: 'k' + (c === 'P' ? ' miss' : '') }, c); keys[c] = k; return k; }))));
+  const can = (c) => /[A-OQ-Z ]/.test(c);
+  const inp = el('input', { class: 'tin', type: 'text', value: 'LOKI', maxlength: '24', 'aria-label': '在 TVA 键盘上输入' });
+  const typed = el('div', { class: 'typed', 'aria-live': 'polite' });
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    const s = inp.value.toUpperCase();
+    Object.values(keys).forEach((k) => k.classList.remove('hit', 'bad'));
+    let bad = 0;
+    typed.replaceChildren(...[...s].map((c) => {
+      const ok = can(c);
+      if (keys[c]) keys[c].classList.add(ok ? 'hit' : 'bad');
+      if (!ok) bad++;
+      return el('span', { class: ok ? 'ok' : 'x' }, c === ' ' ? ' ' : c);
+    }));
+    status.innerHTML = !s ? '输入点什么。' : bad ? `有 <b>${bad}</b> 个字符在这块键盘上打不出来（标红）。` + (/P/.test(s) ? '缺的是 P。' : '') + (/[0-9]/.test(s) ? '数字行整排不存在。' : '') : '这个词碰巧全部能打出来，换一个带 P 或数字的词试试。';
+  };
+  inp.addEventListener('input', upd);
+  const presets = ['LOKI', 'PRUNE', 'TEMPAD', 'PEGGY', '2021', 'TVA'];
+  const ps = el('div', { class: 'ctrl' }, ...presets.map((w) => el('button', { class: 'btn', type: 'button', onclick: () => { inp.value = w; upd(); } }, w)));
+  node.append(kb, el('div', { class: 'ctrl' }, inp), ps, typed, status);
+  upd();
+});
+
+/* ---------- 6. CRT 效果台 ---------- */
+reg('crt', (node) => {
+  const PH = { '绿': '#33ff66', '琥珀': '#ffb000', '白': '#e8f0ff', 'TVA 橙': '#ff7a1a' };
+  const crt = el('div', { class: 'crt', role: 'img', 'aria-label': '模拟的显像管屏幕' },
+    el('div', { class: 'txt' }), el('div', { class: 'scan' }), el('div', { class: 'vig' }), el('div', { class: 'glass' }));
+  crt.querySelector('.txt').innerHTML = 'TIME VARIANCE AUTHORITY\n================\nVARIANT: LOKI\nNEXUS EVENT: DETECTED\nSTATUS:  RESET PENDING\n\nFOR ALL TIME. ALWAYS.\n\n&gt; <span class="cursor-blink">█</span>';
+  const st = el('div', { class: 'status' });
+  const desc = { curve: '曲率：凸面玻璃让四角变暗、画面边缘弯曲。', scan: '扫描线：电子束逐行扫过，行与行之间留下暗线。', glow: '辉光：被打亮的荧光粉会向四周晕开。' };
+  const slider = (key, label, min, max, val, apply) => {
+    const i = el('input', { type: 'range', min, max, value: val, step: '1', 'aria-label': label }), o = el('output', {}, val);
+    i.addEventListener('input', () => { o.textContent = i.value; apply(+i.value); st.textContent = desc[key]; });
+    apply(+val);
+    return el('label', { class: 'range' }, label, i, o);
+  };
+  const c1 = slider('curve', '曲率', 0, 10, 6, (v) => crt.style.setProperty('--curve', v));
+  const c2 = slider('scan', '扫描线', 0, 10, 4, (v) => crt.style.setProperty('--scan', (v / 10 * .8).toFixed(2)));
+  const c3 = slider('glow', '辉光', 0, 12, 6, (v) => crt.style.setProperty('--glow', v));
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '荧光颜色' });
+  Object.entries(PH).forEach(([n, c], i) => {
+    const b = el('button', { type: 'button', class: i === 0 ? 'on' : '' }, el('span', { class: 'sw', style: 'background:' + c }), n);
+    b.addEventListener('click', () => { crt.style.setProperty('--ph', c); seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); st.textContent = n === 'TVA 橙' ? 'TVA 橙：这是本页按剧中配色想象的，ADM-3A 只有琥珀、绿、白三种荧光。' : `${n}色荧光：ADM-3A 当年提供的三种之一。`; });
+    seg.append(b);
+  });
+  const fl = el('button', { class: 'btn', type: 'button', 'aria-pressed': 'false' }, '闪烁：关');
+  fl.addEventListener('click', () => { const on = crt.classList.toggle('flicker'); fl.textContent = '闪烁：' + (on ? '开' : '关'); fl.setAttribute('aria-pressed', on); st.textContent = on ? (RM ? '你的系统开启了「减少动态效果」，闪烁已被抑制。' : '闪烁：刷新率低时画面会轻微抖动。') : '闪烁已关。'; });
+  const flat = el('button', { class: 'btn', type: 'button' }, '全部归零');
+  flat.addEventListener('click', () => { [c1, c2, c3].forEach((l) => { const i = l.querySelector('input'); i.value = 0; i.dispatchEvent(new Event('input')); }); crt.classList.remove('flicker'); fl.textContent = '闪烁：关'; st.textContent = '全部归零后只剩一块平整的黑底彩字，复古感几乎消失。'; });
+  st.textContent = '拖动滑块或切换颜色。';
+  node.append(el('div', { class: 'crt-stage' }, crt), el('div', { class: 'ctrl' }, c1, c2, c3), el('div', { class: 'ctrl' }, seg, fl, flat), st);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

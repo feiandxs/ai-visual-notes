@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>山中俊治的 DrawingBoard：一套没上线的 Mac 主题</title>
+<meta name="description" content="Mac 视觉史番外：工业设计师山中俊治 1994 年为苹果提案的「DrawingBoard」手绘风 GUI。可开关的视觉语法拆解、设计稿到实装的滑块、Mac OS 8.5 四套主题切换、菜单下划线高亮、图标分辨率三个时代与按钮材质对比。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --hk:#1c2330; --hk-2:#2b3546; --hk-text:#dfe6ee;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    --hk:#0a0d12; --hk-2:#141a24; --hk-text:#dfe6ee;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  --hk:#0a0d12; --hk-2:#141a24; --hk-text:#dfe6ee;
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ================= 本页组件 ================= */
+p + p{margin-top:10px}
+.prose{font-size:15.5px;margin:0 0 14px}
+.prose p{margin-top:10px}
+.scene{width:100%;border-radius:10px;border:1px solid var(--line)}
+.tog{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.tog button{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer}
+.tog button[aria-pressed="true"]{background:var(--p-soft);border-color:var(--p);color:var(--p);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 10px}
+.chips button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;font-family:var(--mono)}
+.chips button.add{border-style:dashed;border-color:var(--o)}
+.chips button.on{background:var(--p);border-color:var(--p);color:#fff}
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);font-size:14px}
+.card h3{font-size:16px;margin-bottom:4px}
+.card .tag{margin-left:6px}
+.badge-add{display:inline-block;font-size:11px;color:var(--o);border:1px dashed var(--o);border-radius:6px;padding:0 6px;margin-left:6px;vertical-align:1px}
+.pixwrap{display:grid;grid-template-columns:1fr;gap:14px;align-items:center}
+@media (min-width:760px){ .pixwrap{grid-template-columns:280px 1fr} }
+.pixwrap canvas{width:min(256px,100%);aspect-ratio:1;margin:0 auto;border-radius:10px;border:1px solid var(--line);image-rendering:pixelated;background:var(--surface-2)}
+.vs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.vs > div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2);font-size:13.5px}
+.vs b{display:block;margin-bottom:2px}
+.hit{cursor:pointer}
+.hit:focus{outline:none}
+.hit:focus-visible > .ring{stroke:var(--p);stroke-width:2.5}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">DrawingBoard</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Mac 视觉史番外</div>
+  <h1>山中俊治的「手绘板」：一套没上线的 Mac 主题</h1>
+  <p class="sub">1994 年前后，一位日本工业设计师带着一套用「画草图」的方式画出来的 GUI 来到库比蒂诺。它被做了出来，被乔布斯展示过，最后没被采用，却从测试版里流了出去。</p>
+  <div class="thesis">DrawingBoard 的特殊在于：和同时代其他失败的尝试相比，它在视觉追求和体验层面离 Mac OS X 更近；它输在模拟的那个实体世界太窄、风格化太强，而 Aqua 更具普世性。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>陈</i>陈子木 · 少数派</span>
+  </div>
+  <p class="meta">原文：《Mac 视觉史 vol.2.5：山中俊治的「手绘板」》，陈子木，少数派（2024-02-07）。本页按原文五个小节的顺序转述，界面插图全部是示意性的线框/色块重绘（不是截图）；另加了几处标注为「本页补充（非原文）」的核对，其中三处指出原文与一手资料不一致的地方。</p>
+</header>
+
+<section class="ch" id="origin" data-title="缘起：一本书和一篇博文">
+  <div class="ch-head">
+    <span class="num">00</span>
+    <h2>缘起：一本书，一篇 2009 年的博文</h2>
+    <p class="lead">这段几乎没人记得的往事，前后跨了三十年。它是怎么被翻出来的？</p>
+  </div>
+  <div class="prose">
+    <p>2022 年夏天，作者在书店偶然翻到山中俊治的《设计的风骨》。这本书是山中俊治十多年前博客文章的合集，其中 2009 年 6 月的一篇讲了 Macintosh 的一段往事，正好补上了作者此前《Mac 视觉史 vol.2：90 年代失败操作系统大赏》缺的一块。</p>
+    <p>山中俊治是日本工业设计师、东京大学教授。大约 1994 年，已成立个人工作室 Leading Edge Design 的他，和猪股裕一、户田勉、宫崎光弘、须永刚司组成五人提案小组，带着一套名为「DrawingBoard」的 Macintosh 次世代 GUI 方案前往苹果总部。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>可点击的时间线。</b>点年份看这一年发生了什么。实线框是原文的叙述，<span class="badge-add">虚线框</span>是本页补充的背景节点。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：《设计的风骨》的日文原书是『デザインの骨格』（日经 BP，2011），书名也是山中俊治博客的名字；2009 年那篇博文题为「幻のMac OS」（幻影般的 Mac OS），发表于 2009-06-14。<sup class="c">[2]</sup> 原文说他「曾就职于日本汽车设计中心」，按日文维基百科的履历，他 1982–1987 年在日产汽车做外观设计师，1994–2013 年主持 LEADING EDGE DESIGN。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="idea" data-title="一拍即合的构想">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一拍即合的构想</h2>
+    <p class="lead">一个工业设计师，是怎么把「画草图」的手法变成一整套 GUI 的？</p>
+  </div>
+  <div class="prose">
+    <p>当时焦头烂额的 Macintosh 团队正在推进代号「Copland」的新系统，非常需要一套全新的视觉风格，山中俊治的提案正是他们迫切想要的某种可能性。主题名「DrawingBoard」点明了灵感来源：手绘板（制图板）上的绘图。</p>
+    <p>他用工业设计草图的语言画 UI：不同类型的阴影、倾斜 45 度的排线、硬朗的阴影色块、形同出血线的边角、增加几何感的倾斜边缘。下面把这些手法拆成开关，一个个关掉看看少了什么。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>视觉语法拆解器。</b>点按钮逐项开关；示意重绘，不是原稿。</div>
+    <div data-demo="grammar"></div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>图标也是同一套语言。文件夹沿用出血线勾边；快捷方式和应用程序图标则统一用「内置斜线阴影的正方形」作外轮廓，把造型各异的图标收进同一个形状里。背景直接用工业设计画稿，提升形式感。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>为什么要套一个正方形？</b>切换「统一外框」，看六个形状各异的图标怎样变成一组。</div>
+    <div data-demo="icons"></div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>更有意思的是，方案里明显加入了一条底部工具栏，用来提高当时 Mac OS 8 在桌面环境下的直观性。原文认为，这似乎确实是优化 Mac OS 8 的一种有效手段。</p>
+  </div>
+</section>
+
+<section class="ch" id="ship" data-title="从概念设计到落地呈现">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>从概念设计到落地呈现</h2>
+    <p class="lead">从手绘提案到能在 Mac OS 8.5 上运行的主题，哪些地方被改了？</p>
+  </div>
+  <div class="prose">
+    <p>「由于演示非常成功，设计方案直接进入了研发阶段。」提案时对各个元素怎么呈现有清晰构想，但真实场景里要处理的细节太多，山中俊治随后以项目总监身份在库比蒂诺待了将近一年，和开发团队一起完成设计。</p>
+    <p>几乎所有视觉元素都要先手绘再转成数字版本，这种不规整的元素在当时 Mac OS 8.5 的硬件上运行，有它独有的加载问题，这也是研发周期拉长的原因。落地时的调整包括：标签页减少了出血线以降低视觉信息量，在折角处加了加重的笔触；倾斜排线阴影调浅；更有「工匠感」的衬线字体换成了衬线近乎不存在的 Geneva 和 Gadget。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>设计稿 → 实装版。</b>拖动滑块，原文列出的几项调整同时发生。</div>
+    <div data-demo="morph"></div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>悬停选中的方式也很有「手绘感」：不是把整行反白，而是用强调色下划线，原文说「倒是优雅了不少」。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>菜单高亮对比。</b>点菜单栏打开菜单，点或用方向键在条目间移动；切换两种高亮方式比较。</div>
+    <div data-demo="menu"></div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>直到这时，山中俊治还不知道苹果内部的视觉探索依然没有找对路子。原文引用系列第二篇的话：Copland 本质上是个「要你命 3000」，功能毫无节制地往里加、彼此冲突，所有人都清楚它不可能作为正式产品发布。DrawingBoard 也只是诸多备胎之一，相关信息里赫然列着他的名字。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：山中俊治在博文里说，设计全部部件花了「几乎整整一年」；他任项目总监，概念阶段有猪股、须永参与，细节由户田、宫崎完成。<sup class="c">[2]</sup> Copland 在 1996 年 8 月被冻结，苹果转而对外寻找新系统，最终收购了 NeXT。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="themes" data-title="消解怨念的方式">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>消解怨念的方式</h2>
+    <p class="lead">既然最终没被采用，为什么这么多人用过它？</p>
+  </div>
+  <div class="prose">
+    <p>「1997 年 WWDC 会上，刚刚重返 CEO 职位的史蒂夫·乔布斯站上台公布了这一设计，并表示非常欣赏我们的方案……最终，方案没有被正式采用。」得不到的永远在骚动：二十多年前，有 LiteStep（Windows 桌面环境的替代品）爱好者照着概念图自制了主题 Mo85，也有 KDE 爱好者做过类似的主题。</p>
+    <p>山中俊治说，最终版他们自己都无缘得见，却流传到了网上。法国博主 Pierre Dandumont 在一张内部代号 Snowman、版本号 8.2D8 的 Mac OS 8.5 测试版镜像里找到了可运行的主题，同一版本里还藏着系列第二篇提到的童趣风 Gizmo 和科技风 Hi-Tech。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>Mac OS 8.5 测试版里的四套外观。</b>同一个对话框，切换主题看外观怎么变。示意重绘，配色和细节不是原样。</div>
+    <div data-demo="themes"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：与一手资料对照有三处出入。① 山中俊治博文原话是「1997 年的 MacWorld EXPO」上由乔布斯公开，不是 WWDC。<sup class="c">[2]</sup> ② 乔布斯 1997 年 9 月才出任临时 CEO，此前是以顾问身份回归，「刚刚重返 CEO 职位」是博文本身的说法，时间上不严格。③ Dandumont 的文章写的是：8.2D8（Snowman）里只有 Gizmo 和 Hi Tech 两套主题，DrawingBoard 的来源他「完全不知道」，从作者信息看像是日本来源，但在他能找到的日文测试版里也没找到。<sup class="c">[3]</sup> 另外，山中俊治在博文评论里说，网上流传的非官方版本并不完整：部分显示会错乱，音效也借用了别的主题。<sup class="c">[2]</sup></div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Mac OS 8.5 是第一个支持主题的 Mac OS 版本，但 Gizmo、Hi-Tech 等主题在发布前最后关头被拿掉，正式版只留下默认的 Platinum 外观。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="era" data-title="跨越时代的尝试">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>跨越时代的尝试</h2>
+    <p class="lead">为什么说 DrawingBoard 离 Mac OS X 更近，最后胜出的却是 Aqua？</p>
+  </div>
+  <div class="prose">
+    <p>原文借「ID 公社」《数字时代的内外一致性》的划分：Susan Kare 时代，受分辨率所限，图标只能用低信息量的象征图形；分辨率上去之后，设计师让每个像素都不浪费，用富余的资源模拟实体世界；到了视网膜屏，数字的「不连续」已近乎消失，拟真接近以假乱真，于是被视作数字时代对模拟时代的最后怀念。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>同一枚「照片」图标的三个时代。</b>选一个时代，再拖动边长看像素网格的影响。图标为示意重绘。</div>
+    <div data-demo="pixels"></div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>DrawingBoard 是山中俊治在那个节点上模拟实体世界的一次尝试，有设计情怀，也有独特调性。问题在于它选取的领域太窄、风格化程度太高，丰富性不足以满足所有人对 GUI 的期待。Aqua 的设计语言更具普世性：Ratzlaff 问的是「什么东西和计算机界面毫无关联？」，他想到了糖果，想到了酒。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>同一个「好」按钮，模拟的是哪个实体世界？</b>点一个按钮看它借用的材质，以及原文对它的判断。</div>
+    <div data-demo="buttons"></div>
+  </div>
+</section>
+
+<section class="ch" id="forty" data-title="40 年与写在最后">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>40 年，与写在最后</h2>
+    <p class="lead">事物发展到临界点，总会自然而然地出现变革。</p>
+  </div>
+  <div class="prose">
+    <p>原文把 Mac OS X 与拟物化设计看作二十多年前的「瓜熟蒂落」，又把 Vision Pro 在 Mac 40 周年之际出货看作某种「献礼」：1984 年 1 月 24 日 Macintosh 128K 发售，开启消费级个人电脑；四十年后的 Vision Pro 进入空间计算，尝试让数字世界升维。作者并不认为 Mac 的时代结束了，两者会在更复杂的数字生态里各有偏重，也许会碰撞出更有意思的可能。</p>
+    <p>作者说，一直没想好用什么姿势开始写 Mac OS X，不如先回头梳理一下山中俊治和他的 DrawingBoard，稍事休息，vol.4 再继续。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>四十年：从 1984 到 2024。</b>原文提到的四个节点在一条年份尺上的位置（由 JS 按日期计算）。</div>
+    <div data-demo="forty"></div>
+    <div class="final">DrawingBoard 没有成为 Mac 的样子，但它证明了一件事：GUI 可以借用任何一种实体世界的视觉语言；真正决定成败的，是借来的那个世界是否足够宽、足够多的人愿意住进去。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文写 Vision Pro「2024 年 1 月 19 日正式发售」。1 月 19 日是美国开放预购的日期，实际发售在 2024 年 2 月 2 日。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据陈子木在少数派发表的《<a href="https://sspai.com/post/86124">Mac 视觉史 vol.2.5：山中俊治的「手绘板」</a>》（2024-02-07）制作，章节顺序与观点均按原文；标注「本页补充」的内容为本页核对与延伸。原文中的插图（设计稿、手绘稿、主题截图、图标对比等）均已用内联 SVG 和 canvas 示意重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>陈子木，《Mac 视觉史 vol.2.5：山中俊治的「手绘板」》，少数派（2024-02-07）。<a href="https://sspai.com/post/86124">sspai.com/post/86124</a></li>
+    <li>山中俊治，「幻のMac OS」，博客『山中俊治の「デザインの骨格」』（2009-06-14）及其评论区作者回复。<a href="https://lleedd.com/blog/2009/06/14/drawingboard/">lleedd.com</a></li>
+    <li>Pierre Dandumont (2017-06-12). Les thèmes disparus de Mac OS 8.5. <i>Le journal du lapin</i>. <a href="https://www.journaldulapin.com/2017/06/12/mac-os-8-5-theme/">journaldulapin.com</a></li>
+    <li>Wikipedia（日文）条目「山中俊治」：1982–1987 年任日产汽车外观设计师、1994–2013 年任 LEADING EDGE DESIGN 代表、1995 年 DrawingBoard（Mac OS 8 用）、2011 年『デザインの骨格』（日经 BP）。</li>
+    <li>Wikipedia 条目 Copland (operating system)、Mac OS 8：Copland 于 1996 年 8 月被冻结；Mac OS 8.5 首次支持主题，Gizmo、HiTech 在发布前被移除。</li>
+    <li>少数派，《<a href="https://sspai.com/post/60696">Mac 视觉史 vol.2：90 年代失败操作系统大赏</a>》《<a href="https://sspai.com/post/60888">Mac 视觉史 vol.3：浴「水」重生的 Mac 视觉美学</a>》（原文引用）。</li>
+    <li>ID 公社，《<a href="https://www.hi-id.com/?p=3357">数字时代的内外一致性</a>》（原文引用）。</li>
+    <li>原文列出的其他来源：Pierre Dandumont 的 YouTube 视频（KOEMz_saHCE）、opendesktop 论坛「Theme based on Mac OS 9 Drawing Board」讨论帖、pling.com 上的同名主题（p/1219916）。本页未逐一核读。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面图均为示意重绘，史实细节以原文与一手资料为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const onKey = (n, f) => n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } });
+const segBar = (labels, onPick, init = 0) => {
+  const bs = labels.map((t, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); onPick(i); } }, t));
+  return el('div', { class: 'seg', role: 'group' }, bs);
+};
+
+/* ---------- 共用绘图：排线、出血线、字体 ---------- */
+let PID = 0;
+const SERIF = "font-family:Georgia,'Times New Roman',serif;font-style:italic";
+const SANS = "font-family:Geneva,Verdana,'PingFang SC',sans-serif";
+const pts = (p) => p.map((q) => q.map((v) => +v.toFixed(2)).join(',')).join(' ');
+function hatch(defs, gap, op, w = 1) {
+  const id = 'hx' + (++PID);
+  defs.append(svg('pattern', { id, patternUnits: 'userSpaceOnUse', width: gap, height: gap, patternTransform: 'rotate(45)' },
+    svg('line', { x1: 0, y1: 0, x2: 0, y2: gap, style: `stroke:var(--ink);stroke-width:${w};stroke-opacity:${op}` })));
+  return `url(#${id})`;
+}
+/* 出血线：把多边形每条边在顶点处再延长 L，像草图里画过头的线 */
+function bleed(g, poly, L, sw = 1) {
+  if (L <= 0.3) return;
+  poly.forEach((p, i) => {
+    const a = poly[(i - 1 + poly.length) % poly.length], b = poly[(i + 1) % poly.length];
+    [a, b].forEach((q) => {
+      const dx = p[0] - q[0], dy = p[1] - q[1], d = Math.hypot(dx, dy) || 1;
+      g.append(svg('line', { x1: p[0], y1: p[1], x2: p[0] + dx / d * L, y2: p[1] + dy / d * L, style: `stroke:var(--ink);stroke-width:${sw}` }));
+    });
+  });
+}
+const winPoly = (x, y, w, h, slant, c = 24) => slant ? [[x, y], [x + w, y], [x + w, y + h - c], [x + w - c, y + h], [x, y + h]] : [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+const shift = (poly, d) => poly.map(([a, b]) => [a + d, b + d]);
+
+/* 图标字形：形状各不相同，用于说明「统一外框」 */
+function glyph(name, cx, cy, r) {
+  const st = 'fill:none;stroke:var(--ink);stroke-width:2;stroke-linecap:round;stroke-linejoin:round';
+  const g = svg('g', { style: st });
+  if (name === 'pen') { g.append(svg('polygon', { points: pts([[cx - r * .75, cy + r * .75], [cx - r * .55, cy + r * .2], [cx + r * .45, cy - r * .8], [cx + r * .8, cy - r * .45], [cx - r * .2, cy + r * .55]]) })); }
+  else if (name === 'note') { g.append(svg('ellipse', { cx: cx - r * .3, cy: cy + r * .5, rx: r * .3, ry: r * .22, style: 'fill:var(--ink)' }), svg('path', { d: `M${cx} ${cy + r * .5}V${cy - r * .8}q${r * .5} ${r * .2} ${r * .6} ${r * .7}` })); }
+  else if (name === 'globe') { g.append(svg('circle', { cx, cy, r: r * .8 }), svg('ellipse', { cx, cy, rx: r * .35, ry: r * .8 }), svg('line', { x1: cx - r * .8, y1: cy, x2: cx + r * .8, y2: cy })); }
+  else if (name === 'calc') { g.append(svg('rect', { x: cx - r * .55, y: cy - r * .8, width: r * 1.1, height: r * 1.6, rx: 2 }), svg('rect', { x: cx - r * .38, y: cy - r * .62, width: r * .76, height: r * .35 })); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) g.append(svg('circle', { cx: cx - r * .25 + j * r * .5, cy: cy + r * .05 + i * r * .27, r: 1.2, style: 'fill:var(--ink);stroke:none' })); }
+  else if (name === 'doc') { g.append(svg('path', { d: `M${cx - r * .5} ${cy - r * .8}h${r * .65}l${r * .35} ${r * .35}v${r * 1.25}h-${r}z M${cx + r * .15} ${cy - r * .8}v${r * .35}h${r * .35}` })); }
+  else if (name === 'star') { const p = []; for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .38 : r * .85; p.push([cx + rr * Math.cos(a), cy + rr * Math.sin(a)]); } g.append(svg('polygon', { points: pts(p) })); }
+  return g;
+}
+/* DrawingBoard 应用图标：内置斜线阴影的正方形 */
+function appIcon(defs, x, y, s, name, o) {
+  const g = svg('g');
+  g.append(svg('rect', { x, y, width: s, height: s, style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1.4' }));
+  if (o.hatch > 0) { const k = s * .18; g.append(svg('polygon', { points: pts([[x + s - k, y + k * .6], [x + s, y], [x + s, y + s], [x, y + s], [x + k * .6, y + s - k], [x + s - k, y + s - k]]), style: `fill:${hatch(defs, Math.max(3, o.gap * .7), o.hatch)}` })); }
+  g.append(glyph(name, x + s * .45, y + s * .45, s * .3));
+  bleed(g, [[x, y], [x + s, y], [x + s, y + s], [x, y + s]], o.bleed * .45, .9);
+  return g;
+}
+function folderIcon(x, y, s, o) {
+  const g = svg('g');
+  const p = [[x, y + s * .18], [x + s * .38, y + s * .18], [x + s * .46, y], [x + s, y], [x + s, y + s * .8], [x, y + s * .8]];
+  if (o.block) g.append(svg('polygon', { points: pts(shift(p, 4)), style: 'fill:var(--ink);fill-opacity:.18' }));
+  g.append(svg('polygon', { points: pts(p), style: 'fill:var(--y-soft);stroke:var(--ink);stroke-width:1.4' }));
+  bleed(g, p, o.bleed * .55, .9);
+  return g;
+}
+
+/* DrawingBoard 风格的一整屏：参数决定每种手法开多少 */
+function dbScene(o, label) {
+  const W = 640, H = o.toolbar ? 420 : 372;
+  const S = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'scene', role: 'img', 'aria-label': label });
+  const defs = svg('defs'); S.append(defs);
+  S.append(svg('rect', { x: 0, y: 0, width: W, height: H, style: 'fill:var(--surface-2)' }));
+  const font = o.serif ? SERIF : SANS;
+  if (o.paper) {
+    const pg = svg('g', { style: 'stroke:var(--grid);stroke-width:.8' });
+    for (let x = 0; x <= W; x += 20) pg.append(svg('line', { x1: x, y1: 24, x2: x, y2: H }));
+    for (let y = 24; y <= H; y += 20) pg.append(svg('line', { x1: 0, y1: y, x2: W, y2: y }));
+    S.append(pg);
+    const sk = svg('g', { style: 'fill:none;stroke:var(--muted);stroke-width:1;stroke-opacity:.55' });
+    sk.append(svg('line', { x1: 380, y1: 330, x2: 640, y2: 250 }), svg('line', { x1: 430, y1: 230, x2: 640, y2: 340 }),
+      svg('path', { d: 'M470 320 q10 -40 60 -48 l50 -6 q40 4 52 34 l4 20 z' }),
+      svg('path', { d: 'M474 318 q14 -36 58 -44' }),
+      svg('ellipse', { cx: 505, cy: 322, rx: 15, ry: 15 }), svg('ellipse', { cx: 600, cy: 322, rx: 15, ry: 15 }),
+      svg('ellipse', { cx: 552, cy: 300, rx: 70, ry: 24, style: 'stroke-dasharray:4 4' }),
+      svg('line', { x1: 552, y1: 262, x2: 552, y2: 345, style: 'stroke-dasharray:2 3' }));
+    S.append(sk);
+  }
+  /* 菜单栏 */
+  S.append(svg('rect', { x: 0, y: 0, width: W, height: 24, style: 'fill:var(--surface)' }), svg('line', { x1: 0, y1: 24, x2: W, y2: 24, style: 'stroke:var(--ink);stroke-width:1.2' }));
+  ['◆', 'File', 'Edit', 'View', 'Special'].forEach((t, i) => S.append(svg('text', { x: 14 + i * 58, y: 17, style: `${font};font-size:14px;fill:var(--text)` }, t)));
+  if (o.underline) S.append(svg('line', { x1: 70, y1: 21, x2: 96, y2: 21, style: 'stroke:var(--o);stroke-width:2.5;stroke-linecap:round' }));
+  const win = (x, y, w, h, title) => {
+    const g = svg('g'); const poly = winPoly(x, y, w, h, o.slant);
+    if (o.hatch > 0) g.append(svg('polygon', { points: pts(shift(poly, 16)), style: `fill:${hatch(defs, o.gap, o.hatch)}` }));
+    if (o.block) g.append(svg('polygon', { points: pts(shift(poly, 7)), style: 'fill:var(--ink);fill-opacity:.2' }));
+    g.append(svg('polygon', { points: pts(poly), style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1.6' }));
+    const tb = 26;
+    const tbp = o.slant ? [[x, y], [x + w * .6, y], [x + w * .6 + 16, y + tb], [x, y + tb]] : [[x, y], [x + w, y], [x + w, y + tb], [x, y + tb]];
+    g.append(svg('polygon', { points: pts(tbp), style: `fill:${o.hatch > 0 ? hatch(defs, Math.max(3, o.gap * .7), o.hatch * .5) : 'var(--surface-2)'};stroke:var(--ink);stroke-width:1.2` }));
+    g.append(svg('line', { x1: x, y1: y + tb, x2: x + w, y2: y + tb, style: 'stroke:var(--ink);stroke-width:1.2' }));
+    g.append(svg('rect', { x: x + 8, y: y + 7, width: 12, height: 12, style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1.2' }));
+    g.append(svg('text', { x: x + 28, y: y + 18, style: `${font};font-size:14px;fill:var(--text);font-weight:600` }, title));
+    bleed(g, poly, o.bleed, 1.1);
+    S.append(g);
+    return tb;
+  };
+  /* 主窗口 + 标签页 + 图标 */
+  const X = 56, Y = 50, Wd = 380, Hd = 270;
+  const tb = win(X, Y, Wd, Hd, 'Control Panel');
+  const ty = Y + tb + 12, tw = 96, th = 24;
+  ['General', 'Display', 'Sound'].forEach((t, i) => {
+    const tx = X + 14 + i * (tw - 4);
+    const p = o.slant ? [[tx, ty + th], [tx, ty], [tx + tw - 16, ty], [tx + tw, ty + th]] : [[tx, ty + th], [tx, ty], [tx + tw, ty], [tx + tw, ty + th]];
+    const g = svg('g');
+    g.append(svg('polygon', { points: pts(p), style: `fill:${i === 0 ? 'var(--surface)' : 'var(--surface-2)'};stroke:var(--ink);stroke-width:1.2` }));
+    g.append(svg('text', { x: tx + 10, y: ty + 17, style: `${font};font-size:13px;fill:${i === 0 ? 'var(--text)' : 'var(--muted)'}` }, t));
+    if (i === 0) {
+      bleed(g, p, o.tabBleed ?? o.bleed * .7, .9);
+      if (o.emph > 0) { const c = p[2]; g.append(svg('polyline', { points: pts([[c[0] - 12, c[1]], c, [c[0] + 16 * .45, c[1] + th * .45]]), style: `fill:none;stroke:var(--ink);stroke-width:${o.emph};stroke-linecap:round;stroke-linejoin:round` })); }
+    }
+    S.append(g);
+  });
+  const panel = winPoly(X + 10, ty + th, Wd - 20, Hd - (ty + th - Y) - 12, o.slant, 16);
+  S.append(svg('polygon', { points: pts(panel), style: 'fill:none;stroke:var(--ink);stroke-width:1' }));
+  const iy = ty + th + 22;
+  S.append(folderIcon(X + 30, iy, 52, o), svg('text', { x: X + 56, y: iy + 62, 'text-anchor': 'middle', style: `${font};font-size:12px;fill:var(--text)` }, 'Projects'));
+  [['pen', 'Sketch'], ['calc', 'Calc'], ['globe', 'Net']].forEach(([n, t], i) => {
+    const ix = X + 118 + i * 82;
+    S.append(appIcon(defs, ix, iy, 46, n, o), svg('text', { x: ix + 23, y: iy + 62, 'text-anchor': 'middle', style: `${font};font-size:12px;fill:var(--text)` }, t));
+  });
+  [['doc', 'Read Me'], ['note', 'Tunes']].forEach(([n, t], i) => {
+    const ix = X + 36 + i * 82, yy = iy + 80;
+    S.append(appIcon(defs, ix, yy, 40, n, o), svg('text', { x: ix + 20, y: yy + 54, 'text-anchor': 'middle', style: `${font};font-size:12px;fill:var(--text)` }, t));
+  });
+  /* 小工具面板 */
+  win(462, 64, 140, 150, 'Tools');
+  ['star', 'pen', 'doc', 'globe'].forEach((n, i) => S.append(appIcon(defs, 480 + (i % 2) * 56, 104 + Math.floor(i / 2) * 52, 40, n, o)));
+  /* 底部工具栏 */
+  if (o.toolbar) {
+    const y0 = 372;
+    if (o.hatch > 0) S.append(svg('rect', { x: 0, y: y0 - 6, width: W, height: 6, style: `fill:${hatch(defs, o.gap, o.hatch * .8)}` }));
+    S.append(svg('rect', { x: 0, y: y0, width: W, height: 48, style: 'fill:var(--surface)' }), svg('line', { x1: 0, y1: y0, x2: W, y2: y0, style: 'stroke:var(--ink);stroke-width:1.4' }));
+    ['doc', 'pen', 'calc', 'globe', 'note', 'star'].forEach((n, i) => S.append(appIcon(defs, 18 + i * 46, y0 + 8, 32, n, o)));
+    S.append(svg('text', { x: W - 14, y: y0 + 29, 'text-anchor': 'end', style: `${font};font-size:13px;fill:var(--muted)` }, 'Toolbar'));
+  }
+  return S;
+}
+
+/* ---------- 00 时间线 ---------- */
+reg('timeline', (node) => {
+  const E = [
+    [1984, 0, 'Macintosh 128K 发售', '1984 年 1 月 24 日，麦金塔家族第一款产品发售。原文结尾把它和四十年后的 Vision Pro 并置。'],
+    [1994, 0, '五人小组带着提案来到库比蒂诺', '「大约是 1994 年」，山中俊治联合猪股裕一、户田勉、宫崎光弘、须永刚司，向 Macintosh 团队展示 DrawingBoard。山中俊治 2009 年的博文写的是「大约 15 年前」。'],
+    [1995, 0, '在库比蒂诺待了将近一年', '演示成功后方案直接进入研发，山中俊治以项目总监身份和开发团队一起把每个部件做出来。日文维基百科把 DrawingBoard 记为他 1995 年的作品。'],
+    [1996, 1, 'Copland 被冻结', '1996 年 8 月，Copland 开发被冻结，苹果开始对外寻找新系统，随后收购 NeXT。（本页补充，见参考文献 [5]）'],
+    [1997, 0, '乔布斯在台上公开这一设计', '原文写「1997 年 WWDC」；山中俊治博文原话是「1997 年的 MacWorld EXPO」。之后几经波折，方案最终没有被正式采用。'],
+    [1998, 1, 'Mac OS 8.5 发布：只剩 Platinum', 'Mac OS 8.5 是第一个支持主题的版本，但 Gizmo、Hi-Tech 等主题在发布前被拿掉，正式版只附带 Platinum。（本页补充，见参考文献 [5]）'],
+    [2002, 0, 'LiteStep 主题 Mo85', '原文说「22 年前」，有 LiteStep 爱好者照着概念图自制了主题 Mo85；也有 KDE 爱好者做过类似主题。'],
+    [2009, 0, '山中俊治博文「幻のMac OS」', '2009 年 6 月 14 日的博文首次由当事人讲述这段往事，后收入『デザインの骨格』（中文版《设计的风骨》）。'],
+    [2017, 0, 'Pierre Dandumont 找回测试版主题', '这位法国博主在 Mac OS 8.5 测试版镜像里找到了可运行的主题，并写成博文与视频。'],
+    [2022, 0, '作者在书店翻到《设计的风骨》', '2022 年夏天的偶遇，让作者补完了 vol.2 缺失的细节。'],
+    [2024, 0, 'Mac 40 周年，Vision Pro 发售', '原文发表于 2024 年 2 月 7 日，此时 Vision Pro 刚刚上市，正值 Mac 发售 40 周年。'],
+  ];
+  const y0 = 1982, y1 = 2026, X = (y) => 20 + (y - y0) / (y1 - y0) * 600;
+  const S = svg('svg', { viewBox: '0 0 640 74', role: 'img', 'aria-label': '1984 到 2024 年的时间轴' });
+  S.append(svg('line', { x1: 20, y1: 36, x2: 620, y2: 36, style: 'stroke:var(--line);stroke-width:3;stroke-linecap:round' }));
+  for (let y = 1985; y <= 2025; y += 5) S.append(svg('text', { x: X(y), y: 66, 'text-anchor': 'middle', class: 'lbl' }, y));
+  const dots = E.map(([y, add], i) => {
+    const c = svg('circle', { cx: X(y), cy: 36, r: 6, style: `fill:var(--surface);stroke:${add ? 'var(--o)' : 'var(--p)'};stroke-width:2;${add ? 'stroke-dasharray:2 2' : ''}` });
+    const g = svg('g', { class: 'hit', tabindex: '-1' }, c);
+    g.addEventListener('click', () => pick(i));
+    S.append(g); return c;
+  });
+  const chips = E.map(([y, add], i) => el('button', { type: 'button', class: add ? 'add' : '', onclick: () => pick(i) }, String(y)));
+  const card = el('div', { class: 'card', 'aria-live': 'polite' });
+  function pick(i) {
+    const [y, add, t, d] = E[i];
+    chips.forEach((b, j) => b.classList.toggle('on', j === i));
+    dots.forEach((c, j) => { c.setAttribute('r', j === i ? 9 : 6); c.style.fill = j === i ? (E[j][1] ? 'var(--o)' : 'var(--p)') : 'var(--surface)'; });
+    card.innerHTML = '';
+    card.append(el('h3', {}, `${y} · ${t}`, add ? el('span', { class: 'badge-add' }, '本页补充') : null), el('p', {}, d));
+  }
+  node.append(el('div', { class: 'chips' }, chips), S, card);
+  pick(1);
+});
+
+/* ---------- 01 视觉语法拆解 ---------- */
+reg('grammar', (node) => {
+  const F = [
+    ['hatch', '45° 排线阴影', '窗口和图标的阴影不是灰色渐变，而是草图里常见的 45 度斜排线。关掉它，窗口立刻失去「画出来」的感觉。'],
+    ['block', '硬朗色块阴影', '紧贴窗口边缘的一块实色阴影，边界锐利，没有模糊。和排线叠在一起，形成两种不同类型的阴影。'],
+    ['bleed', '出血线边角', '每条边在角上都「画过了头」，像草图里没擦掉的构造线，也像印刷品的出血线。文件夹图标也用这种勾边。'],
+    ['slant', '倾斜边缘', '标题栏、标签页和窗口一角都被切成斜边，增加几何感，让方框不再只是方框。'],
+    ['serif', '手写感衬线字体', '提案稿用极具手写质感的衬线字体搭配整个界面（这里用斜体衬线示意）。关掉后换成 Geneva 一类无衬线字体。'],
+    ['toolbar', '底部工具栏', '方案加入了一条底部工具栏，原文认为这能提高当时 Mac OS 8 桌面的直观性。'],
+    ['paper', '工业画稿背景', '桌面背景直接用工业设计的画稿：网格、构造线、一辆车的线稿，提升视觉的形式感。'],
+  ];
+  const on = Object.fromEntries(F.map(([k]) => [k, true]));
+  const wrap = el('div');
+  const status = el('div', { class: 'status' });
+  const btns = F.map(([k, t, d]) => el('button', { type: 'button', 'aria-pressed': 'true', onclick: () => { on[k] = !on[k]; render(); status.innerHTML = `<b>${t}</b> ${on[k] ? '已打开' : '已关闭'}：${d}`; } }, t));
+  const all = (v) => { F.forEach(([k]) => { on[k] = v; }); render(); status.innerHTML = v ? '全部打开：这就是 DrawingBoard 提案的样子。' : '全部关闭：剩下的是一个普通的 90 年代窗口。DrawingBoard 的个性几乎全部来自这七种手法。'; };
+  function render() {
+    btns.forEach((b, i) => b.setAttribute('aria-pressed', on[F[i][0]]));
+    wrap.replaceChildren(dbScene({ hatch: on.hatch ? 1 : 0, gap: 5, block: on.block, bleed: on.bleed ? 14 : 0, slant: on.slant, serif: on.serif, toolbar: on.toolbar, paper: on.paper, emph: 0, underline: false }, 'DrawingBoard 风格的桌面示意，按开关显示不同手法'));
+    const n = F.filter(([k]) => on[k]).length;
+    status.dataset.n = n;
+  }
+  render();
+  status.innerHTML = '七种手法全部打开。点任一按钮关掉它，看它对整体风格贡献了什么。';
+  node.append(el('div', { class: 'tog' }, btns, el('button', { type: 'button', onclick: () => all(true) }, '全开'), el('button', { type: 'button', onclick: () => all(false) }, '全关')), wrap, status);
+});
+
+/* ---------- 01 图标统一外框 ---------- */
+reg('icons', (node) => {
+  const names = [['pen', '画笔'], ['note', '音乐'], ['globe', '网络'], ['calc', '计算器'], ['doc', '文稿'], ['star', '收藏']];
+  let unify = false;
+  const wrap = el('div');
+  const status = el('div', { class: 'status' });
+  function render() {
+    const S = svg('svg', { viewBox: '0 0 640 150', class: 'scene', role: 'img', 'aria-label': '六个图标，可切换是否统一外框' });
+    const defs = svg('defs'); S.append(defs, svg('rect', { x: 0, y: 0, width: 640, height: 150, style: 'fill:var(--surface-2)' }));
+    names.forEach(([n, t], i) => {
+      const cx = 60 + i * 104, cy = 62;
+      if (unify) S.append(appIcon(defs, cx - 32, cy - 32, 64, n, { hatch: 1, gap: 5, bleed: 12 }));
+      else S.append(glyph(n, cx, cy, 30));
+      S.append(svg('text', { x: cx, y: 128, 'text-anchor': 'middle', class: 'lbl' }, t));
+    });
+    wrap.replaceChildren(S);
+    const kinds = unify ? 1 : new Set(['斜条', '不规则', '圆', '竖长方', '竖长方', '星形']).size;
+    status.innerHTML = unify
+      ? `外轮廓种类：<b>${kinds}</b>。每个图标都落在同样大小的正方形里，右下角的斜线阴影让它们读起来像同一套「零件」，无论里面画的是什么。`
+      : `外轮廓种类：<b>${kinds}</b>。斜条、圆、长方、星形……各自的剪影大小不一，排在一起显得零散。`;
+  }
+  const seg = segBar(['各自的形状', '统一正方形外框'], (i) => { unify = i === 1; render(); });
+  render();
+  node.append(el('div', { class: 'ctrl' }, seg), wrap, status);
+});
+
+/* ---------- 02 设计稿 → 实装 ---------- */
+reg('morph', (node) => {
+  const wrap = el('div');
+  const input = el('input', { type: 'range', min: '0', max: '100', value: '0', step: '1', 'aria-label': '从设计稿到实装版' });
+  const out = el('output', {}, '设计稿');
+  const status = el('div', { class: 'status' });
+  const lerp = (a, b, t) => a + (b - a) * t;
+  function render() {
+    const t = +input.value / 100;
+    const o = { hatch: lerp(1, .42, t), gap: lerp(5, 8, t), block: true, bleed: lerp(14, 3, t), tabBleed: lerp(10, 0, t), slant: true, serif: t < .5, toolbar: false, paper: true, emph: lerp(0, 4, t), underline: t >= .5 };
+    wrap.replaceChildren(dbScene(o, '从 DrawingBoard 设计稿过渡到实装版的示意'));
+    out.textContent = t < .05 ? '设计稿' : t > .95 ? '实装版' : Math.round(t * 100) + '%';
+    status.innerHTML = `排线浓度 <b>${Math.round(o.hatch * 100)}%</b>、间距 <b>${o.gap.toFixed(1)} px</b>；出血线 <b>${o.bleed.toFixed(1)} px</b>（标签页 ${o.tabBleed.toFixed(1)} px）；折角加重笔触 <b>${o.emph.toFixed(1)} px</b>；字体：<b>${o.serif ? '手写感衬线' : 'Geneva / Gadget 式无衬线'}</b>。`;
+  }
+  input.addEventListener('input', render);
+  render();
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '设计稿', input, '实装', out),
+    el('button', { type: 'button', class: 'btn', onclick: () => { input.value = 0; render(); } }, '看设计稿'),
+    el('button', { type: 'button', class: 'btn', onclick: () => { input.value = 100; render(); } }, '看实装版')), wrap, status);
+});
+
+/* ---------- 02 菜单高亮 ---------- */
+reg('menu', (node) => {
+  const M = [['File', ['New Folder', 'Open', 'Print', 'Close Window']], ['Edit', ['Undo', 'Cut', 'Copy', 'Paste']], ['View', ['as Icons', 'as Buttons', 'as List', 'Clean Up']], ['Special', ['Empty Trash', 'Eject', 'Restart', 'Shut Down']]];
+  let style = 1, mi = 0, ei = 1;
+  const wrap = el('div', { tabindex: '0', 'aria-label': '菜单示意，左右键换菜单，上下键换条目', style: 'outline-offset:3px;border-radius:10px' });
+  const status = el('div', { class: 'status' });
+  function render() {
+    const db = style === 1, font = db ? SANS : SANS;
+    const S = svg('svg', { viewBox: '0 0 640 200', class: 'scene', role: 'img', 'aria-label': '菜单栏与下拉菜单' });
+    const defs = svg('defs');
+    S.append(defs, svg('rect', { x: 0, y: 0, width: 640, height: 200, style: 'fill:var(--surface-2)' }));
+    S.append(svg('rect', { x: 0, y: 0, width: 640, height: 26, style: 'fill:var(--surface)' }), svg('line', { x1: 0, y1: 26, x2: 640, y2: 26, style: 'stroke:var(--ink);stroke-width:1.2' }));
+    M.forEach(([t], i) => {
+      const x = 20 + i * 90;
+      const g = svg('g', { class: 'hit' });
+      if (i === mi && !db) g.append(svg('rect', { x: x - 8, y: 1, width: 74, height: 24, style: 'fill:var(--ink)' }));
+      g.append(svg('rect', { x: x - 8, y: 1, width: 74, height: 24, style: 'fill:transparent' }));
+      g.append(svg('text', { x, y: 18, style: `${font};font-size:14px;fill:${i === mi && !db ? 'var(--surface)' : 'var(--text)'}` }, t));
+      if (i === mi && db) g.append(svg('line', { x1: x - 1, y1: 23, x2: x + t.length * 8.5, y2: 22, style: 'stroke:var(--o);stroke-width:3;stroke-linecap:round' }));
+      g.addEventListener('click', () => { mi = i; ei = 0; render(); });
+      S.append(g);
+    });
+    const x0 = 12 + mi * 90, y0 = 26, w = 160, rh = 34;
+    const box = [[x0, y0], [x0 + w, y0], [x0 + w, y0 + rh * 4 + 8], [x0, y0 + rh * 4 + 8]];
+    if (db) S.append(svg('polygon', { points: pts(shift(box, 8)), style: `fill:${hatch(defs, 5, .6)}` }));
+    else S.append(svg('polygon', { points: pts(shift(box, 3)), style: 'fill:var(--ink);fill-opacity:.35' }));
+    S.append(svg('polygon', { points: pts(box), style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1.2' }));
+    if (db) { const g = svg('g'); bleed(g, box, 8, .9); S.append(g); }
+    M[mi][1].forEach((t, j) => {
+      const y = y0 + 4 + j * rh, sel = j === ei;
+      const g = svg('g', { class: 'hit' });
+      if (sel && !db) g.append(svg('rect', { x: x0 + 1, y, width: w - 2, height: rh, style: 'fill:var(--ink)' }));
+      g.append(svg('rect', { x: x0 + 1, y, width: w - 2, height: rh, style: 'fill:transparent' }));
+      g.append(svg('text', { x: x0 + 16, y: y + 22, style: `${font};font-size:14px;fill:${sel && !db ? 'var(--surface)' : 'var(--text)'}` }, t));
+      if (sel && db) g.append(svg('path', { d: `M${x0 + 14} ${y + 28} q${t.length * 4} -3 ${t.length * 8 + 4} 0`, style: 'fill:none;stroke:var(--o);stroke-width:3;stroke-linecap:round' }));
+      g.addEventListener('click', () => { ei = j; render(); });
+      S.append(g);
+    });
+    S.append(svg('text', { x: 620, y: 190, 'text-anchor': 'end', class: 'lbl' }, db ? 'DrawingBoard：强调色下划线' : 'Platinum：整行反白'));
+    wrap.replaceChildren(S);
+    const item = `${M[mi][0]} › ${M[mi][1][ei]}`;
+    status.innerHTML = db
+      ? `选中 <b>${item}</b>：只在文字下画一道强调色笔触，整块菜单的明暗不变，像在纸上用彩笔划出重点。`
+      : `选中 <b>${item}</b>：整行变成深底浅字。这是 Mac 一贯的做法，醒目，但每移动一次都有一大块颜色跳动。`;
+  }
+  wrap.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowLeft') { mi = (mi + (k === 'ArrowRight' ? 1 : 3)) % 4; ei = 0; }
+    else if (k === 'ArrowDown' || k === 'ArrowUp') { ei = (ei + (k === 'ArrowDown' ? 1 : 3)) % 4; }
+    else return;
+    e.preventDefault(); render();
+  });
+  render();
+  node.append(el('div', { class: 'ctrl' }, segBar(['Platinum：反白', 'DrawingBoard：下划线'], (i) => { style = i; render(); }, 1)), wrap, status);
+});
+
+/* ---------- 03 四套主题 ---------- */
+reg('themes', (node) => {
+  const T = [
+    ['Platinum', '苹果自 Mac OS 8 起的默认外观：浅灰、细致的立体倒角、标题栏细横纹。8.5 正式版最后只留下了它。'],
+    ['Hi-Tech', '系列第二篇称之为「更具未来派风格的主题 Z」：深色底、切角、发光的细线，像仪表盘。出现在 8.5 测试版里。'],
+    ['Gizmo', '系列第二篇称之为「面向儿童的主题 P」：大圆角、粗描边、明快的色块。同样出现在 8.5 测试版里。'],
+    ['DrawingBoard', '山中俊治的手绘板：排线阴影、出血线、斜切边、衬线字。原文说它也在 8.2D8 测试版里被找到；Dandumont 原文的说法不同，见下方补充。'],
+  ];
+  let cur = 3;
+  const wrap = el('div');
+  const status = el('div', { class: 'status' });
+  function render() {
+    const th = T[cur][0];
+    const S = svg('svg', { viewBox: '0 0 640 330', class: 'scene', role: 'img', 'aria-label': th + ' 主题下的对话框示意' });
+    const defs = svg('defs'); S.append(defs);
+    const C = {
+      Platinum: { bg: 'var(--surface-2)', win: 'var(--surface)', stroke: 'var(--ink)', sw: 1, text: 'var(--text)', font: SANS, acc: 'var(--p)' },
+      'Hi-Tech': { bg: 'var(--hk-2)', win: 'var(--hk)', stroke: 'var(--t)', sw: 1.5, text: 'var(--hk-text)', font: "font-family:var(--mono)", acc: 'var(--t)' },
+      Gizmo: { bg: 'var(--y-soft)', win: 'var(--surface)', stroke: 'var(--p)', sw: 4, text: 'var(--text)', font: SANS + ';font-weight:700', acc: 'var(--o)' },
+      DrawingBoard: { bg: 'var(--surface-2)', win: 'var(--surface)', stroke: 'var(--ink)', sw: 1.6, text: 'var(--text)', font: SERIF, acc: 'var(--o)' },
+    }[th];
+    S.append(svg('rect', { x: 0, y: 0, width: 640, height: 330, style: `fill:${C.bg}` }));
+    if (th === 'DrawingBoard') { const g = svg('g', { style: 'stroke:var(--grid);stroke-width:.8' }); for (let x = 0; x <= 640; x += 20) g.append(svg('line', { x1: x, y1: 0, x2: x, y2: 330 })); for (let y = 0; y <= 330; y += 20) g.append(svg('line', { x1: 0, y1: y, x2: 640, y2: y })); S.append(g); }
+    if (th === 'Hi-Tech') { const g = svg('g', { style: 'stroke:var(--t);stroke-opacity:.18' }); for (let x = 0; x <= 640; x += 32) g.append(svg('line', { x1: x, y1: 0, x2: x, y2: 330 })); S.append(g); }
+    const X = 100, Y = 36, W = 440, H = 262;
+    let poly;
+    if (th === 'Hi-Tech') poly = [[X + 16, Y], [X + W, Y], [X + W, Y + H - 16], [X + W - 16, Y + H], [X, Y + H], [X, Y + 16]];
+    else if (th === 'DrawingBoard') poly = winPoly(X, Y, W, H, true);
+    else poly = winPoly(X, Y, W, H, false);
+    if (th === 'Platinum') S.append(svg('polygon', { points: pts(shift(poly, 3)), style: 'fill:var(--ink);fill-opacity:.25' }));
+    if (th === 'DrawingBoard') { S.append(svg('polygon', { points: pts(shift(poly, 14)), style: `fill:${hatch(defs, 5, .9)}` }), svg('polygon', { points: pts(shift(poly, 6)), style: 'fill:var(--ink);fill-opacity:.2' })); }
+    if (th === 'Gizmo') { S.append(svg('rect', { x: X + 6, y: Y + 8, width: W, height: H, rx: 24, style: 'fill:var(--o);fill-opacity:.35' }), svg('rect', { x: X, y: Y, width: W, height: H, rx: 24, style: `fill:${C.win};stroke:${C.stroke};stroke-width:${C.sw}` })); }
+    else S.append(svg('polygon', { points: pts(poly), style: `fill:${C.win};stroke:${C.stroke};stroke-width:${C.sw}` }));
+    /* 标题栏 */
+    const tb = 30;
+    if (th === 'Platinum') { const g = svg('g', { style: 'stroke:var(--line);stroke-width:1' }); for (let y = Y + 6; y < Y + tb - 4; y += 3) g.append(svg('line', { x1: X + 30, y1: y, x2: X + W - 8, y2: y })); S.append(g, svg('rect', { x: X + 10, y: Y + 9, width: 12, height: 12, style: 'fill:var(--surface);stroke:var(--ink)' }), svg('rect', { x: X + W / 2 - 60, y: Y + 6, width: 120, height: 18, style: `fill:${C.win}` })); }
+    if (th === 'Hi-Tech') S.append(svg('polygon', { points: pts([[X + 16, Y], [X + W, Y], [X + W, Y + tb], [X, Y + tb], [X, Y + 16]]), style: 'fill:var(--hk-2);stroke:var(--t);stroke-width:1.5' }), svg('rect', { x: X + 14, y: Y + 10, width: 10, height: 10, style: 'fill:none;stroke:var(--t)' }));
+    if (th === 'Gizmo') { S.append(svg('path', { d: `M${X} ${Y + tb + 6}V${Y + 24}a24 24 0 0 1 24 -24H${X + W - 24}a24 24 0 0 1 24 24V${Y + tb + 6}z`, style: `fill:var(--p-soft);stroke:${C.stroke};stroke-width:${C.sw}` })); ['--r', '--y', '--t'].forEach((v, i) => S.append(svg('circle', { cx: X + 24 + i * 22, cy: Y + 18, r: 7, style: `fill:var(${v})` }))); }
+    if (th === 'DrawingBoard') { S.append(svg('polygon', { points: pts([[X, Y], [X + W * .6, Y], [X + W * .6 + 16, Y + tb], [X, Y + tb]]), style: `fill:${hatch(defs, 4, .45)};stroke:var(--ink);stroke-width:1.2` }), svg('line', { x1: X, y1: Y + tb, x2: X + W, y2: Y + tb, style: 'stroke:var(--ink);stroke-width:1.2' }), svg('rect', { x: X + 10, y: Y + 9, width: 12, height: 12, style: 'fill:var(--surface);stroke:var(--ink)' })); const g = svg('g'); bleed(g, poly, 14, 1.1); S.append(g); }
+    const tx = th === 'Platinum' ? X + W / 2 : th === 'Gizmo' ? X + W / 2 + 20 : X + 34;
+    S.append(svg('text', { x: tx, y: Y + 20, 'text-anchor': th === 'Platinum' || th === 'Gizmo' ? 'middle' : 'start', style: `${C.font};font-size:14px;fill:${C.text};font-weight:600` }, 'Appearance'));
+    /* 内容：复选框、滑块、单选、两个按钮、滚动条 */
+    const cx = X + 30, cy = Y + tb + 30;
+    const label = (x, y, t) => S.append(svg('text', { x, y, style: `${C.font};font-size:14px;fill:${C.text}` }, t));
+    // 复选框
+    if (th === 'Gizmo') S.append(svg('circle', { cx: cx + 9, cy: cy + 9, r: 11, style: 'fill:var(--t-soft);stroke:var(--t);stroke-width:3' }), svg('circle', { cx: cx + 9, cy: cy + 9, r: 5, style: 'fill:var(--t)' }));
+    else if (th === 'Hi-Tech') S.append(svg('polygon', { points: pts([[cx + 4, cy], [cx + 18, cy], [cx + 18, cy + 14], [cx + 14, cy + 18], [cx, cy + 18], [cx, cy + 4]]), style: 'fill:none;stroke:var(--t);stroke-width:1.5' }), svg('rect', { x: cx + 5, y: cy + 5, width: 8, height: 8, style: 'fill:var(--t)' }));
+    else { if (th === 'DrawingBoard') S.append(svg('rect', { x: cx + 4, y: cy + 4, width: 18, height: 18, style: `fill:${hatch(defs, 4, .8)}` })); S.append(svg('rect', { x: cx, y: cy, width: 18, height: 18, style: `fill:var(--surface);stroke:var(--ink);stroke-width:${th === 'DrawingBoard' ? 1.4 : 1}` }), svg('path', { d: `M${cx + 4} ${cy + 9}l4 5l7 -10`, style: 'fill:none;stroke:var(--ink);stroke-width:2' })); }
+    label(cx + 32, cy + 14, 'Use system-wide platinum appearance');
+    // 滑块
+    const sy = cy + 56;
+    label(cx, sy - 14, 'Scroll speed');
+    if (th === 'Gizmo') S.append(svg('rect', { x: cx, y: sy, width: 260, height: 12, rx: 6, style: 'fill:var(--y-soft);stroke:var(--y);stroke-width:2' }), svg('circle', { cx: cx + 170, cy: sy + 6, r: 13, style: 'fill:var(--o);stroke:var(--surface);stroke-width:3' }));
+    else if (th === 'Hi-Tech') S.append(svg('line', { x1: cx, y1: sy + 6, x2: cx + 260, y2: sy + 6, style: 'stroke:var(--t);stroke-opacity:.45;stroke-width:2' }), svg('line', { x1: cx, y1: sy + 6, x2: cx + 170, y2: sy + 6, style: 'stroke:var(--t);stroke-width:3' }), svg('polygon', { points: pts([[cx + 170, sy - 6], [cx + 178, sy + 6], [cx + 170, sy + 18], [cx + 162, sy + 6]]), style: 'fill:var(--hk);stroke:var(--t);stroke-width:1.5' }));
+    else { S.append(svg('rect', { x: cx, y: sy + 3, width: 260, height: 6, style: 'fill:var(--surface-2);stroke:var(--ink);stroke-width:1' })); const tp = [[cx + 162, sy - 6], [cx + 178, sy - 6], [cx + 178, sy + 12], [cx + 170, sy + 20], [cx + 162, sy + 12]]; if (th === 'DrawingBoard') S.append(svg('polygon', { points: pts(shift(tp, 4)), style: `fill:${hatch(defs, 3.5, .8)}` })); S.append(svg('polygon', { points: pts(tp), style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1.2' })); }
+    // 按钮
+    const by = Y + H - 56;
+    [['Cancel', X + W - 230], ['OK', X + W - 118]].forEach(([t, bx], i) => {
+      const bw = 96, bh = 32, def = i === 1;
+      if (th === 'Platinum') S.append(svg('rect', { x: bx, y: by, width: bw, height: bh, rx: 6, style: `fill:var(--surface-2);stroke:var(--ink);stroke-width:${def ? 2.5 : 1}` }), svg('line', { x1: bx + 6, y1: by + 2.5, x2: bx + bw - 6, y2: by + 2.5, style: 'stroke:var(--surface);stroke-width:2' }));
+      else if (th === 'Hi-Tech') S.append(svg('polygon', { points: pts([[bx + 10, by], [bx + bw, by], [bx + bw, by + bh - 10], [bx + bw - 10, by + bh], [bx, by + bh], [bx, by + 10]]), style: `fill:${def ? 'var(--t)' : 'none'};fill-opacity:${def ? .25 : 0};stroke:var(--t);stroke-width:1.5` }));
+      else if (th === 'Gizmo') S.append(svg('rect', { x: bx, y: by, width: bw, height: bh, rx: 16, style: `fill:${def ? 'var(--o)' : 'var(--o-soft)'};stroke:var(--o);stroke-width:3` }));
+      else { const p = winPoly(bx, by, bw, bh, true, 10); S.append(svg('polygon', { points: pts(shift(p, 5)), style: `fill:${hatch(defs, 4, .8)}` }), svg('polygon', { points: pts(p), style: `fill:var(--surface);stroke:var(--ink);stroke-width:${def ? 2.2 : 1.3}` })); const g = svg('g'); bleed(g, p, 6, .8); S.append(g); }
+      S.append(svg('text', { x: bx + bw / 2, y: by + 21, 'text-anchor': 'middle', style: `${C.font};font-size:14px;fill:${th === 'Gizmo' && def ? 'var(--surface)' : C.text}` }, t));
+    });
+    // 滚动条
+    const rx = X + W - 26, ry = Y + tb + 8, rh = H - tb - 80;
+    if (th === 'Gizmo') S.append(svg('rect', { x: rx, y: ry, width: 14, height: rh, rx: 7, style: 'fill:var(--p-soft)' }), svg('rect', { x: rx, y: ry + 20, width: 14, height: 46, rx: 7, style: 'fill:var(--p)' }));
+    else if (th === 'Hi-Tech') S.append(svg('line', { x1: rx + 7, y1: ry, x2: rx + 7, y2: ry + rh, style: 'stroke:var(--t);stroke-opacity:.4' }), svg('rect', { x: rx + 2, y: ry + 20, width: 10, height: 46, style: 'fill:var(--t);fill-opacity:.6' }));
+    else S.append(svg('rect', { x: rx, y: ry, width: 14, height: rh, style: `fill:${th === 'DrawingBoard' ? hatch(defs, 4, .35) : 'var(--surface-2)'};stroke:var(--ink);stroke-width:1` }), svg('rect', { x: rx, y: ry + 20, width: 14, height: 30, style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1' }));
+    S.append(svg('text', { x: 630, y: 322, 'text-anchor': 'end', style: `font-size:11px;fill:${th === 'Hi-Tech' ? 'var(--hk-text)' : 'var(--muted)'};font-family:var(--font)` }, '示意重绘'));
+    wrap.replaceChildren(S);
+    status.innerHTML = `<b>${th}</b>：${T[cur][1]}`;
+  }
+  render();
+  node.append(el('div', { class: 'ctrl' }, segBar(T.map((x) => x[0]), (i) => { cur = i; render(); }, 3)), wrap, status);
+});
+
+/* ---------- 04 图标的三个时代（canvas） ---------- */
+reg('pixels', (node) => {
+  const ERA = [
+    ['1984 · Susan Kare', 'kare', 32, 1, '分辨率有限，只能用低信息量的象征图形指代一样东西：1 位黑白，一个像素就是一个决定。'],
+    ['iOS 6 · 拟物', 'skeu', 114, 24, '像素和色彩多起来，设计师让每个像素都不浪费，用它来模拟实体世界：一张真的向日葵照片、玻璃高光。'],
+    ['iOS 7 · 扁平', 'flat', 120, 24, '到了视网膜屏，数字的「不连续」已近乎消失，图标反而退回抽象的几何色块。'],
+  ];
+  let era = 0;
+  const cv = el('canvas', { width: '32', height: '32', role: 'img', 'aria-label': '照片图标示意' });
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  const input = el('input', { type: 'range', min: '12', max: '128', value: '32', step: '1', 'aria-label': '图标边长（像素）' });
+  const out = el('output', {}, '32');
+  const status = el('div', { class: 'status' });
+  const desc = el('p', { style: 'font-size:14px;color:var(--muted);margin-top:6px' });
+  const cssColor = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const rgb = (c) => { const t = document.createElement('canvas').getContext('2d', { willReadFrequently: true }); t.fillStyle = c; t.fillRect(0, 0, 1, 1); return t.getImageData(0, 0, 1, 1).data; };
+  const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  function draw() {
+    const N = +input.value, kind = ERA[era][1];
+    cv.width = N; cv.height = N;
+    ctx.save(); ctx.scale(N / 100, N / 100);
+    if (kind === 'kare') {
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 100, 100);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 7; ctx.strokeRect(10, 14, 80, 72);
+      ctx.fillStyle = '#000'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.moveTo(50, 50); ctx.lineTo(50, 82); ctx.stroke();
+      for (let i = 0; i < 6; i++) { ctx.save(); ctx.translate(50, 40); ctx.rotate(i * Math.PI / 3); ctx.beginPath(); ctx.ellipse(0, -11, 5, 9, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(50, 40, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(50, 40, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(40, 70, 8, 4, -0.5, 0, Math.PI * 2); ctx.fill();
+    } else if (kind === 'skeu') {
+      rr(ctx, 2, 2, 96, 96, 18); ctx.save(); ctx.clip();
+      let g = ctx.createLinearGradient(0, 0, 0, 100); g.addColorStop(0, '#3d86d8'); g.addColorStop(.65, '#a9d3f5'); g.addColorStop(.66, '#5f9b3a'); g.addColorStop(1, '#2f5e1d');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 100, 100);
+      ctx.strokeStyle = '#3c6b21'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(52, 52); ctx.quadraticCurveTo(48, 78, 54, 100); ctx.stroke();
+      for (let i = 0; i < 16; i++) { ctx.save(); ctx.translate(52, 42); ctx.rotate(i * Math.PI / 8); g = ctx.createLinearGradient(0, -8, 0, -30); g.addColorStop(0, '#d98a0b'); g.addColorStop(1, '#ffd84a'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -20, 5.5, 13, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); }
+      g = ctx.createRadialGradient(49, 39, 2, 52, 42, 13); g.addColorStop(0, '#8a5a24'); g.addColorStop(1, '#3d2410'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(52, 42, 12, 0, Math.PI * 2); ctx.fill();
+      g = ctx.createLinearGradient(0, 0, 0, 50); g.addColorStop(0, 'rgba(255,255,255,.55)'); g.addColorStop(1, 'rgba(255,255,255,.05)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(50, 8, 70, 42, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      rr(ctx, 2, 2, 96, 96, 18); ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    } else {
+      rr(ctx, 2, 2, 96, 96, 22); ctx.fillStyle = '#ffffff'; ctx.fill();
+      const P = ['#f5a623', '#f8d81c', '#8bd23a', '#3ccfb4', '#4a90e2', '#8e5bd8', '#e0475b', '#f27aa4'];
+      P.forEach((c, i) => { ctx.save(); ctx.translate(50, 50); ctx.rotate(i * Math.PI / 4); ctx.globalAlpha = .82; ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(0, -18, 11, 19, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); });
+    }
+    ctx.restore();
+    if (kind === 'kare') {
+      const fg = rgb(cssColor('--text')), bg = rgb(cssColor('--surface'));
+      const im = ctx.getImageData(0, 0, N, N), d = im.data;
+      for (let i = 0; i < d.length; i += 4) { const on = (d[i] + d[i + 1] + d[i + 2]) / 3 < 128; const c = on ? fg : bg; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255; }
+      ctx.putImageData(im, 0, 0);
+    }
+    out.textContent = N;
+    const depth = ERA[era][3], bits = N * N * depth;
+    status.innerHTML = `${N} × ${N} 像素 × ${depth} 位 = <b>${bits.toLocaleString()}</b> 比特（约 ${(bits / 8 / 1024).toFixed(bits < 8192 ? 2 : 1)} KB）。${N <= 24 ? '格子已经粗到只能「象征」。' : N >= 96 && depth > 1 ? '格子细到肉眼几乎看不出，像素不再是限制。' : ''}`;
+    desc.textContent = ERA[era][4];
+  }
+  const seg = segBar(ERA.map((e) => e[0]), (i) => { era = i; input.value = ERA[i][2]; draw(); });
+  input.addEventListener('input', draw);
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  draw();
+  node.append(el('div', { class: 'ctrl' }, seg), el('div', { class: 'pixwrap' }, cv, el('div', {}, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '边长', input, out)), desc, status)));
+  const note = el('p', { class: 'src' }, '各时代的默认边长按 Mac 1 位 32×32、iOS 6 视网膜 114×114、iOS 7 视网膜 120×120 示意。');
+  node.append(note);
+});
+
+/* ---------- 04 按钮材质 ---------- */
+reg('buttons', (node) => {
+  const B = [
+    ['Platinum（Mac OS 8）', '机器本身', '浅灰面板上的轻微倒角，延续的是电脑外壳与实体按键的样子。（本页概括）'],
+    ['DrawingBoard', '制图板上的工业设计草图', '原文：充满设计情怀，也有独特调性，但所选领域太窄、风格化程度过高，丰富性不足以满足所有人对 GUI 的期待。'],
+    ['Aqua（Mac OS X）', '糖果、酒、水滴', '原文引 vol.3：Ratzlaff 问「什么东西和计算机界面毫无关联？」，想到了糖果和酒。明亮、有趣、多彩，更具普世性，「看起来好像来自另外一个星球」。'],
+  ];
+  let cur = 1;
+  const wrap = el('div');
+  const vs = el('div', { class: 'vs' });
+  function render() {
+    const S = svg('svg', { viewBox: '0 0 640 130', class: 'scene', role: 'group', 'aria-label': '三种按钮' });
+    const defs = svg('defs');
+    defs.append(svg('linearGradient', { id: 'aquaG', x1: 0, y1: 0, x2: 0, y2: 1 },
+      svg('stop', { offset: '0', style: 'stop-color:var(--p);stop-opacity:.55' }), svg('stop', { offset: '.5', style: 'stop-color:var(--p);stop-opacity:.85' }), svg('stop', { offset: '1', style: 'stop-color:var(--t);stop-opacity:.9' })));
+    S.append(defs, svg('rect', { x: 0, y: 0, width: 640, height: 130, style: 'fill:var(--surface-2)' }));
+    B.forEach(([name], i) => {
+      const cx = 110 + i * 210, y = 34, w = 140, h = 40, x = cx - w / 2;
+      const g = svg('g', { class: 'hit', tabindex: '0', role: 'button', 'aria-label': name, 'aria-pressed': String(i === cur) });
+      g.append(svg('rect', { class: 'ring', x: x - 14, y: y - 16, width: w + 28, height: h + 52, rx: 12, style: `fill:${i === cur ? 'var(--p-soft)' : 'transparent'};stroke:${i === cur ? 'var(--p)' : 'transparent'};stroke-width:1.5` }));
+      if (i === 0) {
+        g.append(svg('rect', { x, y, width: w, height: h, rx: 6, style: 'fill:var(--surface);stroke:var(--ink);stroke-width:2.2' }), svg('line', { x1: x + 6, y1: y + 3, x2: x + w - 6, y2: y + 3, style: 'stroke:var(--surface-2);stroke-width:2' }), svg('line', { x1: x + 6, y1: y + h - 3, x2: x + w - 6, y2: y + h - 3, style: 'stroke:var(--line);stroke-width:2' }));
+        g.append(svg('text', { x: cx, y: y + 26, 'text-anchor': 'middle', style: `${SANS};font-size:15px;fill:var(--text);font-weight:600` }, 'OK'));
+      } else if (i === 1) {
+        const p = winPoly(x, y, w, h, true, 12);
+        g.append(svg('polygon', { points: pts(shift(p, 6)), style: `fill:${hatch(defs, 4.5, .9)}` }), svg('polygon', { points: pts(p), style: 'fill:var(--surface);stroke:var(--ink);stroke-width:1.8' }));
+        bleed(g, p, 9, 1);
+        g.append(svg('text', { x: cx, y: y + 27, 'text-anchor': 'middle', style: `${SERIF};font-size:17px;fill:var(--text)` }, 'OK'));
+      } else {
+        g.append(svg('rect', { x, y: y + 3, width: w, height: h, rx: h / 2, style: 'fill:var(--p);fill-opacity:.25' }), svg('rect', { x, y, width: w, height: h, rx: h / 2, style: 'fill:url(#aquaG);stroke:var(--p);stroke-width:1' }),
+          svg('rect', { x: x + 10, y: y + 3, width: w - 20, height: h * .42, rx: h * .21, style: 'fill:#fff;fill-opacity:.55' }));
+        g.append(svg('text', { x: cx, y: y + 26, 'text-anchor': 'middle', style: `font-family:var(--font);font-size:15px;fill:var(--text);font-weight:600` }, 'OK'));
+      }
+      g.append(svg('text', { x: cx, y: y + h + 28, 'text-anchor': 'middle', class: 'lbl' }, name));
+      const f = () => { cur = i; render(); };
+      g.addEventListener('click', f); onKey(g, f);
+      S.append(g);
+    });
+    wrap.replaceChildren(S);
+    const [n, m, d] = B[cur];
+    vs.replaceChildren(el('div', {}, el('b', {}, n + ' 模拟的是'), m), el('div', {}, el('b', {}, '它的处境'), d));
+  }
+  render();
+  node.append(wrap, vs);
+});
+
+/* ---------- 05 四十年 ---------- */
+reg('forty', (node) => {
+  const P = [['1984-01-24', 'Macintosh 128K 发售'], ['1994-07-01', 'DrawingBoard 提案（约 1994 年）'], ['2024-01-19', '原文所记 Vision Pro 日期'], ['2024-02-07', '原文发表']];
+  const t0 = Date.parse('1983-06-01'), t1 = Date.parse('2024-09-01'), X = (d) => 24 + (Date.parse(d) - t0) / (t1 - t0) * 592;
+  const S = svg('svg', { viewBox: '0 0 640 110', class: 'scene', role: 'img', 'aria-label': '1984 到 2024 年的四个节点' });
+  S.append(svg('rect', { x: 0, y: 0, width: 640, height: 110, style: 'fill:var(--surface-2)' }), svg('line', { x1: 24, y1: 56, x2: 616, y2: 56, style: 'stroke:var(--line);stroke-width:3' }));
+  for (let y = 1985; y <= 2020; y += 5) { const x = X(y + '-01-01'); S.append(svg('line', { x1: x, y1: 50, x2: x, y2: 62, style: 'stroke:var(--muted)' }), svg('text', { x, y: 80, 'text-anchor': 'middle', class: 'lbl' }, y)); }
+  P.forEach(([d, t], i) => {
+    const x = X(d), up = i % 2 === 0;
+    S.append(svg('circle', { cx: x, cy: 56, r: 6, style: `fill:${i === 1 ? 'var(--o)' : 'var(--p)'}` }));
+    S.append(svg('text', { x: Math.min(Math.max(x, 70), 570), y: up ? 30 : 102, 'text-anchor': i >= 2 ? 'end' : 'middle', class: 'lbl', style: 'fill:var(--text)' }, t));
+  });
+  const days = Math.round((Date.parse('2024-01-19') - Date.parse('1984-01-24')) / 864e5);
+  node.append(S, el('div', { class: 'status' }, '从 1984-01-24 到 2024-01-19 相隔 ', el('b', {}, days.toLocaleString() + ' 天'), `，约 ${(days / 365.2425).toFixed(2)} 年；约 1994 年的 DrawingBoard 提案落在这段时间约 ${Math.round((Date.parse('1994-07-01') - Date.parse('1984-01-24')) / (Date.parse('2024-01-19') - Date.parse('1984-01-24')) * 100)}% 的位置，比 Mac OS X 早了好几年。`));
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

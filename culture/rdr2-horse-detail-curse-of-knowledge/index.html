@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>马匹细节与知识的诅咒</title>
+<meta name="description" content="从《荒野大镖客 2》马匹细节之问到马伯庸《知识的诅咒》：七个版本的客栈结账、作者与读者视角对照、做减法、敲击猜歌实验与细节的可感知阈值。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.story{font-size:15.5px;line-height:1.9;background:var(--surface-2);border-radius:10px;padding:12px 14px;min-height:5.5em}
+.story mark{background:var(--y-soft);color:var(--text);border-radius:3px;padding:0 2px}
+.verdict{display:inline-block;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;margin-right:6px}
+.v-ok{background:var(--t-soft);color:var(--t)}
+.v-low{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.v-warn{background:var(--y-soft);color:var(--y)}
+.v-bad{background:var(--r-soft);color:var(--r)}
+.v-err{background:var(--o-soft);color:var(--o)}
+.term{border-radius:4px;padding:0 2px;cursor:pointer;transition:background .2s,color .2s,filter .2s}
+.term:focus{outline:2px solid var(--p);outline-offset:1px}
+.term.known{background:var(--t-soft);color:var(--text)}
+.term.unknown{background:transparent;color:var(--muted);text-decoration:underline wavy var(--r);text-underline-offset:4px}
+.term.creator{background:var(--p-soft);color:var(--p);font-weight:600}
+.notebox{margin-top:10px;font-size:13.5px;border-left:3px solid var(--p);padding:6px 12px;background:var(--surface-2);border-radius:0 8px 8px 0;min-height:2.4em}
+.chk{display:grid;grid-template-columns:1fr;gap:6px;margin:10px 0}
+@media (min-width:640px){ .chk{grid-template-columns:1fr 1fr} }
+.chk label{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--surface-2);cursor:pointer}
+.chk input{accent-color:var(--p);margin-top:4px;flex:none}
+.chk .tag{margin-left:auto;flex:none}
+.meter{height:10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--p);transition:width .35s ease}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;font-size:13px;margin-top:10px}
+.kv .num{font-family:var(--mono);color:var(--text)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.opts .btn.right{background:var(--t);border-color:var(--t);color:#fff}
+.opts .btn.wrong{background:var(--r-soft);border-color:var(--r);color:var(--r)}
+.beat{display:flex;flex-wrap:wrap;gap:3px;min-height:26px;margin-top:10px;align-items:flex-end}
+.beat span{display:block;height:18px;border-radius:4px;background:var(--line);transition:background .08s}
+.beat span.hit{background:var(--o)}
+.det{display:grid;gap:6px;margin-top:10px}
+.det .row{display:grid;grid-template-columns:1fr 90px;gap:10px;align-items:center;font-size:13px}
+@media (min-width:640px){ .det .row{grid-template-columns:1fr 200px} }
+.det .bar{height:12px;border-radius:6px;background:var(--surface-2);position:relative;overflow:hidden;border:1px solid var(--line)}
+.det .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--muted);opacity:.45;border-radius:6px}
+.det .row.seen .bar i{background:var(--t);opacity:1}
+.det .row.seen .name{color:var(--text);font-weight:600}
+.det .row .name{color:var(--muted)}
+.twobar{display:grid;gap:10px;margin-top:14px}
+.twobar .lab{font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.twobar .meter i.o{background:var(--o)}
+.twobar .meter i.t{background:var(--t)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">马匹细节与知识的诅咒</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">文化 · 游戏与写作</div>
+  <h1>玩家几乎看不到的马匹细节，为什么还要做？</h1>
+  <p class="sub">一个关于《荒野大镖客：救赎 2》马匹细节的知乎提问，答主没有直接回答，而是贴出了马伯庸的一篇短文《知识的诅咒》：一段「客栈结账」被越写越细，从白开水写到病入膏肓。</p>
+  <div class="thesis">查过的资料，作者舍不得放弃，总想全部抖搂出来，并且以为读者也会同样喜欢。细节要做到什么程度，「这中间的度，实在难以把握」。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>答</i>知乎答主（页面未存档作者名）</span>
+    <span class="au"><i style="background:var(--o)">马</i>马伯庸《知识的诅咒》（答主全文引用）</span>
+  </div>
+  <p class="meta">原文：知乎问题「《荒野大镖客》中为什么制作组要花费这么多时间去制作……」下的一则回答（编辑于 2025-01-03），正文是对马伯庸《知识的诅咒》的完整引用。本页按原文顺序讲解，并加了几处标注为「本页补充」的背景、实验与解读。第 6 章的敲击猜歌需要你点按钮才会出声。</p>
+</header>
+
+<section class="ch" id="s1" data-title="题目与回答">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一个问题，一篇别人的文章</h2>
+    <p class="lead">做一个绝大多数玩家不会注意到的细节，是炫技，还是另有道理？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>题目</b>（措辞已改写）：《荒野大镖客》里的马，连一个很私密的生理细节都做得栩栩如生，据说还会随气温热胀冷缩。提问者问：有这功夫，搞点别的优化不好吗？为了炫技？</div>
+    <div class="quote">答主的回答只有一句开场：「我突然想起以前读过马伯庸老师的一篇文章：《知识的诅咒》」，然后把全文贴了出来。</div>
+    <p style="font-size:14px;margin-top:8px">答主没有替 Rockstar 辩护，也没有附和提问者。他把问题换了个场景：一位查了大量资料的历史小说作者，写一段「住店结账」时会遇到什么。题目里的游戏，和文章里的小说，困在同一件事上：<b>创作者知道的，远比观众需要的多。</b>剩下的章节就沿着这篇短文走一遍。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：题目所说的游戏是 Rockstar Games 2018 年发行的《荒野大镖客：救赎 2》（Red Dead Redemption 2），马匹系统是它常被提起的细节样本；题目里的「热胀冷缩」是提问者的说法，本页未逐项核对游戏内的具体实现。</div>
+</section>
+
+<section class="ch" id="s2" data-title="马伯庸的困境">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>「知识的诅咒」：查得越多，越舍不得删</h2>
+    <p class="lead">资料查多了，为什么反而写不动了？</p>
+  </div>
+  <div class="fig">
+    <div class="quote">「我之前查了太多资料，哪个都舍不得放弃，恨不得把所有的知识点都在故事里抖搂出来，并假设所有读者都很喜爱这种表达。呈现效果就是五步一个专有名词，十步一个冷门知识点，还是要加注释的那种，以致行文变得冗长无比。」</div>
+    <p style="font-size:14px;margin:10px 0 6px">可是砍掉也不对：</p>
+    <div class="quote">「把一个时代特有的器物用词规则去掉之后，时代特色便荡然无存，变成一个普通古代。这中间的度，实在难以把握。」</div>
+    <p style="font-size:14px;margin-top:8px">所以他面对的是一个两头都有代价的取舍：写多了，冗长、读者跟不上；写少了，「普通古代」，没有时代感。接下来他用一个具体场景把这条光谱一级一级展开。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「知识的诅咒」（curse of knowledge）原是经济学与心理学术语，Camerer、Loewenstein 与 Weber 在 1989 年的论文里用它描述：掌握更多信息的一方，很难再站到信息较少者的位置去判断。<sup class="c">[2]</sup>马伯庸用的是它在写作上的延伸义：作者知道太多，于是高估了读者对这些知识的兴趣与理解。两者内核相同，都是「知道了就回不去」，第 6 章的敲击实验是心理学上最常被引用的例子。</div>
+</section>
+
+<section class="ch" id="s3" data-title="七个版本的客栈结账">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>同一段「住店结账」，七种写法</h2>
+    <p class="lead">细节加到第几级算「够了」，第几级开始「魔怔」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">拖动滑块或点「下一版」，从最懒的写法走到最神经质的写法。<b>黄色高亮</b>是这一版新加的内容，下面的柱子是每一版的字数（页面现场统计），颜色是马伯庸自己的评语。</div>
+    <div data-demo="ladder"></div>
+  </div>
+</section>
+
+<section class="ch" id="s4" data-title="作者眼里与读者眼里">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>同一段文字，作者看到注释，读者看到生词</h2>
+    <p class="lead">为什么作者觉得「这才有味道」，读者却觉得「五步一个专有名词」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">下面是第 6 版（明代版）。切换「谁在读」，看同一段话里有几个词能被读懂。点任意一个词，看作者脑子里关于它的那条注释。<b>各类读者认识哪些词是本页的假设示意</b>，不是调查数据。</div>
+    <div data-demo="viewer"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：注释里的器物与制度说明是本页补充的常识性解释：明制 1 两 = 10 钱；戥子是称金银、药材用的小秤；大明宝钞是明代官方发行的纸币，洪武年间开始发行，此后严重贬值；内承运库是明代宫廷的内库之一。「顺袋是明代钱包的称呼之一」「咬银看齿痕、尝苦味验铅锡」出自原文。</div>
+</section>
+
+<section class="ch" id="s5" data-title="你来做减法">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>你来做减法：留哪些，砍哪些</h2>
+    <p class="lead">「大刀阔斧砍完以后，心里很是不爽」：砍掉的到底是累赘，还是时代感？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">勾选要保留的细节，段落实时重写。注意「情节信息」那一行：无论你加多少，主角做的事始终只有三件。字数与阅读时间页面现场计算（按每分钟约 400 字粗算，属假设值）。</div>
+    <div data-demo="trim"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：每个细节右侧的标签（器物 / 交易 / 制度）以及阶段评语的分档，是本页按原文七个版本的评语归纳的，用来帮你对照，不是马伯庸给出的规则。</div>
+</section>
+
+<section class="ch" id="s6" data-title="敲击猜歌实验">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>敲桌子猜歌：你脑子里的旋律，别人听不见</h2>
+    <p class="lead">作者为什么意识不到读者跟不上？因为他没法「不知道」。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>本页补充（非原文）</b>。先当听者：点「听敲击」，只有节奏，没有音高，猜是哪首歌。再当敲击者：点「敲击者听到的」，同样的节奏配上旋律。点击后才会出声。</div>
+    <div data-demo="tap"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这是斯坦福大学 Elizabeth Newton 1990 年博士论文里的实验：敲击者在桌上敲出名曲的节奏，让听者猜。敲击者预估听者能猜中约一半，实际 120 首里只猜中 3 首（2.5%）。敲击者敲的时候脑子里有旋律，没法想象只听到「笃笃笃」的感受。这个实验因 Chip Heath 与 Dan Heath 的《让创意更有黏性》（Made to Stick，2007）而广为人知。<sup class="c">[3]</sup><sup class="c">[4]</sup>上方柱状图里的 50% 与 2.5% 即这两个数字。</div>
+</section>
+
+<section class="ch" id="s7" data-title="回到马匹">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>回到马匹：小说和游戏，谁来为细节买单</h2>
+    <p class="lead">同样是「几乎没人会注意」的细节，写进小说和做进游戏，代价落在谁身上？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>本页解读与示意模型（非原文）</b>。下面是一匹写实的马可以层层叠加的细节，横条是「显著度」（多容易被注意到），数值是本页虚构的示意值，不是《荒野大镖客 2》的实际清单。切换玩家类型，看他会注意到哪些；再看下方两根「代价」条。</div>
+    <div data-demo="threshold"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文只讲小说，没有直接评价游戏。本页的推论是：小说是线性的，写进正文的每个细节，每个读者都得逐字读过，所以马伯庸要「大做减法」；开放世界游戏的细节摆在世界里，玩家走近才看见，不感兴趣的人一眼带过，不额外花时间。所以游戏里的「诅咒」主要落在开发成本上（也就是提问者说的「有这功夫搞点别的优化」），而不是落在玩家的耐心上。这只是一种解读，不代表答主或马伯庸的观点。</div>
+</section>
+
+<section class="ch" id="s8" data-title="一句话带走">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>一句话带走</h2>
+    <p class="lead">马伯庸给自己开的药方只有一个字：减。</p>
+  </div>
+  <div class="fig">
+    <div class="quote">「到这一步，就算是病入膏肓了，得治。」</div>
+    <div class="final">细节本身没有错，错在作者以为「我知道的，读者也想知道」。查到的东西不必全部写出来，挑出能让读者感到时代与真实的那几处就够了；剩下的留在作者心里，它们会让落笔更准，但不必出现在纸上。</div>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据知乎问题「《荒野大镖客》中为什么制作组要花费这么多时间去制作……」下的一则回答制作（答主：知乎答主，页面未存档作者名；编辑于 2025-01-03；<a href="https://www.zhihu.com/question/7741350294/answer/70284097906">原文链接</a>）。该回答的正文是对马伯庸《知识的诅咒》一文的完整引用，文中七个版本的客栈描写与评语均出自马伯庸。原文页面的配图均未引用，本页图示均为内联 SVG 与 HTML 重绘或新作。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>知乎回答原文（编辑于 2025-01-03），引用马伯庸《知识的诅咒》全文。</li>
+    <li>Camerer, C., Loewenstein, G. &amp; Weber, M. (1989). The Curse of Knowledge in Economic Settings: An Experimental Analysis. <i>Journal of Political Economy</i> 97(5), 1232–1254.</li>
+    <li>Newton, E. L. (1990). <i>The Rocky Road from Actions to Intentions</i>. PhD dissertation, Stanford University.</li>
+    <li>Heath, C. &amp; Heath, D. (2007). <i>Made to Stick: Why Some Ideas Survive and Others Die</i>. Random House.（中译本《让创意更有黏性》）</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；字数与阅读时间在页面内用 JS 现场统计，第 4、7 章中的读者认知与显著度数值为示意，细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+/* 只数汉字与全角标点之外的「字」：这里按去掉空白后的字符数统计 */
+const len = (s) => s.replace(/[{}\s]/g, '').length;
+const keydo = (n, f) => n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } });
+
+/* ---------- 03：七个版本 ---------- */
+const VERS = [
+  { t: '主角在旅店一夜饱睡，次日一早结了账，转身离开。', name: '白开水', cls: 'v-low',
+    c: '最懒惰的写法：最省力也最没特色，如白开水。要表达的信息都有，但行文、用词丝毫看不出时代特色。' },
+  { t: '主角在{客栈}里一夜饱睡，次日一早结了账，转身离开。', name: '稍微古代', cls: 'v-low',
+    c: '用词稍微「古代」了一点，但这描写还是太泛，看不出是什么时代。' },
+  { t: '主角在客栈里一夜饱睡，次日一早{走到曲尺柜台前，从怀里扔给掌柜五十两银子}，转身{离去}。', name: '考究但有错', cls: 'v-err',
+    c: '细节上体现出明清交易用银子的特点。但有问题：银子的价值没这么低，五十两那么大一个，揣在怀里会很难受。' },
+  { t: '主角在客栈里一夜饱睡，次日一早走到曲尺柜台前，从{腰间顺袋}里扔给掌柜{一两}银子，转身离去。', name: '价格对了', cls: 'v-low',
+    c: '「顺袋」是明代钱包的称呼之一。价格差不多了，但交易细节却没体现出来。' },
+  { t: '主角在客栈里一夜饱睡，次日一早走到曲尺柜台前，从腰间顺袋里扔给掌柜{一锭银子，足有二两。掌柜取出钢剪，咔嚓剪下一块，拿戥子称了，约莫四钱，便又找回几枚铜钱。主角收了}，转身离去。', name: '够了', cls: 'v-ok',
+    c: '这个细节够了。可要精准地表现时代特色，还欠火候。' },
+  { t: '主角在客栈里一夜饱睡，次日一早走到曲尺柜台前，从腰间顺袋里扔给掌柜一{大}锭{银锞子。掌柜一看上头有‘内承运库花银二两’字样，先咬了咬，齿痕分明，入口无甚苦味，可见没掺铅锡，遂取出钢剪，锞边剪下一块，戥子称出四钱，柜台上找回几张宝钞}。主角收了，转身离去。', name: '有点魔怔', cls: 'v-warn',
+    c: '假如故事发生在明代，就得这样雕琢。但到这儿就已经有点魔怔了，因为这些细节对情节并没有多大帮助。' },
+  { t: '主角在客栈里一夜饱睡，次日一早走到曲尺柜台前，从腰间顺袋里{取出三张宝钞。掌柜赔笑：‘客官，本店只收银钱，不收钞。’主角大怒：‘我这宝钞是朝廷正经印的，如何不收？’掌柜道：‘洪武爷时，这宝钞还收得，如今物贵钞贱，您这一堆纸只好送去行用库。’主角冷笑：‘天子去年刚下旨严禁金银交易，犯者以奸恶论罪，你难道不怕我去出首？’掌柜也敛起笑意：‘禁令归禁令，可您出去打听打听，周围店铺有一个收钞的，小店这买卖直接送您。实话跟您说吧，如今衙门里纳罪赎刑都得折银子，你要缴了宝钞，怕不打杀你哩。’主角无奈，扔给掌柜一小锭银锞子。掌柜一看上头有‘内承运库花银二两’字样，先咬了咬，齿痕分明，入口无甚苦味，可见没掺铅锡，不由得赞道：‘这库银成色足，可以升水一成。我也不占您便宜，剪三钱能折纹银四钱了。’说完取出钢剪，锞边剪下一块，戥子称出三钱。主角仍旧把小锭揣回}，转身离去。', name: '病入膏肓', cls: 'v-bad',
+    c: '把背景限定在永乐年间：朝廷禁金银交易只许用宝钞，但纸钞贬值太甚民间不认。为了体现这个知识点，场景写成了一出争执。到这一步，就算是病入膏肓了，得治。' },
+];
+const VCOL = { 'v-low': 'var(--muted)', 'v-err': 'var(--o)', 'v-ok': 'var(--t)', 'v-warn': 'var(--y)', 'v-bad': 'var(--r)' };
+reg('ladder', (node) => {
+  const input = el('input', { type: 'range', min: '1', max: String(VERS.length), value: '1', step: '1', 'aria-label': '版本' });
+  const out = el('output', {}, '1');
+  const prev = el('button', { class: 'btn', type: 'button' }, '上一版');
+  const next = el('button', { class: 'btn primary', type: 'button' }, '下一版');
+  const story = el('div', { class: 'story', 'aria-live': 'polite' });
+  const status = el('div', { class: 'status' });
+  const lens = VERS.map((v) => len(v.t));
+  const W = 560, H = 170, pad = 30, bw = (W - pad * 2) / VERS.length;
+  const max = Math.max(...lens);
+  const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '七个版本的字数柱状图', style: 'margin-top:12px' });
+  chart.append(svg('line', { x1: pad, x2: W - pad, y1: H - 26, y2: H - 26, stroke: 'var(--line)' }));
+  const bars = VERS.map((v, i) => {
+    const h = Math.max(3, (lens[i] / max) * (H - 60));
+    const x = pad + i * bw + 6, y = H - 26 - h;
+    const g = svg('g', { class: 'pick', tabindex: '0', role: 'button', 'aria-label': `第 ${i + 1} 版，${lens[i]} 字`, style: 'cursor:pointer' },
+      svg('rect', { x, y, width: bw - 12, height: h, rx: 4, fill: VCOL[v.cls], opacity: '.35' }),
+      svg('text', { x: x + (bw - 12) / 2, y: y - 6, class: 'lbl mid' }, lens[i]),
+      svg('text', { x: x + (bw - 12) / 2, y: H - 10, class: 'lbl mid' }, '第' + (i + 1) + '版'));
+    g.addEventListener('click', () => set(i + 1)); keydo(g, () => set(i + 1));
+    chart.append(g); return g;
+  });
+  function set(k) {
+    k = Math.min(VERS.length, Math.max(1, k));
+    input.value = k; out.textContent = k;
+    const v = VERS[k - 1];
+    story.innerHTML = esc(v.t).replace(/\{([^}]*)\}/g, '<mark>$1</mark>');
+    bars.forEach((b, i) => b.querySelector('rect').setAttribute('opacity', i === k - 1 ? '1' : '.35'));
+    const added = k > 1 ? lens[k - 1] - lens[k - 2] : 0;
+    status.innerHTML = `<span class="verdict ${v.cls}">${v.name}</span>第 ${k} 版，<b>${lens[k - 1]}</b> 字${k > 1 ? `（比上一版 ${added >= 0 ? '+' : ''}${added}）` : ''}，是第 1 版的 <b>${(lens[k - 1] / lens[0]).toFixed(1)}</b> 倍。马伯庸的评语：${esc(v.c)}`;
+    prev.disabled = k === 1; next.disabled = k === VERS.length;
+  }
+  input.addEventListener('input', () => set(+input.value));
+  prev.addEventListener('click', () => set(+input.value - 1));
+  next.addEventListener('click', () => set(+input.value + 1));
+  node.append(el('div', { class: 'ctrl' }, prev, next, el('label', { class: 'range' }, '版本', input, out)), story, status, el('div', { class: 'scrollx' }, chart));
+  set(1);
+});
+
+/* ---------- 04：作者 vs 读者 ---------- */
+const TERMS = {
+  曲尺柜台: '曲尺形（L 形）的柜台，旧式店铺常见的格局。作者用它交代「这是一家旧式客栈」。',
+  顺袋: '原文：「顺袋」是明代钱包的称呼之一，系在腰间。比「从怀里」更合时代，也解释了钱放在哪儿。',
+  银锞子: '小块的银锭。明代民间大额交易用称量白银，银子是按重量算的，不是按「枚」。',
+  内承运库: '明代宫廷的内库之一。银锭上有这类字样，暗示这是官库流出的成色足的银子。',
+  咬了咬: '原文：咬后「齿痕分明，入口无甚苦味，可见没掺铅锡」。纯银较软，验的是成色。',
+  钢剪: '称量白银要「找零」，就得把银锭剪开，所以掌柜柜台上要备钢剪。',
+  戥子: '称金银、药材用的小秤。剪下的那块要称重才知道值多少，比如「四钱」。',
+  四钱: '明制 1 两 = 10 钱。二两的银子剪下四钱付房钱，余下的归还主角。',
+  宝钞: '大明宝钞，明代官方发行的纸币，洪武年间开始发行，后来严重贬值。找回宝钞，是作者埋下的「时代梗」。',
+};
+const V6 = '主角在客栈里一夜饱睡，次日一早走到[曲尺柜台]前，从腰间[顺袋]里扔给掌柜一大锭[银锞子]。掌柜一看上头有‘[内承运库]花银二两’字样，先[咬了咬]，齿痕分明，入口无甚苦味，可见没掺铅锡，遂取出[钢剪]，锞边剪下一块，[戥子]称出[四钱]，柜台上找回几张[宝钞]。主角收了，转身离去。';
+const READERS = [
+  { id: 'casual', name: '普通读者', know: ['四钱'] },
+  { id: 'fan', name: '历史爱好者', know: ['曲尺柜台', '银锞子', '咬了咬', '戥子', '四钱', '宝钞'] },
+  { id: 'author', name: '作者本人', know: Object.keys(TERMS) },
+];
+reg('viewer', (node) => {
+  let reader = READERS[0];
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '谁在读' });
+  const story = el('div', { class: 'story' });
+  const note = el('div', { class: 'notebox' }, '点一个带底色或波浪线的词。');
+  const status = el('div', { class: 'status' });
+  const btns = READERS.map((r) => { const b = el('button', { type: 'button', onclick: () => { reader = r; draw(); } }, r.name); seg.append(b); return b; });
+  function draw() {
+    btns.forEach((b, i) => b.classList.toggle('on', READERS[i] === reader));
+    story.innerHTML = '';
+    const parts = V6.split(/(\[[^\]]+\])/);
+    let known = 0;
+    parts.forEach((p) => {
+      const m = p.match(/^\[(.+)\]$/);
+      if (!m) { story.append(p); return; }
+      const w = m[1], k = reader.know.includes(w);
+      if (k) known++;
+      const cls = reader.id === 'author' ? 'creator' : (k ? 'known' : 'unknown');
+      const s = el('span', { class: 'term ' + cls, tabindex: '0', role: 'button' }, w);
+      const show = () => {
+        if (reader.id === 'author') note.innerHTML = `<b>${w}</b>：${esc(TERMS[w])}`;
+        else if (k) note.innerHTML = `<b>${w}</b>：这位读者大致知道它的意思，能感到一点时代味。`;
+        else note.innerHTML = `<b>${w}</b>：对这位读者只是一个陌生名词。作者脑子里的注释（「${esc(TERMS[w])}」）他看不到，正文里也没写。`;
+      };
+      s.addEventListener('click', show); keydo(s, show);
+      story.append(s);
+    });
+    const n = Object.keys(TERMS).length;
+    status.innerHTML = reader.id === 'author'
+      ? `作者眼里：<b>${n} / ${n}</b> 个词都带着一条注释，每个都「有味道」，哪个都舍不得删。`
+      : `${reader.name}能读懂 <b>${known} / ${n}</b> 个（示意）。剩下 ${n - known} 个，就是马伯庸说的「五步一个专有名词，十步一个冷门知识点」。`;
+    note.textContent = '点一个带底色或波浪线的词。';
+  }
+  node.append(el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '谁在读'), seg), story, status, note);
+  draw();
+});
+
+/* ---------- 05：做减法 ---------- */
+const MODS = [
+  { id: 'gui', label: '走到曲尺柜台前', tag: '器物' },
+  { id: 'shun', label: '从腰间顺袋里取钱', tag: '器物' },
+  { id: 'kezi', label: '银锞子，上有「内承运库花银二两」', tag: '器物' },
+  { id: 'bite', label: '咬一咬验成色（齿痕、无苦味）', tag: '交易' },
+  { id: 'cut', label: '钢剪剪银、戥子称出四钱', tag: '交易' },
+  { id: 'chao', label: '找回宝钞（而非铜钱）', tag: '制度' },
+  { id: 'fight', label: '永乐禁银：宝钞被拒的一场争执', tag: '制度' },
+  { id: 'prem', label: '库银成色足，「升水一成」', tag: '交易' },
+];
+reg('trim', (node) => {
+  const on = new Set(['gui', 'shun', 'cut']);
+  const box = el('div', { class: 'chk' });
+  MODS.forEach((m) => {
+    const c = el('input', { type: 'checkbox' });
+    c.checked = on.has(m.id);
+    c.addEventListener('change', () => { c.checked ? on.add(m.id) : on.delete(m.id); draw(); });
+    box.append(el('label', {}, c, el('span', {}, m.label), el('span', { class: 'tag' }, m.tag)));
+  });
+  const story = el('div', { class: 'story', 'aria-live': 'polite' });
+  const meter = el('i'), mbox = el('div', { class: 'meter' }, meter);
+  const kv = el('div', { class: 'kv' });
+  const status = el('div', { class: 'status' });
+  const all = el('button', { class: 'btn', type: 'button', onclick: () => { MODS.forEach((m) => on.add(m.id)); sync(); } }, '全部保留');
+  const none = el('button', { class: 'btn', type: 'button', onclick: () => { on.clear(); sync(); } }, '全部砍掉');
+  const sync = () => { box.querySelectorAll('input').forEach((c, i) => { c.checked = on.has(MODS[i].id); }); draw(); };
+  const h = (id) => on.has(id);
+  function compose() {
+    let s = '主角在客栈里一夜饱睡，次日一早' + (h('gui') ? '走到曲尺柜台前，' : '');
+    s += h('shun') ? '从腰间顺袋里' : '';
+    if (h('fight')) {
+      s += (h('shun') ? '' : '从怀里') + '取出三张宝钞。掌柜赔笑：‘客官，本店只收银钱，不收钞。’主角大怒，搬出天子严禁金银交易的旨意；掌柜也敛起笑意：‘禁令归禁令，周围店铺有一个收钞的，小店这买卖直接送您。’主角无奈，';
+      s += '扔给掌柜一小锭';
+    } else s += '扔给掌柜一大锭';
+    if (h('kezi')) s += '银锞子。掌柜一看上头有‘内承运库花银二两’字样，';
+    else s += '银子，足有二两。掌柜';
+    if (h('bite')) s += '先咬了咬，齿痕分明，入口无甚苦味，可见没掺铅锡，';
+    if (h('prem')) s += '赞道：‘这库银成色足，可以升水一成。’';
+    if (h('cut')) s += (h('prem') ? '说完' : '') + '取出钢剪，剪下一块，戥子称出四钱，';
+    else s += (h('prem') ? '随即' : '') + '收下，';
+    s += h('chao') ? '柜台上找回几张宝钞。' : '找回几枚铜钱。';
+    s += '主角收了，转身离去。';
+    return s;
+  }
+  const BASE = len('主角在客栈里一夜饱睡，次日一早结了账，转身离去。');
+  const FULL = (() => { const k = new Set(on); MODS.forEach((m) => on.add(m.id)); const n = len(compose()); on.clear(); k.forEach((x) => on.add(x)); return n; })();
+  function draw() {
+    const s = compose(), n = len(s), k = on.size;
+    story.textContent = s;
+    meter.style.width = Math.min(100, n / FULL * 100) + '%';
+    const sec = Math.round(n / 400 * 60);
+    kv.innerHTML = `<span>字数</span><span class="num">${n} 字（最简版 ${BASE} 字的 ${(n / BASE).toFixed(1)} 倍），约 ${sec} 秒读完</span>
+      <span>情节信息</span><span>住了一夜 → 付了钱 → 离开（始终 3 件事）</span>
+      <span>时代细节</span><span class="num">${k} / ${MODS.length}</span>`;
+    let v, cls;
+    if (k === 0) { v = '回到「普通古代」：时代特色荡然无存'; cls = 'v-low'; }
+    else if (k <= 2) { v = '有了一点时代感，交易细节还没出来'; cls = 'v-low'; }
+    else if (k <= 4 && !h('fight') && !h('prem')) { v = '接近马伯庸说的「这个细节够了」'; cls = 'v-ok'; }
+    else if (!h('fight')) { v = '开始「有点魔怔」：细节对情节没多大帮助'; cls = 'v-warn'; }
+    else { v = '为一个知识点专门加一场戏：病入膏肓'; cls = 'v-bad'; }
+    status.innerHTML = `<span class="verdict ${cls}">${k} 个细节</span>${v}`;
+  }
+  node.append(box, el('div', { class: 'ctrl' }, all, none), story, el('div', { style: 'margin-top:10px' }, mbox), kv, status);
+  draw();
+});
+
+/* ---------- 06：敲击猜歌（点击才发声） ---------- */
+const SONGS = [
+  { name: '小星星', n: [[60,1],[60,1],[67,1],[67,1],[69,1],[69,1],[67,2],[65,1],[65,1],[64,1],[64,1],[62,1],[62,1],[60,2]] },
+  { name: '两只老虎', n: [[60,1],[62,1],[64,1],[60,1],[60,1],[62,1],[64,1],[60,1],[64,1],[65,1],[67,2],[64,1],[65,1],[67,2],[67,.5],[69,.5],[67,.5],[65,.5],[64,1],[60,1],[67,.5],[69,.5],[67,.5],[65,.5],[64,1],[60,1],[60,1],[55,1],[60,2]] },
+  { name: '生日快乐', n: [[67,.75],[67,.25],[69,1],[67,1],[72,1],[71,2],[67,.75],[67,.25],[69,1],[67,1],[74,1],[72,2],[67,.75],[67,.25],[79,1],[76,1],[72,1],[71,1],[69,2]] },
+  { name: '欢乐颂', n: [[64,1],[64,1],[65,1],[67,1],[67,1],[65,1],[64,1],[62,1],[60,1],[60,1],[62,1],[64,1],[64,1.5],[62,.5],[62,2]] },
+];
+const DECOYS = ['新年好', '铃儿响叮当'];
+let AC = null;
+const ac = () => { if (!AC) { const C = window.AudioContext || window.webkitAudioContext; AC = new C(); } if (AC.state === 'suspended') AC.resume(); return AC; };
+reg('tap', (node) => {
+  let cur = null, nodes = [], timers = [], score = [0, 0], answered = false;
+  const BEAT = 0.5;
+  const beat = el('div', { class: 'beat', 'aria-hidden': 'true' });
+  const status = el('div', { class: 'status' }, '点「换一首」抽一首歌，再点「听敲击」。');
+  const opts = el('div', { class: 'opts' });
+  const names = [...SONGS.map((s) => s.name), ...DECOYS];
+  const optBtns = names.map((nm) => { const b = el('button', { class: 'btn', type: 'button', onclick: () => guess(nm, b) }, nm); opts.append(b); return b; });
+  function halt() {
+    nodes.forEach((n) => { try { n.stop(); } catch (e) { /* 已结束 */ } });
+    nodes = []; timers.forEach(clearTimeout); timers = [];
+    beat.querySelectorAll('.hit').forEach((x) => x.classList.remove('hit'));
+  }
+  function pick() {
+    halt();
+    let s; do { s = SONGS[Math.floor(Math.random() * SONGS.length)]; } while (SONGS.length > 1 && s === cur);
+    cur = s; answered = false;
+    optBtns.forEach((b) => b.classList.remove('right', 'wrong'));
+    beat.innerHTML = '';
+    cur.n.forEach(([, d]) => beat.append(el('span', { style: `width:${Math.round(d * 14)}px` })));
+    status.textContent = `已抽好一首（${cur.n.length} 下敲击）。点「听敲击」，然后在下面选你猜的歌名。`;
+  }
+  function play(melody) {
+    if (!cur) pick();
+    halt();
+    const c = ac(), t0 = c.currentTime + 0.08;
+    let t = t0;
+    const spans = [...beat.children];
+    cur.n.forEach(([m, d], i) => {
+      // 敲击声：短促的噪声，经带通滤波，像指节敲桌面
+      const buf = c.createBuffer(1, Math.floor(c.sampleRate * 0.05), c.sampleRate);
+      const ch = buf.getChannelData(0);
+      for (let j = 0; j < ch.length; j++) ch[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / ch.length, 4);
+      const src = c.createBufferSource(); src.buffer = buf;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 1.2;
+      const g = c.createGain(); g.gain.value = 0.9;
+      src.connect(bp).connect(g).connect(c.destination); src.start(t); nodes.push(src);
+      if (melody) {
+        const o = c.createOscillator(), og = c.createGain();
+        o.type = 'triangle'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+        og.gain.setValueAtTime(0.0001, t); og.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        og.gain.exponentialRampToValueAtTime(0.0001, t + d * BEAT * 0.95);
+        o.connect(og).connect(c.destination); o.start(t); o.stop(t + d * BEAT); nodes.push(o);
+      }
+      const ms = (t - c.currentTime) * 1000;
+      timers.push(setTimeout(() => { spans.forEach((x) => x.classList.remove('hit')); spans[i]?.classList.add('hit'); }, Math.max(0, ms)));
+      t += d * BEAT;
+    });
+    timers.push(setTimeout(() => spans.forEach((x) => x.classList.remove('hit')), (t - c.currentTime) * 1000 + 200));
+    status.textContent = melody
+      ? `敲击者听到的：节奏 + 脑内旋律，是《${cur.name}》。对他来说这再明显不过，很难想象有人听不出来。`
+      : (answered ? '只有敲击声。你已经知道答案了，再听一遍，是不是觉得「很明显」？这就是知识的诅咒。' : '只有敲击声，没有音高。猜猜是哪一首？');
+  }
+  function guess(nm, b) {
+    if (!cur) { status.textContent = '先点「换一首」抽一首歌。'; return; }
+    if (answered) { status.textContent = '这一首已经猜过了，点「换一首」继续。'; return; }
+    answered = true; score[1]++;
+    const ok = nm === cur.name;
+    if (ok) score[0]++;
+    b.classList.add(ok ? 'right' : 'wrong');
+    if (!ok) optBtns.find((x) => x.textContent === cur.name)?.classList.add('right');
+    status.innerHTML = `${ok ? '猜中了' : '没猜中'}，答案是《${cur.name}》。你目前 <b>${score[0]} / ${score[1]}</b>。注意：这里只有 6 个选项，又都是熟歌，比原实验容易得多。现在点「敲击者听到的」，体会对方的视角。`;
+  }
+  // 原实验数字：敲击者预估 50%，实际 2.5%
+  const W = 360, H = 120;
+  const chart = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '敲击者预估听者猜中率 50%，实际 2.5%', style: 'max-width:420px;margin-top:14px' });
+  [['敲击者预估', 50, 'var(--p)'], ['听者实际', 2.5, 'var(--r)']].forEach(([lab, v, col], i) => {
+    const y = 18 + i * 46, w = (W - 120) * v / 100;
+    chart.append(svg('text', { x: 0, y: y + 15, class: 'lbl' }, lab),
+      svg('rect', { x: 80, y, width: W - 120, height: 22, rx: 5, fill: 'var(--surface-2)', stroke: 'var(--line)' }),
+      svg('rect', { x: 80, y, width: Math.max(2, w), height: 22, rx: 5, fill: col }),
+      svg('text', { x: 86 + Math.max(2, w), y: y + 15, class: 'lbl', style: 'fill:var(--text)' }, v + '%'));
+  });
+  node.append(
+    el('div', { class: 'ctrl' },
+      el('button', { class: 'btn', type: 'button', onclick: pick }, '换一首'),
+      el('button', { class: 'btn primary', type: 'button', onclick: () => play(false) }, '听敲击'),
+      el('button', { class: 'btn', type: 'button', onclick: () => play(true) }, '敲击者听到的'),
+      el('button', { class: 'btn', type: 'button', onclick: () => { halt(); status.textContent = '已停止。'; } }, '停止')),
+    beat, el('div', { class: 'cap', style: 'margin-top:10px;margin-bottom:0' }, '你猜是：'), opts, status, chart);
+  return { stop: halt };
+});
+
+/* ---------- 07：可感知阈值 ---------- */
+const DETAILS = [
+  ['马的体型与毛色', .95], ['奔跑、转身的步态', .88], ['鬃毛和尾巴随动作摆动', .72], ['身上沾泥、淋雨变湿', .55],
+  ['冷天呼出白气', .4], ['皮下肌肉的起伏', .28], ['马蹄铁的磨损', .12], ['题目所说的、随气温变化的生理细节', .04],
+];
+const PLAYERS = [
+  { name: '赶路的玩家', th: .7, note: '只顾往任务点跑，马在他眼里是交通工具。' },
+  { name: '普通玩家', th: .45, note: '偶尔停下来看看风景和自己的马。' },
+  { name: '拍照党 / 考据党', th: .08, note: '会凑到马身边转镜头，专门去找细节。' },
+];
+reg('threshold', (node) => {
+  let p = PLAYERS[1];
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '玩家类型' });
+  const btns = PLAYERS.map((x) => { const b = el('button', { type: 'button', onclick: () => { p = x; draw(); } }, x.name); seg.append(b); return b; });
+  const rows = DETAILS.map(([nm, v]) => {
+    const r = el('div', { class: 'row' }, el('span', { class: 'name' }, nm), el('div', { class: 'bar' }, el('i', { style: `width:${v * 100}%` })));
+    return r;
+  });
+  const det = el('div', { class: 'det' }, ...rows);
+  const nI = el('i', { class: 'o' }), gI = el('i', { class: 't' });
+  const nLab = el('span', { class: 'num mono' }), gLab = el('span', { class: 'num mono' });
+  const two = el('div', { class: 'twobar' },
+    el('div', {}, el('div', { class: 'lab' }, el('span', {}, '写进小说：每位读者都要读过全部细节'), nLab), el('div', { class: 'meter' }, nI)),
+    el('div', {}, el('div', { class: 'lab' }, el('span', {}, '放进游戏世界：玩家只在注意到时花时间'), gLab), el('div', { class: 'meter' }, gI)));
+  const status = el('div', { class: 'status' });
+  function draw() {
+    btns.forEach((b, i) => b.classList.toggle('on', PLAYERS[i] === p));
+    let seen = 0;
+    rows.forEach((r, i) => { const s = DETAILS[i][1] >= p.th; r.classList.toggle('seen', s); if (s) seen++; });
+    const N = DETAILS.length;
+    nI.style.width = '100%'; nLab.textContent = `${N} / ${N}`;
+    gI.style.width = (seen / N * 100) + '%'; gLab.textContent = `${seen} / ${N}`;
+    status.innerHTML = `${p.name}：${p.note}他注意到 <b>${seen} / ${N}</b> 个细节。没被注意的 ${N - seen} 个，花的是开发者的时间，不是这位玩家的时间。`;
+  }
+  node.append(el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '谁在玩'), seg), det, two, status);
+  draw();
+});
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

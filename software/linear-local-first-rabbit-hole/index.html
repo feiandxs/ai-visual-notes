@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Linear 带我掉进 local-first 兔子洞</title>
+<meta name="description" content="Linear 为什么快得不像网页？从请求-响应到 local-first：延迟赛跑、离线与冲突同步模拟、Jazz 的 CoValue 与加密、Electric Shape 部分同步、生态对比与适用性自测。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+.tl-step.bad.on{border-color:var(--r)}
+.tl-step.good.on{border-color:var(--t)}
+footer a{word-break:break-all}
+
+/* ===== 本页组件 ===== */
+@media (min-width:1024px){ .toc-sheet,.toc-mask{display:none} }
+.grid2 .fig + .fig{margin-top:0}
+.prose{font-size:15.5px;margin:12px 0}
+.prose p + p{margin-top:10px}
+.prose code,.prose .k{font-family:var(--mono);font-size:.9em;background:var(--surface-2);border-radius:5px;padding:1px 5px}
+pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:pre}
+pre.code .cm{color:var(--muted)}
+pre.code .kw{color:var(--p)}
+pre.code .st{color:var(--t)}
+.lanes{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:640px){ .lanes{grid-template-columns:1fr 1fr} }
+.lane{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;min-width:0}
+.lane h4{margin:0 0 6px;font-size:13px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.issue{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px}
+.issue .ttl{font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font-size:12px;padding:2px 10px;border-radius:999px;white-space:nowrap;font-weight:600;transition:background .2s}
+.pill.s0{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.pill.s1{background:var(--y-soft);color:var(--y)}
+.pill.s2{background:var(--t-soft);color:var(--t)}
+.pill.s3{background:var(--r-soft);color:var(--r)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--p);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.readout{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:6px;min-height:1.4em}
+.bar{rx:3}
+.tg{font-size:11px;padding:1px 7px;border-radius:999px;font-weight:600}
+.tg.bad{background:var(--r-soft);color:var(--r)}
+.tg.good{background:var(--t-soft);color:var(--t)}
+.tg.bg{background:var(--p-soft);color:var(--p)}
+.fnode rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.fnode text{font-size:13px;fill:var(--text);text-anchor:middle;dominant-baseline:central;font-family:var(--font)}
+.fnode.on rect{fill:var(--p-soft);stroke:var(--p)}
+.fedge{stroke:var(--line);stroke-width:2;fill:none;transition:stroke .3s}
+.fedge.done{stroke:var(--muted)}
+.fedge.on{stroke:var(--p);stroke-width:3}
+.fedge.on.bad{stroke:var(--r)}
+.fedge.on.good{stroke:var(--t)}
+.ahead{fill:var(--muted)}
+.sim{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:860px){ .sim{grid-template-columns:1fr 1.1fr 1fr} }
+.field{display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:5px 0;border-bottom:1px dashed var(--line);align-items:center}
+.field span:first-child{color:var(--muted)}
+.field b{font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+.flash{animation:fl 1s ease}
+@keyframes fl{0%{background:var(--y-soft)}100%{background:transparent}}
+.queue{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;min-height:22px}
+.chip{font-family:var(--mono);font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);background:var(--surface)}
+.chip.q{background:var(--o-soft);border-color:transparent;color:var(--o)}
+.chip.f{background:var(--p-soft);border-color:transparent;color:var(--p)}
+.log{font-family:var(--mono);font-size:11.5px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-top:8px;min-height:120px;max-height:190px;overflow:auto;word-break:break-all}
+.log div{padding:2px 0;border-bottom:1px dotted var(--line)}
+.log .cf{color:var(--r)}
+.offline{opacity:.75;background:repeating-linear-gradient(135deg,var(--surface-2),var(--surface-2) 8px,var(--surface) 8px,var(--surface) 16px)}
+table.cmp{border-collapse:collapse;width:100%;min-width:620px;font-size:13px}
+table.cmp th,table.cmp td{border-bottom:1px solid var(--line);padding:8px 8px;text-align:left;vertical-align:top}
+table.cmp th{font-size:12px;color:var(--muted);font-weight:600;background:var(--surface-2)}
+table.cmp td:first-child{font-weight:700;white-space:nowrap}
+table.cmp td.add{color:var(--muted);border-left:1px dashed var(--o)}
+table.cmp th.add{color:var(--o);border-left:1px dashed var(--o)}
+table.cmp tr.hide{display:none}
+table.cmp tr.hl td{background:var(--p-soft)}
+.inp{width:100%;font:inherit;font-size:14px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.inp:disabled{opacity:.6}
+.verdict{font-size:22px;font-weight:700;margin-top:6px}
+.verdict.ok{color:var(--t)}
+.verdict.no{color:var(--r)}
+.mtx{border-collapse:collapse;font-size:13px;width:100%;min-width:420px}
+.mtx th,.mtx td{border:1px solid var(--line);padding:6px 8px;text-align:center}
+.mtx th{background:var(--surface-2);font-weight:600;color:var(--muted)}
+.mtx td.y{color:var(--t);font-weight:700}
+.mtx td.n{color:var(--r)}
+.mtx td.cur{outline:3px solid var(--p);outline-offset:-3px}
+.mtx th[scope=row]{text-align:left}
+.rows .row{display:grid;grid-template-columns:28px 1fr 56px 58px;gap:6px;font-size:12.5px;padding:5px 6px;border-bottom:1px solid var(--line);align-items:center}
+.rows .row.hd{color:var(--muted);font-weight:600;font-size:11.5px}
+.rows .row span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows .row.miss{opacity:.35}
+.toggles{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tgl{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
+.tgl.on.g{background:var(--t-soft);color:var(--t);border-color:var(--t)}
+.tgl.on.b{background:var(--r-soft);color:var(--r);border-color:var(--r)}
+.meter{height:12px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex;margin-top:8px}
+.meter i{display:block;height:100%;transition:width .4s}
+.lst{margin:8px 0 0;padding-left:20px;font-size:14.5px}
+.lst li{margin:4px 0}
+.lst .tag{margin-left:6px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Linear 与 local-first</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">软件架构 · local-first · 同步引擎</div>
+  <h1>Linear 带我掉进了 local-first 的兔子洞</h1>
+  <p class="sub">一个项目管理工具快得不像网页：点开就有，改完另一个浏览器几乎同时变。作者顺着这个疑问挖下去，看到的是一种把数据库搬到浏览器里的架构，以及围绕它成长起来的一整个工具生态。</p>
+  <div class="thesis">把数据库放到客户端，读写都在本地完成，网络同步退到后台，网络延迟就从用户交互路径上消失了。代价是同步、冲突、权限、迁移这些难题全部摆上桌面，所以值不值得，要看你的应用是什么样的。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>J</i>Jye Cusch</span>
+  </div>
+  <p class="meta">原文：「Linear sent me down a local-first rabbit hole」，Jye Cusch，Bytemash（bytemash.net，2025-08-04），英文。本页按原文的叙述顺序翻译讲解，所有演示都是本页用 JS 做的模拟，不连接任何真实服务；另加了几处标注为「本页补充（非原文）」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="fast" data-title="Linear 为什么快">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>网络延迟去哪儿了？</h2>
+    <p class="lead">在 Linear 里点开一个 issue 立刻打开，改个状态，另一个浏览器窗口几乎同时更新。没有加载状态，没有刷新。做了多年传统 Web 应用的作者觉得这「不对劲」：网络延迟哪去了？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">同一个操作，两种架构赛跑。拖动滑块设定网络往返时间（RTT），点按钮把 issue 的状态往前推一格。左边要等服务器回话，右边先写本地数据库、立刻重绘，再在后台把变更同步给「另一个浏览器」。原文结尾那句「在一个响应时间动辄 300ms 的世界里」，所以默认值设成 300ms。</div>
+    <div data-demo="race"></div>
+  </div>
+  <div class="prose"><p>作者三问：网络延迟去哪了？冲突怎么处理？断网会怎样？后面几章依次回答。他也推荐先去看 LiveStore 的官方演示，感受一下 local-first 应用用起来是什么样子。</p></div>
+</section>
+
+<section class="ch" id="flow" data-title="两种数据流">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>兔子洞底下：把数据库搬进浏览器</h2>
+    <p class="lead">一个下雨的周末、太多咖啡和几篇逆向分析之后，答案很短：Linear 自己写了一个同步引擎，把浏览器里的 IndexedDB 当成真正的数据库用。</p>
+  </div>
+  <div class="prose">
+    <p>所有修改先在本地发生，然后在后台用 GraphQL 发送变更（mutation），用 WebSocket 接收同步。作者的资料清单包括：一份得到 Linear CTO 认可的同步引擎逆向工程、另一篇同步协议拆解、Linear CTO Tuomas Artman 的两场架构演讲，以及他在演讲中提到的 Figma 多人协作技术博客。<sup class="c">[3][4][5]</sup></p>
+    <p>「local-first」这个词也反复出现。看你读的是哪篇，它要么是一种<b>用户体验策略</b>（让应用感觉像本地的：即时更新等），要么是一种<b>理念</b>（数据留在本地，在设备间同步）。多数情况下概念很简单：应用不再是「把数据发给服务器的高级表单」，而是自带一个本地数据库；有时服务器只是另一个需要同步的客户端。这可能是对 Web 应用常规做法的根本倒转。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文用两段文字图对比了两种数据流。切换模式，点「下一步」沿箭头走一遍：<span class="tg bad">用户在等</span>表示这一步卡在交互路径上，<span class="tg good">用户已看到</span>表示界面已经更新，<span class="tg bg">后台</span>表示用户感觉不到。</div>
+    <div data-demo="flow"></div>
+  </div>
+  <p class="prose">作者的关键收获：数据库搬到客户端，网络延迟就从用户交互路径上被拿掉了。更新之所以即时，是因为它们只是本地数据库的读写。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：「local-first software」一词的常见出处是 Ink &amp; Switch 的 Kleppmann、Wiggins、van Hardenberg、McGranaghan 在 2019 年发表的同名文章，提出七条理想：快（不必等网络）、多设备、离线可用、协作、长期可用、隐私、用户掌控数据。原文所说的「理念」一派大体指这篇；「UX 策略」一派则更像 Linear 这种：服务器仍是权威，但客户端缓存了足够多的数据。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="hard" data-title="难点：同步与冲突">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>难点：这一点也不简单</h2>
+    <p class="lead">看懂 Linear 的做法后，作者的第一反应是自己也写一个。随后现实来了：就算是基础版本的同步引擎，大概也要几个月的工程量。</p>
+  </div>
+  <div class="prose"><p>原文列出的复杂度来源：</p>
+    <ul class="lst">
+      <li>优雅地处理离线与在线切换<span class="tag">下方模拟</span></li>
+      <li>分布式客户端之间的冲突解决<span class="tag">下方模拟</span></li>
+      <li>部分同步：你不会想把整个数据库都下载下来<span class="tag">见第 07 章 Shape</span></li>
+      <li>缓存数据的 schema 迁移</li>
+      <li>分布式系统里的安全与访问控制<span class="tag">见第 05 章 Group</span></li>
+    </ul>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>一个最简同步引擎的模拟</b>。两个浏览器编辑同一个 issue，中间是服务器的变更日志。每次修改立即写本地，再排队发给服务器；服务器给每条变更编一个递增的同步号，再广播给其他在线客户端。试试：先让 B「断网」，B 改状态，A 也改状态，再让 B 联网，看谁的值留下来。</div>
+    <div data-demo="sync"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这个模拟用的是最朴素的规则：按字段「最后写入者胜」（last-writer-wins），先后以服务器收到的顺序为准。据原文引用的逆向分析，Linear 的同步也以服务器分配的递增同步 ID 为骨架，客户端记住自己见过的最后一个 ID，重连后补拉差量。<sup class="c">[3]</sup> 更复杂的方案（如 Figma 博客里讨论过的 CRDT 思路）可以把并发修改合并而不是覆盖，但实现和存储成本都更高。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="eco" data-title="2025 年的生态">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>2025 年的 local-first 生态</h2>
+    <p class="lead">「肯定有人已经把这套魔法做成可复用的东西了吧？」好在 local-first 社区一直在造轮子。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文「可用于生产」清单里的九个工具。中间一列是原文的一句话评价（翻译），右侧虚线列是本页补充的背景（非原文）。用上面的筛选看看哪些能直接接你现有的 Postgres。</div>
+    <div data-demo="eco"></div>
+  </div>
+</section>
+
+<section class="ch" id="jazz" data-title="深入 Jazz">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>深入 Jazz：像改本地状态一样写 local-first 应用</h2>
+    <p class="lead">作者先挑了 Jazz，因为它许下了一个离谱的承诺：构建 local-first 应用就像更新本地状态一样简单。</p>
+  </div>
+  <div class="prose">
+    <p>Jazz 引入了「协作值」（Collaborative Values，CoValues）：为分布式实时协作设计的数据结构。你先用 Jazz 加 Zod 写 schema，但它们不只是类型定义，而是会自动同步的、活的响应式对象：</p>
+<pre class="code"><span class="cm">// 用订阅 hook 取到一个值</span>
+<span class="kw">const</span> post = useCoState(Post, postId)
+
+<span class="cm">// 然后像普通对象一样用它</span>
+<span class="kw">const</span> setTitle = (title: <span class="kw">string</span>) =&gt; {
+  post.title = title
+  <span class="cm">// 就这样。已经同步了。我没开玩笑。</span>
+}</pre>
+    <p>没有 API 路由，没有请求/响应循环，没有 DTO。作者说这「有点像作弊」。底层用了几个巧妙的办法：<b>① 内置唯一性</b>，每块数据自动分配唯一 ID，避免冲突、便于高效同步；<b>② 事件溯源</b>（event sourcing），变更看起来以事件形式存储，再物化出整个对象图的当前状态，同步时只传变更；<b>③ 端到端加密</b>，数据在客户端加密后才同步，服务器只看到密文；<b>④ 用 Group 做权限</b>，代替传统的 ACL。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>CoValue 演示</b>。两台设备绑定同一个 <span class="mono">post.title</span>，在任一个输入框里打字，另一台会跟着变；下方是事件日志。再试「删除」和「撤销」，然后切到「服务器视角」，看看服务器到底能看见什么。</div>
+    <div data-demo="coval"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>Group 权限</b>。原文示例：</div>
+<pre class="code"><span class="kw">const</span> group = Group.create()
+group.addMember(alice, <span class="st">'admin'</span>)
+group.addMember(bob, <span class="st">'writer'</span>)
+Post.create({ title: <span class="st">"a new post"</span> }, { owner: group })</pre>
+    <div data-demo="group"></div>
+  </div>
+</section>
+
+<section class="ch" id="trade" data-title="Jazz 的取舍">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>取舍：服务器是瞎的，时间旅行是强制的</h2>
+    <p class="lead">这套架构做原型特别高效：不用每做一个交互就停下 UI，去写 API 和 DTO。但它也带来一些有意思的约束。</p>
+  </div>
+  <div class="grid2">
+    <div class="fig"><div class="cap"><b>服务器是瞎的</b></div><p class="prose">一切端到端加密。除非通过 Group 明确共享给服务器账号，否则你的后端读不到用户数据。对隐私很棒；可要是没提前想好服务器需要访问哪些数据，就不那么棒了。想做内容审核、阻止恶意数据存储，也是问题。</p></div>
+    <div class="fig"><div class="cap"><b>时间旅行是强制的</b></div><p class="prose">Jazz 看起来用了事件溯源，每次修改都永久保存。那个「删除」按钮？只是移除了引用。做撤销重做很好，想到 GDPR 合规之类的事就没那么好了。</p></div>
+    <div class="fig"><div class="cap"><b>存储只涨不跌</b></div><p class="prose">既然什么都不删，存储用量只有一个方向：往上。小项目谁在乎；几千用户的 SaaS，AWS 账单可能长得像电话号码（或者等 Jazz Cloud 推出付费方案后，是它的账单）。</p></div>
+    <div class="fig"><div class="cap"><b>本地开发仍有坑</b></div><p class="prose">Jazz 应用默认展示的第一种登录方式是 Passkey。Passkey 有很多优点，但本地开发时很麻烦，见下面作者的十步折腾。</p></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：GDPR 第 17 条规定了「删除权」（right to erasure，俗称被遗忘权）：数据主体在特定情形下可要求控制者删除其个人数据。在只追加（append-only）的事件日志里「删除」只是移除引用，原始事件还在，这就是原文说的合规顾虑。上一章演示里的「删除」也是这样做的。<sup class="c">[7]</sup></div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>作者的十步折腾</b>：在笔记本上写了个小应用，想用局域网 IP 在手机上测。点「下一步」一步步回放。</div>
+    <div data-demo="passkey"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：WebAuthn（Passkey 的底层标准）只在「安全上下文」中可用，即 HTTPS 页面，或被浏览器视为可信的 <span class="mono">localhost</span>。所以一换成 <span class="mono">192.168.x.x</span> 这样的局域网地址就必须上 HTTPS；而 HTTPS 页面里的 WebSocket 也必须是加密的 <span class="mono">wss://</span>，否则会被当作混合内容拦下，这就是第 8 步。<sup class="c">[6]</sup></div>
+  <p class="prose">作者也注意到 Jazz 即将集成 Better Auth，能解决自托管场景的登录问题。他的结论：<b>尽管有这些问题，依然值得</b>。Jazz 非常惊艳、好玩，开发体验独特而高效；它还很早期，相信这些问题会有好的解法。</p>
+</section>
+
+<section class="ch" id="electric" data-title="Electric SQL 与 Zero">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>下一站：Electric SQL 与 Zero</h2>
+    <p class="lead">Jazz 从零造了一套新东西；Electric 和 Zero 走的是渐进路线：照常建 Postgres 表就行。</p>
+  </div>
+<pre class="code"><span class="cm">-- 照常建 Postgres 表</span>
+<span class="kw">CREATE TABLE</span> posts (
+  id SERIAL <span class="kw">PRIMARY KEY</span>,
+  title VARCHAR(255) <span class="kw">NOT NULL</span>,
+  content TEXT,
+  author_id INTEGER <span class="kw">NOT NULL</span>
+);</pre>
+  <div class="prose"><p>Electric 用响应式查询返回数据库的子集，称为 <b>Shape</b>。下面这段建立一个订阅，之后表的变化都会被 Electric 同步到 UI：</p></div>
+<pre class="code"><span class="kw">import</span> { useShape } <span class="kw">from</span> <span class="st">'@electric-sql/react'</span>
+<span class="kw">function</span> Component() {
+  <span class="kw">const</span> { data } = useShape({
+    url: <span class="st">`http://localhost:3000/v1/shape`</span>,
+    params: { table: <span class="st">`posts`</span> }
+  })
+  <span class="kw">return</span> &lt;pre&gt;{ JSON.stringify(data, null, 2) }&lt;/pre&gt;
+}</pre>
+  <div class="fig">
+    <div class="cap"><b>Shape 与部分同步</b>。左边是服务器上的 posts 表，右边是客户端订阅到的子集。换一个 Shape，再让服务器插入新行，看哪些会被推到客户端。最后试试在客户端改一行：Electric 与 Zero 的差别就在这里。</div>
+    <div data-demo="shape"></div>
+  </div>
+  <div class="prose"><p>Electric 能接现有 Postgres，很有吸引力；但还剩一个缺口：<b>写入（mutation）怎么办？</b>要得到 Jazz 那样的生产力，给 Electric 加上 LiveStore 看起来很有意思，不过它对 Postgres 的 schema 有特定要求；TanStack DB 也是候选，作者很快会试。Zero 则与 Electric 有很多相似之处，同时直接支持写入。最终选哪个，大概就是作者下一篇文章的主题。</p></div>
+  <p class="src">注：原文 SQL 在 <span class="mono">author_id INTEGER NOT NULL,</span> 后多了一个逗号，Postgres 会报语法错误；本页引用时去掉了。</p>
+</section>
+
+<section class="ch" id="fit" data-title="什么时候适合">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>local-first 什么时候合适？</h2>
+    <p class="lead">研究加上 Jazz 的实际试用之后，作者给出了两张清单：非常适合的，和有挑战的。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">先点一个示例应用，或者自己勾选你的应用符合哪些特征。绿色来自原文「非常适合」，红色来自原文「有挑战」。</div>
+    <div data-demo="fit"></div>
+  </div>
+</section>
+
+<section class="ch" id="ahead" data-title="展望">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>展望</h2>
+    <p class="lead">local-first 代表了构建应用方式的一次根本转变。用户体验上的好处无可否认，Linear 已经证明了；问题在于这些架构取舍对你的场景值不值。</p>
+  </div>
+  <div class="prose">
+    <p>作者正在用 Jazz 写一个个人应用，在实践中体会这些取舍：开发体验让人耳目一新，但他也在留意抽象会在哪里漏。生态还年轻，工具会成熟，模式会出现，棱角会被磨平。但核心洞见不会消失：把数据留在本地，可以做出好得多的用户体验。</p>
+    <p>如果你在做新东西、又能接受这些约束，作者鼓励你试试 local-first。最坏的结果是学会一种新的架构模式；最好的结果是做出一个让用户觉得快得不可思议的东西。</p>
+  </div>
+  <div class="final">在一个响应时间动辄 300ms 的世界里，这就是优势。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Jye Cusch 在 Bytemash 发表的「<a href="https://bytemash.net/posts/i-went-down-the-linear-rabbit-hole/">Linear sent me down a local-first rabbit hole</a>」（2025-08-04）翻译讲解制作。原文没有插图，文中的文字示意图与代码已用内联 SVG/HTML 重绘；所有演示均为本页的本地模拟，不代表各工具的真实实现细节。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>原文：Jye Cusch，「Linear sent me down a local-first rabbit hole」，Bytemash（2025-08-04）。<a href="https://bytemash.net/posts/i-went-down-the-linear-rabbit-hole/">链接</a></li>
+    <li>Kleppmann, M., Wiggins, A., van Hardenberg, P., McGranaghan, M. (2019). Local-first software: You own your data, in spite of the cloud. <i>Onward! 2019</i>; Ink &amp; Switch. <a href="https://www.inkandswitch.com/local-first/">链接</a></li>
+    <li>Reverse engineering Linear's sync engine（原文引用）. <a href="https://github.com/backupManager/reverse-linear-sync-engine-dev">链接</a></li>
+    <li>Reverse engineering Linear's sync magic，marknotfound.com（原文引用）. <a href="https://marknotfound.com/posts/reverse-engineering-linears-sync-magic/">链接</a></li>
+    <li>Evan Wallace, How Figma's multiplayer technology works, Figma Blog（原文引用）. <a href="https://www.figma.com/blog/how-figmas-multiplayer-technology-works/">链接</a></li>
+    <li>MDN Web Docs: Secure contexts；W3C Web Authentication 规范（安全上下文要求）. <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts">链接</a></li>
+    <li>Regulation (EU) 2016/679（GDPR），Article 17: Right to erasure.</li>
+    <li>原文提到的工具官网：<a href="https://electric-sql.com/">Electric SQL</a>、<a href="https://www.powersync.com/">PowerSync</a>、<a href="https://jazz.tools/">Jazz</a>、<a href="https://dexie.org/cloud/">Dexie Cloud</a>、<a href="https://replicache.dev/">Replicache</a>、<a href="https://zero.rocicorp.dev/">Zero</a>、<a href="https://www.triplit.dev/">Triplit</a>、<a href="https://www.instantdb.com/">Instant</a>、<a href="https://livestore.dev/">LiveStore</a>、<a href="https://tanstack.com/db/latest/docs/overview">TanStack DB</a>。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；技术细节以原文与各项目官方文档为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const STATUSES = ['Todo', 'In Progress', 'Done', 'Canceled'];
+const pill = (i) => el('span', { class: 'pill s' + i }, STATUSES[i]);
+const flash = (n) => { n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); };
+const seg = (labels, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = labels.map((t, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); onPick(i); } }, t));
+  box.append(...bs);
+  return box;
+};
+
+/* ---------- 01 延迟赛跑 ---------- */
+reg('race', (node) => {
+  const SERVER = 40, FRAME = 16;
+  const input = el('input', { type: 'range', min: '20', max: '800', step: '10', value: '300', 'aria-label': '网络往返时间 RTT（毫秒）' });
+  const out = el('output', {}, '300 ms');
+  let st = 0, raf = 0;
+  const mkLane = (title, sub) => {
+    const p = el('span', {}, pill(0));
+    const extra = el('span', {});
+    const ro = el('div', { class: 'readout' }, '等待操作');
+    const lane = el('div', { class: 'lane' }, el('h4', {}, el('span', {}, title), el('span', { class: 'tag' }, sub)),
+      el('div', { class: 'issue' }, el('span', { class: 'ttl' }, 'LIN-42 修复登录页'), el('span', {}, extra, ' ', p)), ro);
+    return { lane, p, extra, ro };
+  };
+  const L = mkLane('传统请求-响应', '服务器是唯一真相');
+  const R = mkLane('local-first', '本地数据库');
+  const O = mkLane('另一个浏览器', '接收同步');
+  O.lane.style.marginTop = '12px';
+  const W = 600;
+  const sv = svg('svg', { viewBox: `0 0 ${W} 132`, role: 'img', 'aria-label': '两种架构的时间线', style: 'min-width:480px' });
+  const rows = [['传统', 18], ['本地', 62], ['后台同步', 104]];
+  rows.forEach(([t, y]) => sv.append(svg('text', { x: 0, y: y + 12, class: 'lbl' }, t)));
+  const X0 = 64, XW = W - X0 - 10;
+  const bars = [];
+  const mk = (row, color) => { const r = svg('rect', { x: X0, y: rows[row][1], width: 0, height: 18, rx: 3, fill: `var(--${color})`, opacity: '.85' }); sv.append(r); return r; };
+  const segs = [ // [row, color, start(fn), dur(fn), label]
+    [0, 'p', () => 0, (h) => h, '请求'], [0, 'y', (h) => h, () => SERVER, '服务器'], [0, 'p', (h) => h + SERVER, (h) => h, '响应'],
+    [1, 't', () => 0, () => FRAME, '写本地 + 重绘'],
+    [2, 'p', () => FRAME, (h) => h, '上传'], [2, 'y', (h) => FRAME + h, () => SERVER, '服务器'], [2, 'p', (h) => FRAME + h + SERVER, (h) => h, '广播'],
+  ];
+  segs.forEach((s) => bars.push(mk(s[0], s[1])));
+  const axis = svg('g', {});
+  sv.append(axis);
+  const status = el('div', { class: 'status' }, '点按钮开始。');
+  const btn = el('button', { class: 'btn primary', type: 'button' }, '把状态往前推一格');
+  const total = (rtt) => FRAME + rtt + SERVER + 20;
+  const sx = (t, rtt) => X0 + (t / total(rtt)) * XW;
+  const drawAxis = (rtt) => {
+    axis.replaceChildren();
+    const step = rtt + SERVER > 500 ? 200 : 100;
+    for (let t = 0; t <= total(rtt); t += step) {
+      axis.append(svg('line', { x1: sx(t, rtt), x2: sx(t, rtt), y1: 8, y2: 126, stroke: 'var(--grid)', 'stroke-width': 1 }));
+      axis.append(svg('text', { x: sx(t, rtt) + 2, y: 130, class: 'lbl', style: 'font-size:10px' }, t + 'ms'));
+    }
+    sv.insertBefore(axis, sv.children[3]);
+  };
+  const run = () => {
+    cancelAnimationFrame(raf);
+    const rtt = +input.value, h = rtt / 2;
+    const next = (st + 1) % STATUSES.length;
+    const tL = rtt + SERVER, tR = FRAME, tO = FRAME + rtt + SERVER;
+    drawAxis(rtt);
+    L.extra.replaceChildren(el('span', { class: 'spin', 'aria-hidden': 'true' }));
+    let doneL = false, doneR = false, doneO = false;
+    const t0 = performance.now();
+    btn.disabled = true;
+    const tick = (now) => {
+      const e = RM ? 1e9 : now - t0;
+      segs.forEach((s, i) => { const a = s[2](h), d = s[3](h); const k = Math.max(0, Math.min(1, (e - a) / d)); bars[i].setAttribute('x', sx(a, rtt)); bars[i].setAttribute('width', Math.max(0, (sx(a + d, rtt) - sx(a, rtt)) * k)); });
+      if (!doneR && e >= tR) { doneR = true; R.p.replaceChildren(pill(next)); flash(R.lane.querySelector('.issue')); R.ro.textContent = `≈${tR} ms（一帧）后界面已更新`; }
+      if (!doneL && e >= tL) { doneL = true; L.extra.replaceChildren(); L.p.replaceChildren(pill(next)); flash(L.lane.querySelector('.issue')); L.ro.textContent = `${tL} ms 后界面才更新`; }
+      if (!doneO && e >= tO) { doneO = true; O.p.replaceChildren(pill(next)); flash(O.lane.querySelector('.issue')); O.ro.textContent = `${tO} ms 后通过 WebSocket 收到`; }
+      if (!doneL) L.ro.textContent = `等待服务器…${Math.round(e)} ms`;
+      if (doneL && doneO) {
+        st = next; btn.disabled = false;
+        status.innerHTML = `RTT ${rtt} ms：传统架构用户要盯着转圈 <b>${tL} ms</b>；local-first 用户 <b>${tR} ms</b> 就看到结果，快了约 ${Math.round(tL / tR)} 倍。网络时间并没有消失，只是挪到了后台，由「另一个浏览器」在 ${tO} ms 时承担。`;
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  };
+  btn.addEventListener('click', run);
+  input.addEventListener('input', () => { out.textContent = input.value + ' ms'; drawAxis(+input.value); });
+  drawAxis(300);
+  const legend = el('div', { class: 'src' }, '时间线：紫 = 网络传输，黄 = 服务器处理（固定 40 ms），绿 = 本地写入并重绘（约一帧 16 ms）。数字为示意模型。');
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, 'RTT', input, out), btn),
+    el('div', { class: 'lanes' }, L.lane, R.lane), O.lane, el('div', { class: 'scrollx', style: 'margin-top:10px' }, sv), legend, status);
+  return { stop() { cancelAnimationFrame(raf); if (btn.disabled) { btn.disabled = false; L.extra.replaceChildren(); } } };
+});
+
+/* ---------- 02 两种数据流 ---------- */
+reg('flow', (node) => {
+  const MODES = [
+    { nodes: { C: [80, 50, '客户端'], S: [320, 50, '服务器'], D: [560, 50, '数据库'], U: [80, 170, '界面更新'] },
+      steps: [['C', 'S', 'bad', 'HTTP 请求出发，穿过网络（半个 RTT）。按钮处于加载状态。'],
+        ['S', 'D', 'bad', '服务器校验、查询或写入数据库。'],
+        ['D', 'S', 'bad', '数据库返回结果。'],
+        ['S', 'C', 'bad', '响应穿过网络回来（又半个 RTT）。'],
+        ['C', 'U', 'good', '直到这一刻界面才更新。整条链路都在用户的等待时间里，服务器是唯一的真相来源。']] },
+    { nodes: { C: [80, 50, '客户端'], L: [320, 50, '本地数据库'], U: [560, 50, '界面更新'], Y: [80, 170, '同步引擎'], S: [320, 170, '服务器'], O: [560, 170, '其他客户端'] },
+      steps: [['C', 'L', 'good', '写进浏览器里的本地数据库（Linear 用 IndexedDB），不碰网络。'],
+        ['L', 'U', 'good', '本地查询是响应式的，数据一变界面就重绘。用户此刻已经看到结果。'],
+        ['L', 'Y', 'bg', '（异步）这次变更进入同步引擎的待发送队列。'],
+        ['Y', 'S', 'bg', '同步引擎在后台把变更发给服务器（Linear：GraphQL mutation）。'],
+        ['S', 'O', 'bg', '服务器经 WebSocket 推给其他客户端，它们写进自己的本地库再各自重绘。服务器在这里更像「另一个需要同步的客户端」。']] },
+  ];
+  let mode = 0, k = 0;
+  const box = el('div', { class: 'scrollx' });
+  const steps = el('div', { class: 'steps', style: 'margin-top:10px' });
+  const status = el('div', { class: 'status' });
+  const NW = 116, NH = 40;
+  let edges = [], nodesG = {}, items = [];
+  const build = () => {
+    const M = MODES[mode];
+    const root = svg('svg', { viewBox: '0 0 640 220', role: 'img', 'aria-label': mode ? 'local-first 数据流' : '传统请求-响应数据流', style: 'min-width:520px' });
+    const defs = svg('defs', {}, svg('marker', { id: 'ah' + mode, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, svg('path', { d: 'M0,0 L10,5 L0,10 z', class: 'ahead' })));
+    root.append(defs);
+    edges = M.steps.map(([a, b, kind]) => {
+      const [x1, y1] = M.nodes[a], [x2, y2] = M.nodes[b];
+      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy), ux = dx / len, uy = dy / len;
+      const back = M.steps.some(([p, q]) => p === b && q === a);
+      const off = back ? 9 : 0;
+      const px = -uy * off, py = ux * off;
+      const sh = (ux, uy) => Math.min(Math.abs(NW / 2 / (ux || 1e-9)), Math.abs(NH / 2 / (uy || 1e-9))) + 4;
+      const s = sh(ux, uy);
+      const ln = svg('line', { x1: x1 + ux * s + px, y1: y1 + uy * s + py, x2: x2 - ux * s + px, y2: y2 - uy * s + py, class: 'fedge ' + kind, 'marker-end': `url(#ah${mode})` });
+      root.append(ln); return ln;
+    });
+    nodesG = {};
+    for (const [id, [x, y, t]] of Object.entries(M.nodes)) {
+      const g = svg('g', { class: 'fnode' }, svg('rect', { x: x - NW / 2, y: y - NH / 2, width: NW, height: NH, rx: 10 }), svg('text', { x, y }, t));
+      nodesG[id] = g; root.append(g);
+    }
+    if (mode) root.append(svg('text', { x: 320, y: 112, class: 'lbl mid' }, '↓ 异步，用户无感'));
+    box.replaceChildren(root);
+    const TAG = { bad: ['tg bad', '用户在等'], good: ['tg good', '用户已看到'], bg: ['tg bg', '后台'] };
+    items = M.steps.map(([a, b, kind, txt], i) => el('div', { class: 'tl-step ' + kind }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, `${M.nodes[a][2]} → ${M.nodes[b][2]} `), el('span', { class: TAG[kind][0] }, TAG[kind][1]), el('p', {}, txt))));
+    steps.replaceChildren(...items);
+    k = 0; paint();
+    status.textContent = mode ? '原文：Client → 本地数据库 → UI 更新；↓（异步）同步引擎 → 服务器 → 其他客户端。点「下一步」。' : '原文：Client → HTTP 请求 → Server → Database → Response → Client。点「下一步」。';
+  };
+  const paint = () => {
+    const M = MODES[mode];
+    edges.forEach((e, i) => { e.classList.toggle('on', i === k - 1); e.classList.toggle('done', i < k - 1); });
+    Object.values(nodesG).forEach((g) => g.classList.remove('on'));
+    if (k > 0) { const [a, b] = M.steps[k - 1]; nodesG[a].classList.add('on'); nodesG[b].classList.add('on'); }
+    items.forEach((it, i) => it.classList.toggle('on', i < k));
+    next.disabled = k >= M.steps.length;
+    if (k >= M.steps.length) {
+      status.innerHTML = mode ? `用户等待期间经过的网络跳数：<b>0</b>。网络往返仍然存在，只是全部发生在界面更新之后。` : `用户等待期间经过的网络跳数：<b>2</b>（去与回），外加服务器和数据库的处理时间。`;
+    }
+  };
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { k++; paint(); if (k < MODES[mode].steps.length) status.textContent = MODES[mode].steps[k - 1][3]; } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => build() }, '重置');
+  node.append(el('div', { class: 'ctrl' }, seg(['传统请求-响应', 'local-first / 同步'], (i) => { mode = i; build(); })), box, el('div', { class: 'ctrl' }, next, reset), status, steps);
+  build();
+});
+
+/* ---------- 03 同步与冲突模拟 ---------- */
+reg('sync', (node) => {
+  const TITLES = ['修复登录页', '登录页白屏', '登录按钮无响应', '登录页适配手机', '重写登录流程'];
+  let timers = [];
+  const later = (f, ms) => { timers.push(setTimeout(f, RM ? 0 : ms)); };
+  let lastCf = 0;
+  const server = { sid: 0, f: { status: { v: 0, by: null, sid: 0 }, title: { v: TITLES[0], by: null, sid: 0 } }, log: [] };
+  const status = el('div', { class: 'status' }, '两边都在线。随便改点什么。');
+  const mkClient = (name) => {
+    const c = { name, online: true, doc: { status: 0, title: TITLES[0] }, seen: 0, queue: [], inflight: 0 };
+    c.fStatus = el('b', {}); c.fTitle = el('b', {});
+    c.q = el('div', { class: 'queue' });
+    c.netBtn = el('button', { class: 'btn', type: 'button', onclick: () => toggleNet(c) }, '断网');
+    c.box = el('div', { class: 'lane' },
+      el('h4', {}, el('span', {}, '浏览器 ' + name), c.netBtn),
+      el('div', { class: 'field' }, el('span', {}, 'status'), c.fStatus),
+      el('div', { class: 'field' }, el('span', {}, 'title'), c.fTitle),
+      el('div', { class: 'ctrl' },
+        el('button', { class: 'btn primary', type: 'button', onclick: () => change(c, 'status') }, '改状态'),
+        el('button', { class: 'btn', type: 'button', onclick: () => change(c, 'title') }, '改标题')),
+      c.q);
+    return c;
+  };
+  const A = mkClient('A'), B = mkClient('B');
+  const C = [A, B];
+  const sStatus = el('b', {}), sTitle = el('b', {}), sLog = el('div', { class: 'log', 'aria-live': 'polite' });
+  const sBox = el('div', { class: 'lane' }, el('h4', {}, el('span', {}, '服务器'), el('span', { class: 'tag' }, '权威顺序')),
+    el('div', { class: 'field' }, el('span', {}, 'status'), sStatus), el('div', { class: 'field' }, el('span', {}, 'title'), sTitle), sLog);
+  const fmt = (f, v) => f === 'status' ? STATUSES[v] : '“' + v + '”';
+  const render = () => {
+    C.forEach((c) => {
+      c.fStatus.replaceChildren(pill(c.doc.status)); c.fTitle.textContent = c.doc.title;
+      c.box.classList.toggle('offline', !c.online);
+      c.netBtn.textContent = c.online ? '断网' : '联网';
+      c.q.replaceChildren(...c.queue.map((o) => el('span', { class: 'chip q' }, `待发 ${o.field}=${fmt(o.field, o.value)}`)), ...(c.inflight ? [el('span', { class: 'chip f' }, `↑ 发送中 ×${c.inflight}`)] : []), ...(c.online ? [] : [el('span', { class: 'chip' }, `离线，最后见到 #${c.seen}`)]));
+    });
+    sStatus.replaceChildren(pill(server.f.status.v)); sTitle.textContent = server.f.title.v;
+    sLog.replaceChildren(...(server.log.length ? server.log.map((l) => el('div', { class: l.cf ? 'cf' : '' }, `#${l.sid} ${l.by}: ${l.field}=${fmt(l.field, l.value)}${l.cf ? ' ⚠ 覆盖了 ' + l.cf : ''}`)) : [el('div', {}, '（变更日志为空）')]));
+  };
+  const change = (c, field) => {
+    let value;
+    if (field === 'status') value = (c.doc.status + 1) % STATUSES.length;
+    else { const opts = TITLES.filter((t) => t !== c.doc.title); value = opts[Math.floor(Math.random() * opts.length)]; }
+    c.doc[field] = value;
+    c.queue.push({ by: c.name, field, value, base: c.seen });
+    flash(field === 'status' ? c.fStatus.parentNode : c.fTitle.parentNode);
+    status.innerHTML = c.online ? `浏览器 ${c.name} 本地立即生效，变更进入发送队列。` : `浏览器 ${c.name} 离线：本地照样立即生效（用户感觉不到断网），变更先攒在队列里。`;
+    render();
+    if (c.online) flush(c);
+  };
+  const flush = (c) => {
+    const ops = c.queue.splice(0);
+    ops.forEach((op, i) => { c.inflight++; later(() => { c.inflight--; apply(op); }, 450 + i * 250); });
+    render();
+  };
+  const apply = (op) => {
+    const cur = server.f[op.field];
+    const cf = cur.by && cur.by !== op.by && cur.sid > op.base ? `${cur.by} 的 #${cur.sid}` : '';
+    server.sid++;
+    server.f[op.field] = { v: op.value, by: op.by, sid: server.sid };
+    server.log.unshift({ sid: server.sid, by: op.by, field: op.field, value: op.value, cf });
+    const me = C.find((c) => c.name === op.by);
+    if (me.online) me.seen = Math.max(me.seen, server.sid);
+    if (cf) lastCf = Date.now();
+    if (cf) status.innerHTML = `<b>冲突</b>：${op.by} 的这条修改是基于 #${op.base} 做出的，但服务器上 ${op.field} 已被 ${cf} 改过。规则「最后写入者胜」按<b>服务器收到的顺序</b>，所以 ${op.by} 的值留下，哪怕它在现实时间里更早做出。`;
+    else if (Date.now() - lastCf > 3000) status.innerHTML = `服务器接受 ${op.by} 的变更，编号 <b>#${server.sid}</b>，并广播给其他在线客户端。`;
+    render();
+    C.forEach((c) => { if (c.online) later(() => pull(c), 350); });
+  };
+  const pull = (c) => {
+    if (!c.online) return;
+    let changed = false;
+    for (const f of ['status', 'title']) {
+      const sv = server.f[f];
+      if (sv.sid > c.seen || c.doc[f] !== sv.v) {
+        const pending = c.queue.some((o) => o.field === f) || (c.inflight > 0);
+        if (!pending && c.doc[f] !== sv.v) { c.doc[f] = sv.v; changed = true; flash(f === 'status' ? c.fStatus.parentNode : c.fTitle.parentNode); }
+      }
+    }
+    if (!c.inflight && !c.queue.length) c.seen = server.sid;
+    if (changed) render();
+  };
+  const toggleNet = (c) => {
+    c.online = !c.online;
+    if (c.online) {
+      status.innerHTML = c.queue.length ? `浏览器 ${c.name} 重新联网：先把离线期间攒下的 ${c.queue.length} 条变更推给服务器，再从 #${c.seen} 之后补拉差量。` : `浏览器 ${c.name} 重新联网：从 #${c.seen} 之后补拉差量。`;
+      if (c.queue.length) flush(c); else later(() => pull(c), 300);
+      later(() => pull(c), 450 + 300 * 4);
+    } else status.innerHTML = `浏览器 ${c.name} 断网。它仍能读写本地数据库，只是收不到别人的修改。`;
+    render();
+  };
+  const resetBtn = el('button', { class: 'btn', type: 'button', onclick: () => {
+    timers.forEach(clearTimeout); timers = [];
+    server.sid = 0; server.log = []; server.f = { status: { v: 0, by: null, sid: 0 }, title: { v: TITLES[0], by: null, sid: 0 } };
+    C.forEach((c) => { c.online = true; c.doc = { status: 0, title: TITLES[0] }; c.seen = 0; c.queue = []; c.inflight = 0; });
+    status.textContent = '已重置。'; render();
+  } }, '重置');
+  const script = el('button', { class: 'btn', type: 'button', onclick: async () => {
+    resetBtn.click();
+    const wait = (ms) => new Promise((r) => later(r, ms));
+    toggleNet(B); await wait(500);
+    change(B, 'status'); change(B, 'status'); await wait(700);
+    change(A, 'status'); await wait(1400);
+    toggleNet(B);
+  } }, '自动演示冲突');
+  node.append(el('div', { class: 'sim' }, A.box, sBox, B.box), el('div', { class: 'ctrl' }, script, resetBtn), status);
+  render();
+  return { stop() {} };
+});
+
+/* ---------- 04 生态对比表 ---------- */
+reg('eco', (node) => {
+  const rows = [
+    ['Electric SQL', '以 Postgres 为后端的同步引擎', '用 Shape（订阅式查询）把 Postgres 的子集同步到客户端；原文指出写入需要另想办法（见第 07 章）。', ['pg', 'deep']],
+    ['PowerSync', '面向企业的方案', '把 Postgres 等后端数据库同步到客户端的 SQLite；写入经由你自己的后端上传。', ['pg']],
+    ['Jazz', '吸引作者的那个（见第 05 章）', 'CoValue + 端到端加密 + Group 权限，数据模型从零新造，可用官方 Jazz Cloud 或自托管同步服务。', ['new', 'deep']],
+    ['Dexie Cloud', '如果你已经在用 Dexie.js', 'Dexie.js 是 IndexedDB 的封装库，Dexie Cloud 是它的同步服务。', ['new']],
+    ['Replicache', '鼻祖（RIP）', 'Rocicorp 出品，客户端键值存储 + 自定义 mutator，与你自己的后端推拉同步。原文写 RIP，指它已不再是团队主力，团队转向 Zero。', ['new']],
+    ['Zero', 'Replicache 团队的新思路', 'Rocicorp 出品，基于 Postgres、以查询驱动同步；原文说它与 Electric 相似，但直接支持写入。', ['pg', 'deep']],
+    ['Triplit', '基于三元组存储的同步', '三元组存储（triple store）：数据按「实体-属性-值」存放，天然适合按字段合并。', ['new']],
+    ['Instant', '主打开发者体验', '常被比作现代版 Firebase：前端直接查询、实时订阅、内置权限。', ['new']],
+    ['LiveStore', '给 Electric 等提供者用的响应式层', '基于事件溯源与客户端 SQLite 的响应式状态层；原文也推荐它的演示页作为 local-first 体验入口。', ['new', 'deep']],
+  ];
+  const trs = rows.map(([n, a, b, tags]) => {
+    const tr = el('tr', {}, el('td', {}, n), el('td', {}, a), el('td', { class: 'add' }, b));
+    tr.dataset.tags = tags.join(' ');
+    return tr;
+  });
+  const table = el('table', { class: 'cmp' }, el('thead', {}, el('tr', {}, el('th', {}, '工具'), el('th', {}, '原文评价'), el('th', { class: 'add' }, '本页补充（非原文）'))), el('tbody', {}, ...trs));
+  const status = el('div', { class: 'status' });
+  const F = [['全部', null, '原文清单的九个工具。'], ['接现有 Postgres', 'pg', '这些从你已有的 Postgres 出发，渐进式接入；原文称之为「更渐进的路线」。'], ['自带数据模型', 'new', '这些需要采用它们自己的存储或数据模型，接入现有后端的方式各不相同。'], ['原文深入讨论', 'deep', '原文花了篇幅的：Jazz（已上手）、Electric 与 Zero（下一站）、LiveStore（可能补上 Electric 的写入）。']];
+  const pick = (i) => { const t = F[i][1]; let n = 0; trs.forEach((tr) => { const show = !t || tr.dataset.tags.includes(t); tr.classList.toggle('hide', !show); if (show) n++; }); status.innerHTML = `显示 <b>${n}</b> 个：${F[i][2]}`; };
+  node.append(el('div', { class: 'ctrl' }, seg(F.map((f) => f[0]), pick)), el('div', { class: 'scrollx' }, table), status);
+  pick(0);
+});
+
+/* ---------- 05 CoValue 演示 ---------- */
+reg('coval', (node) => {
+  const ID = 'co_zP0st7Rk';
+  let title = 'a new post', deleted = false, view = 0, timer = 0;
+  const events = [{ op: 'create', v: title }];
+  const hist = [title];
+  const hex = (s) => { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } let o = ''; for (let i = 0; i < 6; i++) { h = Math.imul(h ^ (h >>> 13), 2654435761) >>> 0; o += h.toString(16).padStart(8, '0').slice(0, 4); } return o; };
+  const i1 = el('input', { class: 'inp', 'aria-label': '设备 1 上的标题', value: title });
+  const i2 = el('input', { class: 'inp', 'aria-label': '设备 2 上的标题', value: title });
+  const d1 = el('div', { class: 'lane' }, el('h4', {}, el('span', {}, '笔记本'), el('span', { class: 'tag' }, 'post.title')), i1);
+  const d2 = el('div', { class: 'lane' }, el('h4', {}, el('span', {}, '手机'), el('span', { class: 'tag' }, 'post.title')), i2);
+  const log = el('div', { class: 'log' });
+  const meta = el('div', { class: 'readout' });
+  const status = el('div', { class: 'status' }, '在任一输入框里打字。');
+  const bytes = () => events.reduce((s, e) => s + 48 + new TextEncoder().encode(e.v || '').length, 0);
+  const render = () => {
+    const lines = events.map((e, i) => view ? `${i + 1}. 0x${hex(i + e.op + e.v)}…  (${48 + new TextEncoder().encode(e.v || '').length} B)` : `${i + 1}. ${e.op}${e.v != null ? ' title = "' + e.v + '"' : ''}`);
+    log.replaceChildren(...lines.slice(-40).reverse().map((t) => el('div', {}, t)));
+    meta.textContent = `${ID} · 事件 ${events.length} 条 · 存储约 ${bytes()} B · 当前状态：${deleted ? '已从列表移除（历史仍在）' : '“' + title + '”'}`;
+    [i1, i2].forEach((x) => { x.disabled = deleted; });
+  };
+  const onType = (src, dst) => () => {
+    if (deleted) return;
+    title = src.value; events.push({ op: 'set', v: title }); hist.push(title);
+    clearTimeout(timer); timer = setTimeout(() => { dst.value = title; flash(dst.parentNode); }, RM ? 0 : 150);
+    status.innerHTML = `本地赋值 <span class="mono">post.title = …</span>，一条事件被追加并同步到另一台设备。没有 API 路由，没有 DTO。`;
+    render();
+  };
+  i1.addEventListener('input', onType(i1, i2)); i2.addEventListener('input', onType(i2, i1));
+  const del = el('button', { class: 'btn', type: 'button', onclick: () => {
+    if (deleted) { deleted = false; events.push({ op: 'restore ref', v: null }); status.innerHTML = '引用恢复，帖子回来了，因为它从来没真正消失。'; }
+    else { deleted = true; events.push({ op: 'remove ref', v: null }); status.innerHTML = '「删除」只追加了一条 <b>remove ref</b> 事件：帖子从列表里消失，但所有历史版本仍在存储里，事件数和字节数只增不减。'; }
+    del.textContent = deleted ? '恢复引用' : '删除帖子';
+    render();
+  } }, '删除帖子');
+  const undo = el('button', { class: 'btn', type: 'button', onclick: () => {
+    if (deleted || hist.length < 2) { status.textContent = hist.length < 2 ? '还没有可撤销的修改，先打几个字。' : '先恢复引用。'; return; }
+    hist.pop(); title = hist[hist.length - 1]; i1.value = i2.value = title;
+    events.push({ op: 'set', v: title });
+    status.innerHTML = '撤销 = 从历史里取回上一个值，再<b>追加</b>一条事件。时间旅行很方便，但存储仍然在涨。';
+    render();
+  } }, '撤销');
+  node.append(el('div', { class: 'lanes' }, d1, d2),
+    el('div', { class: 'ctrl' }, del, undo, seg(['开发者视角', '服务器视角'], (i) => { view = i; render(); status.innerHTML = i ? '服务器只看到<b>加密后的字节串</b>：它能转发、能存，但读不出标题是什么。想审核内容？做不到，除非把服务器账号加进 Group。' : '开发者视角：每一条事件都能看懂。'; })),
+    log, meta, status);
+  render();
+  return { stop() { clearTimeout(timer); } };
+});
+
+/* ---------- 05b Group 权限 ---------- */
+reg('group', (node) => {
+  const actors = [['Alice', 'admin'], ['Bob', 'writer'], ['Carol', null], ['服务器账号', null]];
+  const acts = ['读取帖子', '修改标题', '添加成员'];
+  const can = (role, a) => role === 'admin' ? true : role === 'writer' ? a < 2 : role === 'reader' ? a === 0 : false;
+  let srv = false, ai = 0, ac = 0;
+  const tableBox = el('div', { class: 'scrollx' });
+  const status = el('div', { class: 'status' });
+  const role = (i) => i === 3 && srv ? 'reader' : actors[i][1];
+  const render = () => {
+    const t = el('table', { class: 'mtx' }, el('tr', {}, el('th', {}, '成员（角色）'), ...acts.map((a) => el('th', {}, a))),
+      ...actors.map(([n], i) => el('tr', {}, el('th', { scope: 'row' }, `${n}（${role(i) || '非成员'}）`), ...acts.map((_, j) => { const ok = can(role(i), j); return el('td', { class: (ok ? 'y' : 'n') + (i === ai && j === ac ? ' cur' : '') }, ok ? '✓' : (j === 0 ? '只见密文' : '✗')); }))));
+    tableBox.replaceChildren(t);
+    const r = role(ai), ok = can(r, ac), n = actors[ai][0];
+    status.innerHTML = `${n}（${r || '非成员'}）尝试「${acts[ac]}」：${ok ? '<b>允许</b>' : '<span style="color:var(--r)">拒绝</span>'}。` +
+      (ai === 3 && !srv && ac === 0 ? ' 这就是「服务器是瞎的」：它存着这篇帖子，却解不开。' : '') +
+      (ai === 3 && srv && ac === 0 ? ' 服务器被显式加进 Group 后，才能读这部分数据，比如用来做审核。' : '') +
+      (ai === 1 && ac === 2 ? ' writer 能改内容，但不能管理成员。' : '');
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(actors.map((a) => a[0]), (i) => { ai = i; render(); })),
+    el('div', { class: 'ctrl' }, seg(acts, (i) => { ac = i; render(); }),
+      el('button', { class: 'btn', type: 'button', onclick: (e) => { srv = !srv; e.currentTarget.textContent = srv ? '把服务器账号移出 Group' : '把服务器账号加入 Group（reader）'; render(); } }, '把服务器账号加入 Group（reader）')),
+    tableBox, status,
+    el('div', { class: 'note-add' }, el('b', {}, '本页补充（非原文）'), '：原文示例只用到 admin 与 writer；reader 是 Jazz Group 的另一种角色，本页用它示意「把数据显式共享给服务器账号」。'));
+  render();
+});
+
+/* ---------- 06 Passkey 十步 ---------- */
+reg('passkey', (node) => {
+  const S = [
+    ['bad', '哦对，Passkey 不在 localhost 时需要 HTTPS', 'HTTPS'],
+    ['good', '用 mkcert 给 Vite 开 HTTPS', 'HTTPS'],
+    ['bad', '哦对，它还需要受信任的证书', '证书'],
+    ['good', '那就改用 Clerk 吧，对自托管应用不理想，但凑合', '登录'],
+    ['bad', '哦，Jazz 用户的加密账号密钥怎么转到 Clerk？', '密钥'],
+    ['bad', '哦，Clerk 不在 localhost 时也需要 HTTPS，合理', 'HTTPS'],
+    ['good', '重新启用 mkcert', 'HTTPS'],
+    ['bad', '哦对，Jazz 的同步 WebSocket 现在也得是安全连接', 'WebSocket'],
+    ['good', '好吧，全部走代理', '代理'],
+    ['good', '（过了太久之后）能用了！', '完成'],
+  ];
+  const items = S.map(([k, t, tag], i) => el('div', { class: 'tl-step ' + k }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, t), ' ', el('span', { class: 'tg ' + (k === 'bad' ? 'bad' : 'good') }, (k === 'bad' ? '卡住 · ' : '尝试 · ') + tag))));
+  let k = 0;
+  const status = el('div', { class: 'status' }, '点「下一步」开始。');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    if (k < items.length) items[k++].classList.add('on');
+    const blocks = S.slice(0, k).filter((s) => s[0] === 'bad').length;
+    const https = S.slice(0, k).filter((s) => s[2] === 'HTTPS').length;
+    status.innerHTML = k >= items.length ? `走完 ${k} 步，其中 <b>${blocks}</b> 次卡住，${https} 步与 HTTPS 有关。根源只有一个：离开 localhost 就离开了浏览器认定的「安全上下文」。` : `第 ${k} 步，已卡住 ${blocks} 次。`;
+    if (k >= items.length) next.disabled = true;
+  } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { items.forEach((x) => x.classList.remove('on')); k = 0; next.disabled = false; status.textContent = '已重置。'; } }, '重置');
+  node.append(el('div', { class: 'steps' }, ...items), el('div', { class: 'ctrl' }, next, reset), status);
+});
+
+/* ---------- 07 Shape 部分同步 ---------- */
+reg('shape', (node) => {
+  const NAMES = ['local-first 入门', '同步引擎笔记', 'Shape 是什么', 'CRDT 杂谈', '离线优先实践', 'Postgres 小技巧', 'IndexedDB 踩坑', 'WebSocket 心跳'];
+  let rows = [[1, 'Hello local-first', 1, true], [2, 'Jazz 初体验', 2, true], [3, '草稿：同步冲突', 1, false], [4, 'Electric 读路径', 3, true], [5, '草稿：迁移', 2, false]];
+  let nextId = 6, shape = 0, mode = 0, editN = 0;
+  const SHAPES = [['全表', () => true, "{ table: 'posts' }"], ['author_id = 1', (r) => r[2] === 1, "{ table: 'posts', where: 'author_id = 1' }"], ['已发布', (r) => r[3], "{ table: 'posts', where: 'published = true' }"]];
+  const srvBox = el('div', { class: 'rows' }), cliBox = el('div', { class: 'rows' });
+  const paramsEq = el('div', { class: 'eq' });
+  const status = el('div', { class: 'status' });
+  const head = () => el('div', { class: 'row hd' }, el('span', {}, 'id'), el('span', {}, 'title'), el('span', {}, 'author'), el('span', {}, '发布'));
+  const rowEl = (r, miss) => el('div', { class: 'row' + (miss ? ' miss' : ''), 'data-id': r[0] }, el('span', { class: 'mono' }, r[0]), el('span', {}, r[1]), el('span', { class: 'mono' }, r[2]), el('span', {}, r[3] ? '是' : '否'));
+  const cliHead = el('h4', {}), srvHead = el('h4', {}, el('span', {}, '服务器 Postgres：posts'), el('span', { class: 'tag' }, '权威数据'));
+  const render = (flashId) => {
+    const f = SHAPES[shape][1];
+    srvBox.replaceChildren(head(), ...rows.map((r) => rowEl(r, !f(r))));
+    const mine = rows.filter(f);
+    cliBox.replaceChildren(head(), ...(mine.length ? mine.map((r) => rowEl(r, false)) : [el('div', { class: 'row' }, el('span', {}), el('span', {}, '（空）'))]));
+    cliHead.replaceChildren(el('span', {}, '客户端（useShape）'), el('span', { class: 'tag' }, `已同步 ${mine.length} / ${rows.length} 行`));
+    paramsEq.textContent = 'useShape({ url, params: ' + SHAPES[shape][2] + ' })';
+    if (flashId != null) [srvBox, cliBox].forEach((b) => { const n = b.querySelector(`[data-id="${flashId}"]`); if (n && !n.classList.contains('miss')) flash(n); });
+  };
+  const ins = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    const r = [nextId++, NAMES[(nextId) % NAMES.length], 1 + Math.floor(Math.random() * 3), Math.random() < .6];
+    rows.push(r); if (rows.length > 9) rows.shift();
+    const hit = SHAPES[shape][1](r);
+    render(r[0]);
+    status.innerHTML = hit ? `新行 #${r[0]}（author ${r[2]}，${r[3] ? '已发布' : '草稿'}）<b>命中当前 Shape</b>，被推送到客户端。` : `新行 #${r[0]}（author ${r[2]}，${r[3] ? '已发布' : '草稿'}）不在当前 Shape 里，客户端<b>不会</b>收到它。这就是「部分同步」：只下载你需要的那一片。`;
+  } }, '服务器插入一行');
+  const edit = el('button', { class: 'btn', type: 'button', onclick: () => {
+    const mine = rows.filter(SHAPES[shape][1]);
+    if (!mine.length) { status.textContent = '当前 Shape 里没有行可改。'; return; }
+    const r = mine[0], nt = r[1].replace(/（改 \d+）$/, '') + `（改 ${++editN}）`;
+    if (mode === 0) {
+      status.innerHTML = 'Electric：Shape 只负责<b>读路径</b>。客户端不能直接写，需要你自己写一个 API 把修改写进 Postgres，等它经 Shape 流回来（原文：可配 LiveStore 或 TanStack DB 来补上）。模拟中…';
+      setTimeout(() => { r[1] = nt; render(r[0]); status.innerHTML = `经过「你的 API → Postgres → Shape」一圈，#${r[0]} 的新标题才回到客户端。`; }, RM ? 0 : 900);
+    } else {
+      const n = cliBox.querySelector(`[data-id="${r[0]}"] span:nth-child(2)`); if (n) { n.textContent = nt; flash(n.parentNode); }
+      status.innerHTML = 'Zero：直接支持写入（mutation），客户端先乐观更新，同步到服务器。';
+      setTimeout(() => { r[1] = nt; render(r[0]); status.innerHTML = `Zero：客户端已先显示新标题，服务器随后确认，#${r[0]} 两边一致。`; }, RM ? 0 : 600);
+    }
+  } }, '在客户端改第一行标题');
+  node.append(el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, 'Shape'), seg(SHAPES.map((s) => s[0]), (i) => { shape = i; render(); status.textContent = `切换 Shape：客户端现在只订阅 ${SHAPES[i][0]} 的行。灰色行留在服务器上，客户端不下载。`; })),
+    paramsEq,
+    el('div', { class: 'lanes' }, el('div', { class: 'lane' }, srvHead, srvBox), el('div', { class: 'lane' }, cliHead, cliBox)),
+    el('div', { class: 'ctrl' }, ins, el('span', { class: 'tag' }, '写入方式'), seg(['Electric', 'Zero'], (i) => { mode = i; status.textContent = i ? '已切到 Zero。' : '已切到 Electric。'; }), edit), status);
+  render();
+  status.textContent = '选一个 Shape，再点「服务器插入一行」。';
+});
+
+/* ---------- 08 适用性自测 ---------- */
+reg('fit', (node) => {
+  const G = ['创意工具（设计、写作、音乐）', '协作应用，或大应用里的协作部分', '需要离线的移动应用', '开发者工具', '个人效率应用'];
+  const B = ['大量服务器端业务逻辑', '严格的审计要求', '大规模数据分析', '深度集成的既有系统', '请求常被服务器逻辑拒绝（乐观更新难做）'];
+  const on = new Set();
+  const PRE = [['协作设计工具', ['g0', 'g1']], ['个人笔记 App', ['g4', 'g2']], ['Linear 式项目管理', ['g1', 'g3', 'g4']], ['银行转账系统', ['b0', 'b1', 'b4']], ['BI 分析平台', ['b2', 'b3']], ['电商下单 + 库存', ['g2', 'b0', 'b4']]];
+  const tg = [...G.map((t, i) => ['g' + i, t, 'g']), ...B.map((t, i) => ['b' + i, t, 'b'])].map(([id, t, c]) => {
+    const b = el('button', { class: 'tgl ' + c, type: 'button', 'aria-pressed': 'false', onclick: () => { on.has(id) ? on.delete(id) : on.add(id); render(); } }, t);
+    b.dataset.id = id; return b;
+  });
+  const meter = el('div', { class: 'meter' }); const mg = el('i', { style: 'background:var(--t);width:0' }), mb = el('i', { style: 'background:var(--r);width:0' }); meter.append(mg, mb);
+  const verdict = el('div', { class: 'verdict' }); const status = el('div', { class: 'status' });
+  const render = () => {
+    tg.forEach((b) => { const o = on.has(b.dataset.id); b.classList.toggle('on', o); b.setAttribute('aria-pressed', o); });
+    const g = [...on].filter((x) => x[0] === 'g').length, bd = on.size - g;
+    mg.style.width = (g / 10 * 100) + '%'; mb.style.width = (bd / 10 * 100) + '%';
+    if (!on.size) { verdict.textContent = '—'; verdict.className = 'verdict'; status.textContent = '还没有勾选任何特征。'; return; }
+    if (bd === 0) { verdict.textContent = '非常适合'; verdict.className = 'verdict ok'; status.innerHTML = `命中 ${g} 条「非常适合」，0 条「有挑战」。原文：如果你在做新东西、能接受这些约束，试试 local-first。`; }
+    else if (g === 0) { verdict.textContent = '有挑战'; verdict.className = 'verdict no'; status.innerHTML = `命中 ${bd} 条「有挑战」。这类系统的真相与规则集中在服务器上，把数据库搬到客户端反而添乱。`; }
+    else { verdict.textContent = '需要权衡'; verdict.className = 'verdict'; status.innerHTML = `${g} 条适合、${bd} 条有挑战。原文的说法是 local-first 也适合「大应用里的协作部分」：可以只把那一块做成本地优先。`; }
+  };
+  node.append(el('div', { class: 'ctrl' }, ...PRE.map(([n, ids]) => el('button', { class: 'btn', type: 'button', onclick: () => { on.clear(); ids.forEach((i) => on.add(i)); render(); } }, n))),
+    el('div', { class: 'toggles' }, ...tg), meter, verdict, status,
+    el('div', { class: 'note-add' }, el('b', {}, '本页补充（非原文）'), '：上面六个示例应用及其勾选是本页的举例，判断规则也只是把原文两张清单数一数，不是正式的评估方法。'));
+  render();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

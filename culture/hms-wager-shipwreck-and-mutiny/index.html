@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>绝命航线：Wager 号沉船与叛乱</title>
+<meta name="description" content="1741 年英国军舰 Wager 号在智利外海触礁，幸存者分裂为舰长奇普与炮手布克利两派各自返航。可步进的航线地图、死算误差模拟、人物关系图、两条返航路线与人数点阵、可筛选时间线。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --sea:#e3edf3; --land:#ebe4d2; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --sea:#122030; --land:#2b2a24; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --sea:#122030; --land:#2b2a24; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ================= 本页组件 ================= */
+.seg button{white-space:nowrap;flex:0 0 auto}
+/* 地图 */
+.map .sea{fill:var(--sea)}
+.map .land{fill:var(--land);stroke:var(--line);stroke-width:.8}
+.map .gridl{stroke:var(--grid);stroke-width:.6;fill:none}
+.map .route{fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.map .route.ghost{stroke:var(--muted);opacity:.28;stroke-dasharray:3 4;stroke-width:1.6}
+.map .route.wager{stroke:var(--r)}
+.map .route.anson{stroke:var(--muted);stroke-dasharray:6 5;stroke-width:1.6}
+.map .route.south{stroke:var(--o)}
+.map .route.north{stroke:var(--p)}
+.map .route.north.try{stroke-dasharray:4 4}
+.map .place circle{fill:var(--surface);stroke:var(--ink);stroke-width:1.2}
+.map .place text{font-size:11px;fill:var(--text);font-family:var(--font);paint-order:stroke;stroke:var(--sea);stroke-width:3px}
+.map .place.hot circle{fill:var(--y);stroke:var(--y)}
+.map .area{font-size:12px;fill:var(--muted);font-style:italic;font-family:var(--font);letter-spacing:.1em}
+.map .acc{stroke:var(--t);stroke-width:1.4;fill:none;opacity:.7}
+.map .wreck{fill:var(--r)}
+.map .ship{fill:var(--r);stroke:var(--surface);stroke-width:1.5}
+.map{max-width:520px;margin:0 auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.stepchips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px}
+.stepchips button{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:4px 9px;font-size:12px;cursor:pointer;color:var(--muted)}
+.stepchips button.on{background:var(--r-soft);border-color:var(--r);color:var(--text);font-weight:600}
+.panel{background:var(--surface-2);border-radius:10px;padding:10px 14px;font-size:14px;margin-top:8px}
+.panel .d{font-family:var(--mono);font-size:12px;color:var(--r)}
+.panel h4{margin:2px 0 4px;font-size:15px}
+
+/* 月份条 */
+.months{display:grid;grid-template-columns:repeat(12,1fr);gap:3px;margin:10px 0}
+.months div{text-align:center;font-size:11px;padding:8px 0;border-radius:6px;background:var(--surface-2);color:var(--muted);position:relative}
+.months div.win{background:var(--t-soft);color:var(--text);font-weight:600}
+.months div.dep{outline:2px solid var(--p);outline-offset:-2px;color:var(--p);font-weight:700}
+.months div.arr{outline:2px solid var(--r);outline-offset:-2px;color:var(--r);font-weight:700}
+.months div.arr.win{color:var(--t);outline-color:var(--t)}
+
+/* 数字卡 */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:10px}
+.kpi{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.kpi .v{font-size:22px;font-weight:700;font-family:var(--mono)}
+.kpi .k{font-size:12px;color:var(--muted)}
+
+/* 人物关系 */
+.who{cursor:pointer}
+.who circle{stroke-width:2;transition:r .2s}
+.who.c circle{fill:var(--p-soft);stroke:var(--p)}
+.who.b circle{fill:var(--o-soft);stroke:var(--o)}
+.who.n circle{fill:var(--r-soft);stroke:var(--r)}
+.who.s circle{fill:var(--y-soft);stroke:var(--y)}
+.who text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none;font-weight:600}
+.who:focus{outline:none}
+.who:focus circle,.who.sel circle{stroke-width:4}
+.edge line{stroke:var(--line);stroke-width:1.6;transition:stroke .2s,opacity .2s}
+.edge text{font-size:10px;fill:var(--muted);text-anchor:middle;paint-order:stroke;stroke:var(--surface);stroke-width:3px}
+.edge.hot line{stroke:var(--ink);stroke-width:2.2}
+.edge.hot text{fill:var(--text)}
+.edge.dim{opacity:.25}
+.vs{display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px}
+@media (min-width:640px){ .vs{grid-template-columns:1fr 1fr} }
+.vs .side{border-radius:10px;padding:10px 14px;font-size:14px;border:1px solid var(--line)}
+.vs .side.c{background:var(--p-soft)}
+.vs .side.b{background:var(--o-soft)}
+.vs .side h4{margin:0 0 4px;font-size:14px}
+
+/* 小艇改造 */
+.boat .hull{fill:var(--land);stroke:var(--ink);stroke-width:1.4}
+.boat .ins{fill:var(--y-soft);stroke:var(--y);stroke-width:1.4}
+.boat .mast{stroke:var(--ink);stroke-width:2}
+.boat .sail{fill:var(--surface-2);stroke:var(--muted);stroke-width:1}
+.boat .dim{stroke:var(--muted);stroke-width:1}
+.boat g.mv{transition:transform .8s ease}
+.boat .fade{transition:opacity .6s .4s}
+
+/* 人点阵 */
+.lane{margin:10px 0}
+.lane .lt{font-size:13px;font-weight:600;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.lane .lt span{font-family:var(--mono)}
+.dots{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.dots i{width:9px;height:9px;border-radius:50%;display:block;transition:background .4s,opacity .4s}
+.dots.s i{background:var(--o)}
+.dots.n i{background:var(--p)}
+.dots i.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line);opacity:.8}
+.cmp{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.cmp th,.cmp td{border-bottom:1px solid var(--line);padding:6px 6px;text-align:left;vertical-align:top}
+.cmp th{color:var(--muted);font-weight:600;font-size:12px}
+.cmp td.s{color:var(--o)} .cmp td.n{color:var(--p)}
+
+/* DR 模拟 */
+.dr .trk{fill:none;stroke-width:2}
+.dr .trk.est{stroke:var(--p);stroke-dasharray:5 4}
+.dr .trk.real{stroke:var(--r)}
+.dr .coast{fill:var(--land);stroke:var(--line)}
+.dr .unc{fill:var(--p-soft);stroke:var(--p);stroke-width:1;opacity:.6}
+
+/* 时间线 */
+.tline{list-style:none;margin:10px 0 0;padding:0 0 0 18px;border-left:2px solid var(--line)}
+.tline li{position:relative;padding:6px 8px 6px 10px;margin:2px 0;border-radius:8px;cursor:pointer;font-size:14px;transition:opacity .3s,background .2s}
+.tline li::before{content:"";position:absolute;left:-25px;top:13px;width:10px;height:10px;border-radius:50%;background:var(--surface);border:2px solid var(--muted)}
+.tline li[data-k="island"]::before{border-color:var(--r)}
+.tline li[data-k="south"]::before{border-color:var(--o)}
+.tline li[data-k="north"]::before{border-color:var(--p)}
+.tline li[data-k="fleet"]::before{border-color:var(--t)}
+.tline li[data-k="court"]::before{border-color:var(--y)}
+.tline li .d{font-family:var(--mono);font-size:12px;color:var(--muted);margin-right:6px}
+.tline li.dim{opacity:.22}
+.tline li.sel{background:var(--surface-2)}
+.tline li:focus{outline:2px solid var(--p);outline-offset:1px}
+.tline li .x{display:none;font-size:13px;color:var(--muted);margin-top:4px}
+.tline li.sel .x{display:block}
+.sup{font-size:11px;color:var(--o);border:1px dashed var(--o);border-radius:4px;padding:0 4px;margin-left:4px;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">绝命航线：Wager 号</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">文化 · 航海史</div>
+  <h1>绝命航线：Wager 号沉船与叛乱</h1>
+  <p class="sub">1741 年，一艘掉队的英国军舰在智利外海一座无名小岛上撞碎。140 名幸存者在岛上撑了五个月，最后分裂成两派，各自走了一条回家的路。这一页把航线画成地图，把人数画成点阵，把两派的分歧摆在一起看。</p>
+  <div class="thesis">船沉之后，舰长的权威跟着船一起沉了：炮手布克利带多数人向南穿过麦哲伦海峡去巴西，舰长奇普带少数人向北投奔敌国。两路都死了大半人，活下来的又在军事法庭上重逢。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>A</i>Alan Bellows（原作者）</span>
+    <span class="au"><i style="background:var(--t)">宝</i>宝玉（中译）</span>
+  </div>
+  <p class="meta">原文：Alan Bellows，「Dead Reckoning」，Damn Interesting（2019 年 9 月，长文与播客）；中文译文「绝命航线：Wager号沉船与叛乱」，宝玉译，baoyu.io（2025-05-10）。原文取材自 Wager 号幸存者当年的第一人称记述。本页忠实于原文的叙述顺序，并加了几处标注为「本页补充」的核对与延伸，其中几处日期与其他资料不一致，已在补充框里注明。地图为手绘示意，海岸线和航线都只是大致形状。</p>
+</header>
+
+<section class="ch" id="drake" data-title="水手坟场">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>「水手坟场」：德雷克海峡</h2>
+    <p class="lead">为什么说 1741 年 4 月出现在德雷克海峡，是时间和地点都选到了最坏？</p>
+  </div>
+  <p>南美洲与南极洲之间的德雷克海峡（Drake Passage），18 世纪的水手叫它「水手坟场」。欧洲大船要去南美西海岸，只能向南绕过合恩角（Cape Horn），明智的人只在夏天走。1741 年 4 月 12 日，南半球已是深秋，英国皇家海军军舰 Wager 号却在海峡正中顶着风暴航行：值班的资深炮手约翰·布克利（John Bulkeley）被一个巨浪卷过舰尾甲板，船上 160 人险些一起被吞没。</p>
+  <p style="margin-top:10px">这时它已经少了一根桅杆，舰长死了，代理舰长卧床不起，多数船员病得奄奄一息，而原本同行的 7 艘僚舰早已不见踪影。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>Wager 号当时的处境</b>：原文列出的四个「不具备」。点一张卡片看原文怎么说。</div>
+    <div data-demo="handicaps"></div>
+  </div>
+</section>
+
+<section class="ch" id="fleet" data-title="先天不足的舰队">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>一支先天不足的舰队</h2>
+    <p class="lead">安森的舰队为什么注定要在最坏的季节去闯合恩角？</p>
+  </div>
+  <p>Wager 号 1734 年为东印度公司建造，原本运香料和布料，装 28 门炮防海盗。它的名字和「打赌」无关，是为纪念第一海军大臣查尔斯·韦杰爵士（Sir Charles Wager）。1739 年海军把这艘半旧商船买下改装成补给舰，由丹迪·基德（Dandy Kidd）指挥，编入乔治·安森准将（Commodore George Anson）的舰队，去南美西海岸突袭、掠夺西班牙。</p>
+  <p style="margin-top:10px">开战的由头是「詹金斯的耳朵」：约 1731 年，英国商船船长罗伯特·詹金斯（Robert Jenkins）在西班牙海军检查时被割下左耳；八年后英国需要开战理由，这只耳朵被重新翻出来，战争因此得名「詹金斯的耳朵战争」（The War of Jenkins' Ear）。</p>
+  <p style="margin-top:10px">舰队缺人。海军先用「征用队」（press-gang）强拉平民，仍不够，又从「伤残军团」（Corps of Invalids）征来 500 名年老伤病的退役老兵，有的要人搀着才能走路，能走的又在出发前逃了。船也旧，许多是商船改装，规格各异，备件不能通用。</p>
+  <div class="quote">「想象不出比那些可怜的退伍老兵登船时更加令人心酸的场景了……几乎可以肯定，这些人即使没遇上敌人，也会无意义地死去。」——安森</div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>赶不上的夏天</b>：安森估计从英国到德雷克海峡要约 5 个月，合恩角的夏季是 11 月到次年 1 月。拖动出发月份（按月底出发计），看到达时落在哪个季节。</div>
+    <div data-demo="season"></div>
+  </div>
+</section>
+
+<section class="ch" id="reckon" data-title="逆风、坏血病与死算">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>逆风、坏血病与「死算」</h2>
+    <p class="lead">在看不清星星、没有精准时钟的海上，船怎么知道自己在哪？为什么会越算越偏？</p>
+  </div>
+  <p>1741 年 2 月，舰队停在今阿根廷的圣朱利安湾（St. Julian's Bay）修整。约 1800 多人里，许多人四肢无力、牙齿脱落、皮肤出血，这是坏血病（维生素 C 缺乏）；当时海军还不知道柑橘能防治它。Wager 号舰长基德就死在这一波病里，原在 Tryal 号服役的戴维·奇普（David Cheap）中尉被临时任命为舰长。</p>
+  <p style="margin-top:10px">听说五艘西班牙战舰已先一步驶向海峡，安森 2 月 27 日起锚，命各舰绕过合恩角后到智利外海的索科罗岛（Nuestra Señora de Socorro）会合。3 月 7 日舰队进入德雷克海峡。那里的南极绕极流（Antarctic Circumpolar Current）和西风常年自西向东，向西走只能「拉风」（tacking），呈之字形一点点逆风挪动。北面有暗礁，只能一路往南，几乎到南极圈。</p>
+  <p style="margin-top:10px">风浪里用八分仪（octant）测天几乎不可能，又没有足够精准的航海钟，于是只能靠<b>死算（dead reckoning）</b>：用船速、航向和时间，从上一个大致位置往前推。误差会一路累积。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>死算误差模拟</b>：船按推算一直向北（蓝虚线），但若有一股没算进去的向东漂流（洋流、风压），真实航迹（红线）会慢慢偏向海岸。参数是示意值，只演示误差怎样累积，不是 Wager 号的实测数据；横向放大 4 倍。</div>
+    <div data-demo="dr"></div>
+  </div>
+</section>
+
+<section class="ch" id="route" data-title="航线：到 Wager 岛">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>航线：从圣朱利安湾到 Wager 岛</h2>
+    <p class="lead">Wager 号是怎样一步步掉队、又撞上一片地图上没有的海岸的？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>Wager 号航线示意</b>：点日期或「下一步」，沿原文的时间顺序走一遍。红线是 Wager 号，青色箭头示意自西向东的绕极流。</div>
+    <div data-demo="voyage"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文写 5 月 13 日拂晓船匠约翰·卡明斯（John Cummins）瞥见西面有陆地、凌晨 4 点半左右触礁；按维基百科「HMS Wager (1739)」条目，触礁日期是 1741 年 5 月 14 日，地点在今智利瓜亚内科群岛（Guayaneco Archipelago）的 Wager 岛。图中虚线的安森主力后续航向（经胡安·费尔南德斯群岛继续北上）也是本页补充，原文只提到布克利曾建议改去那里修整。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="island" data-title="岛上的五个月">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>Wager 岛上的五个月</h2>
+    <p class="lead">船一沉，舰长的命令还算不算数？岛上的人是怎么分成两边的？</p>
+  </div>
+  <p>天亮后，大副约翰·斯诺（John Snow）和上尉贝恩斯（Baynes）先后乘小艇上岸，都没回来复命。奇普肩膀脱臼，也带人登陆，岛上只有一间小木屋，他占了；第二天早上，有 3 人冻死。留在船上的一伙人找到酒桶，喝得烂醉，穿着军官的蕾丝礼服在甲板上晃，宣称船沉了就不再受军纪约束。水手长约翰·金（John King）求救不得，竟用舰炮朝岸上开火，炮弹险些击中舰长的住处。</p>
+  <p style="margin-top:10px">最终 140 人登陆。补给集中在一个大帐篷里，由海军陆战队的汉密尔顿（Hamilton）中尉派岗哨看守，限量配给。人们吃野芹菜、岩石上的贝类，甚至吃啄食尸体的乌鸦；一周后土著乘独木舟来，用贝类、绵羊和狗交换布料和镜子，后来因英国水手骚扰土著妇女而离开。冬天过去，剩下百人左右。</p>
+  <p style="margin-top:10px">6 月 10 日深夜外面一声枪响，汉密尔顿喊「哗变了！」。少尉科曾斯（Cozens）满脸扭曲地冲来，奇普一言不发，举枪朝他脸上开了一枪。事后口供说先开枪的是管事官托马斯·哈维（Thomas Harvey），他和科曾斯为口粮争执。奇普仍认定科曾斯是叛徒，不许他住进好一点的帐篷，两周后科曾斯死了。</p>
+  <div class="quote">「凭猜忌就一枪爆头，连最基本的审判程序都没有，这难道不是比过失杀人更严重？」——约翰·杨（John Young）日记</div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>人物关系图</b>：蓝色是后来留在舰长身边的人，橙色是南下派，黄色是摇摆者，红色是死者。点一个人，看他的身份、立场和结局；连线上写着两人之间发生过什么。</div>
+    <div data-demo="people"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：中文译文称拜伦为「少尉 / 中尉」，英文原文与维基百科「Wager Mutiny」条目都称他为 Midshipman（见习军官）。译文在开炮者一段夹了一条译注，说原文是水手长约翰·金（Boatswain John King），下文巴西一段也确认开炮的是他；本页按此处理。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="split" data-title="南下还是北上">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>南下还是北上</h2>
+    <p class="lead">炮手和舰长到底在争什么？一艘 37 英尺的小艇凭什么载着几十人远航？</p>
+  </div>
+  <p>船骸里找回了最大的小艇 longboat。船匠卡明斯打算把它锯成前后两截、中间加板，改成双桅纵帆船（schooner），这是离岛的唯一希望。奇普支持造船，但要北上与安森会合继续打仗；布克利认为小船配不了重炮，北上撞见西班牙巡逻舰必死无疑，主张南下穿过麦哲伦海峡（Straits of Magellan），到葡萄牙控制的巴西，再回英国。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>把 longboat 改成 Speedwell</b>：点按钮，看卡明斯怎样「锯开再加长」。</div>
+    <div data-demo="boat"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>两派分歧对照</b>：选一个议题，左右对照两人的立场（据原文）。</div>
+    <div data-demo="vs"></div>
+  </div>
+  <p style="margin-top:14px">8 月 4 日，布克利和卡明斯走进木屋，念了第一份联名文件；8 月 28 日的军官会议上又念第二份，要求舰长签字，奇普拒签。陆战队长彭伯顿（Pemberton）表示「会誓死支持你们」，众人高呼「为了回英格兰！」。奇普一度松口说可以随他们南下，却不准把多余的火药倒掉、洗桶装水。随后的一个清晨，几个人冲进木屋把他绑了，理由是枪杀科曾斯，要押他回英国受审。纵帆船完工后取名 Speedwell。奇普宁可被枪毙也不肯同行，众人也乐得把他留下。</p>
+  <div class="quote">「这是我最后一次见到可怜的奇普舰长……他是个出色的水手……他个人非常勇敢，即便当了俘虏，仍保持指挥者的尊严。」——布克利日记</div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文（英文与中译都）写奇普在 9 月 9 日清晨被绑、四天后纵帆船完工出发。维基百科「Wager Mutiny」条目给的是 1741 年 10 月 9 日被绑、10 月 13 日中午出发，有的资料作 10 月 14 日。后文「航行 15 周」抵达巴西，与 10 月中旬出发、1742 年 1 月 28 日抵达更吻合。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="return" data-title="两条返航路线">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>两条返航路线</h2>
+    <p class="lead">向南的多数和向北的少数，哪一路走得更远、活下来的更多？</p>
+  </div>
+  <p><b>南线</b>：Speedwell 59 人、cutter 12 人、barge 10 人一起南下。不久缺帆布，派 barge 回岛去取，船上 9 人干脆留在了舰长那边。11 月 3 日风暴把 cutter 吹散，它一度奇迹般回来，当晚又彻底消失；还有 10 人「自愿」上岸自生自灭，多半是被赶下去省口粮。进了麦哲伦海峡，礁石「近得可以往上扔面饼」，人一个个饿死。12 月初驶出海峡，在海豹岛上囤了一舱海豹肉，肉很快腐烂，淡水见底。航行 15 周、约 2000 英里后，Speedwell 抵达巴西里奥格兰德（Rio Grande）河口，只剩 30 人。</p>
+  <p style="margin-top:10px"><b>北线</b>：barge 回岛后，奇普一伙约 20 人修好两条小艇，向北 300 英里外的奇洛埃（Chiloé）岛出发。几小时后就因超载进水，把食物全扔进海里；他们吃生皮鞋，吃海豹肝吃到维生素 A 中毒脱皮。一条小艇翻沉，丢下 4 名重病陆战队员，驳船载 14 人又被风逼回 Wager 岛。后来会说点西班牙语的土著酋长马丁（Martin）答应用独木舟带他们去西班牙辖地，以驳船为酬；途中死两人，6 名水手出走，军医艾略特（Elliot）饿死，汉密尔顿失散。四个月后，奇普、拜伦、坎贝尔三人在奇洛埃岛被西班牙村民发现，后来汉密尔顿也被找回。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>两条路线对比</b>：切换南线、北线或同时显示。</div>
+    <div data-demo="routes"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>人数去哪了</b>：每个点是一个人（人数照原文给的数字；原文前后几个数字并不完全吻合，例如 72 人减去 cutter 的 11 人和上岸的 10 人，与「余下 60 人」对不上）。点「下一阶段」，两条线按时间同步推进。</div>
+    <div data-demo="dots"></div>
+  </div>
+</section>
+
+<section class="ch" id="court" data-title="军事法庭与余波">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>军事法庭与余波</h2>
+    <p class="lead">舰长活着回来了，叛乱的人会不会被绞死？</p>
+  </div>
+  <p>布克利一行 1743 年 1 月 1 日回到斯皮特黑德（Spithead）。贝恩斯抢先到海军部汇报，把责任推给布克利和卡明斯；海军部不想把「疑似哗变」闹大，一直拖到安森回国。安森的舰队出发时 1854 人，回来 188 人，却完成了环球航行、缴获了西班牙财宝，被封爵、升少将。只要舰长不回来，谁都不必受审。</p>
+  <p style="margin-top:10px">1746 年 3 月 26 日，报上登出公告：所有 Wager 号旧人立刻到朴次茅斯报到。奇普回来了。布克利在酒馆里假装路人打听，被告知「那炮手和木匠绝对性命难保」，随即自报家门被捕。可 4 月 14 日问话时，副法官告诉他：这次只查 Wager 号的损失原因，其他概不追究。最后只有贝恩斯因没及时下锚、误判地形受到谴责。海军部随后修改条例：即使船只损毁搁浅，舰长对船员仍有指挥权。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>可筛选的时间线</b>：按线索筛选，点任意一条看细节。带「补充」标记的条目不是原文内容。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：维基百科「Wager Mutiny」条目记军事法庭自 1746 年 4 月 15 日开庭，由海军中将 James Steuart 主持，除贝恩斯受训诫外全部无罪。原文说这次「只查损失原因」很可能是安森暗中运作的结果，属于原文作者的推测。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="epilogue" data-title="尾声">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>尾声：残骸、诗人与一只耳朵</h2>
+    <p class="lead">这些人后来去了哪里，Wager 号还剩下什么？</p>
+  </div>
+  <p>奇普升任上校舰长，指挥 Lark 号，1752 年去世。布克利指挥过一艘 40 门炮的私掠船，和卡明斯合出了船难记录；海军请他回来指挥 Royal George 号 cutter，他嫌船况太差拒绝了，那条船后来在比斯开湾沉没、全员罹难，他则定居美洲。拜伦在奇普死后出版回忆录，后来官至海军中将；他的孙子是诗人拜伦勋爵（Lord Byron），诗人的女儿是被称作第一位程序员的艾达·洛芙莱斯（Ada Lovelace）。</p>
+  <p style="margin-top:10px">1914 年巴拿马运河通航后，德雷克海峡不再是主航线。2006 年，科学探险协会（Scientific Exploration Society）的远征队在智利一侧的浅水里被一块硬物绊到，挖开淤泥，是一块约 5 平方米的 18 世纪防腐木构件，Wager 号在海底躺了 265 年后剩下的碎片之一。至于詹金斯那只耳朵的下落，至今无人知晓。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>从军舰到程序员</b>：原文结尾提到的一条家族线。点一个人看他和这个故事的关系。</div>
+    <div data-demo="lineage"></div>
+  </div>
+  <div class="final">一次撞礁把一艘军舰变成了一个没有法律的小社会：指挥权、口粮和回家的方向，每一样都要重新争一遍。最后决定谁对谁错的不是那座岛，而是回到英国后海军想不想追究。</div>
+  <div class="note-add"><b>本页补充（非原文）</b>：布克利与卡明斯的记录 1743 年出版，题为 <i>A Voyage to the South-Seas in the Years 1740-1</i>；拜伦的回忆录 1768 年出版。2023 年 David Grann 以这段历史写成非虚构作品 <i>The Wager: A Tale of Shipwreck, Mutiny and Murder</i>。维基百科还提到，2006 年发现的残骸后经碳测年确认属于那个年代，而 1741 年以来的大小地震已使这座岛抬升约 7 米，与卡明斯日记里「一天四次强烈地震」可以对照。<sup class="c">[2][4][5][6]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Alan Bellows 在 Damn Interesting 发表的「<a href="https://www.damninteresting.com/dead-reckoning/">Dead Reckoning</a>」（2019 年 9 月）及宝玉的中文译文「<a href="https://baoyu.io/translations/dead-reckoning">绝命航线：Wager号沉船与叛乱</a>」（baoyu.io，2025-05-10）制作，叙述顺序与观点依原文，引文用宝玉译文。原文中的照片、油画与航线示意图均已用内联 SVG 和 JS 重新示意，未引用外链图片；地图海岸线为手绘近似。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Alan Bellows (2019). <a href="https://www.damninteresting.com/dead-reckoning/">Dead Reckoning</a>. <i>Damn Interesting</i>；宝玉译，<a href="https://baoyu.io/translations/dead-reckoning">绝命航线：Wager号沉船与叛乱</a>，baoyu.io（2025-05-10）。</li>
+    <li>Wikipedia 条目 HMS Wager (1739)：1741-05-14 触礁、瓜亚内科群岛的 Wager 岛、2006 年 Scientific Exploration Society 发现约 5×5 米船体残件、岛屿地震抬升约 7 米、安森舰队 1854 人。</li>
+    <li>Wikipedia 条目 Wager Mutiny：奇普 1741-10-09 被绑、Speedwell 1741-10-13 出发、1742-01-28 抵里奥格兰德、81 人出发 30 人抵达、拜伦为 Midshipman、军事法庭 1746-04-15 起由 James Steuart 主持、贝恩斯受训诫。</li>
+    <li>Bulkeley, J. &amp; Cummins, J. (1743). <i>A Voyage to the South-Seas in the Years 1740-1</i>. London.</li>
+    <li>Byron, J. (1768). <i>The Narrative of the Honourable John Byron</i>. London.</li>
+    <li>Grann, D. (2023). <i>The Wager: A Tale of Shipwreck, Mutiny and Murder</i>. Doubleday.</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；人数、日期以原文为准，与其他资料不一致之处已在「本页补充」中注明，史实细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+/* ---------- 01 四个「不具备」 ---------- */
+reg('handicaps', (node) => {
+  const cards = [
+    ['船', '少一根桅杆', '它失去了一根桅杆，速度和机动能力受到极大影响；这艘商船改装的军舰本来就不擅逆风航行。'],
+    ['人', '舰长已死', '原舰长丹迪·基德在圣朱利安湾死于坏血病；代理舰长奇普后来也病倒，又在甲板上摔得肩膀脱臼。'],
+    ['病', '船员奄奄一息', '大部分船员患坏血病，能在冰冷缆索间干活的人所剩无几，有些重病者几个月没上过甲板。'],
+    ['伴', '与舰队失散', '出发时同行的 7 艘僚舰在风暴里逐一不见，某天舰队完全消失在视线之外，Wager 号彻底落伍。'],
+  ];
+  const st = el('div', { class: 'panel' }, '点一张卡片。');
+  const row = el('div', { class: 'kpis' });
+  const btns = cards.map(([k, t, d]) => {
+    const b = el('button', { type: 'button', class: 'kpi', style: 'border:1px solid var(--line);cursor:pointer;text-align:left' },
+      el('div', { class: 'v', style: 'color:var(--r)' }, k), el('div', { class: 'k' }, t));
+    b.addEventListener('click', () => { btns.forEach((x) => x.style.borderColor = 'var(--line)'); b.style.borderColor = 'var(--r)'; st.innerHTML = `<b>${t}</b>：${d}`; });
+    row.append(b); return b;
+  });
+  node.append(row, st);
+});
+
+/* ---------- 02 季节窗口 ---------- */
+reg('season', (node) => {
+  const M = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const win = new Set([11, 12, 1]);
+  const strip = el('div', { class: 'months' });
+  const cells = M.map((m) => { const d = el('div', {}, m); strip.append(d); return d; });
+  const out = el('output', {}, '');
+  const input = el('input', { type: 'range', min: '4', max: '12', value: '9', step: '1', 'aria-label': '出发月份' });
+  const st = el('div', { class: 'status' });
+  const quick = el('div', { class: 'seg', role: 'group', 'aria-label': '快速选择' });
+  [['计划：6 月底', 6], ['实际：9 月底', 9]].forEach(([t, v]) => quick.append(el('button', { type: 'button', onclick: () => { input.value = v; upd(); } }, t)));
+  function upd() {
+    const d = +input.value; const a = (d + 5 - 1) % 12 + 1; out.textContent = M[d - 1] + '底';
+    cells.forEach((c, i) => { const m = i + 1; c.className = (win.has(m) ? 'win ' : '') + (m === d ? 'dep ' : '') + (m === a ? 'arr' : ''); });
+    [...quick.children].forEach((b, i) => b.classList.toggle('on', [6, 9][i] === d));
+    st.innerHTML = `${M[d - 1]}底出发 → 约 <b>${M[a - 1]}底</b>到达德雷克海峡。` + (win.has(a) || d === 6
+      ? (d === 6 ? '刚好在 11 月底踏进夏季窗口，这正是安森原定的计划（6 月底，最晚 7 月初）。' : '落在夏季窗口里。')
+      : (d === 9 ? '已是南半球秋天。实际上舰队 9 月底才启程，2 月停在圣朱利安湾，3 月 7 日进入海峡，正好撞上深秋和冬天。' : '错过了夏季窗口。'));
+  }
+  input.addEventListener('input', upd); upd();
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '出发', input, out), quick), strip,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--t-soft);height:10px' }), '合恩角夏季（11–1 月）'), el('span', {}, el('i', { style: 'background:var(--p)' }), '出发'), el('span', {}, el('i', { style: 'background:var(--r)' }), '到达')), st);
+  const f = 1854, s = 188;
+  node.append(el('div', { class: 'kpis' },
+    el('div', { class: 'kpi' }, el('div', { class: 'v' }, String(f)), el('div', { class: 'k' }, '安森舰队出发人数')),
+    el('div', { class: 'kpi' }, el('div', { class: 'v' }, String(s)), el('div', { class: 'k' }, '最终生还回国')),
+    el('div', { class: 'kpi' }, el('div', { class: 'v', style: 'color:var(--r)' }, (s / f * 100).toFixed(1) + '%'), el('div', { class: 'k' }, '生还率（页面现场计算）'))));
+});
+
+/* ---------- 03 死算误差 ---------- */
+reg('dr', (node) => {
+  const W = 320, H = 380, X0 = 110, Y0 = 350, SPEED = 1.8, DAYS = 13;
+  const sy = 320 / (SPEED * 24 * DAYS); /* px / 海里（纵向） */
+  const sx = sy * 4;                   /* 横向放大 4 倍 */
+  const COAST = 50;                    /* 示意：海岸在推算航迹以东 50 海里 */
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'dr', role: 'img', 'aria-label': '推算航迹与真实航迹的偏差示意', style: 'max-width:380px;margin:0 auto' });
+  root.append(svg('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--sea)', rx: 10 }));
+  const cx = X0 + COAST * sx;
+  let cd = `M${W} 0 L${cx} 0`;
+  for (let y = 0; y <= Y0 + 20; y += 20) cd += ` L${cx + ((y / 20) % 2 ? 6 : -4)} ${y}`;
+  cd += ` L${W} ${Y0 + 20} Z`;
+  root.append(svg('path', { d: cd, class: 'coast' }), svg('text', { x: cx + 12, y: 40, class: 'lbl' }, '海岸'), svg('text', { x: cx + 12, y: 56, class: 'lbl' }, '（未标注）'));
+  const est = svg('path', { class: 'trk est' }), real = svg('path', { class: 'trk real' });
+  const unc = svg('ellipse', { class: 'unc' });
+  const pe = svg('circle', { r: 5, fill: 'var(--p)' }), pr = svg('circle', { r: 5, fill: 'var(--r)' });
+  root.append(unc, est, real, pe, pr, svg('circle', { cx: X0, cy: Y0, r: 4, fill: 'var(--ink)' }), svg('text', { x: X0 - 8, y: Y0 + 18, class: 'lbl' }, '5 月 1 日 转向北'));
+  const mk = (lab, min, max, val, step) => { const o = el('output'); const i = el('input', { type: 'range', min, max, step, value: val, 'aria-label': lab }); return [el('label', { class: 'range' }, lab, i, o), i, o]; };
+  const [l1, dIn, dOut] = mk('天数', 0, 13, 13, 1);
+  const [l2, vIn, vOut] = mk('未计入漂流(节)', 0, 0.5, 0.2, 0.05);
+  const [l3, eIn, eOut] = mk('测速误差 ±%', 0, 20, 5, 1);
+  const st = el('div', { class: 'status' });
+  function upd() {
+    const d = +dIn.value, v = +vIn.value, e = +eIn.value / 100;
+    dOut.textContent = d; vOut.textContent = v.toFixed(2); eOut.textContent = e * 100 | 0;
+    const n = SPEED * 24 * d, drift = v * 24 * d;
+    const yE = Y0 - n * sy, xR = X0 + drift * sx;
+    est.setAttribute('d', `M${X0} ${Y0} L${X0} ${yE}`);
+    real.setAttribute('d', `M${X0} ${Y0} Q${X0 + drift * sx * .35} ${(Y0 + yE) / 2} ${xR} ${yE}`);
+    pe.setAttribute('cx', X0); pe.setAttribute('cy', yE); pr.setAttribute('cx', Math.min(xR, W - 4)); pr.setAttribute('cy', yE);
+    const r = e * n; unc.setAttribute('cx', X0); unc.setAttribute('cy', yE); unc.setAttribute('rx', Math.max(.1, r * sx)); unc.setAttribute('ry', Math.max(.1, r * sy));
+    const hitDay = v > 0 ? COAST / (v * 24) : Infinity;
+    st.innerHTML = `${d} 天共航行约 <b>${n.toFixed(0)}</b> 海里；未计入的漂流把船推偏了 <b>${drift.toFixed(0)}</b> 海里，推算位置本身还有 ±${(r).toFixed(0)} 海里的不确定。`
+      + (drift >= COAST ? ` 推算图上船离岸还有 ${COAST} 海里，真实的船却在第 ${hitDay.toFixed(1)} 天已经抵到海岸。` : ` 真实位置离那片海岸还有 ${(COAST - drift).toFixed(0)} 海里。`);
+  }
+  [dIn, vIn, eIn].forEach((i) => i.addEventListener('input', upd)); upd();
+  node.append(el('div', { class: 'ctrl' }, l1, l2, l3), root,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), '推算航迹'), el('span', {}, el('i', { style: 'background:var(--r)' }), '真实航迹'), el('span', {}, el('i', { style: 'background:var(--p-soft);height:10px' }), '测速误差造成的不确定范围')), st);
+});
+
+/* ---------- 地图底图（两张地图共用） ---------- */
+const P = (lon, lat) => [((lon + 86) * 8.2).toFixed(1), ((-8 - lat) * 10 + 5).toFixed(1)];
+const D = (pts, close) => pts.map((p, i) => (i ? 'L' : 'M') + P(p[0], p[1]).join(' ')).join(' ') + (close ? ' Z' : '');
+const MAINLAND = [[-81,-3],[-79.5,-7],[-78.5,-8.5],[-77.6,-10.5],[-76.3,-13.5],[-75.2,-15.4],[-72.5,-16.8],[-70.4,-18.4],[-70.2,-21],[-70.5,-23.5],[-70.9,-27],[-71.5,-30],[-71.6,-33],[-72,-35],[-73.2,-37.1],[-73.4,-39.5],[-73.8,-41.5],[-72.8,-42],[-72.9,-43.5],[-73.5,-44.8],[-74.4,-45.8],[-75.6,-46.6],[-74.9,-47.0],[-74.5,-47.8],[-74.9,-48.6],[-75.2,-50],[-74.9,-51.3],[-74.3,-52.3],[-73.2,-52.9],[-72,-53.3],[-71.3,-53.85],[-70.9,-53.2],[-70.3,-52.75],[-69.4,-52.25],[-68.4,-52.3],[-69.2,-51.6],[-69,-50.3],[-67.7,-49.2],[-66.6,-47.9],[-65.8,-47.6],[-67.5,-46],[-67.3,-45.4],[-65.6,-45],[-65,-43.4],[-64.4,-42.6],[-65.1,-42],[-64,-41],[-62.3,-39],[-62,-38.8],[-58,-38.5],[-57.4,-37.2],[-56.7,-36.4],[-57.3,-35.3],[-58.4,-34.5],[-58.2,-34],[-55,-34.9],[-53.4,-33.7],[-52.2,-32.1],[-50.7,-30.4],[-48.6,-28],[-48.4,-25.6],[-46.3,-24],[-43.2,-23],[-41.9,-22.5],[-40.9,-21.8],[-39.7,-19.5],[-39,-17],[-39,-14],[-38.4,-13],[-37,-11],[-35,-9],[-34.8,-7.5],[-34.5,-3]];
+const FUEGO = [[-74.6,-52.9],[-73,-53.6],[-71.6,-54.25],[-70.8,-53.95],[-70.2,-53.3],[-69.2,-52.75],[-68.3,-52.6],[-68.2,-53.4],[-67.2,-54.1],[-65.3,-54.65],[-66.3,-55.0],[-67.3,-55.2],[-68.2,-55.5],[-69.8,-55.4],[-71.5,-55],[-73.2,-54.4],[-74.6,-53.5]];
+const ISLES = [
+  [[-64.8,-54.72],[-63.8,-54.68],[-63.8,-54.92],[-64.7,-54.9]],
+  [[-74.2,-41.8],[-73.5,-41.85],[-73.4,-42.6],[-73.6,-43.4],[-74.3,-43.3],[-74.1,-42.5]],
+  [[-61.3,-51.3],[-57.8,-51.4],[-58.2,-52.3],[-60.8,-52.2]],
+  [[-54,-65],[-56.5,-63.2],[-58.5,-63.3],[-61,-64.2],[-62,-65]],
+];
+const PLACES = {
+  julian: [-67.7, -49.3, '圣朱利安湾', 'r'], lemaire: [-64.6, -54.6, '勒梅尔海峡', 'r'], horn: [-67.3, -56.0, '合恩角', 'l'],
+  wager: [-75.1, -47.7, 'Wager 岛', 'l'], socorro: [-74.8, -45.1, '索科罗（约）', 'l'], jf: [-78.8, -33.6, '胡安·费尔南德斯群岛', 'r'],
+  chacao: [-73.45, -41.85, '奇洛埃岛·恰考', 'r'], rio: [-52.1, -32.1, '里奥格兰德（巴西）', 'l'], magellan: [-70.6, -53.3, '麦哲伦海峡', 'r'],
+};
+function baseMap(label) {
+  const root = svg('svg', { viewBox: '0 0 460 570', class: 'map', role: 'img', 'aria-label': label });
+  root.append(svg('rect', { x: 0, y: 0, width: 460, height: 570, class: 'sea', rx: 12 }));
+  for (let lat = -10; lat >= -60; lat -= 10) { const y = P(0, lat)[1]; root.append(svg('line', { x1: 0, x2: 460, y1: y, y2: y, class: 'gridl' }), svg('text', { x: 452, y: +y - 3, class: 'lbl', 'text-anchor': 'end', style: 'font-size:10px' }, `${-lat}°S`)); }
+  root.append(svg('path', { d: D(MAINLAND, true), class: 'land' }), svg('path', { d: D(FUEGO, true), class: 'land' }));
+  ISLES.forEach((p) => root.append(svg('path', { d: D(p, true), class: 'land' })));
+  const lab = (lon, lat, t, s) => { const [x, y] = P(lon, lat); root.append(svg('text', { x, y, class: 'area', 'text-anchor': 'middle', style: s || '' }, t)); };
+  lab(-60, -30, '南美洲'); lab(-62, -59.3, '德 雷 克 海 峡'); lab(-80, -26, '太 平 洋'); lab(-44, -42, '大 西 洋'); lab(-57, -62.6, '南极半岛', 'font-size:10px');
+  for (let i = 0; i < 4; i++) { const [x, y] = P(-80 + i * 6, -61.6); root.append(svg('path', { d: `M${x} ${y} l18 0 m-5 -4 l5 4 l-5 4`, class: 'acc' })); }
+  return root;
+}
+function place(root, key, hot) {
+  const [lon, lat, t, side] = PLACES[key]; const [x, y] = P(lon, lat);
+  const g = svg('g', { class: 'place' + (hot ? ' hot' : '') }, svg('circle', { cx: x, cy: y, r: 3.4 }),
+    svg('text', { x: side === 'l' ? +x - 7 : +x + 7, y: +y + 4, 'text-anchor': side === 'l' ? 'end' : 'start' }, t));
+  root.append(g); return g;
+}
+
+/* ---------- 04 航线步进 ---------- */
+reg('voyage', (node) => {
+  const R = [
+    [[-33,-6],[-36,-15],[-40,-22],[-47.2,-27.5],[-50,-33],[-56,-40],[-62.5,-45.5],[-66.6,-49.3]],
+    [[-66.6,-49.3],[-66.2,-52],[-64.95,-54.8]],
+    [[-64.95,-54.8],[-64.4,-57.3],[-66,-59.6],[-71,-60.6],[-76,-59.6]],
+    [[-76,-59.6],[-76.5,-56.6],[-78.5,-58.6],[-82.5,-60.2]],
+    [[-82.5,-60.2],[-82.4,-56],[-80.6,-52.5],[-77.6,-49.4],[-75.4,-47.85]],
+  ];
+  const S = [
+    { d: '1740 年 9 月底', t: '从英国出发', seg: 0, x: '比原计划晚了近三个月。舰队约 1800 多人，横渡大西洋后沿南美东岸南下（出发段在图外）。', hot: [] },
+    { d: '1741 年 2 月', t: '圣朱利安湾修整', seg: 0, x: '坏血病蔓延，Wager 号舰长基德去世，奇普接任。传闻五艘西班牙战舰已先行驶向海峡。', hot: ['julian'] },
+    { d: '2 月 27 日 – 3 月 7 日', t: '穿过勒梅尔海峡，进入德雷克海峡', seg: 1, x: '起航时风和日丽。安森后来写道：这一天会是我们大部分人此生最后一个平静的日子。', hot: ['lemaire'] },
+    { d: '3 月 – 4 月', t: '向南拉风，舰队失散', seg: 2, x: '北侧有暗礁，只能一路向南，几乎到南极圈。4 月 12 日布克利被巨浪卷过舰尾甲板。', hot: ['horn'] },
+    { d: '4 月（约）', t: '第一次北转，被炮声警告', seg: 3, x: '刚往北不久，远处僚舰鸣炮示警：北面有暗礁。原来才走到合恩角一半，只得再度南下。又丢了一根副桅，奇普也病倒。', hot: [] },
+    { d: '1741 年 5 月 1 日', t: '转向北北西', seg: 4, x: '估计已足够偏西，改舵北北西。布克利建议去胡安·费尔南德斯群岛修整，奇普坚持去索科罗岛会合，开始配给口粮，军官佩枪。', hot: ['socorro', 'jf'] },
+    { d: '5 月 13 日 – 14 日凌晨', t: '撞上未标注的海岸', seg: 4, x: '卡明斯瞥见西面有陆地，贝恩斯却说陆地应在东面。夜里误入海湾，凌晨 4 点半左右触礁，卡在两块岩石之间，卧床的重病者溺亡。', hot: ['wager'], wreck: true },
+  ];
+  const root = baseMap('Wager 号从圣朱利安湾到 Wager 岛的航线示意图');
+  R.forEach((r) => root.append(svg('path', { d: D(r), class: 'route ghost' })));
+  const anson = svg('path', { d: D([[-82.4,-56],[-84,-48],[-82,-40],[-78.8,-33.6],[-80.5,-22],[-84.5,-10]]), class: 'route anson', opacity: 0 });
+  root.append(anson);
+  const segs = R.map((r) => { const p = svg('path', { d: D(r), class: 'route wager', opacity: 0 }); root.append(p); return p; });
+  const marks = {}; Object.keys(PLACES).filter((k) => !['chacao', 'rio', 'magellan'].includes(k)).forEach((k) => { marks[k] = place(root, k); });
+  const [wx, wy] = P(-75.1, -47.7);
+  const wreck = svg('path', { d: `M${wx - 6} ${wy - 6} l12 12 m0 -12 l-12 12`, stroke: 'var(--r)', 'stroke-width': 3, opacity: 0 });
+  const ship = svg('circle', { r: 6, class: 'ship' });
+  root.append(wreck, ship);
+  let k = 0;
+  const chips = el('div', { class: 'stepchips' });
+  const cb = S.map((s, i) => { const b = el('button', { type: 'button', onclick: () => go(i) }, s.d); chips.append(b); return b; });
+  const panel = el('div', { class: 'panel' });
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => go(Math.max(0, k - 1)) }, '上一步');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => go(Math.min(S.length - 1, k + 1)) }, '下一步');
+  function go(i) {
+    k = i; const s = S[i];
+    segs.forEach((p, j) => p.setAttribute('opacity', j <= s.seg ? 1 : 0));
+    const r = R[s.seg]; const end = (i === 1) ? R[0][R[0].length - 1] : r[r.length - 1];
+    const [x, y] = P(end[0], end[1]); ship.setAttribute('cx', x); ship.setAttribute('cy', y);
+    ship.setAttribute('opacity', s.wreck ? 0 : 1); wreck.setAttribute('opacity', s.wreck ? 1 : 0);
+    anson.setAttribute('opacity', s.wreck ? 1 : 0);
+    Object.entries(marks).forEach(([n, g]) => g.classList.toggle('hot', s.hot.includes(n)));
+    cb.forEach((b, j) => b.classList.toggle('on', j === i));
+    panel.innerHTML = `<div class="d">${s.d}</div><h4>${s.t}</h4><div>${s.x}</div>`;
+    prev.disabled = i === 0; next.disabled = i === S.length - 1;
+  }
+  go(0);
+  node.append(chips, root, el('div', { class: 'ctrl' }, prev, next), panel,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--r)' }), 'Wager 号'), el('span', {}, el('i', { style: 'background:var(--muted)' }), '安森主力后续（本页补充）'), el('span', {}, el('i', { style: 'background:var(--t)' }), '绕极流方向')));
+});
+
+/* ---------- 05 人物关系 ---------- */
+reg('people', (node) => {
+  const N = {
+    cheap: [110, 200, '奇普', 'c', '舰长 David Cheap', '原 Tryal 号中尉，基德死后接任舰长。坚持北上与安森会合、继续对西班牙作战；认定科曾斯哗变并开枪。', '被南下派绑起留岛；北上途中几乎死去，四年后回英国，升任上校舰长，1752 年去世。'],
+    hamilton: [35, 115, '汉密尔顿', 'c', '陆战队中尉 Hamilton', '看守补给帐篷；科曾斯事件当晚喊出「哗变了！」。', '自愿留岛陪舰长；山中失散后被西班牙搜救队找回，回到英国。'],
+    elliot: [35, 295, '艾略特', 'c', '军医 Elliot', '曾与科曾斯打架，拒绝为他治疗；会一点西班牙语，与土著酋长马丁谈成带路。', '自愿留岛陪舰长；在随土著北上的途中饿死。'],
+    byron: [125, 335, '拜伦', 's', '见习军官 John Byron', '原文多处引用他的日记。他先随 barge 南下，又随 barge 回岛投奔舰长。', '与奇普一起到达奇洛埃，回英国后出版回忆录，官至海军中将；诗人拜伦勋爵的祖父。'],
+    campbell: [115, 60, '坎贝尔', 'c', '少尉 Campbell', '奉命回船取物，日记写下船上醉汉打架唱圣歌的乱象。', '与奇普、拜伦三人走到奇洛埃，回到英国。'],
+    harvey: [220, 100, '哈维', 'c', '管事官 Thomas Harvey', '为口粮与科曾斯争执，据口供那晚先开枪的是他；后来给支持舰长的人多配酒拉拢人心。', '原文未交代结局。'],
+    cozens: [220, 265, '科曾斯', 'n', '少尉 Cozens', '屡因酗酒、顶撞受罚，与军医打过架。6 月 10 日夜冲向舰长，被一枪打在脸上。', '被拒绝移到更好的帐篷，两周后死去。他的死后来成为绑走舰长的名义。'],
+    king: [220, 350, '金', 'b', '水手长 John King', '船沉后留在船上，求救不得就用舰炮朝岸上开火，被舰长用拐杖抽打。', '随南线到巴西，在那里纠集人斗殴骚扰同伴。'],
+    bulkeley: [330, 200, '布克利', 'b', '炮手 John Bulkeley', '被视为船上最富航海经验的人。主张南下穿麦哲伦海峡去巴西；起草联名文件，「以正当叛乱对抗他们的叛乱」。', '领 Speedwell 抵达巴西，1743 年回英国；军事法庭未追究哗变；后来指挥私掠船，定居美洲。'],
+    cummins: [405, 115, '卡明斯', 'b', '船匠 John Cummins', '最早瞥见西面陆地；把 longboat 锯开加长造出 Speedwell；与布克利一起念联名文件。', '随南线回国，与布克利合著船难记录。'],
+    pemberton: [405, 290, '彭伯顿', 'b', '陆战队长 Pemberton', '在联名文件上签字，说「我会誓死支持你们」；以他的名义下令逮捕舰长。', '随南线离岛（原文未交代后续）。'],
+    baynes: [315, 335, '贝恩斯', 's', '上尉 Baynes', '舰长原先最忠诚的副手，据说提议以科曾斯案逮捕舰长，当面又噤若寒蝉；后随南线离开。', '回国后抢先向海军部推卸责任；军事法庭上唯一受谴责的人（未及时下锚、误判地形）。'],
+  };
+  const E = [['cheap','cozens','开枪'],['harvey','cozens','口粮争执',.3],['harvey','cheap','多配酒拉拢',.65],['cheap','hamilton','留岛相伴'],['cheap','elliot','留岛相伴'],['byron','cheap','回岛投奔'],['campbell','cheap','同行北上'],['king','cheap','开炮 / 挨打',.45],['bulkeley','cummins','联名请愿'],['pemberton','bulkeley','誓死支持'],['baynes','bulkeley','倒向南下'],['bulkeley','cheap','绑走舰长'],['king','bulkeley','同船南下',.45]];
+  const root = svg('svg', { viewBox: '0 0 440 390', role: 'img', 'aria-label': 'Wager 号主要人物关系图', style: 'max-width:560px;margin:0 auto' });
+  const eg = E.map(([a, b, t, f = .5]) => {
+    const [x1, y1] = N[a], [x2, y2] = N[b];
+    const g = svg('g', { class: 'edge' }, svg('line', { x1, y1, x2, y2 }), svg('text', { x: x1 + (x2 - x1) * f, y: y1 + (y2 - y1) * f + 3 }, t));
+    g.dataset.a = a; g.dataset.b = b; root.append(g); return g;
+  });
+  const st = el('div', { class: 'panel' }, '点一个人。');
+  const ng = Object.entries(N).map(([id, [x, y, nm, f, role, did, end]]) => {
+    const g = svg('g', { class: 'who ' + f, tabindex: '0', role: 'button', 'aria-label': role }, svg('circle', { cx: x, cy: y, r: 27 }), svg('text', { x, y }, nm));
+    const pick = () => {
+      ng.forEach((n) => n.classList.toggle('sel', n === g));
+      eg.forEach((e) => { const on = e.dataset.a === id || e.dataset.b === id; e.classList.toggle('hot', on); e.classList.toggle('dim', !on); });
+      const fac = { c: '舰长一边（北线）', b: '南下派', s: '摇摆者', n: '死于岛上' }[f];
+      st.innerHTML = `<h4>${role} <span class="tag">${fac}</span></h4><div><b>做了什么：</b>${did}</div><div style="margin-top:4px"><b>结局：</b>${end}</div>`;
+    };
+    g.addEventListener('click', pick);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    root.append(g); return g;
+  });
+  node.append(root, st);
+});
+
+/* ---------- 06 小艇改造 ---------- */
+reg('boat', (node) => {
+  const ft = 7; /* px / 英尺 */
+  const root = svg('svg', { viewBox: '0 0 420 170', class: 'boat', role: 'img', 'aria-label': 'longboat 锯开加长为 Speedwell 的示意', style: 'max-width:520px;margin:0 auto' });
+  const L0 = 37, L1 = 50, ins = (L1 - L0) * ft, x0 = 30, mid = x0 + L0 * ft / 2, y = 110;
+  const stern = svg('path', { class: 'hull', d: `M${x0} ${y - 22} L${mid} ${y - 22} L${mid} ${y + 8} L${x0 + 18} ${y + 8} Z` });
+  const bowG = svg('g', { class: 'mv' }, svg('path', { class: 'hull', d: `M${mid} ${y - 22} L${x0 + L0 * ft + 14} ${y - 26} L${x0 + L0 * ft - 22} ${y + 8} L${mid} ${y + 8} Z` }));
+  const insert = svg('rect', { class: 'ins fade', x: mid, y: y - 22, width: ins, height: 30, opacity: 0 });
+  const rig = svg('g', { class: 'fade', opacity: 0 },
+    svg('line', { class: 'mast', x1: mid - 50, y1: y - 22, x2: mid - 50, y2: y - 95 }), svg('path', { class: 'sail', d: `M${mid - 46} ${y - 92} L${mid - 46} ${y - 28} L${mid + 30} ${y - 28} Z` }),
+    svg('line', { class: 'mast', x1: mid + ins + 40, y1: y - 22, x2: mid + ins + 40, y2: y - 100 }), svg('path', { class: 'sail', d: `M${mid + ins + 44} ${y - 97} L${mid + ins + 44} ${y - 28} L${mid + ins + 115} ${y - 28} Z` }));
+  const cut = svg('line', { x1: mid, y1: y - 34, x2: mid, y2: y + 18, stroke: 'var(--r)', 'stroke-width': 2, 'stroke-dasharray': '4 3' });
+  const dim = svg('g', {}, svg('line', { class: 'dim', x1: x0, y1: y + 30, x2: x0 + L0 * ft, y2: y + 30 }));
+  const dl = svg('text', { x: x0, y: y + 46, class: 'lbl' }, '');
+  root.append(svg('rect', { x: 0, y: y + 2, width: 420, height: 60, fill: 'var(--sea)' }), rig, insert, stern, bowG, cut, dim, dl);
+  const st = el('div', { class: 'status' });
+  let on = false;
+  const btn = el('button', { class: 'btn primary', type: 'button', onclick: () => set(!on) }, '');
+  function set(v) {
+    on = v; bowG.style.transform = on ? `translateX(${ins}px)` : 'none';
+    insert.setAttribute('opacity', on ? 1 : 0); rig.setAttribute('opacity', on ? 1 : 0); cut.setAttribute('opacity', on ? 0 : 1);
+    const L = on ? L1 : L0; dim.firstChild.setAttribute('x2', x0 + L * ft);
+    dl.textContent = `${L} 英尺 ≈ ${(L * 0.3048).toFixed(1)} 米`;
+    btn.textContent = on ? '还原为 longboat' : '锯开并加长';
+    st.innerHTML = on
+      ? `加长 ${L1 - L0} 英尺（+${((L1 / L0 - 1) * 100).toFixed(0)}%），立两根桅成为纵帆船 <b>Speedwell</b>。原文说理论上能挤下 80 人；实际离岛时载了 59 人，每英尺船长约 ${(59 / L1).toFixed(1)} 人。`
+      : `longboat 长约 ${L0} 英尺（${(L0 * 0.3048).toFixed(1)} 米），适合近海短途。红色虚线是卡明斯下锯的位置。`;
+  }
+  set(false);
+  node.append(root, el('div', { class: 'ctrl' }, btn), st);
+});
+
+/* ---------- 06 两派分歧对照 ---------- */
+reg('vs', (node) => {
+  const T = [
+    ['去哪', '北上，与安森会合，继续对西班牙作战（先去索科罗岛）。', '南下，穿麦哲伦海峡到葡萄牙控制的巴西，再回英格兰。'],
+    ['理由', '执行原定任务；舰长的职责是继续作战。', '纵帆船配不了重炮，北上撞见西班牙巡防舰必然全军覆没，被俘还可能受刑；南下至少多一些人活下来。'],
+    ['淡水桶', '「没我的命令不得毁掉任何东西！」不许倒掉多余火药。', '建议倒掉多余黑火药、洗桶装淡水，否则远航根本走不通。'],
+    ['指挥权', '船沉了自己也仍是指挥官：「我还是你们的指挥官。」', '先用联名文件逼他签字，最后以科曾斯之死为名把他绑走，押回英国「受审」。'],
+    ['拉人', '管事官哈维给支持舰长的人多配酒；危急时舰长也加了全员的酒水配给。', '军官和陆战队长彭伯顿签名支持；把倒戈者称为「反叛者」。'],
+    ['结果', '约 20 人北上，4 人活着回到英国。', '81 人南下，30 人抵达巴西。'],
+  ];
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '议题' });
+  const c = el('div', { class: 'side c' }), b = el('div', { class: 'side b' });
+  const bs = T.map(([k], i) => { const x = el('button', { type: 'button', onclick: () => show(i) }, k); seg.append(x); return x; });
+  function show(i) { bs.forEach((x, j) => x.classList.toggle('on', i === j)); c.innerHTML = `<h4>舰长 奇普</h4>${T[i][1]}`; b.innerHTML = `<h4>炮手 布克利</h4>${T[i][2]}`; }
+  show(0);
+  node.append(el('div', { class: 'scrollx' }, seg), el('div', { class: 'vs' }, c, b));
+});
+
+/* ---------- 07 两条路线 ---------- */
+reg('routes', (node) => {
+  const root = baseMap('Speedwell 南线与奇普北线的对比示意图');
+  root.setAttribute('viewBox', '30 195 290 320'); root.querySelectorAll('text.lbl, text.area').forEach((t) => { if (t.textContent !== '南美洲') t.remove(); });
+  const SOUTH = [[-75.1,-47.7],[-75.6,-48.6],[-75.7,-50],[-75.4,-51.5],[-74.9,-52.6],[-73.5,-53.2],[-72,-53.7],[-71.0,-53.8],[-70.5,-53.3],[-69.8,-52.75],[-68.6,-52.45],[-67.6,-52.2],[-67.3,-51],[-66.8,-49.5],[-64.9,-47.8],[-64.6,-45.5],[-63.8,-43.5],[-63,-41.6],[-61.5,-39.6],[-58.5,-39.2],[-56.4,-37.5],[-56,-35.6],[-54.5,-35.3],[-52.6,-33.2],[-52.1,-32.1]];
+  const TRY = [[-75.1,-47.7],[-75.6,-47.1],[-76.1,-46.4],[-76.3,-46.9],[-75.4,-47.6]];
+  const TREK = [[-75.1,-47.7],[-74.4,-47.3],[-74.0,-46.6],[-74.3,-45.6],[-74.0,-44.6],[-73.5,-43.6],[-73.45,-41.85]];
+  const s = svg('path', { d: D(SOUTH), class: 'route south' });
+  const n1 = svg('path', { d: D(TRY), class: 'route north try' }), n2 = svg('path', { d: D(TREK), class: 'route north' });
+  root.append(s, n1, n2);
+  ['wager', 'magellan', 'rio', 'chacao'].forEach((k) => place(root, k, k === 'wager'));
+  const [wx, wy] = P(-75.1, -47.7);
+  root.append(svg('path', { d: `M${wx - 5} ${wy - 5} l10 10 m0 -10 l-10 10`, stroke: 'var(--r)', 'stroke-width': 2.5 }));
+  const tbl = el('table', { class: 'cmp' });
+  tbl.innerHTML = `<thead><tr><th></th><th>南线（布克利）</th><th>北线（奇普）</th></tr></thead><tbody>
+  <tr><th>方向</th><td class="s">向南，穿麦哲伦海峡，再沿大西洋岸北上</td><td class="n">向北 300 英里到奇洛埃岛</td></tr>
+  <tr><th>船</th><td>Speedwell + cutter + barge</td><td>barge + yawl，后改独木舟、翻山拖船</td></tr>
+  <tr><th>路程</th><td>约 2000 英里，15 周</td><td>先失败折返（两个月），再随土著走了 4 个月</td></tr>
+  <tr><th>出发 → 到达</th><td class="s">81 → 30 人</td><td class="n">约 20 → 4 人</td></tr>
+  <tr><th>生还率</th><td class="s" id="rs"></td><td class="n" id="rn"></td></tr>
+  <tr><th>终点</th><td>葡萄牙属巴西，1743 年回英国</td><td>西班牙辖地，1746 年才获准回英国</td></tr></tbody>`;
+  tbl.querySelector('#rs').textContent = (30 / 81 * 100).toFixed(0) + '%';
+  tbl.querySelector('#rn').textContent = (4 / 20 * 100).toFixed(0) + '%（按约 20 人计）';
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '显示路线' });
+  const opts = [['同时', 3], ['南线', 1], ['北线', 2]];
+  const st = el('div', { class: 'status' });
+  const bs = opts.map(([t, m]) => { const b = el('button', { type: 'button', onclick: () => show(m) }, t); seg.append(b); return b; });
+  function show(m) {
+    s.setAttribute('opacity', m & 1 ? 1 : .08); n1.setAttribute('opacity', m & 2 ? 1 : .08); n2.setAttribute('opacity', m & 2 ? 1 : .08);
+    bs.forEach((b, i) => b.classList.toggle('on', opts[i][1] === m));
+    tbl.querySelectorAll('td.s').forEach((x) => x.style.opacity = m & 1 ? 1 : .35);
+    tbl.querySelectorAll('td.n').forEach((x) => x.style.opacity = m & 2 ? 1 : .35);
+    st.innerHTML = m === 1 ? '南线绕了一个大弯：先向南钻进麦哲伦海峡的迷宫，再沿阿根廷海岸一路北上，路程远得多，但终点在中立的葡萄牙领地。'
+      : m === 2 ? '北线直线距离短，但第一次出海就失败折返（虚线），第二次靠土著独木舟和翻山拖船，终点是敌国西班牙的辖地。'
+      : '两条线从同一座岛出发，方向相反。按原文人数，南线的生还率约是北线的两倍。';
+  }
+  show(3);
+  node.append(el('div', { class: 'ctrl' }, seg), root,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--o)' }), '南线 Speedwell'), el('span', {}, el('i', { style: 'background:var(--p)' }), '北线 奇普一行'), el('span', {}, '虚线：第一次北上失败折返')), st, el('div', { class: 'scrollx' }, tbl));
+});
+
+/* ---------- 07 人点阵 ---------- */
+reg('dots', (node) => {
+  const S = [
+    ['分手', 81, 8, '三艇共 81 人南下；奇普、艾略特、汉密尔顿等七八人留岛。'],
+    ['barge 回岛', 72, 20, 'barge 回岛取帆布，船上 9 人留在舰长那边（拜伦在其中）。南线剩 72 人，岛上约 20 人。'],
+    ['进海峡', 60, 20, '11 月 cutter 两度失散，又有 10 人被「自愿」留在岸上；南线以 60 人进入麦哲伦海峡。'],
+    ['抵巴西 / 返岛', 30, 14, '南线：航行 15 周、约 2000 英里，30 人抵达里奥格兰德。北线：一艇翻沉，丢下 4 名陆战队员，驳船载 14 人被风逼回 Wager 岛。'],
+    ['土著带路', 30, 5, '北线：途中死二人，6 名水手借口找食物一去不返，只剩奇普、汉密尔顿、艾略特、拜伦、坎贝尔 5 人。'],
+    ['奇洛埃', 30, 4, '北线：艾略特饿死，汉密尔顿失散；奇普、拜伦、坎贝尔 3 人被西班牙村民发现，后来汉密尔顿也被找回。4 人最终回到英国。'],
+  ];
+  const mkLane = (title, cls, total) => {
+    const cnt = el('span'); const dots = el('div', { class: 'dots ' + cls });
+    const ds = Array.from({ length: total }, () => { const i = el('i'); dots.append(i); return i; });
+    return { box: el('div', { class: 'lane' }, el('div', { class: 'lt' }, title, cnt), dots), set(n) { cnt.textContent = n + ' 人'; ds.forEach((d, i) => d.classList.toggle('off', i >= n)); } };
+  };
+  const south = mkLane('南线（布克利）', 's', 81), north = mkLane('北线（奇普）', 'n', 20);
+  const chips = el('div', { class: 'stepchips' });
+  const st = el('div', { class: 'panel' });
+  let k = 0;
+  const cb = S.map((s, i) => { const b = el('button', { type: 'button', onclick: () => go(i) }, s[0]); chips.append(b); return b; });
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => go((k + 1) % S.length) }, '下一阶段');
+  function go(i) { k = i; south.set(S[i][1]); north.set(S[i][2]); cb.forEach((b, j) => b.classList.toggle('on', j === i)); st.textContent = S[i][3]; next.textContent = i === S.length - 1 ? '从头再看' : '下一阶段'; }
+  go(0);
+  node.append(chips, south.box, north.box, el('div', { class: 'ctrl' }, next), st);
+});
+
+/* ---------- 08 时间线 ---------- */
+reg('timeline', (node) => {
+  const L = [
+    ['fleet', '约 1731', '詹金斯被割下左耳', '八年后成为英国对西班牙开战的由头。'],
+    ['fleet', '1734', 'Wager 号为东印度公司建造', '装 28 门炮，往返远东运货。'],
+    ['fleet', '1739', '海军购入，改装为补给舰', '编入安森舰队，舰长丹迪·基德。'],
+    ['fleet', '1740-09 底', '舰队出发', '比原计划（6 月底—7 月初）晚了近三个月。'],
+    ['fleet', '1741-02', '圣朱利安湾修整', '基德死于坏血病，奇普接任。'],
+    ['fleet', '1741-03-07', '进入德雷克海峡', '舰队在风暴中失散。'],
+    ['island', '1741-05-14', 'Wager 号触礁', '原文写 13 日见陆地、凌晨 4 点半触礁；140 人登陆。'],
+    ['island', '1741-06-10', '奇普枪击科曾斯', '科曾斯两周后死去。'],
+    ['island', '1741-08-04', '第一份联名文件', '布克利、卡明斯要求经麦哲伦海峡返英。'],
+    ['island', '1741-08-28', '军官会议，奇普拒签', '彭伯顿「誓死支持」，舰长一度松口。'],
+    ['island', '1741-09-09', '奇普被绑', '原文日期；维基百科作 10 月 9 日。'],
+    ['south', '四天后', 'Speedwell 出发南下', '维基百科作 1741-10-13。'],
+    ['south', '1741-11-03', 'cutter 被风暴吹散', '一度回来，当晚再次消失。'],
+    ['south', '1741-12 初', '驶出麦哲伦海峡', '在海豹岛囤积海豹肉。'],
+    ['north', '分手两个月后', '奇普一行北上失败', '翻艇、丢下 4 名陆战队员，返回 Wager 岛。'],
+    ['south', '15 周后', '30 人抵巴西里奥格兰德', '维基百科作 1742-01-28；中译「当年年底」与此不符。'],
+    ['north', '约 4 个月后', '奇普、拜伦、坎贝尔到奇洛埃', '西班牙地方官没有苛待他们，后在恰考休养。'],
+    ['south', '1743-01-01', '布克利一行回到斯皮特黑德', '贝恩斯抢先向海军部汇报。'],
+    ['fleet', '1744', '安森环球归来', '1854 人中 188 人生还，受封升少将。', true],
+    ['north', '1746-02-05', '奇普获准回英国', '在奇洛埃滞留半年后经法国回国。'],
+    ['court', '1746-03-26', '报上刊登军事法庭公告', '要求所有 Wager 号旧人到朴次茅斯报到。'],
+    ['court', '1746-04-14', '布克利被问话', '「这次只调查损失原因，其他概不追究」。'],
+    ['court', '1746-04', '判决', '只有贝恩斯受谴责；海军条例随后修改。'],
+    ['fleet', '1748', '战争结束', '随奥地利王位继承战争一同终止。'],
+    ['court', '1752', '奇普去世', '之后拜伦出版回忆录（1768 年，补充）。'],
+    ['island', '2006', '残骸碎片被发现', '约 5 平方米的 18 世纪防腐木构件。'],
+  ];
+  const F = [['全部', ''], ['舰队', 'fleet'], ['岛上', 'island'], ['南线', 'south'], ['北线', 'north'], ['审判', 'court']];
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '筛选线索' });
+  const ul = el('ul', { class: 'tline' });
+  const items = L.map(([k, d, t, x, sup]) => {
+    const li = el('li', { 'data-k': k, tabindex: '0' }, el('span', { class: 'd' }, d), t, sup ? el('span', { class: 'sup' }, '补充') : null, el('div', { class: 'x' }, x));
+    const tog = () => { const was = li.classList.contains('sel'); items.forEach((i) => i.classList.remove('sel')); if (!was) li.classList.add('sel'); };
+    li.addEventListener('click', tog);
+    li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+    ul.append(li); return li;
+  });
+  const st = el('div', { class: 'status' });
+  const bs = F.map(([t, k]) => { const b = el('button', { type: 'button', onclick: () => filt(k) }, t); seg.append(b); return b; });
+  function filt(k) {
+    bs.forEach((b, i) => b.classList.toggle('on', F[i][1] === k));
+    let n = 0; items.forEach((li) => { const on = !k || li.dataset.k === k; li.classList.toggle('dim', !on); n += on; });
+    st.innerHTML = k ? `这条线索有 <b>${n}</b> 个节点。` : `共 <b>${n}</b> 个节点，跨度从约 1731 年到 2006 年。`;
+  }
+  filt('');
+  node.append(el('div', { class: 'scrollx' }, seg), st, ul);
+});
+
+/* ---------- 09 家族线 ---------- */
+reg('lineage', (node) => {
+  const P2 = [
+    ['约翰·拜伦', '海军军官', 'Wager 号上的见习军官，随奇普北上生还，后官至海军中将；1768 年出版回忆录（年份为本页补充）。'],
+    ['拜伦勋爵', '诗人', '约翰·拜伦的孙子，浪漫主义诗人（原文）。'],
+    ['艾达·洛芙莱斯', '数学家', '拜伦勋爵的女儿，常被称为第一位程序员（原文）。'],
+  ];
+  const root = svg('svg', { viewBox: '0 0 420 90', role: 'img', 'aria-label': '拜伦家族三代' });
+  const st = el('div', { class: 'status' }, '点一个人。');
+  const gs = P2.map(([n, s, x], i) => {
+    const cx = 70 + i * 140;
+    if (i) root.append(svg('path', { d: `M${cx - 92} 45 L${cx - 50} 45 m-6 -5 l6 5 l-6 5`, stroke: 'var(--muted)', fill: 'none', 'stroke-width': 1.5 }));
+    const g = svg('g', { class: 'who ' + (i ? 's' : 'c'), tabindex: '0', role: 'button', 'aria-label': n },
+      svg('rect', { x: cx - 58, y: 22, width: 116, height: 46, rx: 10, fill: i ? 'var(--y-soft)' : 'var(--p-soft)', stroke: i ? 'var(--y)' : 'var(--p)', 'stroke-width': 2 }),
+      svg('text', { x: cx, y: 39 }, n), svg('text', { x: cx, y: 56, style: 'font-size:11px;font-weight:400;fill:var(--muted)' }, s));
+    const pick = () => { gs.forEach((o) => o.querySelector('rect').setAttribute('stroke-width', o === g ? 4 : 2)); st.innerHTML = `<b>${n}</b>：${x}`; };
+    g.addEventListener('click', pick);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    root.append(g); return g;
+  });
+  node.append(root, st);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

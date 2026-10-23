@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>AI 智能体架构：能力强为什么不等于用户爱用</title>
+<meta name="description" content="面向产品经理的 AI 智能体架构讲解：四个架构层、四种编排模式与「坦诚胜过自信」的信任策略。可切换客服场景、拼装四层配置、逐步运行编排流程、调节置信度校准。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.chat{display:flex;flex-direction:column;gap:8px;min-height:260px;padding:6px 2px}
+.msg{max-width:88%;padding:8px 12px;border-radius:14px;font-size:14px;line-height:1.55;animation:pop .3s ease}
+.msg.u{align-self:flex-end;background:var(--p);color:#fff;border-bottom-right-radius:4px}
+.msg.a{align-self:flex-start;background:var(--surface-2);border:1px solid var(--line);border-bottom-left-radius:4px}
+.msg.sys{align-self:center;max-width:100%;font-family:var(--mono);font-size:12px;color:var(--muted);background:transparent;border:1px dashed var(--line);border-radius:8px;padding:4px 10px}
+.msg .who{display:block;font-size:11px;opacity:.75;margin-bottom:2px}
+.msg .fix{display:inline-block;margin-top:6px;background:var(--t);color:#fff;border-radius:999px;padding:3px 12px;font-size:13px}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.kpi{background:var(--surface-2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.kpi b{display:block;font-size:18px;color:var(--text);font-family:var(--mono)}
+.kpi.good b{color:var(--t)} .kpi.bad b{color:var(--r)}
+.cfg{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){.cfg{grid-template-columns:1fr 1fr}}
+.layer{border:1px solid var(--line);border-left:5px solid var(--c);border-radius:12px;padding:10px 12px;background:var(--surface-2);transition:box-shadow .3s}
+.layer.focus{box-shadow:0 0 0 2px var(--c)}
+.layer h4{margin:0 0 4px;font-size:14px}
+.layer .q{font-size:12px;color:var(--muted);margin-bottom:6px}
+.opt{display:flex;flex-wrap:wrap;gap:6px}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;cursor:pointer;user-select:none}
+.chk input{accent-color:var(--p);margin:0}
+.chk.on{border-color:var(--p);background:var(--p-soft)}
+.out{margin-top:12px;display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){.out{grid-template-columns:3fr 2fr}}
+.bubble{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:14px;line-height:1.65}
+.bubble .rs{font-family:var(--mono);font-size:12px;color:var(--muted);display:block;margin:4px 0}
+.bubble .warn{color:var(--r)}
+.bubble .cf{color:var(--o)}
+.bar{display:grid;grid-template-columns:72px 1fr 40px;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:6px 0}
+.bar .tr{height:10px;background:var(--surface-2);border-radius:999px;overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:999px;transition:width .4s ease}
+.bar output{font-family:var(--mono);color:var(--text);text-align:right}
+.nd rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.nd text{font-size:13px;text-anchor:middle;fill:var(--text);font-family:var(--font)}
+.nd text.s{font-size:10.5px;fill:var(--muted)}
+.nd.on rect{fill:var(--p-soft);stroke:var(--p);stroke-width:2.5}
+.nd.ext rect{stroke-dasharray:5 4}
+.nd.bad rect{fill:var(--r-soft);stroke:var(--r)}
+.nd.dead rect{fill:var(--surface);stroke:var(--r);stroke-dasharray:4 3}
+.nd.dead text{fill:var(--r)}
+.nd.pick{cursor:pointer}
+.ed{stroke:var(--line);stroke-width:2;fill:none;transition:stroke .3s}
+.ed.on{stroke:var(--p);stroke-width:3}
+.ed.bad{stroke:var(--r)}
+.arrowhead{fill:var(--line)}
+.arrowhead.on{fill:var(--p)}
+.logbox{font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border-radius:10px;padding:10px 12px;margin-top:10px;min-height:3em;color:var(--text);max-height:240px;overflow:auto}
+.logbox .e{color:var(--r)}
+.pc{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px;font-size:13px}
+@media (min-width:640px){.pc{grid-template-columns:1fr 1fr}}
+.pc div{border-radius:10px;padding:8px 12px}
+.pc .pro{background:var(--t-soft)} .pc .con{background:var(--r-soft)}
+.pc b{display:block;margin-bottom:2px}
+.qa{display:grid;gap:8px}
+.qa .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;background:var(--surface-2);border-radius:10px;padding:8px 12px;font-size:14px}
+.qa .row span{flex:1 1 220px}
+.rec{margin-top:12px;border-radius:12px;padding:12px 14px;background:var(--p-soft);font-size:14px}
+.rec b{color:var(--p);font-size:16px}
+.stack .ly{cursor:pointer}
+.stack .ly rect{transition:transform .3s,opacity .3s}
+.stack .ly:hover rect,.stack .ly:focus rect{opacity:.85}
+.stack .ly:focus{outline:none}
+.stack text{pointer-events:none}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:4px;border-radius:2px}
+.suspects{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){.vs{grid-template-columns:1fr 1fr}}
+.vs .col{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2)}
+.vs .col h4{margin:0 0 6px;font-size:14px}
+.react{margin-top:8px;font-size:13px;border-radius:8px;padding:6px 10px;min-height:2.4em}
+.react.good{background:var(--t-soft)} .react.bad{background:var(--r-soft)} .react.mid{background:var(--y-soft)}
+.handoff{margin-top:8px;font-family:var(--mono);font-size:12px;border:1px dashed var(--t);border-radius:8px;padding:6px 10px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">AI 智能体架构指南</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 智能体 · 产品设计</div>
+  <h1>产品经理的 AI 智能体架构指南：能力强为什么不等于用户爱用</h1>
+  <p class="sub">一个准确率 89%、响应不到一秒的客服智能体，用户遇到第一个真正的难题就要求转人工。问题往往不在模型够不够聪明，而在四层架构决策、编排方式和信任设计上。</p>
+  <div class="thesis">智能体的体验由产品决策塑造：上下文与记忆、数据与集成、技能与能力、评估与信任四层，加上编排模式的选择。架构从简单开始；而用户信任的，不是永远正确的智能体，而是坦诚说明自己可能出错的智能体。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>U</i>Umang Sehgal（原作者）</span>
+    <span class="au"><i style="background:var(--t)">宝</i>公众号「宝玉AI」（中文编译）</span>
+  </div>
+  <p class="meta">原文：Umang Sehgal，「A PM's Guide to AI Agent Architecture: Why Capability Doesn't Equal Adoption」，Product Curious（2025-09-04）；中文编译《产品经理必读：AI智能体架构指南——为什么能力强不等于用户爱用？》，公众号「宝玉AI」（2025-09-05）。本页按原文的叙述顺序展开，贯穿使用原文的「客服智能体」案例，并加了几处标注为「本页补充」的核对与延伸；交互里的打分与概率都是示意，不是原文数据。</p>
+</header>
+
+<section class="ch" id="problem" data-title="89% 准确率的困境">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>指标亮眼，用户却跑了</h2>
+    <p class="lead">准确率 89%、响应不到一秒、调研反馈正面，为什么用户一遇到「账单纠纷 + 账户被锁」就放弃？</p>
+  </div>
+  <div class="fig">
+    <div class="quote">「我们的智能体能完美处理常规请求，但一遇到复杂问题，用户试一次受挫后，就立刻要求找人工了。」</div>
+    <p style="font-size:15px;margin-top:10px">作者说这种现象几乎存在于所有产品团队：大家一味想把智能体做得「更聪明」，却忽略了真正的挑战是<b>架构决策</b>。这些决策塑造用户体验，也决定用户是否愿意信任它。全文贯穿一个案例：你在做一个帮用户处理账户问题的<b>客服智能体</b>，负责重置密码、查询账单、变更套餐。</p>
+    <p class="src">原文配图是 Twilio ConversationRelay（语音 AI 客服接入）的产品图，本页不复刻，改用下一节的对话演示表达同一场景。</p>
+  </div>
+</section>
+
+<section class="ch" id="scenario" data-title="同一请求，两种体验">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>同样的请求，同样的后台，完全不同的体验</h2>
+    <p class="lead">用户说「我登不上我的账户，而且我的订阅套餐好像也有问题」，智能体该先问，还是先查？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">切换场景，点「下一句」逐句播放。<b>场景 A</b> 先查系统再解释，<b>场景 B</b> 先追问再转人工。场景 B 中用户的回答是本页为演示补写的，原文只列出了三个追问。</div>
+    <div data-demo="scenario"></div>
+  </div>
+</section>
+
+<section class="ch" id="layers" data-title="四个架构层">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>你的产品决策，体现在四个架构层</h2>
+    <p class="lead">把架构看成一个堆栈，每层都是一个产品决策：记住什么、连到多深、能做什么、怎么让用户知道该期待什么。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>四层堆栈</b>（重绘原文配图）。点任意一层，下方对应的配置卡会高亮。</div>
+    <div data-demo="stack"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>拼装你的客服智能体</b>：勾选每一层的选项，看同一句用户请求得到的回复如何变化，以及价值、复杂度与风险怎么此消彼长。打分是本页示意，用来体现原文「每多一层/一项都更有用，也更复杂、更有风险」的取舍。</div>
+    <div data-demo="config"></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="fig">
+      <div class="cap"><b>第一层 · 上下文与记忆（Context &amp; Memory）</b>：这不只是存储问题，它决定用户觉得在跟机器人说话，还是在跟一个博学的同事交流。四种记忆：会话记忆（这次对话）、客户记忆（跨会话的过往互动）、行为记忆（使用模式）、情境记忆（当前账户状态、订阅、最近活动）。记得越多越能预测需求，但也越复杂、越贵。</div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>第二层 · 数据与集成（Data &amp; Integration）</b>：集成越深，用户越难离开你，这层决定你是工具还是平台。只接 Stripe 计费，还是同时打通 Salesforce CRM、Zendesk 工单、用户数据库和审计日志？每个集成都会带来新的故障点：API 速率限制、认证难题、系统宕机。作者观察到：最成功的智能体往往从两三个关键集成开始，再按用户的实际需求逐步增加。</div>
+      <div class="note-add"><b>本页补充（非原文）</b>：故障点会叠乘。若每个系统各自有 99.5% 的时间可用、彼此独立，一次请求要用到全部 n 个系统时，全部可用的概率是 0.995ⁿ：上面配置卡里会现场算出这个值。数字是示意，真实可用率要看各家 SLA 与是否有降级方案。</div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>第三层 · 技能与能力（Skills &amp; Capabilities）</b>：这是你赢过或输给对手的地方。重点不是功能最多，而是拥有让用户产生依赖的那几项能力。只读账户信息，还是还能改账单、重置密码、改套餐？每加一项技能，价值、复杂度与风险一起上涨。原文提到像 MCP（模型上下文协议，Model Context Protocol）这样的工具，让跨智能体构建和共享技能更容易，不必从零造轮子。</div>
+      <div data-demo="mcp"></div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>第四层 · 评估与信任（Evaluation &amp; Trust）</b>：用户会建立信心，还是第一次出错就放弃，取决于这一层。四种策略：置信度指标（「账户状态我很有把握，账单细节让我再确认一下」）、推理透明化（「我发现了两次失败的登录尝试和一个过期的支付方式」）、优雅地划定边界（「让我为您连接账单专家，他们有更多工具」）、确认模式（何时先问、何时先做再解释）。</div>
+      <div class="quote">反常识的洞察：相比自信满满却犯错的智能体，用户更信任坦诚承认不确定性的智能体。</div>
+    </div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：MCP 由 Anthropic 于 2024 年 11 月开源发布，采用「主机（host）中的客户端 ↔ MCP 服务器」结构，服务器向模型暴露工具、资源与提示模板。<sup class="c">[2]</sup> 上方小图按这个结构重绘原文的 MCP 配图。</div>
+</section>
+
+<section class="ch" id="orchestration" data-title="四种编排模式">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>智能体如何与技能对话：四种编排模式</h2>
+    <p class="lead">智能体怎么调技能、技能怎么取数据、评估在用户等待时怎么进行？编排模式决定了开发体验、调试流程和迭代速度。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一种架构，点「下一步」让「我登不上账户」这个请求在架构里走一遍。看每一步点亮了谁、日志里留下了什么。</div>
+    <div data-demo="arch"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：公众号译文里「基于技能的架构」的流程示例只剩第 1 步和第 5 步，中间三步在转载中丢失；上面的演示按英文原文补全：路由器 → LoginSkill；LoginSkill 检查账户存在 ✓、密码正确 ✗、账单状态……订阅已过期；LoginSkill 把「处理 user123 的过期订阅」交给 BillingSkill。<sup class="c">[1]</sup> A2A（Agent2Agent）协议由 Google 于 2025 年 4 月发布，同年 6 月捐给 Linux 基金会托管。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="workflow" data-title="工作流：可审计也死板">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>工作流架构：一切可预测，直到遇到边缘情况</h2>
+    <p class="lead">预定义的五步「账户登录问题」流程为什么受企业喜欢，又为什么让用户觉得死板？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">设定用户的真实情况，点「运行流程」。流程严格照原文的五步：检查账户状态 → 若被锁，查失败次数 → 若次数过多，查账单 → 账单问题走支付恢复，否则走密码重置。红色虚线框是原文流程<b>没有定义</b>的分支，这正是「遇到不符合预设的边缘案例就束手无策」的样子。LangGraph、CrewAI、AutoGen、n8n 这类工具做的就是这种编排。</div>
+    <div data-demo="flow"></div>
+  </div>
+</section>
+
+<section class="ch" id="debug" data-title="多智能体：调试像破案">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>协作式架构：调试多智能体对话像在破案</h2>
+    <p class="lead">多个智能体通过 A2A 协议协作，效果可能惊人；一旦出错，你能找出是哪个智能体错了吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「跑一次」，AuthenticationAgent、BillingAgent、CommunicationAgent 与一个外部支付方智能体协作处理请求，其中某个环节被随机注入了一个错误，用户最后收到的答复是错的。读日志，点你怀疑的那个智能体。这个小游戏是本页对原文「找出是哪个智能体犯错、为什么犯错，简直像破案」的演示。</div>
+    <div data-demo="whodunit"></div>
+  </div>
+</section>
+
+<section class="ch" id="choose" data-title="从简单开始">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>关键在于：从简单开始</h2>
+    <p class="lead">单智能体能处理的用例比你想象的多；只有真正撞到瓶颈时才增加复杂性，而不是凭空想象。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">回答四个问题，看推荐的起步架构。规则由本页根据原文各架构的优缺点整理（非原文工具）：默认单智能体；只有出现原文列出的具体瓶颈或约束，才换到更复杂的模式。</div>
+    <div data-demo="choose"></div>
+  </div>
+</section>
+
+<section class="ch" id="trust" data-title="信任：坦诚胜过自信">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>关于信任，大家都搞错了的关键点</h2>
+    <p class="lead">用户不会信任一个永远正确的智能体；他们信任的是能坦诚承认自己可能犯错的智能体。即使架构完美，没有信任它依然会失败。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">两个智能体做了同一件事：重置密码并更新账单地址。选择<b>修复结果</b>，看用户在两种说法下的反应。</div>
+    <div data-demo="reply"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>置信度校准（Confidence calibration）</b>：智能体说 60% 有把握时，正确率就该在 60% 左右，不是 90%，也不是 30%。下面模拟 600 张工单：每张有一个真实的解决概率，智能体报出一个置信度。拖动滑块让它<b>过度谦虚</b>或<b>过度自信</b>，看「它说的」和「它做到的」差多远。</div>
+    <div data-demo="calib"></div>
+  </div>
+  <div class="fig">
+    <div class="cap">构建值得信赖的智能体要关注三件事：</div>
+    <div class="steps">
+      <div class="tl-step on"><span class="i">1</span><div><b>置信度校准</b><p>说 60% 就对 60% 左右。</p></div></div>
+      <div class="tl-step on"><span class="i">2</span><div><b>推理透明化（Reasoning transparency）</b><p>「我检查了您的账户状态（正常）、账单历史（昨天支付失败）和登录尝试（3 次失败后被锁定）。问题似乎在于……」</p></div></div>
+      <div class="tl-step on"><span class="i">3</span><div><b>优雅地转接（Graceful escalation）</b><p>到达能力边界时，带着完整上下文平滑交给人工，远好过一句冷冰冰的「我无法处理这个问题」。</p></div></div>
+    </div>
+    <div class="final">我们常常痴迷于让智能体更准确，而用户真正想要的，是更坦诚地了解它的局限。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「校准」是机器学习里的标准概念，常用期望校准误差（ECE）衡量：按置信度分箱，对每箱 |实际正确率 − 平均置信度| 按样本数加权求和。Guo 等人（2017）发现现代深度网络普遍偏向过度自信。<sup class="c">[4]</sup> 上图的 ECE 就是在你的浏览器里按这个定义现场算的。</div>
+</section>
+
+<section class="ch" id="next" data-title="下一篇：自主性">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>接下来：自主性与治理</h2>
+    <p class="lead">智能体该有多大的独立性？什么时候该先请求许可，什么时候可以先斩后奏？</p>
+  </div>
+  <div class="fig">
+    <p style="font-size:15px">作者预告第二部分会讨论让产品经理夜不能寐的「自主性」决策：自动化与用户控制之间怎么平衡；以及真正影响产品能否按时上线的治理问题，不只是理论上的安全问题。本页只覆盖第一部分。</p>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Umang Sehgal 在 Product Curious 发表的「<a href="https://www.productcurious.com/p/a-pms-guide-to-ai-agent-architecture">A PM's Guide to AI Agent Architecture: Why Capability Doesn't Equal Adoption</a>」（2025-09-04）及公众号「宝玉AI」的中文编译版（2025-09-05，<a href="https://mp.weixin.qq.com/s/xAOHp9qYQmWNJjU2NZ7fPw">链接</a>）制作。作者全名取自 Product Curious 的 About 页（Umang Sehgal，微软高级产品经理）。原文插图（Twilio ConversationRelay 产品图、四层堆栈图、MCP 示意图、编排模式图、Overview 图）均已按其表达的信息用内联 SVG 和 JS 重绘或以交互演示替代，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Umang Sehgal (2025-09-04). A PM's Guide to AI Agent Architecture: Why Capability Doesn't Equal Adoption. <i>Product Curious</i>. <a href="https://www.productcurious.com/p/a-pms-guide-to-ai-agent-architecture">productcurious.com</a>；中文编译：《产品经理必读：AI智能体架构指南——为什么能力强不等于用户爱用？》，公众号「宝玉AI」（2025-09-05）。</li>
+    <li>Anthropic (2024-11-25). Introducing the Model Context Protocol；MCP 规范文档 <a href="https://modelcontextprotocol.io">modelcontextprotocol.io</a>。</li>
+    <li>Google (2025-04-09). Announcing the Agent2Agent Protocol (A2A)；Linux Foundation (2025-06) 宣布托管 A2A 项目。</li>
+    <li>Guo, C., Pleiss, G., Sun, Y. &amp; Weinberger, K. Q. (2017). On Calibration of Modern Neural Networks. <i>ICML 2017</i>. <a href="https://arxiv.org/abs/1706.04599">arXiv:1706.04599</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；交互中的打分、概率与模拟数据均为示意，技术细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const keyAct = (n, f) => { n.addEventListener('click', f); n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); };
+const seg = (labels, on, cb) => {
+  const w = el('div', { class: 'seg', role: 'tablist' });
+  const bs = labels.map((t, i) => el('button', { type: 'button', class: i === on ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); cb(i); } }, t));
+  w.append(...bs); return w;
+};
+const rng = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+/* ---------- 02 场景 A / B ---------- */
+reg('scenario', (node) => {
+  const Q = '我登不上我的账户，而且我的订阅套餐好像也有问题';
+  const S = [
+    { name: '场景 A：先查再说', lines: [
+      ['u', Q], ['sys', '→ 查询账户：密码昨天已重置，重置邮件发送失败'], ['sys', '→ 查询账单：扣款失败，套餐已被自动降级'],
+      ['a', '我查到了两件事：① 昨天您的密码被重置过，但通知邮件没发出去，所以旧密码登不上；② 同一天有一笔扣款失败，系统把您的套餐降级了。', '一键修复这两个问题'],
+    ], kpi: [['0', '追问次数', 'good'], ['1', '用户操作', 'good'], ['已解决', '结果', 'good']] },
+    { name: '场景 B：先问再转', lines: [
+      ['u', Q], ['a', '您上次成功登录是什么时候？'], ['u', '大概上周吧。'], ['a', '您看到了什么错误提示？'], ['u', '就说密码错误。'],
+      ['a', '能具体说一下订阅套餐有什么问题吗？'], ['u', '好像有些功能用不了了……'], ['a', '让我为您转接到人工客服，他们可以帮您检查账户和账单。'],
+    ], kpi: [['3', '追问次数', 'bad'], ['3', '用户回答', 'bad'], ['转人工', '结果', 'bad']] },
+  ];
+  let cur = 0, k = 0, timer = null;
+  const chat = el('div', { class: 'chat', 'aria-live': 'polite' });
+  const kpis = el('div', { class: 'kpis' });
+  const status = el('div', { class: 'status' });
+  const draw = (line) => {
+    const [r, t, fix] = line;
+    const m = el('div', { class: 'msg ' + r }, r === 'u' ? null : r === 'a' ? el('span', { class: 'who' }, '客服智能体') : null, t);
+    if (fix) m.append(el('br'), el('span', { class: 'fix' }, fix));
+    chat.append(m);
+  };
+  const showKpi = () => { kpis.innerHTML = ''; S[cur].kpi.forEach(([v, l, c]) => kpis.append(el('div', { class: 'kpi ' + c }, el('b', {}, v), l))); };
+  const next = () => {
+    const L = S[cur].lines;
+    if (k < L.length) { draw(L[k++]); }
+    if (k >= L.length) { showKpi(); status.innerHTML = cur === 0 ? '同样的后台系统：<b>智能体主动排查，用户只点了一次</b>。' : '同样的后台系统：用户回答了 3 个问题，<span style="color:var(--r)">最后仍被转给人工</span>。'; stopAuto(); nb.disabled = true; }
+    else status.textContent = `${S[cur].name}：第 ${k} / ${L.length} 句`;
+  };
+  const reset = () => { stopAuto(); chat.innerHTML = ''; kpis.innerHTML = ''; k = 0; nb.disabled = false; next(); };
+  const stopAuto = () => { if (timer) { clearInterval(timer); timer = null; } ab.textContent = '自动播放'; };
+  const nb = el('button', { class: 'btn primary', type: 'button', onclick: next }, '下一句');
+  const ab = el('button', { class: 'btn', type: 'button', onclick: () => { if (timer) return stopAuto(); if (k >= S[cur].lines.length) reset(); ab.textContent = '暂停'; timer = setInterval(next, RM ? 300 : 1100); } }, '自动播放');
+  const rb = el('button', { class: 'btn', type: 'button', onclick: reset }, '重放');
+  node.append(el('div', { class: 'ctrl' }, seg(S.map((s) => s.name), 0, (i) => { cur = i; reset(); })), chat, el('div', { class: 'ctrl' }, nb, ab, rb), kpis, status);
+  reset();
+  return { stop: stopAuto };
+});
+
+/* ---------- 03 四层堆栈 ---------- */
+const LAYERS = [
+  ['第四层 · 评估与信任', 'Evaluation & Trust', '用户如何知道该期待什么？', '--y'],
+  ['第三层 · 技能与能力', 'Skills & Capabilities', '你的差异化优势是什么？', '--o'],
+  ['第二层 · 数据与集成', 'Data & Integration', '你要深入到什么程度？', '--t'],
+  ['第一层 · 上下文与记忆', 'Context & Memory', '你的智能体能记住什么？', '--p'],
+];
+const focusLayer = (idx) => {
+  document.querySelectorAll('.layer').forEach((x) => x.classList.toggle('focus', +x.dataset.l === idx));
+  const t = document.querySelector('.layer[data-l="' + idx + '"]'); if (t) t.scrollIntoView({ behavior: RM ? 'auto' : 'smooth', block: 'nearest' });
+};
+reg('stack', (node) => {
+  const W = 560, H = 260;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'stack', role: 'img', 'aria-label': '四层架构堆栈：自下而上为上下文与记忆、数据与集成、技能与能力、评估与信任', style: 'max-width:560px;margin:0 auto' });
+  const status = el('div', { class: 'status' }, '自下而上：记忆 → 集成 → 技能 → 信任。点一层看它的决策点。');
+  LAYERS.forEach(([zh, en, q, c], i) => {
+    const y = 14 + i * 60, inset = (3 - i) * 0 + i * 0;
+    const g = svg('g', { class: 'ly', tabindex: '0', role: 'button', 'aria-label': zh });
+    g.append(svg('rect', { x: 20 + (3 - i) * 0, y, width: W - 40, height: 50, rx: 10, style: `fill:var(${c}-soft);stroke:var(${c});stroke-width:2` }),
+      svg('text', { x: 40, y: y + 22, class: 'lbl big' }, zh),
+      svg('text', { x: 40, y: y + 40, class: 'lbl' }, en),
+      svg('text', { x: W - 40, y: y + 31, class: 'lbl', 'text-anchor': 'end' }, q));
+    keyAct(g, () => { const idx = 3 - i; focusLayer(idx); status.innerHTML = `<b>${zh}</b>：${q}（已在下方配置卡中高亮）`; });
+    root.append(g);
+  });
+  node.append(el('div', { class: 'scrollx' }, root), status);
+});
+
+reg('config', (node) => {
+  const S = {
+    mem: { session: true, customer: false, behavior: false, context: true },
+    int: { stripe: true, db: true, crm: false, zendesk: false, audit: false },
+    skill: 'read',
+    trust: { conf: false, reason: true, confirm: true, escalate: false },
+  };
+  const OPT = [
+    { l: 0, key: 'mem', items: [['session', '会话记忆'], ['customer', '客户记忆'], ['behavior', '行为记忆'], ['context', '情境记忆']] },
+    { l: 1, key: 'int', items: [['stripe', 'Stripe 计费'], ['db', '用户数据库'], ['crm', 'Salesforce CRM'], ['zendesk', 'Zendesk 工单'], ['audit', '审计日志']] },
+    { l: 2, key: 'skill', radio: [['read', '只读账户信息'], ['write', '可改账单 / 重置密码 / 改套餐']] },
+    { l: 3, key: 'trust', items: [['conf', '置信度指标'], ['reason', '推理透明'], ['confirm', '确认模式'], ['escalate', '优雅转接']] },
+  ];
+  const cfg = el('div', { class: 'cfg' });
+  OPT.forEach((o) => {
+    const [zh, en, q, c] = LAYERS[3 - o.l];
+    const box = el('div', { class: 'layer', 'data-l': o.l, style: `--c:var(${c})` }, el('h4', {}, zh), el('div', { class: 'q' }, q));
+    const opt = el('div', { class: 'opt' });
+    if (o.items) o.items.forEach(([k, t]) => {
+      const inp = el('input', { type: 'checkbox' }); inp.checked = S[o.key][k];
+      const lab = el('label', { class: 'chk' + (inp.checked ? ' on' : '') }, inp, t);
+      inp.addEventListener('change', () => { S[o.key][k] = inp.checked; lab.classList.toggle('on', inp.checked); upd(); });
+      opt.append(lab);
+    });
+    else o.radio.forEach(([k, t]) => {
+      const inp = el('input', { type: 'radio', name: 'skillr' }); inp.checked = S.skill === k;
+      const lab = el('label', { class: 'chk' + (inp.checked ? ' on' : '') }, inp, t);
+      inp.addEventListener('change', () => { S.skill = k; opt.querySelectorAll('.chk').forEach((x) => x.classList.toggle('on', x.contains(inp) && inp.checked)); upd(); });
+      opt.append(lab);
+    });
+    box.append(opt); cfg.append(box);
+  });
+  const bubble = el('div', { class: 'bubble', 'aria-live': 'polite' });
+  const meters = el('div', {});
+  const mk = (name, color) => { const i = el('i', { style: `background:var(${color});width:0` }); const o = el('output', {}); meters.append(el('div', { class: 'bar' }, el('span', {}, name), el('div', { class: 'tr' }, i), o)); return [i, o]; };
+  const mV = mk('用户价值', '--t'), mC = mk('复杂度/成本', '--o'), mR = mk('风险', '--r');
+  const avail = el('div', { class: 'status' });
+  node.append(cfg, el('div', { class: 'out' }, el('div', {}, el('div', { class: 'cap', style: 'margin:0 0 6px' }, '用户：「我登不上我的账户，而且我的订阅套餐好像也有问题」'), bubble), el('div', {}, meters, avail)));
+  function upd() {
+    const { mem, int, trust } = S, write = S.skill === 'write';
+    const H = [];
+    const checked = [];
+    if (int.db) checked.push('登录记录（3 次失败后被锁定，密码昨天重置、通知邮件未送达）');
+    if (int.stripe) checked.push('账单历史（昨天扣款失败，套餐被降级）');
+    if (mem.session) H.push('您刚才提到了登录和套餐两件事，我一起查了。');
+    if (!int.db && !int.stripe) {
+      H.push('<span class="warn">抱歉，我看不到您的账户和账单系统，没法判断原因。</span>');
+    } else {
+      if (trust.reason) H.push(`<span class="rs">我检查了：${checked.join('；')}</span>`);
+      const parts = [];
+      if (int.db) parts.push('登录失败是因为密码昨天被重置、通知邮件没发出去');
+      if (int.stripe) parts.push('套餐问题来自一笔失败的扣款');
+      H.push((trust.reason ? '问题似乎在于：' : '原因是：') + parts.join('；') + '。');
+      if (!int.db) H.push('<span class="warn">登录这部分我看不到用户数据库，无法确认。</span>');
+      if (!int.stripe) H.push('<span class="warn">套餐这部分我没有接入计费系统，无法确认。</span>');
+      if (mem.context && int.db && int.stripe) H.push('当前状态：账户锁定中，订阅已从专业版降为基础版。');
+    }
+    if (mem.customer) H.push((int.crm || int.zendesk) ? '上个月您也遇到过一次扣款失败（来自过往工单）。' : '<span class="warn">（想调取您的过往记录，但没有接 CRM 或工单系统：记忆层依赖集成层。）</span>');
+    if (mem.behavior) H.push('我注意到您通常用手机 App，修复入口我也推送到了 App 里。');
+    if (trust.conf && (int.db || int.stripe)) H.push('<span class="cf">登录原因我很有把握；账单细节我约有 80% 把握，让我再确认一下。</span>');
+    if (int.db || int.stripe) {
+      if (!write) H.push('我只能查看，没法替您操作：请到「设置 › 安全」重置密码，到「账单」更新支付方式。');
+      else if (trust.confirm) H.push('需要我现在为您重置密码并重试扣款吗？<br><span class="fix" style="display:inline-block;margin-top:6px;background:var(--t);color:#fff;border-radius:999px;padding:3px 12px;font-size:13px">确认修复</span>');
+      else H.push('已为您重置密码并重试扣款。');
+      if (write && int.audit) H.push('<span class="rs">（以上操作已写入审计日志）</span>');
+    }
+    if (trust.escalate) H.push('如果这没有解决问题，我会带着以上排查记录，把您转给有更多权限的账单专家。');
+    bubble.innerHTML = '<span class="who" style="display:block;font-size:11px;color:var(--muted)">客服智能体</span>' + H.join(' ');
+    // 示意打分
+    const nm = Object.values(mem).filter(Boolean).length, ni = Object.values(int).filter(Boolean).length, nt = Object.values(trust).filter(Boolean).length;
+    const v = nm * 1 + ni * 1.2 + (write ? 3 : 0.5) + nt * 0.8;
+    const c = nm * 1 + (mem.customer ? 0.5 : 0) + (mem.behavior ? 0.5 : 0) + ni * 1.3 + (write ? 2 : 0) + nt * 0.5;
+    const r = Math.max(0, (mem.customer ? 0.6 : 0) + (mem.behavior ? 0.8 : 0) + ni * 0.6 + (write ? 3.5 : 0) - (write && trust.confirm ? 1.5 : 0) - (write && int.audit ? 0.6 : 0) - (trust.escalate ? 0.5 : 0) - (trust.conf ? 0.3 : 0));
+    const set = ([i, o], x, max) => { const p = Math.min(100, x / max * 100); i.style.width = p + '%'; o.textContent = Math.round(p); };
+    set(mV, v, 14.4); set(mC, c, 15.5); set(mR, r, 7.4);
+    const pa = Math.pow(0.995, ni);
+    avail.innerHTML = ni ? `已接 <b>${ni}</b> 个系统 = ${ni} 个潜在故障点。若每个 99.5% 可用且独立，全部同时可用的概率 0.995<sup>${ni}</sup> = <b>${(pa * 100).toFixed(2)}%</b>（本页补充示意）。` : '一个系统都没接：没有故障点，也几乎没有用处。';
+  }
+  upd();
+});
+
+reg('mcp', (node) => {
+  const root = svg('svg', { viewBox: '0 0 420 186', role: 'img', 'aria-label': 'MCP 示意：智能体（主机内的 MCP 客户端）通过 MCP 连接多个服务器，每个服务器暴露一组技能', style: 'max-width:420px;margin:8px auto 0' });
+  const box = (x, y, w, h, t, s, cls) => { const g = svg('g', { class: 'nd' + (cls ? ' ' + cls : '') }, svg('rect', { x, y, width: w, height: h, rx: 9 }), svg('text', { x: x + w / 2, y: y + (s ? h / 2 - 2 : h / 2 + 5) }, t)); if (s) g.append(svg('text', { x: x + w / 2, y: y + h / 2 + 14, class: 's' }, s)); root.append(g); return g; };
+  const srv = [['计费 MCP 服务器', 'refund / retry_charge'], ['账户 MCP 服务器', 'reset_password / unlock'], ['工单 MCP 服务器', 'create_ticket']];
+  srv.forEach((_, i) => root.append(svg('path', { class: 'ed', d: `M150 82 C 200 82, 200 ${10 + i * 52 + 22}, 250 ${10 + i * 52 + 22}` })));
+  box(10, 52, 140, 60, '客服智能体', '主机 · MCP 客户端', 'on');
+  srv.forEach(([t, s], i) => box(250, 10 + i * 52, 160, 44, t, s));
+  root.append(svg('text', { x: 210, y: 180, class: 'lbl mid' }, '统一协议：服务器自报能力，不必手工维护映射'));
+  node.append(root);
+});
+
+/* ---------- 04 编排模式 ---------- */
+const drawGraph = (root, nodes, edges) => {
+  const defs = svg('defs');
+  ['a', 'b'].forEach((id) => defs.append(svg('marker', { id: 'ah' + id + root.dataset.k, viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' }, svg('path', { d: 'M0 0 L10 5 L0 10 z', class: 'arrowhead' + (id === 'b' ? ' on' : '') }))));
+  root.append(defs);
+  const E = {}, N = {};
+  edges.forEach(([a, b, dash]) => {
+    const A = nodes[a], B = nodes[b];
+    const ax = A.x + A.w / 2, ay = A.y + A.h / 2, bx = B.x + B.w / 2, by = B.y + B.h / 2;
+    // 从边界出发
+    const clip = (n, tx, ty) => { const cx = n.x + n.w / 2, cy = n.y + n.h / 2, dx = tx - cx, dy = ty - cy; const s = Math.min(Math.abs((n.w / 2 + 3) / (dx || 1e-9)), Math.abs((n.h / 2 + 3) / (dy || 1e-9))); return [cx + dx * s, cy + dy * s]; };
+    const [x1, y1] = clip(A, bx, by), [x2, y2] = clip(B, ax, ay);
+    const p = svg('path', { class: 'ed', d: `M${x1} ${y1} L${x2} ${y2}`, 'marker-end': `url(#aha${root.dataset.k})` });
+    if (dash) p.setAttribute('stroke-dasharray', '5 4');
+    E[a + '>' + b] = p; root.append(p);
+  });
+  Object.entries(nodes).forEach(([id, n]) => {
+    const g = svg('g', { class: 'nd' + (n.cls ? ' ' + n.cls : '') }, svg('rect', { x: n.x, y: n.y, width: n.w, height: n.h, rx: 10 }), svg('text', { x: n.x + n.w / 2, y: n.y + (n.s ? n.h / 2 - 2 : n.h / 2 + 5) }, n.t));
+    if (n.s) g.append(svg('text', { x: n.x + n.w / 2, y: n.y + n.h / 2 + 14, class: 's' }, n.s));
+    N[id] = g; root.append(g);
+  });
+  return { E, N };
+};
+reg('arch', (node) => {
+  const A = [
+    { name: '单智能体', title: '1. 单智能体架构（从这里开始）', desc: '所有事情都在一个智能体的上下文中完成：检查账户状态、识别账单问题、解释原因、给出方案。',
+      nodes: { u: { x: 10, y: 95, w: 90, h: 50, t: '用户' }, ag: { x: 170, y: 70, w: 190, h: 100, t: '客服智能体', s: '完整上下文：账户+账单+登录+话术' }, s1: { x: 440, y: 20, w: 140, h: 44, t: '账户系统' }, s2: { x: 440, y: 98, w: 140, h: 44, t: '计费系统' }, s3: { x: 440, y: 176, w: 140, h: 44, t: '登录日志' } },
+      edges: [['u', 'ag'], ['ag', 's1'], ['ag', 's2'], ['ag', 's3'], ['ag', 'u']],
+      steps: [[['u'], ['u>ag'], '用户：「我登不上账户」'], [['ag'], [], '智能体载入完整上下文（每次都要加载全部，复杂请求成本高）'], [['ag', 's1'], ['ag>s1'], '查账户状态：已锁定'], [['ag', 's3'], ['ag>s3'], '查登录日志：3 次失败'], [['ag', 's2'], ['ag>s2'], '查账单：订阅已过期'], [['ag', 'u'], ['ag>u'], '同一个智能体解释原因并给出方案']],
+      pro: '构建简单，调试容易，成本可预测；清楚知道它能做什么、不能做什么。', con: '复杂请求时可能变贵（每次加载完整上下文）；难以单独优化某一部分。',
+      quote: '大多数团队都从这里开始，很多团队根本不需要更复杂的架构。犹豫时就选它。' },
+    { name: '基于技能', title: '2. 基于技能的架构（当你需要效率时）', desc: '一个「路由器」智能体判断需求，再把任务分发给专门的技能模块。简单技能可以用便宜的模型，复杂推理用贵的模型。',
+      nodes: { u: { x: 10, y: 95, w: 80, h: 50, t: '用户' }, r: { x: 140, y: 95, w: 110, h: 50, t: '路由器', s: '便宜的小模型' }, l: { x: 300, y: 30, w: 130, h: 56, t: 'LoginSkill', s: '账户 / 密码' }, b: { x: 300, y: 160, w: 130, h: 56, t: 'BillingSkill', s: '更强的模型' }, sys: { x: 480, y: 95, w: 110, h: 50, t: '计费系统' } },
+      edges: [['u', 'r'], ['r', 'l'], ['l', 'b'], ['b', 'sys'], ['r', 'b', 1]],
+      steps: [[['u'], ['u>r'], '1. 用户：「我登录不了」'], [['r', 'l'], ['r>l'], '2. 路由器 → LoginSkill'], [['l'], [], '3. LoginSkill 检查：账户存在 ✓，密码正确 ✗，账单状态……等等，订阅已过期'], [['l', 'b'], ['l>b'], '4. LoginSkill → BillingSkill：「处理 user123 的过期订阅」'], [['b', 'sys'], ['b>sys'], '5. BillingSkill 处理续订流程']],
+      pro: '更高效：按技能选模型、各技能可独立优化。', con: '技能间协调很快变棘手：谁决定何时交接？上下文怎么共享？',
+      quote: '这正是 MCP 大显身手的地方：它标准化了技能暴露能力的方式，路由器能知道每个技能能做什么，无需手动维护映射。' },
+    { name: '基于工作流', title: '3. 基于工作流的架构（企业级应用的最爱）', desc: '为常见场景预先定义一步步的流程（LangGraph、CrewAI、AutoGen、n8n 等）。下一节可以逐分支运行这个流程。',
+      nodes: { t: { x: 10, y: 95, w: 90, h: 50, t: '触发', s: '账户登录问题' }, a: { x: 130, y: 95, w: 90, h: 50, t: '查账户' }, f: { x: 250, y: 95, w: 90, h: 50, t: '查失败次数' }, b: { x: 370, y: 95, w: 90, h: 50, t: '查账单' }, p1: { x: 490, y: 40, w: 100, h: 50, t: '支付恢复' }, p2: { x: 490, y: 150, w: 100, h: 50, t: '密码重置' } },
+      edges: [['t', 'a'], ['a', 'f'], ['f', 'b'], ['b', 'p1'], ['b', 'p2']],
+      steps: [[['t'], [], '「账户登录问题」触发工作流'], [['a'], ['t>a'], '1. 检查账户状态：已锁定'], [['f'], ['a>f'], '2. 已锁定 → 检查失败登录次数：过多'], [['b'], ['f>b'], '3. 次数过多 → 检查账单状态：有问题'], [['p1'], ['b>p1'], '4. 是账单问题 → 路由到支付恢复流程']],
+      pro: '可预测、可审计，适合合规严格的行业；每一步都容易优化。', con: '遇到不在预设流程里的边缘案例就束手无策；对用户来说很死板。', quote: '' },
+    { name: '协作式', title: '4. 协作式架构（未来趋势？）', desc: '多个专业智能体通过 A2A（智能体到智能体）协议协作，甚至跨公司：设想 Booking.com 的预订智能体直接与美国航空的智能体对话。',
+      nodes: { u: { x: 10, y: 95, w: 80, h: 50, t: '用户' }, c: { x: 130, y: 95, w: 140, h: 50, t: 'CommunicationAgent', s: '与用户沟通' }, au: { x: 320, y: 25, w: 140, h: 50, t: 'AuthenticationAgent', s: '登录' }, bi: { x: 320, y: 165, w: 140, h: 50, t: 'BillingAgent', s: '支付' }, ex: { x: 490, y: 95, w: 100, h: 50, t: '外部智能体', s: '另一家公司', cls: 'ext' } },
+      edges: [['u', 'c'], ['c', 'au'], ['c', 'bi'], ['au', 'bi', 1], ['bi', 'ex', 1], ['c', 'u']],
+      steps: [[['u', 'c'], ['u>c'], '用户：「我登不上账户」'], [['au'], ['c>au'], 'A2A → AuthenticationAgent：查登录'], [['au', 'bi'], ['au>bi'], 'AuthenticationAgent → BillingAgent：锁定可能与欠费有关'], [['bi', 'ex'], ['bi>ex'], 'BillingAgent ⇄ 外部支付方智能体：建立安全连接、核对扣款'], [['c', 'u'], ['c>u'], 'CommunicationAgent 汇总并回复用户']],
+      pro: '复杂场景下可能产生惊人效果。', con: '安全、计费、信任、可靠性的复杂度巨大，标准仍在探索；调试多智能体对话非常困难。', quote: '一旦出了问题，要找出是哪个智能体犯了错、为什么犯错，简直就像在破案。' },
+  ];
+  let cur = 0, k = 0, G = null, timer = null;
+  const head = el('div', {}), stage = el('div', { class: 'scrollx' }), log = el('div', { class: 'logbox', 'aria-live': 'polite' }), info = el('div', {});
+  const nb = el('button', { class: 'btn primary', type: 'button', onclick: () => step() }, '下一步');
+  const pb = el('button', { class: 'btn', type: 'button', onclick: () => { if (timer) return halt(); if (k >= A[cur].steps.length) load(cur); pb.textContent = '暂停'; timer = setInterval(() => step(), RM ? 300 : 1200); } }, '自动播放');
+  const rb = el('button', { class: 'btn', type: 'button', onclick: () => load(cur) }, '重置');
+  const halt = () => { if (timer) clearInterval(timer); timer = null; pb.textContent = '自动播放'; };
+  function load(i) {
+    halt(); cur = i; k = 0; const a = A[i];
+    head.innerHTML = `<b style="font-size:16px">${a.title}</b><p style="font-size:14px;color:var(--muted);margin-top:4px">${a.desc}</p>`;
+    stage.innerHTML = '';
+    const root = svg('svg', { viewBox: '0 0 600 240', role: 'img', 'aria-label': a.title + ' 的流程图', style: 'min-width:520px', 'data-k': i });
+    stage.append(root); G = drawGraph(root, a.nodes, a.edges);
+    log.textContent = '点「下一步」开始。'; nb.disabled = false;
+    info.innerHTML = '';
+    info.append(el('div', { class: 'pc' }, el('div', { class: 'pro' }, el('b', {}, '优点'), a.pro), el('div', { class: 'con' }, el('b', {}, '缺点'), a.con)));
+    if (a.quote) info.append(el('div', { class: 'quote', style: 'margin-top:10px' }, a.quote));
+  }
+  function step() {
+    const a = A[cur]; if (k >= a.steps.length) return;
+    const [ns, es, t] = a.steps[k++];
+    Object.values(G.N).forEach((g) => g.classList.remove('on'));
+    Object.values(G.E).forEach((p) => { p.classList.remove('on'); p.setAttribute('marker-end', `url(#aha${cur})`); });
+    ns.forEach((n) => G.N[n].classList.add('on'));
+    es.forEach((e) => { const p = G.E[e]; if (p) { p.classList.add('on'); p.setAttribute('marker-end', `url(#ahb${cur})`); } });
+    log.textContent = (k === 1 ? '' : log.textContent + '\n') + `[${k}] ` + t;
+    log.scrollTop = log.scrollHeight;
+    if (k >= a.steps.length) { nb.disabled = true; halt(); }
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(A.map((a) => a.name), 0, load)), head, stage, el('div', { class: 'ctrl' }, nb, pb, rb), log, info);
+  load(0);
+  return { stop: halt };
+});
+
+/* ---------- 05 工作流决策树 ---------- */
+reg('flow', (node) => {
+  const S = { req: 0, locked: 1, many: 1, bill: 1 };
+  const nodes = {
+    t: { x: 230, y: 6, w: 140, h: 40, t: '触发：账户登录问题' },
+    a: { x: 230, y: 70, w: 140, h: 40, t: '① 检查账户状态' },
+    na: { x: 20, y: 70, w: 150, h: 40, t: '未锁定：流程未定义', cls: 'dead' },
+    f: { x: 230, y: 134, w: 140, h: 40, t: '② 查失败登录次数' },
+    nf: { x: 20, y: 134, w: 150, h: 40, t: '次数不多：未定义', cls: 'dead' },
+    b: { x: 230, y: 198, w: 140, h: 40, t: '③ 检查账单状态' },
+    p1: { x: 110, y: 270, w: 150, h: 40, t: '④ 支付恢复流程' },
+    p2: { x: 340, y: 270, w: 150, h: 40, t: '⑤ 密码重置流程' },
+    x: { x: 430, y: 6, w: 160, h: 40, t: '没有匹配的工作流', cls: 'dead' },
+  };
+  const edges = [['t', 'a'], ['a', 'na'], ['a', 'f'], ['f', 'nf'], ['f', 'b'], ['b', 'p1'], ['b', 'p2']];
+  const root = svg('svg', { viewBox: '0 0 600 320', role: 'img', 'aria-label': '账户登录问题工作流的决策树', style: 'min-width:520px', 'data-k': 'f' });
+  const G = drawGraph(root, nodes, edges);
+  [['是', 312, 128], ['否', 200, 85], ['多', 312, 192], ['少', 200, 149], ['是', 200, 252], ['否', 400, 252]].forEach(([t, x, y]) => root.append(svg('text', { x, y, class: 'lbl' }, t)));
+  const log = el('div', { class: 'logbox', 'aria-live': 'polite' });
+  const status = el('div', { class: 'status' });
+  const row = (label, opts, key, inv) => el('div', { class: 'row' }, el('span', {}, label), seg(opts, inv ? 1 - S[key] : S[key], (i) => { S[key] = inv ? 1 - i : i; reset(); }));
+  const qa = el('div', { class: 'qa' },
+    row('用户的请求', ['登录问题', '想把账户转给同事'], 'req'),
+    row('账户被锁定了吗？', ['是', '否'], 'locked', 1),
+    row('失败登录次数多吗？', ['多', '少'], 'many', 1),
+    row('是账单问题吗？', ['是', '否'], 'bill', 1));
+  let timer = null;
+  const clear = () => { Object.values(G.N).forEach((g) => g.classList.remove('on', 'bad')); Object.values(G.E).forEach((p) => { p.classList.remove('on'); p.setAttribute('marker-end', 'url(#ahaf)'); }); };
+  const reset = () => { if (timer) clearInterval(timer); timer = null; clear(); log.textContent = '设定好情况，点「运行流程」。'; status.textContent = ''; };
+  const path = () => {
+    if (S.req === 1) return [['x', null, '请求「把账户转给同事」不匹配任何预设触发条件', true]];
+    const p = [['t', null, '触发「账户登录问题」工作流'], ['a', 't>a', '① 检查账户状态 → ' + (S.locked ? '已锁定' : '未锁定')]];
+    if (!S.locked) { p.push(['na', 'a>na', '原文流程只定义了「被锁定」的分支 → 卡住，只能转人工', true]); return p; }
+    p.push(['f', 'a>f', '② 检查失败登录次数 → ' + (S.many ? '过多' : '不多')]);
+    if (!S.many) { p.push(['nf', 'f>nf', '「锁定但失败次数不多」没有预设分支 → 卡住，只能转人工', true]); return p; }
+    p.push(['b', 'f>b', '③ 检查账单状态 → ' + (S.bill ? '有问题' : '正常')]);
+    p.push(S.bill ? ['p1', 'b>p1', '④ 路由到支付恢复流程 ✓'] : ['p2', 'b>p2', '⑤ 路由到密码重置流程 ✓']);
+    return p;
+  };
+  const run = () => {
+    reset(); const p = path(); let i = 0; log.textContent = '';
+    const tick = () => {
+      if (i >= p.length) { clearInterval(timer); timer = null; const dead = p[p.length - 1][3]; status.innerHTML = dead ? '<span style="color:var(--r)">流程走不下去了。</span>可预测、可审计的代价，就是遇到预设之外的情况时束手无策。' : '<b>按预设完成。</b>每一步都留下审计记录，合规团队最喜欢这一点。'; return; }
+      const [n, e, t, bad] = p[i++];
+      G.N[n].classList.add(bad ? 'bad' : 'on');
+      if (e && G.E[e]) { G.E[e].classList.add('on'); G.E[e].setAttribute('marker-end', 'url(#ahbf)'); }
+      log.textContent += (log.textContent ? '\n' : '') + `${new Date(Date.UTC(2025, 8, 4, 10, 0, i)).toISOString().slice(11, 19)}  ${t}`;
+    };
+    tick(); timer = setInterval(tick, RM ? 150 : 650);
+  };
+  node.append(qa, el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: run }, '运行流程')), el('div', { class: 'scrollx' }, root), el('div', { class: 'cap', style: 'margin:8px 0 0' }, '审计日志'), log, status);
+  reset();
+  return { stop() { if (timer) { clearInterval(timer); timer = null; } } };
+});
+
+/* ---------- 06 多智能体破案 ---------- */
+reg('whodunit', (node) => {
+  const agents = ['CommunicationAgent', 'AuthenticationAgent', 'BillingAgent', '外部支付方智能体'];
+  const R = rng(20250904);
+  let culprit = -1, solved = false;
+  const log = el('div', { class: 'logbox', 'aria-live': 'polite' }, '点「跑一次」。');
+  const status = el('div', { class: 'status' });
+  const sus = el('div', { class: 'suspects' });
+  const btns = agents.map((a, i) => el('button', { class: 'btn', type: 'button', disabled: '', onclick: () => guess(i) }, a));
+  sus.append(...btns);
+  let tries = 0;
+  const run = () => {
+    culprit = Math.floor(R() * 4); solved = false; tries = 0;
+    const T = {
+      0: ['CommunicationAgent → AuthenticationAgent：用户说「登不上，套餐也有问题」，请查登录', 'CommunicationAgent → AuthenticationAgent：用户说「忘了用户名」，请查登录'],
+      1: ['AuthenticationAgent → BillingAgent：账户 3 次失败后锁定；锁定前一天有扣款事件，请核对', 'AuthenticationAgent → BillingAgent：账户状态正常，未锁定；请核对扣款'],
+      2: ['BillingAgent → 外部支付方智能体：查询 user123 在 9 月 3 日的扣款', 'BillingAgent → 外部支付方智能体：查询 user123 在 8 月 3 日的扣款'],
+      3: ['外部支付方智能体 → BillingAgent：该笔扣款失败，原因是卡已过期', '外部支付方智能体 → BillingAgent：该笔扣款成功（返回了缓存中的旧状态）'],
+    };
+    const L = [0, 1, 2, 3].map((i) => T[i][i === culprit ? 1 : 0]);
+    L.push('BillingAgent → CommunicationAgent：' + (culprit >= 2 ? '账单正常，无需处理' : '扣款失败，套餐已降级，需更新支付方式'));
+    L.push('CommunicationAgent → 用户：' + (culprit === 0 ? '已向您的邮箱发送用户名找回邮件。' : culprit === 1 ? '您的账户状态正常，请检查密码是否输入正确。' : '您的账单一切正常，请尝试重置密码。'));
+    log.textContent = L.map((x, i) => `#${i + 1} ${x}`).join('\n') + '\n\n用户：「还是登不上……」  ← 最终答复是错的';
+    btns.forEach((b) => { b.disabled = false; b.classList.remove('primary'); });
+    status.textContent = '是谁先把事实弄错的？点一个智能体。';
+  };
+  const why = ['它把用户的原话转述错了，后面每个智能体都在解决一个不存在的问题。', '它报告「未锁定」，与登录失败的事实矛盾，后续判断全被带偏。', '它查错了日期，拿到的是上个月的正常扣款。', '它返回了缓存里的旧状态，BillingAgent 照单全收。'];
+  const guess = (i) => {
+    if (solved || culprit < 0) return; tries++;
+    if (i === culprit) { solved = true; btns[i].classList.add('primary'); status.innerHTML = `<b>破案（第 ${tries} 次猜测）：${agents[i]}</b>。${why[i]}在单智能体架构里，这只是同一份上下文里的一行推理；在多智能体里，你要横跨四方的消息才能定位。`; btns.forEach((b) => b.disabled = true); }
+    else { btns[i].disabled = true; status.innerHTML = `${agents[i]} 的输出与它收到的输入一致，不是源头。再看看日志。`; }
+  };
+  node.append(el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: run }, '跑一次')), log, el('div', { class: 'cap', style: 'margin:10px 0 0' }, '你怀疑谁？'), sus, status);
+});
+
+/* ---------- 07 选择 ---------- */
+reg('choose', (node) => {
+  const Q = [
+    ['单智能体已经因为每次加载完整上下文而变贵或变慢了吗？', 'cost'],
+    ['你处在合规严格的行业，每一步都必须可预测、可审计吗？', 'audit'],
+    ['用户请求大多落在少数几种固定类型里吗？', 'fixed'],
+    ['必须与其他公司的智能体直接协作才能解决问题吗？', 'cross'],
+  ];
+  const S = { cost: 0, audit: 0, fixed: 0, cross: 0 };
+  const rec = el('div', { class: 'rec', 'aria-live': 'polite' });
+  const qa = el('div', { class: 'qa' }, ...Q.map(([t, k]) => el('div', { class: 'row' }, el('span', {}, t), seg(['否', '是'], 0, (i) => { S[k] = i; upd(); }))));
+  function upd() {
+    let name = '单智能体架构', why = '没有遇到具体瓶颈。单智能体能处理的用例比你想象的多，构建简单、调试容易、成本可预测。', warn = '';
+    if (S.cross) { name = '协作式架构（谨慎）'; why = '跨公司协作是它独有的能力。'; warn = '安全、计费、信任、可靠性的复杂度巨大，标准仍在探索，调试多智能体对话像破案。先确认单方能做的已经做完。'; }
+    else if (S.audit) { name = '基于工作流的架构'; why = '可预测、可审计，适合合规严格的行业。'; warn = S.fixed ? '' : '你的请求类型并不固定：预设流程覆盖不到的边缘案例会让用户觉得死板，记得留好转人工的出口。'; }
+    else if (S.cost) { name = '基于技能的架构'; why = '路由器分发给专门技能，简单技能用便宜模型、复杂推理用贵模型，各技能独立优化。'; warn = '技能之间的交接与上下文共享会很快变棘手；用 MCP 这类标准让技能自报能力。'; }
+    else if (S.fixed) { why += ' 请求类型固定也不必急着上工作流：等真的需要审计或优化每一步时再说。'; }
+    rec.innerHTML = `推荐起步：<b>${name}</b><br>${why}` + (warn ? `<br><span style="color:var(--r)">注意：</span>${warn}` : '');
+  }
+  node.append(qa, rec); upd();
+});
+
+/* ---------- 08 信任：两种说法 ---------- */
+reg('reply', (node) => {
+  let ok = 1;
+  const colA = el('div', { class: 'col' }, el('h4', {}, '自信满满'), el('div', { class: 'msg a', style: 'max-width:100%' }, '我已经为您重置了密码，并更新了您的账单地址。'));
+  const colB = el('div', { class: 'col' }, el('h4', {}, '坦诚不确定'), el('div', { class: 'msg a', style: 'max-width:100%' }, '我想我找到了您账户的问题所在。我有 80% 的把握这能解决它。我将为您重置密码并更新账单地址。如果这没有用，我会立刻将您转接给可以做更深入调查的人工客服。'));
+  const rA = el('div', { class: 'react' }), rB = el('div', { class: 'react' });
+  colA.append(rA); colB.append(rB);
+  const ho = el('div', { class: 'handoff' }, '转接卡片 → 人工客服\n· 已查：账户状态、账单历史、登录记录\n· 已做：重置密码、更新账单地址\n· 结果：仍无法登录（智能体预估 80%，这次落在另外 20%）');
+  ho.style.whiteSpace = 'pre-wrap';
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    if (ok) {
+      rA.className = 'react good'; rA.textContent = '用户：「太棒了！」登录成功。';
+      rB.className = 'react good'; rB.textContent = '用户：登录成功，而且知道它查了什么、为什么这样做。';
+      ho.remove(); status.innerHTML = '修好了的时候，两种说法差别不大。';
+    } else {
+      rA.className = 'react bad'; rA.textContent = '用户：「太棒了！」……去登录，失败了。现在不只是技术问题，而是信任危机：它刚才说的话还能信吗？';
+      rB.className = 'react mid'; rB.textContent = '用户：没修好，但这在它说过的可能性之内，接下来会发生什么也早就说清楚了。';
+      colB.append(ho); status.innerHTML = '<b>同样的技术能力，完全不同的用户体验。</b>差别只在失败时显现。';
+    }
+  };
+  node.append(el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '修复结果'), seg(['修好了', '没修好'], 0, (i) => { ok = i === 0 ? 1 : 0; upd(); })), el('div', { class: 'vs' }, colA, colB), status);
+  upd();
+});
+
+/* ---------- 08 校准 ---------- */
+reg('calib', (node) => {
+  const N = 600, R = rng(42);
+  const T = Array.from({ length: N }, () => { const q = 0.3 + R() * 0.68; return { q, ok: R() < q, noise: (R() - 0.5) * 0.06 }; });
+  const W = 520, H = 300, P = { l: 60, r: 14, t: 14, b: 40 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '可靠性图：横轴是智能体报出的置信度，纵轴是实际正确率', style: 'max-width:560px;margin:0 auto' });
+  const X = (v) => P.l + v * pw, Y = (v) => P.t + (1 - v) * ph;
+  for (let i = 0; i <= 10; i += 2) {
+    root.append(svg('line', { x1: X(i / 10), x2: X(i / 10), y1: P.t, y2: P.t + ph, style: 'stroke:var(--grid)' }), svg('line', { x1: P.l, x2: P.l + pw, y1: Y(i / 10), y2: Y(i / 10), style: 'stroke:var(--grid)' }));
+    root.append(svg('text', { x: X(i / 10), y: H - 22, class: 'lbl mid' }, i * 10 + '%'), svg('text', { x: P.l - 6, y: Y(i / 10) + 4, class: 'lbl', 'text-anchor': 'end' }, i * 10 + '%'));
+  }
+  root.append(svg('text', { x: P.l + pw / 2, y: H - 4, class: 'lbl mid' }, '智能体说的置信度'), svg('text', { x: 14, y: P.t + ph / 2, class: 'lbl mid', transform: `rotate(-90 14 ${P.t + ph / 2})` }, '实际正确率'));
+  const bars = svg('g'); root.append(bars);
+  root.append(svg('line', { x1: X(0), y1: Y(0), x2: X(1), y2: Y(1), style: 'stroke:var(--t);stroke-width:2;stroke-dasharray:6 4' }));
+  const inp = el('input', { type: 'range', min: '-30', max: '40', value: '0', step: '1', 'aria-label': '置信度偏差（百分点）' });
+  const out = el('output', {});
+  const status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const upd = () => {
+    const d = +inp.value / 100; out.textContent = (d > 0 ? '+' : '') + Math.round(d * 100) + ' 点';
+    const B = Array.from({ length: 10 }, () => ({ n: 0, c: 0, s: 0 }));
+    let burned = 0, hi = 0;
+    T.forEach((t) => { const s = Math.min(0.99, Math.max(0.01, t.q + t.noise + d)); const b = B[Math.min(9, Math.floor(s * 10))]; b.n++; b.s += s; if (t.ok) b.c++; if (s >= 0.9) { hi++; if (!t.ok) burned++; } });
+    bars.innerHTML = ''; let ece = 0;
+    B.forEach((b, i) => {
+      if (!b.n) return; const acc = b.c / b.n, conf = b.s / b.n; ece += Math.abs(acc - conf) * b.n / N;
+      const over = conf > acc;
+      bars.append(svg('rect', { x: X(i / 10) + 3, y: Y(acc), width: pw / 10 - 6, height: Y(0) - Y(acc), rx: 3, style: `fill:var(${Math.abs(acc - conf) < 0.06 ? '--p' : over ? '--r' : '--y'});opacity:.85` }));
+      bars.append(svg('text', { x: X(i / 10 + 0.05), y: Y(acc) - 4, class: 'lbl mid', style: 'font-size:10px' }, 'n=' + b.n));
+    });
+    let n6 = 0, c6 = 0; T.forEach((t) => { const s = Math.min(0.99, Math.max(0.01, t.q + t.noise + d)); if (s >= 0.55 && s < 0.65) { n6++; if (t.ok) c6++; } });
+    const s6 = n6 ? `它说「约 60%」（55–65%）的 ${n6} 张工单，实际对了 <b>${Math.round(c6 / n6 * 100)}%</b>` : '它几乎从不说「约 60%」';
+    status.innerHTML = `${s6}。ECE = <b>${(ece * 100).toFixed(1)}</b> 个百分点。报出 ≥90% 把握的 ${hi} 张工单里，有 <span style="color:var(--r)">${burned}</span> 张其实失败了：每一张都是「自信满满却犯错」。`;
+  };
+  inp.addEventListener('input', upd);
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '过度谦虚', inp, '过度自信', out)), root,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), '校准良好'), el('span', {}, el('i', { style: 'background:var(--r)' }), '说得比做得好（过度自信）'), el('span', {}, el('i', { style: 'background:var(--y)' }), '做得比说得好（过度谦虚）'), el('span', {}, el('i', { style: 'background:var(--t);height:2px' }), '理想：说多少对多少')), status);
+  upd();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

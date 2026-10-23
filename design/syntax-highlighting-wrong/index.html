@@ -1,0 +1,1303 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大家把语法高亮搞错了</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f46e5'/%3E%3Ctext x='32' y='42' font-size='28' text-anchor='middle' fill='white' font-family='monospace'%3EAa%3C/text%3E%3C/svg%3E">
+<meta name="description" content="基于 Nikita Prokopov《I am sorry, but everyone is getting syntax highlighting wrong》的可视化讲解：语法高亮是扫描工具，颜色要少到能记住，只标稀有且重要的东西。">
+<style>
+/* ================= 设计令牌（与仓库其他页面一致） ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html.ready{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} *{animation-duration:.001s!important;transition-duration:.001s!important} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero / 章节 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(28px,5.5vw,46px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:640px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:520px}
+.scroll-hint{display:none;font-size:11px;color:var(--muted);text-align:right;margin-top:2px}
+@media (max-width:859px){ .scroll-hint{display:block} }
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);vertical-align:middle}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.card{background:var(--surface-2);border-radius:12px;padding:12px;border:1px solid var(--line)}
+.card h3{font-size:14px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.range input{accent-color:var(--p);width:min(220px,50vw)}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+
+/* ---- 本页：编辑器 / token ---- */
+.edwrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;min-width:0}
+.edbar{display:flex;align-items:center;gap:6px;padding:7px 12px;font-size:11px;color:var(--muted);font-family:var(--mono);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.edbar i{width:8px;height:8px;border-radius:50%;display:block;background:#d0d0d0}
+.edbar i:nth-child(1){background:#ff5f57}
+.edbar i:nth-child(2){background:#febc2e}
+.edbar i:nth-child(3){background:#28c840}
+.edbar .fn{margin-left:6px}
+.ed{font-family:var(--mono);font-size:12.5px;line-height:1.7;padding:12px 14px;overflow:auto;white-space:pre;tab-size:2;margin:0;max-height:420px}
+.ed .tok{border-radius:2px}
+.ed .tok.click{cursor:pointer}
+.ed .tok.click:hover{outline:2px solid var(--p);outline-offset:1px}
+.ed .tok.hit{outline:2px solid var(--t);background:rgba(15,157,138,.18)}
+.ed .tok.miss{outline:2px solid var(--r);background:rgba(214,69,80,.16)}
+.ed .tok.pulse{animation:tokpulse .9s ease-in-out infinite}
+@keyframes tokpulse{50%{filter:brightness(1.25)}}
+.stat{font-size:14px;min-height:1.5em;margin-top:8px}
+.stat b{color:var(--t)}
+.stat .bad{color:var(--r)}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;background:var(--surface-2);user-select:none}
+.chip input{accent-color:var(--p)}
+.chip:has(:checked){background:var(--p-soft);border-color:var(--p);color:var(--p)}
+.swatch{border:1px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;transition:transform .12s,box-shadow .12s;min-height:92px}
+.swatch:hover{transform:translateY(-2px)}
+.swatch.on{box-shadow:0 0 0 2px var(--p)}
+.swatch .dot{width:100%;height:28px;border-radius:8px;margin-bottom:8px;border:1px solid rgba(0,0,0,.08)}
+.swatch h3{font-size:14px}
+.swatch p{font-size:12px;color:var(--muted);margin-top:2px}
+.swatch .hex{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px}
+
+.barrow{display:flex;height:18px;border-radius:9px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+.barrow span{display:block;height:100%;min-width:2px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 12px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
+
+.stepper{display:grid;gap:8px}
+.step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .3s,border-color .3s;cursor:pointer;text-align:left;font:inherit;color:inherit;width:100%}
+.step.on{opacity:1;border-color:var(--p);background:var(--p-soft)}
+.step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.step b{font-size:13.5px;display:block}
+.step span{font-size:12px;color:var(--muted)}
+.diy{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:860px){ .diy{grid-template-columns:280px minmax(0,1fr)} }
+
+.hues{width:100%;height:36px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.bgcard{border-radius:10px;padding:12px;border:1px solid var(--line)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.q{font-weight:600;font-size:15px;margin-top:6px}
+.typo{font-style:italic}
+.boldy{font-weight:700}
+
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">语法高亮搞错了</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化导读 · tonsky</div>
+  <h1>大家把语法高亮搞错了</h1>
+  <p class="sub">语法高亮是扫描工具，不是圣诞彩灯。全上色之后，眼睛会把五颜六色当成新的底色——于是什么都没被标出来。</p>
+  <div class="thesis">核心论点：<b>颜色要少到能一次记在脑子里；只标稀有且重要的东西。</b>高亮一切，等于把 Linear 里每个任务都标成「最高优先级」。</div>
+  <div class="meta">改编自 Nikita Prokopov（Niki / tonsky）《I am sorry, but everyone is getting syntax highlighting wrong》，2025-10-15。论证以英文原文为准。Alabaster 用色核对自主题源码。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<section class="ch" id="c01" data-title="圣诞彩灯">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>圣诞彩灯：全亮 = 没重点</h2>
+    <p class="lead">同一段代码，一种把什么都涂上色，一种只留四色。限时点出指定的函数定义。</p>
+  </div>
+  <div class="fig" data-demo="finddef">
+    <div class="cap">先选<b>全亮</b>或<b>四色</b>，再点「开始找」。点函数<b>定义</b>的名字，点到调用不算。</div>
+  </div>
+  <ul class="notes">
+    <li>原文测试：在「什么都亮」的主题里找函数定义，和在克制主题里找，体感差一截。本页把这个测试做成可计时的小游戏。</li>
+    <li>眼睛会适应高对比的杂色，把它们当成新常态。于是该跳出来的结构，反而沉进背景。</li>
+    <li>「75% 是变量名和函数调用」是原文的经验判断，不是实测。下面直方图按<b>本页样本</b>现算，标了示意。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c02" data-title="两个查找">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>两个查找：你真的在用颜色吗？</h2>
+    <p class="lead">正向：看见颜色，说出类型。反向：要想起「类名是什么颜色」。两样都做不到，主题就只是安慰剂。</p>
+  </div>
+  <div class="fig" data-demo="lookup">
+    <div class="cap">三道小题：<b>颜色→类型</b>、<b>类型→颜色</b>、以及「合上眼睛还记不记得」。</div>
+  </div>
+  <ul class="notes">
+    <li>原文把这两件事叫 direct index（颜色→类型）和 reverse lookup（类型→颜色）。</li>
+    <li>多数彩虹主题的实际功能只剩一句：<b>上了色，大概是合法代码</b>。那不是扫描工具，是安心毯。</li>
+    <li>Alabaster 的赌注：绿紫对调会是灾难——因为你真的记住了。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c03" data-title="颜色预算">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>颜色预算：四种就够记</h2>
+    <p class="lead">Alabaster 只用四类。点色块，看它们在代码里对应什么。</p>
+  </div>
+  <div class="fig" data-demo="budget">
+    <div class="cap">点下面的色块，代码里对应 token 会闪。原文四色：<b>绿字符串 / 紫常量 / 黄注释 / 浅蓝顶级定义</b>。</div>
+  </div>
+  <ul class="notes">
+    <li>VS Code 版 Alabaster 实测：字符串 <span class="mono">#448C27</span>，常量 <span class="mono">#7A3E9D</span>，顶级定义 <span class="mono">#325CC0</span>，标点 <span class="mono">#777777</span>。注释在 VS Code 里是砖红 <span class="mono">#AA3731</span>，和文章口头说的「黄」不完全一样。</li>
+    <li>Zed 版把文章后半的「背景色块」用上了：注释黄底 <span class="mono">#fffab4</span>，字符串绿底 <span class="mono">#ebfcd6</span>，定义蓝底 <span class="mono">#d6f2ff</span>。</li>
+    <li>GitHub README 重述同一原则：不标关键字、不藏注释、不用粗体斜体、只标解析器能可靠认出的东西。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c04" data-title="该亮什么">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>该亮什么：稀有，而且重要</h2>
+    <p class="lead">变量和调用到处都是，标了等于没标。勾选开关，代码立刻重画。</p>
+  </div>
+  <div class="fig" data-demo="toggles">
+    <div class="cap">默认关掉 <b>keyword</b> 和 <b>call</b>（以及变量使用）。打开它们，看「重点」怎么被淹没。</div>
+  </div>
+  <ul class="notes">
+    <li>原文建议：高亮名字和常量；标点可以压暗；<b>不要高亮语言关键字</b>。<code class="mono">if</code> 不重要，后面的条件才重要。</li>
+    <li>顶级定义能让你迅速看到文件结构；常量常常是逻辑路径的起点。</li>
+    <li>直方图按当前样本的非空白 token 计数，示意「谁占地方」。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c05" data-title="return vs retunr">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2><span class="mono">return</span> vs <span class="mono">retunr</span></h2>
+    <p class="lead">拼错之后颜色变了——你真的看得出来吗？</p>
+  </div>
+  <div class="fig" data-demo="typo">
+    <div class="cap">左侧是「关键字上色」的主题，右侧是克制主题。先自己找，再点「揭示」。</div>
+  </div>
+  <ul class="notes">
+    <li>原文例子：把 <span class="mono">return</span> 写成 <span class="mono">retunr</span>，颜色从红变成紫。作者说自己看不出来。</li>
+    <li>彩虹主题里，拼错会「掉出」关键字色，理论上该醒目；可你根本没记住 return 本来是红的。</li>
+    <li>克制主题两边都是底色，你只能靠读单词。那其实更诚实。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c06" data-title="注释不该藏">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>注释不该藏起来</h2>
+    <p class="lead">灰注释来自按行计酬的年代。好注释是在加信息，该抢眼睛。</p>
+  </div>
+  <div class="fig" data-demo="comments">
+    <div class="cap">切三种看法：常见的灰、Alabaster 的亮、以及「解释 vs 禁用代码」两套注释。</div>
+  </div>
+  <ul class="notes">
+    <li>Javadoc 式空壳（作者、日期、一句把方法名重复一遍）确实该灰掉。那是该被忽略的字。</li>
+    <li>好注释解释代码说不出来的东西。原文的争议句：<b>Comments should be highlighted, not hidden away.</b></li>
+    <li>两种注释：解释，和被禁用的代码。多数语言语法上分不开；有约定就用约定（原文举 SQL 的 <span class="mono">--</span> vs <span class="mono">/* */</span>）。本页用「像不像代码」做示意分流。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c07" data-title="浅色主题的陷阱">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>浅色主题的陷阱：用背景色块救人</h2>
+    <p class="lead">深色谱上色相开得开；压暗以后变泥。浅色主题不是不能鲜艳——把颜色铺成底，而不是字。</p>
+  </div>
+  <div class="fig" data-demo="lighttrap">
+    <div class="cap">拖亮度看色相带如何塌掉；再对比三种浅色高亮法。原文 70% 开发者偏爱深色主题，文章未给原始调查出处。</div>
+  </div>
+  <ul class="notes">
+    <li>浅色主题被迫使用「深色的字」：没有好看的深黄、深青绿。这是色域问题，不是品味问题。</li>
+    <li>技巧：浅色块当背景，字保持深、对比高。色块面积大，颜色仍然清楚。UI 设计师常用，编辑器里少见。</li>
+    <li>Zed 版 Alabaster 已经这么干了。VS Code 版仍以改字色为主。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c08" data-title="一起做一个主题">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>一起做一个主题</h2>
+    <p class="lead">按原文步骤往下剥：去关键字、去变量使用、去调用、压标点、亮注释、合并字符串和数字、按层级旋转颜色。</p>
+  </div>
+  <div class="fig" data-demo="diy">
+    <div class="cap">拖滑块或点左侧步骤。最后一档会并排 before / after。</div>
+  </div>
+  <ul class="notes">
+    <li>DIY 终点和成品 Alabaster 略有不同。演示按原文：数字并进绿色，并让函数声明比变量声明更亮。</li>
+    <li>Alabaster 成品把数字留在紫色（常量），定义统一浅蓝。作者说这套原则用了约 8 年。</li>
+    <li>红色留给波浪线和报错，不要拿去涂注释。</li>
+  </ul>
+</section>
+
+<section class="ch" id="c09" data-title="粗体与均匀色相">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>粗体斜体别用；均匀色相也帮不上</h2>
+    <p class="lead">又一种「再加一层强调」的冲动。科学上均匀的色相，看起来反而更像彼此。</p>
+  </div>
+  <div class="fig" data-demo="typochroma">
+    <div class="cap">左边用字体变化代替颜色；右边按原文 OkLab 参数重绘均匀色相（示意）。</div>
+  </div>
+  <ul class="notes">
+    <li>原文没见过成功的「只用字体、不用颜色」主题。本页是按这个假设做的示意，不是已有产品。</li>
+    <li>OkLab 参数来自原文：<span class="mono">L=0.7473 C=0.1253</span>，色相 0° 起每 45°。明度、彩度锁死后，色相对眼睛几乎没差。</li>
+    <li>眼睛对明暗差远比对色相差敏感。该利用这件事，而不是用公式把它抹平。</li>
+  </ul>
+  <div class="final">少到能记住，稀有才上色。高亮是扫描工具——不是把代码打扮成合法的证明。</div>
+</section>
+
+<footer>
+  <p>原文：Nikita Prokopov（Niki / tonsky），<a href="https://tonsky.me/blog/syntax-highlighting/">I am sorry, but everyone is getting syntax highlighting wrong</a>，2025-10-15。</p>
+  <p>主题：<a href="https://github.com/tonsky/vscode-theme-alabaster">vscode-theme-alabaster</a> · README 原则重述见仓库；Zed 版用了背景色块。</p>
+  <p>本页为教学用可视化改编，单文件、离线可用。彩虹主题配色、查找用时、token 占比均为示意，不是原文实验数据。</p>
+</footer>
+</main>
+</div>
+
+<button class="toc-btn" id="tocBtn" type="button" aria-label="打开目录">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) { if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const btn = (label, onclick, cls = '') => el('button', { class: 'btn ' + cls, type: 'button', onclick }, label);
+const seg = (opts, cur, onchange) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([val, label]) => el('button', {
+    type: 'button', class: val === cur ? 'on' : '',
+    onclick: (e) => { bs.forEach(b => b.classList.remove('on')); e.currentTarget.classList.add('on'); onchange(val); }
+  }, label));
+  bs.forEach(x => box.append(x));
+  return box;
+};
+const range = (label, min, max, val, step, onInput, show = (v) => String(v)) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min: String(min), max: String(max), value: String(val), step: String(step) });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+const every = (ms, fn) => { let id = 0; return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } }; };
+const shuffle = (arr) => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+const KW = new Set('function def class if else elif return const let var for while in of true false null undefined None import from new this async await try catch throw typeof instanceof switch case break continue default void yield static public private protected extends implements interface'.split(' '));
+
+function tokenize(src) {
+  const out = [];
+  let i = 0, n = src.length;
+  const push = (type, text) => out.push({ type, text });
+  const looksCode = (rest) => /^\s*(function|const|let|var|return|if|for|class|def|await|import|this\.)\b/.test(rest) || /[;{}=]/.test(rest);
+  while (i < n) {
+    const c = src[i];
+    if (c === ' ' || c === '\t' || c === '\n' || c === '\r') {
+      let j = i + 1;
+      while (j < n && (src[j] === ' ' || src[j] === '\t' || src[j] === '\n' || src[j] === '\r')) j++;
+      push('ws', src.slice(i, j)); i = j; continue;
+    }
+    if (c === '/' && src[i + 1] === '/') {
+      let j = i + 2; while (j < n && src[j] !== '\n') j++;
+      const text = src.slice(i, j);
+      push(looksCode(text.slice(2)) ? 'disabled' : 'comment', text); i = j; continue;
+    }
+    if (c === '#') {
+      let j = i + 1; while (j < n && src[j] !== '\n') j++;
+      const text = src.slice(i, j);
+      push(looksCode(text.slice(1)) ? 'disabled' : 'comment', text); i = j; continue;
+    }
+    if (c === '"' || c === "'") {
+      const q = c; let j = i + 1;
+      while (j < n) {
+        if (src[j] === '\\') { j += 2; continue; }
+        if (src[j] === q) { j++; break; }
+        if (src[j] === '\n') break;
+        j++;
+      }
+      push('string', src.slice(i, j)); i = j; continue;
+    }
+    if (c >= '0' && c <= '9') {
+      let j = i + 1;
+      while (j < n && ((src[j] >= '0' && src[j] <= '9') || src[j] === '.')) j++;
+      push('number', src.slice(i, j)); i = j; continue;
+    }
+    if (/[A-Za-z_$]/.test(c)) {
+      let j = i + 1;
+      while (j < n && /[A-Za-z0-9_$]/.test(src[j])) j++;
+      const t = src.slice(i, j);
+      push(KW.has(t) ? 'keyword' : 'ident', t); i = j; continue;
+    }
+    push('punct', c); i++;
+  }
+  const nextNonWs = (k) => { for (let p = k; p < out.length; p++) if (out[p].type !== 'ws') return out[p]; return null; };
+  for (let k = 0; k < out.length; k++) {
+    if (out[k].type === 'ident') {
+      const nx = nextNonWs(k + 1);
+      if (nx && nx.text === '(') out[k].type = 'call';
+    }
+  }
+  for (let k = 0; k < out.length; k++) {
+    const t = out[k];
+    if (t.type === 'keyword' && (t.text === 'function' || t.text === 'def' || t.text === 'class')) {
+      for (let p = k + 1; p < out.length; p++) {
+        if (out[p].type === 'ws') continue;
+        if (out[p].type === 'ident' || out[p].type === 'call') out[p].type = 'def';
+        break;
+      }
+    }
+    if (t.type === 'keyword' && (t.text === 'const' || t.text === 'let' || t.text === 'var')) {
+      for (let p = k + 1; p < out.length; p++) {
+        if (out[p].type === 'ws') continue;
+        if (out[p].type === 'ident' || out[p].type === 'call') out[p].type = 'decl';
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+const FLAGS_ALL = { keyword: 1, ident: 1, decl: 1, call: 1, def: 1, string: 1, number: 1, comment: 1, disabled: 1, punct: 1 };
+const FLAGS_ALA = { keyword: 0, ident: 0, decl: 0, call: 0, def: 1, string: 1, number: 1, comment: 1, disabled: 1, punct: 1 };
+
+const PAL = {
+  xmas: {
+    dark: false, bg: '#F7F7F7', fg: '#1b1b1b',
+    keyword: '#d13c4e', ident: '#2b6cff', decl: '#0ea5e9',
+    call: '#c026d3', def: '#ca8a04',
+    string: '#16a34a', number: '#ea580c',
+    comment: '#64748b', disabled: '#94a3b8', punct: '#db2777'
+  },
+  rainbowDark: {
+    dark: true, bg: '#1e1e1e', fg: '#d4d4d4',
+    keyword: '#569cd6', ident: '#9cdcfe', decl: '#4fc1ff',
+    call: '#dcdcaa', def: '#4ec9b0',
+    string: '#ce9178', number: '#b5cea8',
+    comment: '#6a9955', disabled: '#6a9955', punct: '#c586c0'
+  },
+  ala: {
+    dark: false, bg: '#F7F7F7', fg: '#000000',
+    keyword: '#000000', ident: '#000000', decl: '#000000',
+    call: '#000000', def: '#325CC0',
+    string: '#448C27', number: '#7A3E9D',
+    comment: '#C18401', disabled: '#888888', punct: '#777777'
+  },
+  alaVscode: {
+    dark: false, bg: '#F7F7F7', fg: '#000000',
+    keyword: '#000000', ident: '#000000', decl: '#000000',
+    call: '#000000', def: '#325CC0',
+    string: '#448C27', number: '#7A3E9D',
+    comment: '#AA3731', disabled: '#777777', punct: '#777777'
+  },
+  alaBg: {
+    dark: false, bg: '#F7F7F7', fg: '#111111',
+    keyword: '#111111', ident: '#111111', decl: '#111111',
+    call: '#111111', def: '#005d7f', defBg: '#d6f2ff',
+    string: '#315d00', stringBg: '#ebfcd6',
+    number: '#9538bb',
+    comment: '#6e6600', commentBg: '#fffab4',
+    disabled: '#888888', punct: '#a0a0a0'
+  }
+};
+
+function applyTok(span, type, pal, flags) {
+  const on = !!flags[type];
+  const col = on && pal[type] ? pal[type] : pal.fg;
+  const bg = on && pal[type + 'Bg'] ? pal[type + 'Bg'] : '';
+  span.style.color = col;
+  span.style.background = bg;
+  span.style.boxShadow = bg ? '0 0 0 2px ' + bg : '';
+  span.style.fontWeight = pal.bold && on && (type === 'def' || type === 'keyword') ? '700' : '';
+  span.style.fontStyle = pal.italic && on && (type === 'comment' || type === 'disabled') ? 'italic' : '';
+}
+
+function renderEd(src, pal, flags, opts = {}) {
+  const tokens = tokenize(src);
+  const pre = el('pre', { class: 'ed' });
+  pre.style.background = pal.bg;
+  pre.style.color = pal.fg;
+  tokens.forEach((tok) => {
+    if (tok.type === 'ws') { pre.append(tok.text); return; }
+    const span = el('span', { class: 'tok', 'data-type': tok.type });
+    span.textContent = tok.text;
+    if (tok.type === 'def' || tok.type === 'ident' || tok.type === 'call' || tok.type === 'decl') span.dataset.name = tok.text;
+    applyTok(span, tok.type, pal, flags);
+    if (opts.clickable && (opts.clickTypes ? opts.clickTypes.includes(tok.type) : tok.type !== 'punct')) {
+      span.classList.add('click');
+      span.addEventListener('click', (e) => opts.onClick && opts.onClick(tok, span, e));
+    }
+    pre.append(span);
+  });
+  return { pre, tokens };
+}
+
+function wrapEd(title, pre) {
+  return el('div', { class: 'edwrap' },
+    el('div', { class: 'edbar' }, el('i'), el('i'), el('i'), el('span', { class: 'fn' }, title)),
+    pre
+  );
+}
+
+function pulseType(root, type) {
+  root.querySelectorAll('.tok.pulse').forEach(s => s.classList.remove('pulse'));
+  if (!type) return;
+  root.querySelectorAll('.tok[data-type="' + type + '"]').forEach(s => s.classList.add('pulse'));
+}
+
+const SAMPLE = [
+  'function parseConfig(raw) {',
+  '  // skip BOM from Windows files',
+  '  // const raw = raw.trim();',
+  '  if (!raw) return null;',
+  '  const max = 12;',
+  '  const name = "alabaster";',
+  '  if (name.length > max) {',
+  '    return clip(name, max);',
+  '  }',
+  '  return load(name, max);',
+  '}',
+  '',
+  'class UserStore {',
+  '  constructor(limit) {',
+  '    this.limit = limit;',
+  '  }',
+  '}'
+].join('\n');
+
+const FN_POOL = [
+  ['fetchUser', 'function fetchUser(id) {\n  if (!id) return null;\n  return db.get("user", id);\n}'],
+  ['saveNote', 'function saveNote(title, body) {\n  const path = "/tmp/notes";\n  return store.put(path, title);\n}'],
+  ['parseJSON', 'function parseJSON(raw) {\n  // empty object if missing\n  if (!raw) return {};\n  return JSON.parse(raw);\n}'],
+  ['clamp', 'function clamp(v, lo, hi) {\n  if (v < lo) return lo;\n  if (v > hi) return hi;\n  return v;\n}'],
+  ['hashName', 'function hashName(s) {\n  let h = 0;\n  for (const c of s) h = (h * 31 + c.charCodeAt(0)) | 0;\n  return h;\n}'],
+  ['formatDate', 'function formatDate(ts) {\n  const d = new Date(ts);\n  return d.toISOString().slice(0, 10);\n}'],
+  ['retry', 'function retry(fn, n) {\n  let last = null;\n  for (let i = 0; i < n; i++) {\n    last = fn();\n    if (last) return last;\n  }\n  return last;\n}'],
+  ['pickColor', 'function pickColor(kind) {\n  if (kind === "string") return "green";\n  return "base";\n}']
+];
+
+function tokenShare(tokens) {
+  const keys = ['keyword', 'ident', 'decl', 'call', 'def', 'string', 'number', 'comment', 'disabled', 'punct'];
+  const n = {}; keys.forEach(k => n[k] = 0);
+  let total = 0;
+  tokens.forEach(t => { if (t.type === 'ws') return; n[t.type] = (n[t.type] || 0) + 1; total++; });
+  return { n, total };
+}
+
+/* ======================================================================
+   Hero
+   ====================================================================== */
+reg('hero', (root) => {
+  const src = 'function fetchUser(id) {\n  if (!id) return null;\n  const url = "/api/user";\n  return get(url, id); // cache later\n}';
+  const grid = el('div', { class: 'grid2' });
+  const left = renderEd(src, PAL.xmas, FLAGS_ALL).pre;
+  const right = renderEd(src, PAL.ala, FLAGS_ALA).pre;
+  const a = wrapEd('christmas.js · 全亮', left);
+  const b = wrapEd('alabaster.js · 四色', right);
+  grid.append(a, b);
+  const cap = el('div', { class: 'src' }, '同一段代码。左边每种东西一种颜色；右边只有绿 / 紫 / 黄 / 浅蓝。');
+  root.append(grid, cap);
+  let on = 0;
+  const panes = [a, b];
+  return every(RM ? 1e9 : 1600, () => {
+    on = 1 - on;
+    panes.forEach((p, i) => p.style.outline = i === on ? '2px solid var(--p)' : '2px solid transparent');
+    panes.forEach((p, i) => p.style.outlineOffset = '2px');
+    cap.textContent = on ? '四色：定义跳出来了。' : '全亮：眼睛不知道该看哪。';
+  });
+});
+
+/* ======================================================================
+   01 找定义
+   ====================================================================== */
+reg('finddef', (root) => {
+  let theme = 'xmas';
+  let target = 'clamp';
+  let running = false, t0 = 0, raf = 0, misses = 0, src = '';
+  const stage = el('div');
+  const stat = el('div', { class: 'stat' }, '选一种主题，点「开始找」。');
+  const kv = el('div', { class: 'kv' });
+  const times = { xmas: [], ala: [] };
+
+  const paintKv = () => {
+    kv.replaceChildren(
+      el('span', {}, '全亮 ', el('b', {}, times.xmas.length ? (times.xmas.reduce((a, b) => a + b, 0) / times.xmas.length / 1000).toFixed(2) + 's' : '—')),
+      el('span', {}, '四色 ', el('b', {}, times.ala.length ? (times.ala.reduce((a, b) => a + b, 0) / times.ala.length / 1000).toFixed(2) + 's' : '—')),
+      el('span', {}, '点错 ', el('b', {}, String(misses)))
+    );
+  };
+  paintKv();
+
+  const stopTimer = () => { running = false; cancelAnimationFrame(raf); };
+  const tick = () => {
+    if (!running) return;
+    const ms = performance.now() - t0;
+    stat.innerHTML = '找出函数 <b class="mono">' + target + '</b> 的定义 · ' + (ms / 1000).toFixed(2) + 's';
+    raf = requestAnimationFrame(tick);
+  };
+
+  const draw = (play) => {
+    const fns = shuffle(FN_POOL).slice(0, 6);
+    src = fns.map(f => f[1]).join('\n\n');
+    if (play) target = fns[Math.floor(Math.random() * fns.length)][0];
+    const pal = theme === 'ala' ? PAL.ala : PAL.xmas;
+    const flags = theme === 'ala' ? FLAGS_ALA : FLAGS_ALL;
+    const { pre } = renderEd(src, pal, flags, {
+      clickable: true,
+      clickTypes: ['def', 'call', 'ident'],
+      onClick: (tok, span) => {
+        if (!running) return;
+        if (tok.type === 'def' && tok.text === target) {
+          span.classList.add('hit');
+          const ms = performance.now() - t0;
+          stopTimer();
+          times[theme].push(ms);
+          stat.innerHTML = '<b>找到了</b> · ' + (ms / 1000).toFixed(2) + 's · 点错 ' + misses + ' 次';
+          paintKv();
+        } else {
+          span.classList.add('miss');
+          misses++;
+          paintKv();
+          setTimeout(() => span.classList.remove('miss'), 500);
+        }
+      }
+    });
+    stage.replaceChildren(wrapEd(theme === 'ala' ? 'four-colors.js' : 'christmas.js', pre));
+  };
+
+  const startRound = () => {
+    misses = 0;
+    draw(true);
+    running = true;
+    t0 = performance.now();
+    cancelAnimationFrame(raf);
+    if (RM) {
+      stat.innerHTML = '找出函数 <b class="mono">' + target + '</b> 的定义（已减弱动画）';
+    } else tick();
+    paintKv();
+  };
+
+  draw(false);
+  root.append(
+    el('div', { class: 'ctrl' },
+      seg([['xmas', '全亮'], ['ala', '四色']], 'xmas', (v) => { theme = v; stopTimer(); draw(false); stat.textContent = '主题已切。点「开始找」。'; }),
+      btn('开始找', startRound, 'primary'),
+      btn('再找一次', startRound)
+    ),
+    kv, stat, stage
+  );
+
+  const shareBox = el('div', { style: 'margin-top:12px' });
+  const toks = tokenize(FN_POOL.map(f => f[1]).join('\n'));
+  const { n, total } = tokenShare(toks);
+  const identish = (n.ident || 0) + (n.call || 0) + (n.decl || 0);
+  const colors = { keyword: '#d13c4e', ident: '#2b6cff', decl: '#0ea5e9', call: '#c026d3', def: '#ca8a04', string: '#16a34a', number: '#ea580c', comment: '#64748b', disabled: '#94a3b8', punct: '#db2777' };
+  const bar = el('div', { class: 'barrow' });
+  const order = ['ident', 'call', 'decl', 'keyword', 'def', 'string', 'number', 'comment', 'punct', 'disabled'];
+  order.forEach(k => {
+    if (!n[k]) return;
+    bar.append(el('span', { style: 'width:' + (n[k] / total * 100) + '%;background:' + colors[k], title: k + ' ' + n[k] }));
+  });
+  shareBox.append(
+    el('div', { class: 'src' }, '本页函数池里，ident + call + decl = ' + Math.round(identish / total * 100) + '%（示意，不是原文实验）。原文写「大概 75%」。'),
+    bar,
+    el('div', { class: 'legend' },
+      ...order.filter(k => n[k]).map(k => el('span', {}, el('i', { style: 'background:' + colors[k] }), k + ' ' + n[k]))
+    )
+  );
+  root.append(shareBox);
+});
+
+/* ======================================================================
+   02 两个查找
+   ====================================================================== */
+reg('lookup', (root) => {
+  let mode = 'fwd';
+  const panel = el('div');
+  const src = SAMPLE;
+
+  const fwd = () => {
+    const qs = [
+      { color: '#448C27', label: '绿', ans: 'string', opts: [['string', '字符串'], ['keyword', '关键字'], ['comment', '注释'], ['ident', '变量']] },
+      { color: '#7A3E9D', label: '紫', ans: 'number', opts: [['number', '数字 / 常量'], ['def', '函数定义'], ['call', '函数调用'], ['punct', '标点']] },
+      { color: '#C18401', label: '黄', ans: 'comment', opts: [['comment', '注释'], ['string', '字符串'], ['keyword', '关键字'], ['def', '定义']] },
+      { color: '#325CC0', label: '浅蓝', ans: 'def', opts: [['def', '顶级定义'], ['ident', '变量'], ['call', '调用'], ['keyword', '关键字']] }
+    ];
+    let i = 0, score = 0, locked = false;
+    const { pre } = renderEd(src, PAL.ala, FLAGS_ALA);
+    const wrap = wrapEd('alabaster.js', pre);
+    const qel = el('div', { class: 'q' });
+    const opts = el('div', { class: 'opts' });
+    const stat = el('div', { class: 'stat' });
+    const ask = () => {
+      locked = false;
+      const q = qs[i];
+      qel.textContent = (i + 1) + '/4  这块 ' + q.label + ' 是什么？';
+      pulseType(pre, q.ans);
+      opts.replaceChildren(...q.opts.map(([val, lab]) => btn(lab, (e) => {
+        if (locked) return;
+        locked = true;
+        const ok = val === q.ans;
+        if (ok) score++;
+        e.currentTarget.classList.add(ok ? 'primary' : '');
+        if (!ok) e.currentTarget.style.background = 'var(--r-soft)';
+        stat.innerHTML = ok ? '<b>对。</b>你刚做了一次 颜色→类型。' : '<span class="bad">不是这个。</span>答案：' + q.opts.find(o => o[0] === q.ans)[1];
+        setTimeout(() => {
+          i++;
+          if (i >= qs.length) {
+            pulseType(pre, null);
+            qel.textContent = '正向查找结束';
+            opts.replaceChildren();
+            stat.innerHTML = '记对 ' + score + ' / 4。四种颜色刚好装得进短期记忆；再多就会开始蒙。';
+          } else ask();
+        }, ok || RM ? 650 : 900);
+      })));
+    };
+    ask();
+    panel.replaceChildren(wrap, qel, opts, stat);
+  };
+
+  const rev = () => {
+    let round = 0;
+    const tasks = [
+      { title: '点出所有字符串（绿色）', type: 'string' },
+      { title: '点出函数 / 类的定义（浅蓝）', type: 'def' }
+    ];
+    const { pre, tokens } = renderEd(src, PAL.ala, FLAGS_ALA, {
+      clickable: true,
+      clickTypes: ['string', 'number', 'def', 'call', 'ident', 'comment', 'keyword', 'decl'],
+      onClick: (tok, span) => {
+        const need = tasks[round].type;
+        if (tok.type === need) span.classList.add('hit');
+        else span.classList.add('miss');
+      }
+    });
+    const totalNeed = tokens.filter(t => t.type === tasks[0].type).length;
+    const stat = el('div', { class: 'stat' }, '类型→颜色：你得先知道要找哪种色。');
+    const qel = el('div', { class: 'q' }, tasks[0].title);
+    const next = btn('下一题', () => {
+      round = 1;
+      pre.querySelectorAll('.tok').forEach(s => s.classList.remove('hit', 'miss'));
+      qel.textContent = tasks[1].title;
+      const defs = tokens.filter(t => t.type === 'def').map(t => t.text);
+      stat.textContent = '定义一共 ' + defs.length + ' 处：' + defs.join('、') + '。constructor 在本页不算顶级定义。';
+      next.disabled = true;
+    });
+    panel.replaceChildren(wrapEd('alabaster.js', pre), qel, el('div', { class: 'ctrl' }, next), stat,
+      el('div', { class: 'src' }, '本段字符串 token 数：' + totalNeed + '。点对会描青框。'));
+  };
+
+  const mem = () => {
+    const { pre } = renderEd(src, PAL.xmas, FLAGS_ALL);
+    const wrap = wrapEd('christmas.js · 看 4 秒', pre);
+    const qel = el('div', { class: 'q' }, '先看这段彩虹。然后默写：类名是什么颜色？');
+    const stat = el('div', { class: 'stat' });
+    const swatches = [
+      ['#d13c4e', '红（关键字）'],
+      ['#ca8a04', '金（定义）'],
+      ['#2b6cff', '蓝（变量）'],
+      ['#c026d3', '品红（调用）'],
+      ['#16a34a', '绿（字符串）'],
+      ['#64748b', '灰（注释）']
+    ];
+    const opts = el('div', { class: 'opts' });
+    const startBtn = btn('我看完了，开始默写', () => {
+      wrap.style.filter = 'blur(8px)';
+      wrap.style.pointerEvents = 'none';
+      qel.textContent = '类名 UserStore 刚才是什么颜色？';
+      opts.replaceChildren(...swatches.map(([col, lab]) => {
+        const b = btn(lab, () => {
+          wrap.style.filter = '';
+          wrap.style.pointerEvents = '';
+          pulseType(pre, 'def');
+          const ok = col === '#ca8a04';
+          stat.innerHTML = ok
+            ? '<b>碰巧对了。</b>原文的问题是：换一套主题后你还能答出来吗？'
+            : '<span class="bad">类名是金色（定义）。</span>颜色太多时，反向查找会失效——这正是原文的测试。';
+          opts.querySelectorAll('button').forEach(x => x.disabled = true);
+        });
+        b.style.borderColor = col;
+        b.style.boxShadow = 'inset 0 -3px 0 ' + col;
+        return b;
+      }));
+      startBtn.remove();
+    }, 'primary');
+    panel.replaceChildren(wrap, qel, el('div', { class: 'ctrl' }, startBtn), opts, stat);
+  };
+
+  const swap = () => {
+    const swapped = Object.assign({}, PAL.ala, { string: PAL.ala.number, number: PAL.ala.string });
+    let used = PAL.ala;
+    const host = el('div');
+    const draw = () => {
+      const { pre } = renderEd(src, used, FLAGS_ALA);
+      host.replaceChildren(wrapEd(used === PAL.ala ? 'alabaster.js' : 'swapped.js · 绿紫对调', pre));
+    };
+    draw();
+    const stat = el('div', { class: 'stat' }, '原文：如果有人把你编辑器里的绿和紫对调，你会立刻发现吗？');
+    panel.replaceChildren(
+      host,
+      el('div', { class: 'ctrl' },
+        btn('交换绿紫', () => { used = used === PAL.ala ? swapped : PAL.ala; draw(); stat.innerHTML = used === swapped ? '字符串变紫、数字变绿。Alabaster 用户会觉得别扭；彩虹主题用户……可能毫无感觉。' : '已换回。'; }),
+        btn('我立刻发现了', () => { stat.innerHTML = '<b>那这套颜色对你是工具。</b>它住在你脑子里。'; }, 'primary'),
+        btn('我没发现', () => { stat.innerHTML = '<span class="bad">那它就还不是工具。</span>颜色太多时，交换几乎无感。'; })
+      ),
+      stat
+    );
+  };
+
+  const go = (m) => { mode = m; if (m === 'fwd') fwd(); else if (m === 'rev') rev(); else if (m === 'mem') mem(); else swap(); };
+  root.append(el('div', { class: 'ctrl' },
+    seg([['fwd', '颜色→类型'], ['rev', '类型→颜色'], ['mem', '默写类名'], ['swap', '绿紫对调']], 'fwd', go)
+  ), panel);
+  fwd();
+});
+
+/* ======================================================================
+   03 颜色预算
+   ====================================================================== */
+reg('budget', (root) => {
+  const items = [
+    { key: 'string', title: '字符串', why: 'Green for strings', hex: '#448C27', css: '#448C27' },
+    { key: 'number', title: '常量', why: 'Purple for constants', hex: '#7A3E9D', css: '#7A3E9D' },
+    { key: 'comment', title: '注释', why: 'Yellow for comments', hex: '#C18401', css: '#C18401', note: 'VS Code 实现是 #AA3731' },
+    { key: 'def', title: '顶级定义', why: 'Light blue for top-level definitions', hex: '#325CC0', css: '#325CC0' }
+  ];
+  let cur = 'string';
+  const host = el('div');
+  const draw = () => {
+    const pal = Object.assign({}, PAL.ala);
+    const { pre } = renderEd(SAMPLE, pal, FLAGS_ALA);
+    pulseType(pre, cur);
+    host.replaceChildren(wrapEd('alabaster.js', pre));
+  };
+  const sw = el('div', { class: 'grid2' });
+  const cards = items.map((it) => {
+    const c = el('div', { class: 'swatch' + (it.key === cur ? ' on' : ''), onclick: () => {
+      cur = it.key;
+      cards.forEach(x => x.classList.remove('on'));
+      c.classList.add('on');
+      draw();
+    } },
+      el('div', { class: 'dot', style: 'background:' + it.css }),
+      el('h3', {}, it.title),
+      el('p', {}, it.why),
+      el('div', { class: 'hex' }, it.hex + (it.note ? ' · ' + it.note : ''))
+    );
+    return c;
+  });
+  cards.forEach(c => sw.append(c));
+  draw();
+  const vs = el('div', { class: 'src' }, '点第四块看浅蓝定义：parseConfig、UserStore。constructor 只是方法名，本页 tokenizer 不当成顶级定义。关键字 if / return / const 保持黑色——这是故意的。');
+  root.append(sw, el('div', { style: 'height:12px' }), host, vs);
+});
+
+/* ======================================================================
+   04 该亮什么
+   ====================================================================== */
+reg('toggles', (root) => {
+  const flags = Object.assign({}, FLAGS_ALA);
+  const labels = [
+    ['keyword', 'keyword'],
+    ['ident', 'variable'],
+    ['call', 'call'],
+    ['string', 'string'],
+    ['number', 'number'],
+    ['comment', 'comment'],
+    ['def', 'definition'],
+    ['punct', 'punct']
+  ];
+  const host = el('div');
+  const barHost = el('div');
+  const pal = PAL.xmas;
+  const draw = () => {
+    const { pre, tokens } = renderEd(SAMPLE, pal, flags);
+    host.replaceChildren(wrapEd('budget.js', pre));
+    const { n, total } = tokenShare(tokens);
+    const onCount = labels.filter(([k]) => flags[k]).reduce((s, [k]) => s + (n[k] || 0), 0);
+    const pct = total ? Math.round(onCount / total * 100) : 0;
+    const bar = el('div', { class: 'barrow' });
+    labels.forEach(([k]) => {
+      if (!n[k]) return;
+      bar.append(el('span', {
+        style: 'width:' + (n[k] / total * 100) + '%;background:' + (flags[k] ? pal[k] : '#ccc'),
+        title: k
+      }));
+    });
+    barHost.replaceChildren(
+      el('div', { class: 'src' }, '当前被上色的 token：' + pct + '%（示意，按本段计数）。原文的直觉：变量使用 + 调用会占掉大部分。'),
+      bar
+    );
+  };
+  const chips = el('div', { class: 'ctrl' });
+  labels.forEach(([k, lab]) => {
+    const inp = el('input', { type: 'checkbox' });
+    inp.checked = !!flags[k];
+    inp.addEventListener('change', () => { flags[k] = inp.checked ? 1 : 0; draw(); });
+    chips.append(el('label', { class: 'chip' }, inp, lab));
+  });
+  draw();
+  root.append(
+    chips,
+    el('div', { class: 'ctrl' },
+      btn('原文推荐', () => {
+        Object.assign(flags, FLAGS_ALA);
+        chips.querySelectorAll('input').forEach((inp, i) => { inp.checked = !!flags[labels[i][0]]; });
+        draw();
+      }, 'primary'),
+      btn('全开（圣诞）', () => {
+        Object.assign(flags, FLAGS_ALL);
+        chips.querySelectorAll('input').forEach(inp => { inp.checked = true; });
+        draw();
+      })
+    ),
+    host, barHost
+  );
+});
+
+/* ======================================================================
+   05 typo
+   ====================================================================== */
+reg('typo', (root) => {
+  const okSrc = 'function done(ok) {\n  if (!ok) return false;\n  return true;\n}';
+  const badSrc = 'function done(ok) {\n  if (!ok) retunr false;\n  return true;\n}';
+  let bad = true;
+  const host = el('div', { class: 'grid2' });
+  const stat = el('div', { class: 'stat' }, '有一处 return 被拼成 retunr。先看左边的颜色变了没，再看右边。');
+  const draw = () => {
+    const src = bad ? badSrc : okSrc;
+    const L = renderEd(src, PAL.xmas, FLAGS_ALL).pre;
+    const R = renderEd(src, PAL.ala, FLAGS_ALA).pre;
+    host.replaceChildren(wrapEd('keyword-colors.js', L), wrapEd('alabaster.js', R));
+  };
+  const reveal = () => {
+    const src = bad ? badSrc : okSrc;
+    const mark = (pre) => {
+      pre.querySelectorAll('.tok').forEach(s => {
+        if (s.textContent === 'retunr' || (s.textContent === 'return' && s.dataset.type === 'keyword')) {
+          s.classList.add('hit');
+        }
+      });
+    };
+    const L = renderEd(src, PAL.xmas, FLAGS_ALL).pre;
+    const R = renderEd(src, PAL.ala, FLAGS_ALA).pre;
+    mark(L); mark(R);
+    host.replaceChildren(wrapEd('keyword-colors.js', L), wrapEd('alabaster.js', R));
+    stat.innerHTML = bad
+      ? '左边：<b>return</b> 是红关键字，<span class="bad">retunr</span> 掉成品红 ident。理论上该醒目——如果你记得 return 本来是红的。右边两边都是黑色，颜色帮不上忙，也不会骗人。'
+      : '这是正确拼写。两边第二行都是 return。';
+  };
+  draw();
+  root.append(
+    el('div', { class: 'ctrl' },
+      seg([['bad', '有拼写错误'], ['ok', '正确拼写']], 'bad', (v) => { bad = v === 'bad'; draw(); stat.textContent = '已切换。再找一次，或点揭示。'; }),
+      btn('揭示', reveal, 'primary')
+    ),
+    host, stat
+  );
+});
+
+/* ======================================================================
+   06 注释
+   ====================================================================== */
+reg('comments', (root) => {
+  const src = [
+    'function parse(src) {',
+    '  // skip BOM if the file came from Windows',
+    '  // return src.trim();',
+    '  if (!src) return "";',
+    '  return src.replace(/^\\uFEFF/, "");',
+    '}'
+  ].join('\n');
+  let mode = 'gray';
+  const host = el('div');
+  const palGray = Object.assign({}, PAL.ala, { comment: '#9aa0a6', disabled: '#9aa0a6', commentBg: '', disabledBg: '' });
+  const palYellow = Object.assign({}, PAL.ala, { comment: '#C18401', disabled: '#C18401' });
+  const palTwo = Object.assign({}, PAL.ala, { comment: '#C18401', disabled: '#9aa0a6' });
+  const draw = () => {
+    const pal = mode === 'gray' ? palGray : mode === 'yellow' ? palYellow : palTwo;
+    const flags = Object.assign({}, FLAGS_ALA, { disabled: 1, comment: 1 });
+    const { pre } = renderEd(src, pal, flags);
+    if (mode === 'two') {
+      pre.querySelectorAll('.tok[data-type="comment"]').forEach(s => s.classList.add('hit'));
+    }
+    host.replaceChildren(wrapEd('comments.js', pre));
+  };
+  const cards = el('div', { class: 'grid3' });
+  [
+    ['灰掉', '按行计酬时代的习惯。空壳 Javadoc 确实该藏。'],
+    ['高亮', '有人特地写给你看的话，就不该藏。'],
+    ['分开', '解释用亮色；被注释掉的代码用灰。']
+  ].forEach(([h, p]) => cards.append(el('div', { class: 'card' }, el('h3', {}, h), el('p', {}, p))));
+  draw();
+  const stat = el('div', { class: 'stat' }, '第二行是解释，第三行是被禁用的代码。多数语言语法上是同一种注释。');
+  root.append(
+    el('div', { class: 'ctrl' },
+      seg([['gray', '灰注释'], ['yellow', '黄注释'], ['two', '两种注释']], 'gray', (v) => {
+        mode = v; draw();
+        [...cards.children].forEach((c, i) => c.classList.toggle('on', ['gray', 'yellow', 'two'].indexOf(v) === i));
+        stat.textContent = v === 'two' ? '亮色 = 解释，灰色 = 禁用代码。Clojure 代码库里有原文截图同款用法。' : v === 'yellow' ? '好注释被当成一等公民。' : '常见主题把注释藏进低对比灰色。';
+      })
+    ),
+    cards, el('div', { style: 'height:10px' }), host, stat
+  );
+  cards.children[0].classList.add('on');
+});
+
+/* ======================================================================
+   07 浅色陷阱
+   ====================================================================== */
+reg('lighttrap', (root) => {
+  let L = 40;
+  const stripHost = el('div');
+  const paintStrip = () => {
+    const W = 640, H = 44;
+    const make = (bg, light) => {
+      const S = svg('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'hues', style: 'background:' + bg });
+      const n = 36;
+      for (let i = 0; i < n; i++) {
+        S.append(svg('rect', {
+          x: String(i * W / n), y: '0', width: String(W / n + 0.4), height: String(H),
+          fill: 'hsl(' + (i * 360 / n) + ' 80% ' + light + '%)'
+        }));
+      }
+      return S;
+    };
+    stripHost.replaceChildren(
+      el('div', { class: 'src' }, '同一色相环，明度 ' + L + '%。上面衬白底（浅色主题的字），下面衬黑底（深色主题的字）。'),
+      el('div', { class: 'bgcard', style: 'background:#fff;margin-bottom:8px' }, make('#fff', L)),
+      el('div', { class: 'bgcard', style: 'background:#111' }, make('#111', L))
+    );
+  };
+  paintStrip();
+
+  const src = 'const name = "alabaster"; // four colors\nconst n = 12;';
+  const palLo = { dark: false, bg: '#ffffff', fg: '#222', keyword: '#bbb', ident: '#bbb', decl: '#8ecf9a', call: '#bbb', def: '#bbb', string: '#9be7a4', number: '#cbb4e8', comment: '#f0e08a', disabled: '#ddd', punct: '#ccc' };
+  const palMud = { dark: false, bg: '#ffffff', fg: '#222', keyword: '#333', ident: '#333', decl: '#1f6b3a', call: '#333', def: '#333', string: '#1f6b3a', number: '#5b2d7a', comment: '#6b5a12', disabled: '#666', punct: '#777' };
+  const palBg = Object.assign({}, PAL.alaBg);
+
+  const three = el('div', { class: 'grid3' });
+  const mk = (title, pal, flags, note) => {
+    const { pre } = renderEd(src, pal, flags);
+    const box = el('div', { class: 'card' }, el('h3', {}, title), el('p', {}, note));
+    box.append(wrapEd('light.js', pre));
+    return box;
+  };
+  three.append(
+    mk('鲜艳但对比低', palLo, FLAGS_ALA, '颜色好看，字发飘。'),
+    mk('对比够、颜色泥', palMud, FLAGS_ALA, '能读，但色相挤在一起。'),
+    mk('字深 + 色块底', palBg, FLAGS_ALA, '对比和颜色都在。Zed Alabaster 这条路。')
+  );
+
+  const pair = el('div', { class: 'grid2' });
+  pair.append(
+    wrapEd('VS Code Dark+ 示意', renderEd(SAMPLE, PAL.rainbowDark, FLAGS_ALL).pre),
+    wrapEd('VS Code Light+ 示意', renderEd(SAMPLE, PAL.xmas, FLAGS_ALL).pre)
+  );
+
+  root.append(
+    el('div', { class: 'ctrl' }, range('明度', 18, 82, L, 1, (v) => { L = v; paintStrip(); }, (v) => v + '%')),
+    stripHost,
+    el('div', { class: 'src', style: 'margin:12px 0 8px' }, '三种浅色高亮。最后一种把颜色铺成背景，字保持深色。'),
+    three,
+    el('div', { class: 'src', style: 'margin:12px 0 8px' }, '深色主题的字走高明度，色相张得开；浅色主题的字走低明度，变成泥。配色是示意，不是官方取样。'),
+    pair
+  );
+});
+
+/* ======================================================================
+   08 DIY
+   ====================================================================== */
+reg('diy', (root) => {
+  const src = SAMPLE;
+  const steps = [
+    { t: '圣诞彩灯', d: '什么都有独特的亮色。底色几乎看不见。' },
+    { t: '去掉关键字色', d: 'class / function / if / return 回到底色。' },
+    { t: '去掉变量使用', d: '代码里到处都是它们。标了 = 没标。' },
+    { t: '去掉调用', d: '保留声明。问「这东西从哪来」时用得上。' },
+    { t: '压暗标点', d: '先看见名字。括号的精确排列很少同等重要。' },
+    { t: '点亮注释', d: '不用红——红留给波浪线和错误。' },
+    { t: '字符串和数字并成绿', d: '少一种颜色。常量都是参考点。' },
+    { t: '按层级旋转', d: '函数声明更亮（黄），变量声明蓝。' }
+  ];
+  const palAt = (step) => {
+    const p = {
+      dark: false, bg: '#F7F7F7', fg: '#1b1b1b',
+      keyword: '#d13c4e', ident: '#2b6cff', decl: '#0ea5e9',
+      call: '#c026d3', def: '#ca8a04',
+      string: '#16a34a', number: '#ea580c',
+      comment: '#64748b', disabled: '#94a3b8', punct: '#db2777'
+    };
+    const f = Object.assign({}, FLAGS_ALL);
+    if (step >= 1) { p.keyword = p.fg; }
+    if (step >= 2) { p.ident = p.fg; }
+    if (step >= 3) { p.call = p.fg; }
+    if (step >= 4) { p.punct = '#9a9a9a'; }
+    if (step >= 5) { p.comment = '#C18401'; p.disabled = '#C18401'; }
+    if (step >= 6) { p.number = '#448C27'; p.string = '#448C27'; }
+    if (step >= 7) { p.def = '#C9A227'; p.decl = '#325CC0'; p.string = '#448C27'; p.number = '#448C27'; p.comment = '#C18401'; }
+    return { p, f };
+  };
+
+  let step = 0;
+  const list = el('div', { class: 'stepper' });
+  const host = el('div');
+  const after = el('div');
+  const btns = [];
+  const draw = () => {
+    btns.forEach((b, i) => b.classList.toggle('on', i === step));
+    const { p, f } = palAt(step);
+    const { pre } = renderEd(src, p, f);
+    host.replaceChildren(wrapEd('step-' + step + '.js', pre));
+    if (step === 7) {
+      const a = renderEd(src, palAt(0).p, palAt(0).f).pre;
+      const b = renderEd(src, p, f).pre;
+      after.replaceChildren(
+        el('div', { class: 'src', style: 'margin:8px 0' }, '并排：开始 vs 结束。'),
+        el('div', { class: 'grid2' }, wrapEd('before.js', a), wrapEd('after.js', b))
+      );
+    } else after.replaceChildren();
+  };
+  steps.forEach((s, i) => {
+    const b = el('button', { class: 'step' + (i === 0 ? ' on' : ''), type: 'button', onclick: () => { step = i; slider.input.value = String(i); slider.querySelector('output').textContent = s.t; draw(); } },
+      el('span', { class: 'i' }, String(i)),
+      el('div', {}, el('b', {}, s.t), el('span', {}, s.d))
+    );
+    btns.push(b);
+    list.append(b);
+  });
+  const slider = range('步骤', 0, 7, 0, 1, (v) => { step = v; draw(); }, (v) => steps[v].t);
+  const pane = el('div', {},
+    el('div', { class: 'ctrl' },
+      btn('上一步', () => { step = Math.max(0, step - 1); slider.input.value = String(step); slider.querySelector('output').textContent = steps[step].t; draw(); }),
+      btn('下一步', () => { step = Math.min(7, step + 1); slider.input.value = String(step); slider.querySelector('output').textContent = steps[step].t; draw(); }, 'primary')
+    ),
+    slider, host, after
+  );
+  root.append(el('div', { class: 'diy' }, list, pane));
+  draw();
+});
+
+/* ======================================================================
+   09 字体 / OkLab
+   ====================================================================== */
+reg('typochroma', (root) => {
+  const src = SAMPLE;
+  let typoOn = true;
+  const palType = {
+    dark: false, bg: '#F7F7F7', fg: '#111',
+    keyword: '#111', ident: '#111', decl: '#111', call: '#111', def: '#111',
+    string: '#111', number: '#111', comment: '#111', disabled: '#111', punct: '#888',
+    bold: true, italic: true
+  };
+  const flagsType = { keyword: 1, ident: 0, decl: 0, call: 0, def: 1, string: 1, number: 1, comment: 1, disabled: 1, punct: 1 };
+  const host = el('div');
+  const drawType = () => {
+    const pal = typoOn ? palType : Object.assign({}, palType, { bold: false, italic: false, punct: '#111' });
+    const { pre } = renderEd(src, pal, flagsType);
+    host.replaceChildren(wrapEd(typoOn ? 'typography.js' : 'plain.js', pre));
+  };
+  drawType();
+
+  const oklab = (L, C, hDeg) => {
+    const h = hDeg * Math.PI / 180;
+    const a = C * Math.cos(h), b = C * Math.sin(h);
+    const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
+    const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
+    const s_ = L - 0.0894841775 * a - 1.2914855480 * b;
+    const l = l_ * l_ * l_, m = m_ * m_ * m_, s3 = s_ * s_ * s_;
+    const r = +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s3;
+    const g = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s3;
+    const bl = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s3;
+    const lin = (x) => x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(Math.max(x, 0), 1 / 2.4) - 0.055;
+    const hx = (x) => Math.round(Math.max(0, Math.min(1, lin(x))) * 255);
+    return 'rgb(' + hx(r) + ',' + hx(g) + ',' + hx(bl) + ')';
+  };
+  const hues = [0, 45, 90, 135, 180, 225, 270, 315];
+  const row = (cols, label) => {
+    const g = el('div', { style: 'display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:8px' });
+    cols.forEach((c, i) => g.append(el('div', { style: 'height:52px;border-radius:8px;background:' + c, title: hues[i] + '°' })));
+    return el('div', {}, el('div', { class: 'src' }, label), g);
+  };
+  const even = hues.map(h => oklab(0.7473, 0.1253, h));
+  const varied = hues.map((h, i) => oklab(0.55 + (i % 4) * 0.09, 0.16 + (i % 3) * 0.03, h));
+
+  const word = 'function';
+  const evenWords = el('div', { class: 'ctrl', style: 'margin-top:8px' });
+  even.forEach(c => evenWords.append(el('span', { class: 'mono', style: 'color:' + c + ';font-size:18px;font-weight:700' }, word)));
+
+  root.append(
+    el('div', { class: 'grid2' },
+      el('div', {},
+        el('div', { class: 'ctrl' },
+          seg([['on', '粗体 / 斜体'], ['off', '全是常规字']], 'on', (v) => { typoOn = v === 'on'; drawType(); })
+        ),
+        host,
+        el('div', { class: 'src' }, '定义加粗、注释斜体、字符串还是黑的。扫起来会在字重之间跳——原文把这和「颜色太多」归为一类。')
+      ),
+      el('div', {},
+        row(even, 'OkLab 均匀：L=0.7473 C=0.1253（按原文参数重绘）'),
+        evenWords,
+        row(varied, '示意对照：把明度拉开之后，立刻能分清'),
+        el('div', { class: 'src' }, '均匀不等于好用。高亮的目的是让东西跳出来。')
+      )
+    )
+  );
+});
+
+/* ======================================================================
+   启动
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => {
+  es.forEach(e => { if (e.isIntersecting) side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); });
+}, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+const seenIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) e.target.classList.add('seen'); }); }, { threshold: 0.12 });
+sections.forEach(s => seenIO.observe(s));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo]; if (!f) return;
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+document.querySelectorAll('.scrollx').forEach(s => s.after(el('div', { class: 'scroll-hint' }, '图可左右滑动 →')));
+setTimeout(() => document.documentElement.classList.add('ready'), 600);
+})();
+</script>
+</body>
+</html>

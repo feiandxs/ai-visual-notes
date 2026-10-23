@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Mooncake：以 KVCache 为中心的分离式推理架构</title>
+<meta name="description" content="章明星《Mooncake (1)：在月之暗面做月饼》的可视化讲解：一步步走完请求在 Prefill / KVCache / Decode 三个资源池间的流动，对比 TBT 与 TPOT、chunked prefill 的显存占用代价、Chunked PP 流水线，并现场计算 KVCache 远端传输何时比重算更划算。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ===== 本页组件 ===== */
+.arch .bx{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .35s,stroke .35s}
+.arch .bx.p{fill:var(--p-soft)} .arch .bx.t{fill:var(--t-soft)} .arch .bx.o{fill:var(--o-soft)} .arch .bx.y{fill:var(--y-soft)}
+.arch .hot .bx{stroke:var(--text);stroke-width:2.5}
+.arch .dim{opacity:.35;transition:opacity .35s}
+.arch g{transition:opacity .35s}
+.arch .ar{stroke:var(--muted);stroke-width:2;fill:none;opacity:.25;transition:opacity .35s,stroke .35s}
+.arch .ar.on{opacity:1;stroke:var(--text);stroke-dasharray:7 5;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-24}}
+.arch text{font-family:var(--font)}
+.t1{font-size:15px;font-weight:700;fill:var(--text);text-anchor:middle}
+.t2{font-size:12.5px;fill:var(--muted);text-anchor:middle}
+.chipn{fill:var(--surface);stroke:var(--line)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;vertical-align:-1px;margin-right:4px;border-radius:3px}
+.stream{font-size:15px;line-height:1.9;min-height:3.9em;background:var(--surface-2);border-radius:10px;padding:8px 12px;word-break:break-all}
+.stream .tk{animation:pop .25s ease}
+@keyframes pop{from{opacity:0;background:var(--y-soft)}to{opacity:1}}
+.row2{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:760px){.row2{grid-template-columns:1fr 1fr}}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13px;color:var(--muted)}
+.panel b{color:var(--text)}
+.panel h4{margin:0 0 6px;font-size:14px;color:var(--text)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13px;margin-top:6px}
+.kv span:nth-child(odd){color:var(--muted)}
+.kv span:nth-child(even){font-family:var(--mono);color:var(--text)}
+.bad{color:var(--r)!important}
+.good{color:var(--t)!important}
+.ctrl .range input{width:130px}
+.nodes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:8px}
+@media (min-width:760px){.nodes{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.node{border:1px solid var(--line);border-radius:10px;padding:6px 8px;background:var(--surface);font-size:12px;min-height:58px}
+.node .h{color:var(--muted);font-size:11.5px;margin-bottom:4px}
+.dc{display:inline-block;font-family:var(--mono);font-size:11px;padding:0 5px;border-radius:5px;margin:1px;background:var(--surface-2);border:1px solid var(--line)}
+.dc.hit{background:var(--t-soft);border-color:var(--t);color:var(--t)}
+.dc.miss{background:var(--r-soft);border-color:var(--r);color:var(--r)}
+.pool{border:1px dashed var(--o);border-radius:10px;padding:6px 8px;margin-top:8px;font-size:12px;background:var(--o-soft)}
+.meter{height:10px;border-radius:6px;background:var(--surface-2);overflow:hidden;margin-top:4px;border:1px solid var(--line)}
+.meter i{display:block;height:100%;background:var(--t);transition:width .3s}
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+@media (max-width:600px){.lbl{font-size:15px}.lbl.big{font-size:17px}.arch .t1{font-size:18px}.arch .t2{font-size:14px}}
+@media (min-width:1024px){.toc-sheet,.toc-mask{display:none}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Mooncake：以 KVCache 为中心</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 大模型推理系统</div>
+  <h1>在月之暗面做月饼：Kimi 以 KVCache 为中心的分离式推理架构</h1>
+  <p class="sub">Kimi 的推理平台 Mooncake 把一个同构 GPU 集群拆成 Prefill、Decode、KVCache 三个资源池。这一页带你走一遍请求的流程，再把作者讨论的几个「还没有共识的设计选择」逐个拿出来算一算、拖一拖。</p>
+  <div class="thesis">Prefill 管首字延迟（TTFT），Decode 管字间延迟（TBT），中间用一个跨机器的全局 KVCache 池做前缀复用。因为调度、分配、复制 KVCache 必须和 Prefill/Decode 的调度一起设计，作者把这套架构称为「以 KVCache 为中心」。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>章</i>ZHANG Mingxing（章明星），清华大学助理教授</span>
+  </div>
+  <p class="meta">原文：《Mooncake (1)：在月之暗面做月饼，Kimi 以 KVCache 为中心的分离式推理架构》，ZHANG Mingxing，知乎专栏「KVCache.AI」（2024 年 6 月发布，2024-11-28 编辑）。作者在开头声明，文中「夹带过量私货个人观点，不代表本人单位更不代表 Moonshot，纯技术讨论」。本页按原文顺序讲解，加了几处标注为「本页补充」的核对与示意计算；所有示意模拟的参数都写在图旁，它们不是论文数据。</p>
+</header>
+
+<section class="ch" id="arch" data-title="总体架构：三个池">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>总体架构：一个集群拆成三个池</h2>
+    <p class="lead">一条请求进来之后，在 Prefill、KVCache、Decode 三个资源池之间是怎么走的？</p>
+  </div>
+  <p style="margin-bottom:12px">原文：Mooncake 是「非常典型的分离式架构，将单个同构 GPU 集群的资源打散并重新组织成三个可以独立弹性伸缩的资源池」。Prefill Pool 处理用户输入，对 TTFT（Time To First Token）负责；它相对计算密集，也承担着「抬高整体资源利用率」的任务。Prefill 算出的 KVCache 被送到 Decode Pool 做自回归（autoregression）式的流式输出，那里虽然也想攒大 batch 提升 MFU，但主要对 TBT（Time Between Tokens）负责。另外，每台 HGX 机器上的资源还组成一个 KVCache Pool，做全局的前缀缓存（Prefix Cache）。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap">点「下一步」，跟着一条请求走一遍。高亮的框是当前在干活的部分，流动的虚线是数据走向。步骤里的调度细节取自论文 <sup class="c">[2]</sup>。</div>
+    <div data-demo="arch"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：论文里这个全局调度器叫 Conductor。它为每个请求算出 prompt 的分块哈希（block hash），查出每个 Prefill 实例已有的最长前缀，再按「排队时间 + 传输时间 + 剩余 Prefill 计算时间」估出 TTFT，选最小的那个；估出来超过 SLO 的请求直接拒绝。KVCache Pool 用的是 GPU 机器上原本闲置的 CPU、DRAM 和 SSD，机器之间通过 RDMA 传输。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="tbt" data-title="TBT 还是 TPOT">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>为什么用 TBT，而不是 TPOT</h2>
+    <p class="lead">两条回答的平均每 token 耗时一模一样，读起来的感受为什么会完全不同？</p>
+  </div>
+  <p style="margin-bottom:12px">原文：TBT 和 TPOT（Time Per Output Token）本来应该等价，但实际算 TPOT 时经常被简化成 average TPOT，也就是吞吐的倒数，或者总生成时间除以总 token 数。TBT 则明确指两个 token 之间的延迟，用 TBT 上限来定 SLO，更能反映流式交互的体验。作者的比方：如果 GPT-4o 的语音回复说一句、停一段、再说一句，「即便 average TPOT 能小一些，体验还是不够好」。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap">两路流式输出，总 token 数和总耗时相同，所以 average TPOT 相同。<b>A</b> 匀速吐字；<b>B</b> 一阵快一阵停。点「播放」看它们吐字，拖动 TBT 上限看各自有多少次「卡顿」超标。时间序列是本页的示意数据。</div>
+    <div data-demo="tbt"></div>
+  </div>
+</section>
+
+<section class="ch" id="prefill" data-title="Prefill：分还是不分">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Prefill Pool：To Separate or Not, Is It a Question?</h2>
+    <p class="lead">Chunked Prefill 已经让 Prefill 和 Decode 的边界变模糊了，为什么还要单独的 Prefill 节点？</p>
+  </div>
+  <p style="margin-bottom:12px">作者原本想把论文这一章起名为「Prefill: To Separate or Not. Is it a Question?」。他的立场是：除非 prompt 特别短（短到可以直接塞进 decode 的 continuous batch 里提升 MFU 又不违反 TBT SLO），否则还是倾向于独立的 Prefill 节点。理由有两条。<sup class="c">[1]</sup></p>
+  <h3 style="font-size:18px;margin:18px 0 8px">理由一：VRAM occupation cost</h3>
+  <p style="margin-bottom:12px">作者定义了 VRAM occupation cost：<b>KVCache 大小 × 它在显存里停留的时间</b>。用 chunked prefill 时，每个 chunk 都要和其他 decode 请求拼在一个 batch 里算，这会显著拉长这份 KVCache 在显存里停留的时间，等于降低了宝贵显存的利用率。（至于显存空出来有没有地方用，作者说是另一个问题，论文 4.2 节讨论了与未来 batch job 结合的可能。）<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap">一个长 prompt 两种处理法。<b>独立 Prefill 节点</b>：整段一口气算完。<b>Chunked prefill</b>：每轮 decode 迭代只捎带一个 chunk，为了不让同 batch 的 decode 请求卡顿，这一轮的耗时得压在 TBT 上限以内。图里的矩形面积就是 VRAM occupation cost。参数是本页的示意值：Prefill 吞吐 20k tokens/s，纯 decode 一轮 30 ms，TBT 上限 100 ms，KVCache 按整段 prompt 一开始就预留。</div>
+    <div data-demo="vram"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「一开始就预留完整 KVCache 空间」这个假设来自作者在评论区的回复：用 chunked prefill 处理特别长的 prompt，为了压低 TBT 要切成很细的 chunk，「说不定 chunk size 还得是个递减的」，因为历史越长每个 chunk 的计算量越大；而且得在处理第一个 chunk 时就预留好完整的 KVCache 空间，否则算到一半不够了换入换出很麻烦。结果是这份 KVCache 在 HBM 里留存时间比用独立 Prefill 节点长不少，间接让 decode 节点不好攒 batch。他也说这个界限是模糊的，未来可能按不同 TBT SLO 等级划分多个池。<sup class="c">[1]</sup> 本图忽略了注意力计算随长度二次增长，所以低估了长 prompt 的差距。</div>
+
+  <h3 style="font-size:18px;margin:26px 0 8px">理由二：长文本要多节点并行压 TTFT</h3>
+  <p style="margin-bottom:12px">更重要的理由：长文本场景下，Prefill 集群需要特殊的多节点划分来压低 TTFT。作者比较了被讨论更多的 SP（序列并行）和直接用 <b>Chunked PP</b>（分块流水线并行）的做法，认为后者在调度和减少通信量上更优：前者「大幅度简化架构」，后者「省出宝贵的传输带宽来搬运 KVCache」。具体做法是 TeraPipe 的推理简化版：只有 forward 没有 backward，不需要动态规划去平衡每个 chunk 的计算量，给每个 chunk 设一个最小值就行。<sup class="c">[1][3]</sup></p>
+  <div class="fig">
+    <div class="cap">把 X 个节点串成一条流水线，每个节点负责模型的 1/X 层；prompt 切成 k 个 chunk，依次流过各节点。拖动两个滑块看 TTFT 怎么变。假设一个节点单独算完整个 prompt 要 8 秒，并忽略通信开销与注意力的二次项。</div>
+    <div data-demo="cpp"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：论文把 Prefill 集群里每 X 个节点组成一个流水线组，每个请求按不超过 prefill_chunk 的长度切块，不同 chunk 可以同时在不同节点上处理；只有长度超过阈值（论文说「通常大于 1000 tokens」）的请求才分块。<sup class="c">[2]</sup> 和 SP 的对比可以这样理解：流水线只在相邻两段之间传一次激活值；而 Ring Attention 这类序列并行，每一层的注意力都要在节点之间轮转交换 KV。<sup class="c">[3][7]</sup></div>
+</section>
+
+<section class="ch" id="kvpool" data-title="KVCache Pool：传还是算">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>KVCache Pool：从远端搬过来，比原地重算还快？</h2>
+    <p class="lead">全局 Prefix Cache 能成立的底层原因是什么？什么时候它会不成立？</p>
+  </div>
+  <p style="margin-bottom:12px">作者说「都 2024.6 了单节点的 Prefix Cache 已经不是什么新鲜东西了」，Mooncake 做的是全局的。相比 vLLM 当时的单机 Prefix Cache，全局调度能大幅提高复用率，从而提升总吞吐。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>单机缓存 vs 全局池。</b>同一串请求（30 篇不同文档做前缀，热度按 Zipf 分布）同时喂给两套系统。上：4 个 Prefill 节点各自缓存最近用过的 3 个前缀，请求轮询分配。下：4 个节点共享一个能放 12 个前缀的全局池。总缓存容量一样大。点按钮送请求，看命中率。这是本页的示意模拟。</div>
+    <div data-demo="global"></div>
+  </div>
+  <p style="margin:16px 0 12px">全局调度为什么划算？作者给的原理：对每 X 字节的 KVCache，生成它需要的算力正比于 <b>X × hd × 一个较大的常数</b>（hd 是模型的 hidden dimension）。所以只要每卡算力（比如 A100 的 220 TFLOPS）与每卡通信带宽（比如 CX7 的 100 Gbps）之比小于 hd 乘以这个常数，「从远端传输 KVCache 相比原地重算不仅仅减少了计算量还减少了 TTFT」。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap">选一个模型、调算力利用率和实际跑出来的带宽，比较每复用 1 个 token 的前缀：<b>重算</b>它要多久，<b>从远端搬</b>它的 KVCache 要多久。默认值就是原文举的 220 TFLOPS 与 100 Gbps。</div>
+    <div data-demo="xfer"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：那个「常数」可以粗算出来。Prefill 每个 token 约需 2P 次浮点运算（P 为参数量）；KVCache 每个 token 占 2（K 和 V）× 层数 L × KV 维度 × 2 字节（BF16）。标准多头注意力的 Transformer 有 P ≈ 12·L·hd²，KV 维度 = hd，于是「算力 / 字节」≈ 24·L·hd² ÷ 4·L·hd = <b>6·hd</b>；用 GQA 时 KV 维度缩小到 1/g，比值放大到 6·g·hd。上面计算器用的就是这个算法，只算了线性层，注意力那部分随前缀长度增加的计算没算进去，所以对「搬」是偏保守的。A100 的官方稠密 BF16 峰值是 312 TFLOPS，原文的 220 可以看作一个打了折扣的可用值。模型结构参数取自 Llama 2 论文。<sup class="c">[4][5]</sup></div>
+  <p style="margin:16px 0 12px">但作者也强调这不是「一定可以」：hd 和常数都和模型结构强相关，只能说原则上比较大的模型应该都行；网卡虽然有 100 Gbps，如果 KVCache 下沉到慢速存储、或者网络拥挤，跑不到这么高，结论就不一定成立。所以需要以 KVCache 为中心，针对不同请求的 TTFT SLO 分别调度。论文 5.2 节给的是一个简单的、基于启发式的热点识别和复制方法：不需要预测未来的 KVCache 使用模式，好实现，实际效果不错，可以作为 strong baseline。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>「第一次见这样的富裕仗」。</b>作者感慨：标准 8 卡 HGX 服务器每台配 9~10 张 100 Gbps 乃至 200 Gbps 的 RDMA 网卡、至少 2 TB 内存和一堆高速 SSD，一千台就是「近万张网卡互连起来的数 PB 共享内存池」。拖动机器数，按原文给的下限现场算。<sup class="c">[1]</sup></div>
+    <div data-demo="rich"></div>
+    <p class="src">作者补了一句：可惜这是 bandwidth bound 的场景，架构上没那么多「奇淫技巧」可用，更多是工程实现。</p>
+  </div>
+</section>
+
+<section class="ch" id="decode" data-title="Decode：还能再拆吗">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>Decode Pool：还能不能再拆一刀</h2>
+    <p class="lead">Decode 阶段里，为什么 attention 和线性层适合放在不同的硬件上？</p>
+  </div>
+  <p style="margin-bottom:12px">Decode Pool 是业界实践最多的部分，vLLM 迭代极快，「该有的不是已经有了也是在 roadmap 里」。作者在这里夹带的私货是论文 future work 里的想法：加入面向大容量、大带宽设计的高性价比设备，组成异构集群。他也坦白担心：硬件迭代慢，等出来了算法变了（比如 MLA），或者被「老黄的大力出奇迹创飞了」就很尴尬。<sup class="c">[1]</sup></p>
+  <p style="margin-bottom:12px">他还提到几个月前挂出的另一篇论文：不必等新硬件，组合基于 GDDR 的设备就能把 Decode 再拆成 <b>attention 算子</b>和 <b>Linear 算子</b>两个池子。<sup class="c">[1][6]</sup></p>
+  <div class="fig">
+    <div class="cap">算术强度（每读 1 字节做多少次运算）决定一个算子吃算力还是吃带宽。拖动 batch 大小：线性层的权重被整个 batch 共享，强度随 batch 上升；attention 读的是每个请求<b>自己的</b> KVCache，batch 再大强度也不涨。虚线是 A100/A800 的「拐点」：低于它就是带宽受限。</div>
+    <div data-demo="ai"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：上图按 BF16 粗算：线性层每个 token 每个参数做 2 次运算，权重每参数读 2 字节，所以强度 ≈ batch 大小；attention 对长度 n 的上下文做约 4·n·hd 次运算、读约 4·n·(hd/g) 字节，强度 ≈ GQA 分组数 g，与 batch 无关。拐点 ≈ 312 TFLOPS ÷ 2.0 TB/s ≈ 153 FLOP/字节（A100/A800 80GB 的公开规格）。这就是许欣然在同期文章里说的「private memory per request 是整个推理系统优化中的关键瓶颈」：attention 部分天然适合交给「带宽/$」更高的设备。<sup class="c">[6][8]</sup></div>
+  <p style="margin:16px 0 12px">现实的阻碍：云上的 GDDR 设备一般不和旗舰显卡集群放在一起，为省成本只配很差的 CPU 和网卡；现有设备不是为这个场景设计的，attention offload 的性价比潜力发挥不出来，为此把架构变复杂、还增加一点 TBT，不一定合适。「所以归根结底还是得看看有没有硬件厂商愿意赌一把了。」<sup class="c">[1]</sup></p>
+  <div class="final">一句话回顾：把 TTFT 交给 Prefill 池、TBT 交给 Decode 池，用一个跨机器的 KVCache 池把「算过的东西」存下来、搬过去复用。只要搬比算快，又省钱、体验又好。</div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这是系列第一篇。第二篇《Kimi「泼天的流量」怎么接》讲过载场景下的 Early Reject 与基于预测的调度。论文后来以《Mooncake: Trading More Storage for Less Computation》为题发表在 USENIX FAST 2025，获最佳论文奖；正式版报告在真实 trace 上有效请求容量提升 59%～498%。Mooncake 的传输引擎等组件已在 GitHub 开源（kvcache-ai/Mooncake）。<sup class="c">[2][9]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 ZHANG Mingxing（章明星，清华大学助理教授）发表于知乎专栏「KVCache.AI」的《<a href="https://zhuanlan.zhihu.com/p/705754254">Mooncake (1)：在月之暗面做月饼，Kimi 以 KVCache 为中心的分离式推理架构</a>》（2024 年 6 月发布，2024-11-28 编辑）制作，正文与评论区作者回复均有采用。原文中的插图均已用内联 SVG 和 JS 重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>ZHANG Mingxing，《Mooncake (1)：在月之暗面做月饼，Kimi 以 KVCache 为中心的分离式推理架构》，知乎专栏 KVCache.AI（2024-06，2024-11-28 编辑），含评论区作者回复。</li>
+    <li>Qin, R., Li, Z., He, W., Zhang, M., Wu, Y., Zheng, W. &amp; Xu, X. (2024). <a href="https://arxiv.org/abs/2407.00079">Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving</a>. arXiv:2407.00079；正式版：Qin, R. et al. (2025). Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot. <i>USENIX FAST '25</i>（Best Paper）。</li>
+    <li>Li, Z., Zhuang, S., Guo, S., Zhuo, D., Zhang, H., Song, D. &amp; Stoica, I. (2021). TeraPipe: Token-Level Pipeline Parallelism for Training Large-Scale Language Models. <i>ICML 2021</i>.</li>
+    <li>Touvron, H. et al. (2023). Llama 2: Open Foundation and Fine-Tuned Chat Models. arXiv:2307.09288（7B/13B/70B 的层数、隐藏维度与 70B 使用 GQA）。</li>
+    <li>NVIDIA A100 Tensor Core GPU 数据手册：BF16 稠密 312 TFLOPS；80GB 版 HBM2e 带宽约 2.0 TB/s。</li>
+    <li>Chen, S., Lin, Y., Zhang, M. &amp; Wu, Y. (2024). <a href="https://arxiv.org/abs/2405.01814">Efficient and Economic Large Language Model Inference with Attention Offloading</a>. arXiv:2405.01814.</li>
+    <li>Liu, H., Zaharia, M. &amp; Abbeel, P. (2023). Ring Attention with Blockwise Transformers for Near-Infinite Context. arXiv:2310.01889.</li>
+    <li>许欣然，《关于 Mooncake 的碎碎念》，知乎专栏（2024-06）。</li>
+    <li>USENIX FAST '25 会议页面与清华大学新闻：Mooncake 获 FAST 2025 最佳论文奖；kvcache-ai/Mooncake GitHub 仓库。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；页面里的示意模拟与粗算在浏览器内用 JS 现场计算，参数为示意值，系统细节以原文与论文为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const slider = (label, min, max, step, value, fmt) => {
+  const input = el('input', { type: 'range', min, max, step, value, 'aria-label': label });
+  const out = el('output', {});
+  const wrap = el('label', { class: 'range' }, label, input, out);
+  const sync = () => { out.textContent = fmt ? fmt(+input.value) : input.value; };
+  input.addEventListener('input', sync); sync();
+  return { wrap, input, get v() { return +input.value; } };
+};
+const seg = (opts, on, cb) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === on ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); cb(i); } }, o));
+  box.append(...bs); return box;
+};
+const fmt = (x, d = 1) => x.toLocaleString('zh-CN', { maximumFractionDigits: d, minimumFractionDigits: d });
+
+/* ---------- 01 架构步进 ---------- */
+reg('arch', (node) => {
+  const root = svg('svg', { viewBox: '0 0 560 360', class: 'arch', role: 'img', 'aria-label': 'Mooncake 架构：Conductor 调度器、Prefill 池、Decode 池与 KVCache 池' });
+  const defs = svg('defs', {}, svg('marker', { id: 'mcAh', viewBox: '0 0 10 10', refX: '8', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse' }, svg('path', { d: 'M0,0 L10,5 L0,10 z', style: 'fill:var(--text)' })));
+  root.append(defs);
+  const B = {};
+  const box = (id, x, y, w, h, cls, t1, t2) => {
+    const g = svg('g', { 'data-id': id });
+    g.append(svg('rect', { x, y, width: w, height: h, rx: 12, class: 'bx ' + cls }));
+    g.append(svg('text', { x: x + w / 2, y: y + (t2 ? h / 2 - 3 : h / 2 + 5), class: 't1' }, t1));
+    if (t2) g.append(svg('text', { x: x + w / 2, y: y + h / 2 + 16, class: 't2' }, t2));
+    root.append(g); B[id] = g; return g;
+  };
+  const A = {};
+  const arrow = (id, d) => { const p = svg('path', { d, class: 'ar', 'marker-end': 'url(#mcAh)' }); A[id] = p; root.insertBefore(p, defs.nextSibling); };
+  arrow('a0', 'M60,200 C60,90 120,40 186,38');
+  arrow('a1', 'M300,68 L300,276');
+  arrow('a2', 'M230,68 L215,106');
+  arrow('a7', 'M370,68 L385,106');
+  arrow('a3', 'M180,278 L180,246');
+  arrow('a5', 'M240,246 L240,278');
+  arrow('a4', 'M282,176 L318,176');
+  arrow('a6', 'M462,176 L478,176');
+  box('user', 10, 205, 100, 56, '', '用户请求', 'prompt');
+  box('cond', 190, 10, 180, 56, 'y', 'Conductor', '全局调度器');
+  const pre = box('pre', 130, 110, 150, 134, 'p', '', '');
+  pre.querySelectorAll('text').forEach((t) => t.remove());
+  pre.append(svg('text', { x: 205, y: 132, class: 't1' }, 'Prefill Pool'), svg('text', { x: 205, y: 236, class: 't2' }, '对 TTFT 负责'));
+  const dec = box('dec', 320, 110, 140, 134, 't', '', '');
+  dec.querySelectorAll('text').forEach((t) => t.remove());
+  dec.append(svg('text', { x: 390, y: 132, class: 't1' }, 'Decode Pool'), svg('text', { x: 390, y: 236, class: 't2' }, '对 TBT 负责'));
+  for (let i = 0; i < 3; i++) {
+    pre.append(svg('rect', { x: 142 + i * 44, y: 148, width: 38, height: 64, rx: 6, class: 'chipn' }), svg('text', { x: 161 + i * 44, y: 185, class: 't2' }, 'P' + (i + 1)));
+    dec.append(svg('rect', { x: 330 + i * 41, y: 148, width: 36, height: 64, rx: 6, class: 'chipn' }), svg('text', { x: 348 + i * 41, y: 185, class: 't2' }, 'D' + (i + 1)));
+  }
+  box('kv', 130, 280, 330, 66, 'o', 'KVCache Pool', '各机器闲置的 CPU / DRAM / SSD，RDMA 互连');
+  box('out', 478, 150, 76, 56, '', '流式输出', 'token…');
+  const S = [
+    ['请求到达', ['user', 'cond'], ['a0'], '请求先到全局调度器 Conductor。它把 prompt 按固定大小切块并算出每块的哈希，用来和已缓存的前缀比对。'],
+    ['查找可复用的前缀', ['cond', 'kv'], ['a1'], '在全局 KVCache Pool 里查：这段 prompt 的开头有多长已经算过了？查的是整个集群，而不只是某一台机器。'],
+    ['选一对实例', ['cond', 'pre', 'dec'], ['a2', 'a7'], '对每个 Prefill 实例估算 TTFT = 排队 + 搬运缓存 + 算剩余部分，选最小的；同时按负载选一个 Decode 实例。估出来超过 SLO 就拒绝（过载调度是系列第二篇的主题）。'],
+    ['搬来命中的前缀', ['kv', 'pre'], ['a3'], '命中的 KVCache 经 RDMA 从池里搬到选中的 Prefill 节点。这一步「以搬代算」，能否成立见第 04 节。'],
+    ['只算没命中的部分', ['pre'], [], 'Prefill 节点只计算前缀之后的新 token。长 prompt 会在多个节点上用 Chunked PP 流水线并行（第 03 节）。这一步决定 TTFT。'],
+    ['KVCache 交接', ['pre', 'dec', 'kv'], ['a4', 'a5'], '新算出的 KVCache 一边流式传给 Decode 节点，一边留在 KVCache Pool 里，以后的请求可以复用。'],
+    ['逐 token 流式输出', ['dec', 'out'], ['a6'], 'Decode 节点把请求并进 continuous batch，自回归地一个个吐 token。这里要守住的是 TBT（第 02 节）。'],
+  ];
+  const stepsBox = el('div', { class: 'status' });
+  const cnt = el('span', { class: 'tag' });
+  let k = -1, timer = null;
+  const render = () => {
+    const s = S[k];
+    Object.entries(B).forEach(([id, g]) => { g.classList.toggle('hot', !!s && s[1].includes(id)); g.classList.toggle('dim', !!s && !s[1].includes(id)); });
+    Object.entries(A).forEach(([id, p]) => p.classList.toggle('on', !!s && s[2].includes(id)));
+    cnt.textContent = (k + 1) + ' / ' + S.length;
+    stepsBox.innerHTML = s ? `<b>${k + 1}. ${s[0]}</b>　${s[3]}` : '点「下一步」开始。';
+    prev.disabled = k < 0; next.disabled = k >= S.length - 1;
+  };
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => { stopAuto(); k = Math.max(-1, k - 1); render(); } }, '上一步');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { stopAuto(); k = Math.min(S.length - 1, k + 1); render(); } }, '下一步');
+  const auto = el('button', { class: 'btn', type: 'button', onclick: () => { if (timer) { stopAuto(); return; } if (k >= S.length - 1) k = -1; auto.textContent = '暂停'; tick(); timer = setInterval(tick, 2600); } }, '自动播放');
+  const tick = () => { if (k >= S.length - 1) { stopAuto(); return; } k++; render(); };
+  function stopAuto() { if (timer) clearInterval(timer); timer = null; auto.textContent = '自动播放'; }
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { stopAuto(); k = -1; render(); } }, '重置');
+  node.append(el('div', { class: 'scrollx' }, root), el('div', { class: 'ctrl' }, prev, next, auto, reset, cnt), stepsBox,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p-soft);border:1px solid var(--p)' }), 'Prefill'), el('span', {}, el('i', { style: 'background:var(--t-soft);border:1px solid var(--t)' }), 'Decode'), el('span', {}, el('i', { style: 'background:var(--o-soft);border:1px solid var(--o)' }), 'KVCache'), el('span', {}, el('i', { style: 'background:var(--y-soft);border:1px solid var(--y)' }), '调度')));
+  render();
+  return { stop: stopAuto };
+});
+
+/* ---------- 02 TBT vs TPOT ---------- */
+reg('tbt', (node) => {
+  const N = 40, TOTAL = 4000;
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  let ga = Array.from({ length: N }, () => 80 + rnd() * 40);
+  const sa = ga.reduce((a, b) => a + b, 0); ga = ga.map((g) => g * TOTAL / sa);
+  const gb = []; for (let gi = 0; gi < 5; gi++) for (let j = 0; j < 8; j++) gb.push(j === 0 ? 0 : 30);
+  const rest = TOTAL - gb.reduce((a, b) => a + b, 0); for (let gi = 0; gi < 5; gi++) gb[gi * 8] = rest / 5;
+  const times = (gs) => { let t = 0; return gs.map((g) => (t += g)); };
+  const ta = times(ga), tb = times(gb);
+  const text = '分离式架构把首字延迟交给预填充池，把字间延迟交给解码池，中间再用一个全局缓存池复用算过的前缀。';
+  const toks = [...text].slice(0, N);
+  const thr = slider('TBT 上限', 50, 600, 10, 150, (v) => v + ' ms');
+  const W = 600, X0 = 70, X1 = 585, sx = (t) => X0 + t / TOTAL * (X1 - X0);
+  const root = svg('svg', { viewBox: `0 0 ${W} 120`, role: 'img', 'aria-label': '两路 token 输出的时间线' });
+  const gA = svg('g'), gB = svg('g');
+  root.append(svg('text', { x: 4, y: 38, class: 'lbl big' }, 'A 匀速'), svg('text', { x: 4, y: 88, class: 'lbl big' }, 'B 时停'), gA, gB);
+  for (let s = 0; s <= 4; s++) root.append(svg('text', { x: sx(s * 1000), y: 116, class: 'lbl mid' }, s + ' s'));
+  const head = svg('line', { x1: X0, x2: X0, y1: 12, y2: 102, style: 'stroke:var(--y);stroke-width:2' });
+  root.append(head);
+  const draw = () => {
+    const th = thr.v;
+    [[gA, ta, ga, 34], [gB, tb, gb, 84]].forEach(([g, ts, gs, y]) => {
+      g.replaceChildren();
+      ts.forEach((t, i) => {
+        const x0 = i === 0 ? X0 : sx(ts[i - 1]);
+        if (i > 0) g.append(svg('line', { x1: x0, x2: sx(t), y1: y, y2: y, style: `stroke:${gs[i] > th ? 'var(--r)' : 'var(--line)'};stroke-width:${gs[i] > th ? 4 : 2}` }));
+        g.append(svg('line', { x1: sx(t), x2: sx(t), y1: y - 9, y2: y + 9, style: 'stroke:var(--text);stroke-width:1.2' }));
+      });
+    });
+    const st = (gs) => { const inner = gs.slice(1); const srt = [...inner].sort((a, b) => a - b); return { avg: TOTAL / N, max: Math.max(...inner), p90: srt[Math.floor(srt.length * 0.9)], over: inner.filter((g) => g > th).length }; };
+    const a = st(ga), b = st(gb);
+    const row = (n, s) => `<b style="color:var(--text)">${n}</b>：average TPOT <b>${fmt(s.avg, 0)} ms</b>，最大 TBT <span class="${s.max > th ? 'bad' : 'good'}">${fmt(s.max, 0)} ms</span>，P90 TBT ${fmt(s.p90, 0)} ms，超过上限 <span class="${s.over ? 'bad' : 'good'}">${s.over} 次</span>`;
+    stat.innerHTML = row('A', a) + '<br>' + row('B', b) + '<br>两者的 average TPOT 都是 100 ms；按 TPOT 定 SLO 分不出好坏，按 TBT 上限定 SLO，B 的停顿立刻现形。（B 的第一个间隔里含首字等待，统计 TBT 时从第 2 个 token 起算。）';
+  };
+  const stat = el('div', { class: 'status', style: 'font-size:13px' });
+  thr.input.addEventListener('input', draw);
+  const sA = el('div', { class: 'stream', 'aria-live': 'off' }), sB = el('div', { class: 'stream' });
+  let raf = 0, t0 = 0, ia = 0, ib = 0;
+  const frame = (now) => {
+    const t = now - t0;
+    while (ia < N && ta[ia] <= t) sA.append(el('span', { class: 'tk' }, toks[ia++]));
+    while (ib < N && tb[ib] <= t) sB.append(el('span', { class: 'tk' }, toks[ib++]));
+    head.setAttribute('x1', sx(Math.min(t, TOTAL))); head.setAttribute('x2', sx(Math.min(t, TOTAL)));
+    if (t < TOTAL + 100) raf = requestAnimationFrame(frame); else { raf = 0; play.textContent = '再播一遍'; }
+  };
+  const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; play.textContent = '播放'; };
+  const play = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    stop(); sA.replaceChildren(); sB.replaceChildren(); ia = ib = 0;
+    if (RM) { toks.forEach((c) => { sA.append(c); sB.append(c); }); return; }
+    play.textContent = '播放中…'; t0 = performance.now(); raf = requestAnimationFrame(frame);
+  } }, '播放');
+  node.append(el('div', { class: 'scrollx' }, root), el('div', { class: 'ctrl' }, play, thr.wrap),
+    el('div', { class: 'row2' }, el('div', {}, el('div', { class: 'lbl', style: 'font-size:12px;color:var(--muted)' }, 'A 匀速'), sA), el('div', {}, el('div', { style: 'font-size:12px;color:var(--muted)' }, 'B 时停'), sB)), stat);
+  draw();
+  return { stop };
+});
+
+/* ---------- 03a VRAM occupation cost ---------- */
+reg('vram', (node) => {
+  const RP = 20000, BASE = 0.03, SLO = 0.1, KVTOK = 320 * 1024;
+  const L = slider('prompt 长度', 8, 128, 8, 64, (v) => v + 'k tok');
+  const C = slider('chunk 大小', 256, 4096, 256, 1024, (v) => v + ' tok');
+  const root = svg('svg', { viewBox: '0 0 600 180', role: 'img', 'aria-label': '两种处理方式下 KVCache 占用显存的面积对比' });
+  const stat = el('div', { class: 'status' });
+  const draw = () => {
+    const n = L.v * 1024, c = C.v;
+    const tSep = n / RP, chunks = Math.ceil(n / c), iter = BASE + c / RP, tCh = chunks * iter;
+    const S = n * KVTOK / 2 ** 30;
+    const X0 = 110, X1 = 585, maxT = Math.max(tSep, tCh) * 1.05, sx = (t) => X0 + t / maxT * (X1 - X0);
+    root.replaceChildren();
+    root.append(svg('text', { x: 4, y: 52, class: 'lbl big' }, '独立 Prefill'), svg('text', { x: 4, y: 122, class: 'lbl big' }, 'Chunked'));
+    root.append(svg('rect', { x: X0, y: 30, width: sx(tSep) - X0, height: 40, rx: 4, style: 'fill:var(--p-soft);stroke:var(--p)' }));
+    root.append(svg('text', { x: X0 + 6, y: 55, class: 'lbl', style: 'fill:var(--text)' }, `${fmt(tSep, 2)} s`));
+    const bad = iter > SLO + 1e-9;
+    root.append(svg('rect', { x: X0, y: 100, width: sx(tCh) - X0, height: 40, rx: 4, style: `fill:${bad ? 'var(--r-soft)' : 'var(--o-soft)'};stroke:${bad ? 'var(--r)' : 'var(--o)'}` }));
+    if (chunks <= 160) for (let i = 1; i < chunks; i++) { const x = sx(i * iter); root.append(svg('line', { x1: x, x2: x, y1: 100, y2: 140, style: `stroke:${bad ? 'var(--r)' : 'var(--o)'};stroke-width:.6;opacity:.6` })); }
+    root.append(svg('text', { x: X0 + 6, y: 125, class: 'lbl', style: 'fill:var(--text)' }, `${fmt(tCh, 2)} s · ${chunks} 轮`));
+    root.append(svg('line', { x1: X0, x2: X1, y1: 156, y2: 156, class: 'ax' }));
+    for (let i = 0; i <= 4; i++) { const t = maxT / 1.05 * i / 4; root.append(svg('text', { x: sx(t), y: 172, class: 'lbl mid' }, fmt(t, 1) + 's')); }
+    const cSep = S * tSep, cCh = S * tCh, maxC = Math.floor((SLO - BASE) * RP);
+    stat.innerHTML = `KVCache 约 <b>${fmt(S, 1)} GB</b>（按 Llama-2-70B 每 token 320 KB 估）。VRAM occupation cost：独立 Prefill <b>${fmt(cSep, 0)} GB·s</b>，chunked <b>${fmt(cCh, 0)} GB·s</b>，是前者的 <b>${fmt(cCh / cSep, 1)} 倍</b>。<br>chunked 时同 batch 的 decode 请求每轮要等 <span class="${bad ? 'bad' : 'good'}">${fmt(iter * 1000, 0)} ms</span>${bad ? '，超过 100 ms 的 TBT 上限了' : '，在 100 ms 上限以内'}。在这组参数下 chunk 最大只能取约 ${maxC} tokens：chunk 切大会卡 decode，切小又让 KVCache 在显存里赖得更久。`;
+  };
+  L.input.addEventListener('input', draw); C.input.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, L.wrap, C.wrap), el('div', { class: 'scrollx' }, root), stat);
+  draw();
+});
+
+/* ---------- 03b Chunked PP ---------- */
+reg('cpp', (node) => {
+  const W = 8;
+  const X = slider('节点数 X', 1, 4, 1, 3, (v) => v);
+  const K = slider('chunk 数 k', 1, 8, 1, 4, (v) => v);
+  const root = svg('svg', { viewBox: '0 0 600 210', role: 'img', 'aria-label': '分块流水线并行的甘特图' });
+  const stat = el('div', { class: 'status' });
+  const draw = () => {
+    const x = X.v, k = K.v, t = W / (x * k), ttft = (k + x - 1) * t;
+    const X0 = 70, X1 = 585, sx = (s) => X0 + s / W * (X1 - X0), rowH = 34;
+    root.replaceChildren();
+    for (let i = 0; i < x; i++) {
+      const y = 10 + i * (rowH + 8);
+      root.append(svg('text', { x: 4, y: y + rowH / 2 + 4, class: 'lbl big' }, `节点 ${i + 1}`));
+      root.append(svg('rect', { x: X0, y, width: X1 - X0, height: rowH, rx: 4, style: 'fill:var(--surface-2)' }));
+      for (let j = 0; j < k; j++) {
+        const s = (i + j) * t;
+        root.append(svg('rect', { x: sx(s) + .5, y: y + 2, width: Math.max(1, sx(s + t) - sx(s) - 1), height: rowH - 4, rx: 3, style: `fill:var(--p);opacity:${0.35 + 0.65 * (j + 1) / k}` }));
+        if (sx(s + t) - sx(s) > 22) root.append(svg('text', { x: (sx(s) + sx(s + t)) / 2, y: y + rowH / 2 + 4, class: 'lbl mid', style: 'fill:#fff;font-size:11px' }, 'c' + (j + 1)));
+      }
+    }
+    const yb = 10 + 4 * (rowH + 8) - 2;
+    root.append(svg('line', { x1: sx(ttft), x2: sx(ttft), y1: 4, y2: yb, style: 'stroke:var(--t);stroke-width:2;stroke-dasharray:4 3' }));
+    root.append(svg('text', { x: Math.min(sx(ttft) + 4, 520), y: yb, class: 'lbl', style: 'fill:var(--t)' }, 'TTFT'));
+    for (let s = 0; s <= W; s += 2) root.append(svg('text', { x: sx(s), y: 206, class: 'lbl mid' }, s + 's'));
+    const busy = x * k * t, bubble = 1 - busy / (x * ttft);
+    stat.innerHTML = `TTFT ≈ (k + X − 1) × 单段耗时 = (${k} + ${x} − 1) × ${fmt(t, 2)} s = <b>${fmt(ttft, 2)} s</b>，单节点要 ${W} s，加速 <b>${fmt(W / ttft, 2)} 倍</b>；流水线空泡占 ${fmt(bubble * 100, 0)}%。节点之间只需传 ${k * (x - 1)} 次 chunk 激活值。` + (k === 1 && x > 1 ? '<br><span class="bad">k = 1 时只是把层切开串行跑，TTFT 毫无改善：必须把 prompt 也切块，流水线才转得起来。</span>' : '');
+  };
+  X.input.addEventListener('input', draw); K.input.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, X.wrap, K.wrap), el('div', { class: 'scrollx' }, root), stat);
+  draw();
+});
+
+/* ---------- 04a 单机缓存 vs 全局池 ---------- */
+reg('global', (node) => {
+  const D = 30, NODES = 4, CAP = 3;
+  const wts = Array.from({ length: D }, (_, i) => 1 / (i + 1)); const tot = wts.reduce((a, b) => a + b, 0);
+  let seed, rr, loc, glob, hl, hg, n, last;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const pick = () => { let r = rnd() * tot; for (let i = 0; i < D; i++) { r -= wts[i]; if (r <= 0) return i; } return D - 1; };
+  const init = () => { seed = 20240627; rr = 0; loc = Array.from({ length: NODES }, () => []); glob = []; hl = hg = n = 0; last = null; };
+  const touch = (arr, d, cap) => { const i = arr.indexOf(d); const hit = i >= 0; if (hit) arr.splice(i, 1); arr.unshift(d); if (arr.length > cap) arr.pop(); return hit; };
+  const send = () => {
+    const d = pick(); const nd = rr; rr = (rr + 1) % NODES; n++;
+    const h1 = touch(loc[nd], d, CAP), h2 = touch(glob, d, CAP * NODES);
+    if (h1) hl++; if (h2) hg++; last = { d, nd, h1, h2 };
+  };
+  const top = el('div'), bot = el('div'), stat = el('div', { class: 'status' });
+  const chip = (d, cls) => el('span', { class: 'dc ' + (cls || '') }, '#' + (d + 1));
+  const meter = (r, label) => el('div', { style: 'margin-top:8px;font-size:13px' }, label, el('div', { class: 'meter' }, el('i', { style: `width:${(r * 100).toFixed(1)}%` })));
+  const render = () => {
+    top.replaceChildren(el('b', { style: 'font-size:13px' }, '单机 Prefix Cache · 轮询分配'),
+      el('div', { class: 'nodes' }, ...loc.map((c, i) => el('div', { class: 'node' }, el('div', { class: 'h' }, `Prefill ${i + 1}` + (last && last.nd === i ? ` ← #${last.d + 1}` : '')), ...c.map((d) => chip(d, last && last.nd === i && d === last.d ? (last.h1 ? 'hit' : 'miss') : ''))))),
+      meter(n ? hl / n : 0, `命中率 ${n ? fmt(hl / n * 100, 0) : 0}%（${hl} / ${n}）`));
+    bot.replaceChildren(el('b', { style: 'font-size:13px' }, '全局 KVCache Pool · 任一节点可取'),
+      el('div', { class: 'pool' }, el('div', { class: 'h', style: 'color:var(--muted);font-size:11.5px;margin-bottom:4px' }, `共享池（容量 ${CAP * NODES}）` + (last ? ` ← #${last.d + 1}` : '')), ...glob.map((d) => chip(d, last && d === last.d ? (last.h2 ? 'hit' : 'miss') : ''))),
+      meter(n ? hg / n : 0, `命中率 ${n ? fmt(hg / n * 100, 0) : 0}%（${hg} / ${n}）`));
+    stat.innerHTML = n ? (last ? `最近一条请求要文档 <b>#${last.d + 1}</b>，被派到 Prefill ${last.nd + 1}：单机缓存 ${last.h1 ? '<span class="good">命中</span>' : '<span class="bad">未命中</span>'}，全局池 ${last.h2 ? '<span class="good">命中</span>' : '<span class="bad">未命中</span>'}。` : '') + ' 同一个热门文档在单机方案里会被不同节点各存一份、各算一遍，全局池只存一份，谁都能取。' : '点按钮开始送请求。';
+  };
+  const b1 = el('button', { class: 'btn primary', type: 'button', onclick: () => { send(); render(); } }, '送 1 个请求');
+  const b50 = el('button', { class: 'btn', type: 'button', onclick: () => { for (let i = 0; i < 50; i++) send(); render(); } }, '送 50 个');
+  const rs = el('button', { class: 'btn', type: 'button', onclick: () => { init(); render(); } }, '重置');
+  init();
+  node.append(el('div', { class: 'ctrl' }, b1, b50, rs), el('div', { class: 'row2' }, el('div', { class: 'panel' }, top), el('div', { class: 'panel' }, bot)), stat);
+  render();
+});
+
+/* ---------- 04b 传输 vs 重算 ---------- */
+reg('xfer', (node) => {
+  const M = [
+    { n: '7B（MHA）', L: 32, hd: 4096, g: 1, P: 6.74e9 },
+    { n: '13B（MHA）', L: 40, hd: 5120, g: 1, P: 13.0e9 },
+    { n: '70B（GQA, g=8）', L: 80, hd: 8192, g: 8, P: 69.0e9 },
+  ];
+  let mi = 2;
+  const F = slider('每卡算力', 50, 1000, 10, 220, (v) => v + ' TFLOPS');
+  const U = slider('算力利用率', 10, 100, 5, 100, (v) => v + '%');
+  const BW = slider('实际带宽', 1, 400, 1, 100, (v) => v + ' Gbps');
+  const out = el('div'), eq = el('div', { class: 'eq' });
+  const draw = () => {
+    const m = M[mi];
+    const flops = 2 * m.P, bytes = 2 * m.L * (m.hd / m.g) * 2;
+    const tc = flops / (F.v * 1e12 * U.v / 100), tx = bytes / (BW.v * 1e9 / 8);
+    const be = bytes / tc * 8 / 1e9;
+    const mx = Math.max(tc, tx), win = tx < tc;
+    const bar = (lab, t, col) => el('div', { style: 'margin:6px 0' }, el('div', { style: 'font-size:13px;display:flex;justify-content:space-between;gap:8px' }, el('span', {}, lab), el('span', { class: 'mono' }, fmt(t * 1e6, 1) + ' µs / token')), el('div', { class: 'meter', style: 'height:14px' }, el('i', { style: `width:${(t / mx * 100).toFixed(1)}%;background:${col}` })));
+    out.replaceChildren(
+      bar('重算（Prefill 一个前缀 token）', tc, 'var(--p)'),
+      bar('从远端搬（这个 token 的 KVCache）', tx, 'var(--o)'),
+      el('div', { class: 'kv' },
+        el('span', {}, '每 token KVCache'), el('span', {}, fmt(bytes / 1024, 0) + ' KB'),
+        el('span', {}, '1 万 token 前缀'), el('span', {}, `重算 ${fmt(tc * 1e4, 2)} s，搬运 ${fmt(tx * 1e4, 2)} s`),
+        el('span', {}, '搬运胜出所需带宽'), el('span', {}, '≥ ' + fmt(be, 1) + ' Gbps')),
+      el('div', { class: 'status' }));
+    out.lastChild.innerHTML = win ? `<b>搬更快</b>：比重算快 ${fmt(tc / tx, 1)} 倍，而且省下了 GPU 算力。带宽掉到 ${fmt(be, 1)} Gbps 以下（KVCache 落到慢盘、网络拥挤）结论就会反转。` : `<span class="bad">重算更快</span>：当前带宽下搬运比重算慢 ${fmt(tx / tc, 1)} 倍。带宽至少要 ${fmt(be, 1)} Gbps 才划算。`;
+    eq.textContent = `算力/带宽 = ${fmt(F.v * 1e12 * U.v / 100 / (BW.v * 1e9 / 8), 0)} FLOP/B  vs  6·g·hd = 6×${m.g}×${m.hd} = ${fmt(6 * m.g * m.hd, 0)} FLOP/B`;
+  };
+  [F, U, BW].forEach((s) => s.input.addEventListener('input', draw));
+  node.append(el('div', { class: 'ctrl' }, seg(M.map((m) => m.n), mi, (i) => { mi = i; draw(); })), el('div', { class: 'ctrl' }, F.wrap, U.wrap, BW.wrap), out, eq);
+  draw();
+});
+
+/* ---------- 04c 富裕仗 ---------- */
+reg('rich', (node) => {
+  const N = slider('HGX 机器数', 100, 2000, 100, 1000, (v) => v + ' 台');
+  const o = el('div', { class: 'kv' });
+  const draw = () => {
+    const n = N.v;
+    o.replaceChildren(
+      el('span', {}, 'GPU'), el('span', {}, (8 * n).toLocaleString('zh-CN') + ' 张'),
+      el('span', {}, 'RDMA 网卡'), el('span', {}, `${(9 * n).toLocaleString('zh-CN')} ~ ${(10 * n).toLocaleString('zh-CN')} 张`),
+      el('span', {}, '内存池（≥ 2 TB/台）'), el('span', {}, '≥ ' + fmt(2 * n / 1000, 1) + ' PB'),
+      el('span', {}, '网卡总带宽（按 100 Gbps 算）'), el('span', {}, '≥ ' + fmt(9 * n * 100 / 8 / 1000, 1) + ' TB/s'));
+  };
+  N.input.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, N.wrap), o); draw();
+});
+
+/* ---------- 05 算术强度 ---------- */
+reg('ai', (node) => {
+  let g = 1;
+  const RIDGE = 312e12 / 2.039e12;
+  const Bs = slider('batch', 0, 9, 1, 3, (v) => 2 ** v);
+  const root = svg('svg', { viewBox: '0 0 600 150', role: 'img', 'aria-label': '线性层与 attention 的算术强度对比' });
+  const stat = el('div', { class: 'status' });
+  const X0 = 110, X1 = 585, lx = (v) => X0 + Math.log10(Math.max(1, v)) / 3 * (X1 - X0);
+  const draw = () => {
+    const b = 2 ** Bs.v;
+    root.replaceChildren();
+    root.append(svg('rect', { x: lx(RIDGE), y: 10, width: X1 - lx(RIDGE), height: 100, style: 'fill:var(--t-soft);opacity:.5' }));
+    root.append(svg('text', { x: X1 - 4, y: 24, class: 'lbl', style: 'text-anchor:end;fill:var(--t)' }, '算力受限区'));
+    root.append(svg('text', { x: X0 + 4, y: 24, class: 'lbl' }, '带宽受限区'));
+    [[46, '线性层', b, 'var(--p)'], [86, 'Attention', g, 'var(--o)']].forEach(([y, lab, v, c]) => {
+      root.append(svg('text', { x: 4, y: y + 5, class: 'lbl big' }, lab));
+      root.append(svg('rect', { x: X0, y: y - 10, width: Math.max(3, lx(v) - X0), height: 20, rx: 4, style: `fill:${c}` }));
+      root.append(svg('text', { x: Math.min(lx(v) + 6, 540), y: y + 5, class: 'lbl', style: 'fill:var(--text)' }, '≈ ' + v));
+    });
+    root.append(svg('line', { x1: lx(RIDGE), x2: lx(RIDGE), y1: 10, y2: 112, style: 'stroke:var(--t);stroke-width:2;stroke-dasharray:5 4' }));
+    root.append(svg('line', { x1: X0, x2: X1, y1: 116, y2: 116, class: 'ax' }));
+    [1, 10, 100, 1000].forEach((v) => root.append(svg('text', { x: lx(v), y: 134, class: 'lbl mid' }, v)));
+    root.append(svg('text', { x: X1, y: 148, class: 'lbl', style: 'text-anchor:end' }, 'FLOP / 字节（对数轴）'));
+    stat.innerHTML = `batch = ${b}：线性层强度 ≈ ${b}，${b >= RIDGE ? '<b>已进入算力受限区</b>，GPU 的算力被用起来了' : '仍低于拐点 ≈ ' + fmt(RIDGE, 0) + '，加大 batch 还有收益'}；attention 强度 ≈ ${g}，<span class="bad">不管 batch 多大都卡在带宽上</span>。把 attention 挪到「带宽/$」更高的设备上，正是作者说的异构拆分。`;
+  };
+  Bs.input.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, Bs.wrap, seg(['MHA（g = 1）', 'GQA（g = 8）'], 0, (i) => { g = i ? 8 : 1; draw(); })), el('div', { class: 'scrollx' }, root), stat);
+  draw();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

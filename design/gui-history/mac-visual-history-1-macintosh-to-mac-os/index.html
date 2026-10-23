@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Mac 视觉史（一）：从 Macintosh 到 Mac OS</title>
+<meta name="description" content="陈子木《Mac 视觉史》第一篇的可视化讲解：用年代滑块看 System 1 到 Mac OS 9 的桌面线框演变，可点的命名时间线、512×342 屏幕的像素预算、MFS 与 HFS 的文件夹、System 7 色彩设置、Mac OS 8 命名背后的授权策略、8.5 文字抗锯齿，以及同一控件的跨版本并排对比。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --bezel:#d9d6cc; --scr-dim:1;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+    --bezel:#3a3d45; --scr-dim:.88;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  --bezel:#3a3d45; --scr-dim:.88;
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn,.toc-sheet,.toc-mask{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.prose{font-size:15px;margin:0 0 14px;max-width:760px}
+.prose + .prose{margin-top:-4px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig,.prose + .fig,.fig + .prose{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13.5px;color:var(--muted)}
+.panel b{color:var(--text)}
+.panel ul{margin:6px 0 0;padding-left:18px}
+.panel li{margin:2px 0}
+.panel li.nw{color:var(--text)}
+.panel li.nw::marker{color:var(--o)}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.status .bad{color:var(--r);font-weight:600}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted);cursor:pointer}
+.chk input{accent-color:var(--o)}
+
+/* SVG 通用 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 「屏幕」：画的是当年的像素，所以屏幕内部用固定颜色；外框跟随主题 */
+.screen{background:var(--bezel);border-radius:14px;padding:10px;max-width:640px;margin:0 auto}
+.screen svg{border-radius:8px;filter:brightness(var(--scr-dim))}
+.gui text{font-family:"Chicago","Charcoal","Geneva",var(--font)}
+
+/* 年代滑块 */
+.era-ticks{display:grid;grid-template-columns:repeat(7,1fr);font-size:11px;color:var(--muted);text-align:center;margin-top:2px;max-width:640px;margin-left:auto;margin-right:auto}
+.era-ticks button{border:0;background:none;padding:4px 0;cursor:pointer;color:var(--muted);font-size:11px;line-height:1.3}
+.era-ticks button.on{color:var(--p);font-weight:700}
+.era-range{width:100%;max-width:640px;display:block;margin:12px auto 0;accent-color:var(--p)}
+
+/* 时间线 */
+.tbar{display:flex;height:34px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.tbar button{border:0;cursor:pointer;padding:0;min-width:0;font-size:11px;color:var(--text);opacity:.55;transition:opacity .2s}
+.tbar button.on{opacity:1;outline:2px solid var(--text);outline-offset:-2px}
+.tyears{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer}
+.chip.on{border-color:var(--p);background:var(--p-soft);color:var(--p);font-weight:600}
+.chip i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;vertical-align:0}
+
+/* 控件对比 */
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (min-width:760px){ .cmp{grid-template-columns:repeat(4,1fr)} }
+.cmp figure{margin:0;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface-2)}
+.cmp figcaption{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
+.cmp figcaption b{color:var(--text);display:block;font-size:12.5px}
+.cmp svg{border-radius:6px;filter:brightness(var(--scr-dim))}
+
+/* 图标测验 */
+.icons{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:520px}
+.ic{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 4px 6px;cursor:pointer;text-align:center;font-size:12px;color:var(--muted)}
+.ic svg{margin:0 auto;width:48px;height:48px;filter:brightness(var(--scr-dim))}
+.ic .nm{min-height:1.4em;display:block;margin-top:4px}
+.ic.shown .nm{color:var(--text);font-weight:600}
+.ic:focus-visible,.pick:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+
+/* 名字对齐 */
+.letters{display:grid;gap:6px;justify-content:center}
+.letters .row{display:flex;gap:4px;align-items:center}
+.letters .row span{width:30px;height:34px;border:1px solid var(--line);border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:18px;background:var(--surface-2)}
+.letters .row span.gap{border-style:dashed;background:none;color:var(--muted)}
+.letters .row span.diff{background:var(--o-soft);border-color:var(--o);color:var(--o);font-weight:700}
+.letters .row em{font-style:normal;font-size:12px;color:var(--muted);width:92px;text-align:right;margin-right:6px}
+@media (max-width:420px){ .letters .row span{width:24px;height:30px;font-size:15px} .letters .row em{width:62px;font-size:11px} }
+
+/* 小卡片 */
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+/* 步骤 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:14px}
+.steps{display:grid;gap:8px}
+
+/* 本页补充（非原文） */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p);word-break:break-all}
+footer ol{padding-left:20px;margin:8px 0}
+
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+.mark-new{animation:pulse 1.4s ease-in-out 2}
+@keyframes pulse{50%{opacity:.25}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Mac 视觉史（一）</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Mac 视觉史 01</div>
+  <h1>Mac 视觉史（一）：从 Macintosh 到 Mac OS</h1>
+  <p class="sub">1984 年的 512×342 黑白屏，到 1999 年带拉丝金属的 Mac OS 9：Classic Mac OS 十五年的界面怎样一步步长出颜色、光影和层次，名字又是怎样从「没有名字」变成 Mac OS 的。</p>
+  <div class="thesis">Mac 的图形界面始于施乐，成于乔布斯，在迭代中一步步完善：第一个系列在交互框架上高度延续，一直在模拟现实世界的元素，并在当时的屏幕条件下尽量提供最好的视觉体验。<sup class="c">[1]</sup></div>
+  <div class="hero-art">
+    <div class="cap" style="font-size:13px;color:var(--muted);margin-bottom:10px"><b style="color:var(--text)">拖动年代滑块</b>：同一张桌面在七个版本里的示意线框（不是截图还原）。橙色虚线框标出这一版相对上一版的变化；点右下角垃圾桶试试它有几种状态。</div>
+    <div data-demo="era"></div>
+  </div>
+  <div class="authors"><span class="au"><i>陈</i>陈子木</span><span class="au"><i>少</i>少数派（转载）</span><span class="au"><i>优</i>优设网（首发）</span></div>
+  <p class="meta">原文：《Mac 视觉史（一）：从 Macintosh 到 Mac OS》，陈子木，少数派（2020-05-19），首发于优设网，原题《Mac 视觉史 vol.1：从 Macintosh 到 Mac OS》。本页按原文的章节顺序讲解，原文中的界面截图全部改为示意性的线框与色块重绘；另加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="names" data-title="两大系列，四个名字">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>两大系列，四个名字</h2>
+    <p class="lead">我们口中的「Mac 系统」到底指哪个系统？它在不同年代分别叫什么？</p>
+  </div>
+  <p class="prose">原文先把 Mac 系统分成两大系列：随 Macintosh 发布、一直到 1999 年 Mac OS 9 的第一个系列，统称 Classic Mac OS；2001 年之后的 Mac OS X 系列（X 是罗马数字 10）包括今天的 macOS，是第二个系列。名字则先后有四个：Macintosh、Mac OS、Mac OS X（中间有一段叫 OS X）、macOS。</p>
+  <div class="fig">
+    <div class="cap"><b>点色条或下面的名字</b>，看每个名字覆盖了哪些版本、为什么改名。色条宽度按年份比例画。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文写「1982 年随 Macintosh 发布的系统」，但第一台 Macintosh 是 1984 年 1 月 24 日开售的，Classic Mac OS 的起点应为 1984 年。原文注释里「OS 本就是 Operation System 的缩写」应为 Operating System（原文评论区已有读者指出）。「Mac OS」标志最早出现在 System 7.5.1 的启动画面上，7.6 版正式改名 Mac OS。<sup class="c">[2][5]</sup></div>
+</section>
+
+<section class="ch" id="xerox" data-title="向施乐偷师">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>图形化界面：向施乐偷师</h2>
+    <p class="lead">Macintosh 不是最早的图形界面，那它比前辈强在哪里？</p>
+  </div>
+  <p class="prose">通行的看法是，图形用户界面来自施乐帕罗奥托研究中心（Xerox PARC），最早使用图形界面的电脑是当时还在研发中的 Xerox Alto。比尔·盖茨曾指责乔布斯从施乐「偷」走了 GUI，但原文指出：乔布斯去 PARC 观摩 Alto 和开发工具 Smalltalk 的机会，是拿股权换来的。原文的评价是，Alto 的界面的确图形化了，但用今天的眼光看「整体的界面逻辑并不清晰」；Macintosh 在设计细节和实现上后来居上。</p>
+  <div class="fig">
+    <div class="cap"><b>示意对比</b>：左边是 Alto 上 Smalltalk 环境的典型布局（竖屏、多个文字窗格互相叠放、菜单要在窗格里弹出），右边是 1984 年 Macintosh 的布局（顶部固定菜单栏、带标题栏的窗口、桌面图标）。两张都是线框，不是截图。</div>
+    <div class="grid2">
+      <div data-demo="alto"></div>
+      <div data-demo="mac84"></div>
+    </div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Alto 于 1973 年在 PARC 完成。乔布斯 1979 年带 Apple 工程师参观 PARC；与之相关的交换通常被描述为施乐获准在苹果上市前认购一批苹果股票（本页凭记忆补充，未逐一核对具体股数与金额）。Macintosh 的「固定在屏幕顶部的菜单栏」与 Alto 上 Smalltalk 的弹出式菜单是两种不同的思路。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="name" data-title="Macintosh 的名字来源">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>规避纠纷：Macintosh 的名字来源</h2>
+    <p class="lead">为什么是「Macintosh」，而不是那种苹果本来的拼法「McIntosh」？</p>
+  </div>
+  <p class="prose">1979 年，项目发起者 Jef Raskin 想用自己最喜欢的苹果品种 McIntosh 命名。但纽约有一家做高端音响的公司叫 McIntosh Laboratory，为避开商标冲突，Raskin 把拼写改成 Macintosh，「故意错开了一个字母」。</p>
+  <div class="fig">
+    <div class="cap"><b>逐字母对齐</b>：橙色是两种拼写不一样的位置。</div>
+    <div class="letters" id="lettersBox"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">1984 年 Macintosh 上市。主板由 Burrell Smith 设计，屏幕是一块 512×342 的单色显示屏。原文说，在这块「寸土寸金」的单色屏幕上，系统要把图形界面的价值尽量发挥出来。下面算一算这块屏幕到底有多「贵」。</p>
+  <div class="fig">
+    <div class="cap"><b>选一种屏幕</b>：矩形按真实像素数同比例画出；数字在页面里现场计算。帧缓冲大小 = 宽 × 高 × 每像素位数 ÷ 8。</div>
+    <div data-demo="pixels"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Macintosh 128K 的屏幕为 9 英寸单色 CRT，512×342 像素、72 像素每英寸，主板由 Burrell Smith 设计，1984 年 1 月 24 日开售，售价 2495 美元。<sup class="c">[5]</sup>它没有独立显存，屏幕缓冲占用的就是那 128 KB 主内存的一部分。Alto 屏幕 606×808、Macintosh II 的 640×480 与 256 色是本页凭记忆给出的参考值，未逐一核对。</div>
+</section>
+
+<section class="ch" id="official" data-title="正式拥有姓名">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>Macintosh 系统：正式拥有姓名</h2>
+    <p class="lead">Macintosh 电脑名满天下的时候，它的操作系统叫什么？</p>
+  </div>
+  <p class="prose">答案是：没有正式名字。1.x 系列只有一个非正式的称呼 System 1，之后的大版本也顺着叫 System 2、System 3……直到 System 5，这个系统才算正式有了 Macintosh 的名字，完整名称是 Macintosh System Software。</p>
+  <div class="cards">
+    <div class="card"><span class="k">System 1–4</span><h3>没有官方名</h3><p>「System 1」只是非正式叫法，用版本号代替名字。</p></div>
+    <div class="card"><span class="k">System 5 起</span><h3>Macintosh System Software</h3><p>系统第一次有了正式名称。</p></div>
+    <div class="card"><span class="k">第 7 个大版本</span><h3>Mac OS</h3><p>原文：Mac OS 这一称谓在第 7 个大版本时提出，见第 08 节。</p></div>
+  </div>
+</section>
+
+<section class="ch" id="s15" data-title="System 1–5：功能迭代">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>System 1 - System 5：功能迭代</h2>
+    <p class="lead">受限于屏幕和性能，System 1 到 4 的外观差别不大。那这几代到底在变什么？</p>
+  </div>
+  <p class="prose">System 1 开机有一个可爱的欢迎界面；菜单与窗口的概念清晰，比 Alto 成熟；左上角的苹果图标打开后本质上是一个程序列表；出错时报错界面用炸弹图标提示（原文说 1984 年的崩溃界面比 2000 年后的 Windows 蓝屏有趣）；Macintosh 还从一开始就为自己设计了一系列字体，其中的 San Francisco 多年后还有了一款同名的系统默认字体。</p>
+  <div class="fig">
+    <div class="cap"><b>触发一次「系统错误」</b>：线框示意那个带炸弹的报错框。</div>
+    <div data-demo="bomb"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">原文特别提到：在 System 1 里，<b>文件夹是一个虚拟概念</b>，文件系统中根本不存在文件夹，它只是模仿现实文件夹的界面概念；到 System 3，文件夹「也不再只是一个虚拟的概念了」，垃圾桶也有了「有文件」和「已清空」两种状态（顶部滑块切到 System 3 点垃圾桶可见）。</p>
+  <div class="fig">
+    <div class="cap"><b>同一个 Finder 窗口，磁盘上怎么存？</b>切换文件系统，再点左侧任一文件，看它在磁盘上的位置。</div>
+    <div data-demo="fs"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：System 1 用的是 MFS（Macintosh File System），一个平面文件系统：磁盘上所有文件在同一层，文件夹只是 Finder 为每个文件记下的「显示在哪个文件夹里」的信息。之后的 HFS（Hierarchical File System，层级文件系统）才在磁盘上真正建立目录树。平面结构的一个后果是同一张盘上不能有两个同名文件，即便它们「在」不同文件夹里（本页凭记忆补充，未逐条核对）。</div>
+  <p class="prose" style="margin-top:14px">从 System 1 到 System 4 功能一代代增加，图标和界面细节越来越丰富，比如控制面板就比 System 1 时代丰富许多。System 5 加入了多任务功能 MultiFinder，用户终于可以同时运行多个任务，不过受性能限制，跑多任务时会比单任务慢不少。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：MultiFinder 是协作式多任务，在 System 5、6 中可选；System 7 起成为强制的默认模式，正在运行的程序列表也从苹果菜单移到了菜单栏右侧单独的「应用程序菜单」。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="s6" data-title="System 6：集大成">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>System 6：集大成的版本</h2>
+    <p class="lead">黑白时代的最后一个大版本，它「集」了什么？</p>
+  </div>
+  <p class="prose">原文称 System 6 是阶段性集大成的版本：系统版本与软件版本在 System 6 统一，功能也相当完善。性能更强的 Macintosh SE/30 和笔记本 Macintosh Portable 也是在 System 6 更新期间发售的。在顶部滑块里，System 5/6 的变化是菜单栏右侧多了一个表示当前程序的小图标（MultiFinder）。</p>
+  <div class="cards">
+    <div class="card"><span class="k">系统</span><h3>版本号统一</h3><p>系统与各组件软件的版本号对齐。</p></div>
+    <div class="card"><span class="k">硬件</span><h3>Macintosh SE/30</h3><p>一体机外形，性能更强。</p></div>
+    <div class="card"><span class="k">硬件</span><h3>Macintosh Portable</h3><p>苹果的笔记本电脑。</p></div>
+  </div>
+</section>
+
+<section class="ch" id="s7" data-title="System 7：有了色彩">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>System 7：拥有色彩的新世代</h2>
+    <p class="lead">1991 年黑白界面时代结束。有了颜色，界面设计多了哪些能力，又暴露了哪些问题？</p>
+  </div>
+  <p class="prose">从 System 7 开始，Macintosh 有了彩色界面：图标拟真度再次提升（垃圾桶的光影已经相当逼真），用户可以按偏好做全局色彩设置；软件安装的进度指示清晰明确；重要信息标红强调；受分辨率限制，按钮的阴影与凸起做得比较简单，但整体始终在模拟现实元素（计算器、键盘最典型），以减轻认知负荷；系统还内置了交互式帮助。</p>
+  <div class="fig">
+    <div class="cap"><b>全局色彩设置</b>：选一种高亮色和窗口色，看示意窗口与选中的文字如何一起变。</div>
+    <div data-demo="colors"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">原文也指出了问题：控制面板的图标统一性提升了，风格有时代特征，但「信息的传达还不够优秀，如果没有文本标签，你很难判断每个按钮对应的功能是什么」。</p>
+  <div class="fig">
+    <div class="cap"><b>不看标签猜功能</b>：下面是 8 个控制面板风格的示意图标（本页自绘，不是原图）。先猜，再点图标揭晓；也可以一键显示全部标签。</div>
+    <div data-demo="iconquiz"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">System 7 这一阶段，大量兼容机和包括 Windows 在内的操作系统涌现，苹果在激烈竞争中推出了一系列新 Macintosh，也想出了新策略，这一策略促成 Macintosh 系统后来成为独立品牌。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：System 7 于 1991 年 5 月 13 日发布，新特性列表里写的是「为支持彩色的机器提供新的彩色化界面」；原文说的「交互式帮助系统」即气球帮助（Balloon Help），鼠标悬停时弹出说明气泡，类似今天的工具提示。<sup class="c">[3]</sup>彩色显示的硬件支持早于 System 7（1987 年的 Macintosh II 已能显示彩色），System 7 是让系统界面本身彩色化（此点本页凭记忆补充）。</div>
+</section>
+
+<section class="ch" id="macos" data-title="Mac OS：品牌重构">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>Mac OS：第一次品牌重构</h2>
+    <p class="lead">非苹果生产的电脑也能跑 Macintosh 系统，那开机画面上该写什么？</p>
+  </div>
+  <p class="prose">为应对竞争，这一阶段的 Macintosh 逐步换用 PowerPC 架构的 CPU，苹果还授权第三方厂商用同架构的芯片和主板，安装 System 7（例如 StarMax 兼容机）。于是问题来了：非苹果的电脑上也会显示「Macintosh」字样，怎么和原装机区分？办法很简单：原装机上依然写 Macintosh，兼容机上则是「黑苹果」：Mac OS。</p>
+  <div class="fig">
+    <div class="cap"><b>切换机器</b>，看启动画面的区别（线框示意）。</div>
+    <div data-demo="boot"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">原文说，当时很多人以为这只是临时的差异化方案；而乔布斯即将重掌苹果，打算终结前 CEO 的第三方授权策略。改名 Mac OS 就是解决方案，「只不过这个解决方案后面还有其他的深意。因为后面还有新系统。」</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：Mac 兼容机（clone）主要出现在 1995 至 1997 年间，乔布斯回归后终止了授权计划。<sup class="c">[2]</sup>原文写「1996 年乔布斯重回苹果」：1996 年底苹果宣布收购 NeXT，乔布斯随之回到苹果。</div>
+</section>
+
+<section class="ch" id="os8" data-title="Mac OS 8：一石二鸟">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>Mac OS 8：一石二鸟的更新</h2>
+    <p class="lead">一个本该叫 7.7 的版本，为什么直接叫 8？</p>
+  </div>
+  <p class="prose">Mac OS 8 于 1997 年 7 月 26 日发布。原文说它并非真正意义上的大版本更新，原本应该是 Mac OS 7.7；但前 CEO 与第三方厂商签订的授权协议基于 Macintosh System 7，直接发布 8.0，就等于借命名把后续服务和协议一起断掉，新名字也和原来的 Macintosh 区分开，「釜底抽薪的一招绝杀」。</p>
+  <div class="fig">
+    <div class="cap"><b>拖动版本号</b>：看授权协议是否还覆盖它（按原文的说法示意）。</div>
+    <div data-demo="license"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">在更好的硬件上，Mac OS 8 的显示效果一下子进入「高清」时代。底层仍继承自 System 7，但吸收了 Copland 项目的不少遗产，视觉和体验提升明显：加入了主题选择，多媒体软件有炫酷效果，苹果菜单依然是程序列表，类 2.5D 的图标是那个时代的流行风尚。到 Mac OS 8.5，文本抗锯齿让文字更易读，光影更柔和，界面元素更复杂，原文的评价是「不会弱于同时代的任何系统」，但「也仅仅只是不弱于对手而已」。</p>
+  <div class="fig">
+    <div class="cap"><b>文本抗锯齿是什么</b>：把一行小字放大到像素级。关闭时每个像素只能非黑即白；开启后边缘用灰阶过渡。可以改文字、调放大倍数。</div>
+    <div data-demo="smooth"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Mac OS 8 的早期测试版确实以「Mac OS 7.7」命名，代号 Tempo；新的「Platinum」外观随 8.0 到来。系统级的主题切换是在 8.5 的测试版里出现的（有 Gizmo、HiTech 等主题），正式版上市前被临时拿掉，只留 Platinum，所以原文「Mac OS 8 加入了主题选择」宜理解为外观管理器打下的基础。8.5 引入了系统级的字体平滑（Font Smoothing）。<sup class="c">[4]</sup>原文说 Mac OS 8 发布的同月乔布斯「正式任命为 CEO」：同年 7 月前任 CEO Gil Amelio 离职，乔布斯出任临时 CEO 一般记为 1997 年 9 月（本页凭记忆补充，未核对）。</div>
+</section>
+
+<section class="ch" id="os9" data-title="Mac OS 9：权宜之计">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>Mac OS 9：争取时间的权宜之计</h2>
+    <p class="lead">第一个系列的最后一版，已经在为下一代系统预演哪些视觉元素？</p>
+  </div>
+  <p class="prose">和 Mac OS 8 类似，Mac OS 9 原本应作为 8.7 发布。乔布斯回归并发布 Mac OS 8 之后，它的命运就注定了：为老硬件和老用户更新，并继续为真正的新系统争取时间。Mac OS 9 于 1999 年 10 月 23 日发布，宣传语是「有史以来网络功能最好的操作系统」。乔布斯重组的设计团队已经为新系统挑好了设计语言，OS 9 里也适当加入了一些：播放器软件的不锈钢拉丝效果、窗口元素细腻的光影起伏、搜索应用的内阴影与高度拟物的小图标。原文还指出，OS 9 里已能找到许多现代 UI 原则：有逻辑的分组、容纳多个并列分组的标签页、帮助和安装界面层级丰富的排版，以及当年令人惊艳的文字投影。</p>
+  <div class="fig">
+    <div class="cap"><b>同一控件，跨版本并排</b>：选一种控件，看它在 System 1、System 7、Mac OS 8（Platinum）、Mac OS 9 里的示意画法。</div>
+    <div data-demo="controls"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：维基百科的版本表也把 8.7 列为 Mac OS 9 最初的内部版本号之一，发布日期 1999 年 10 月 23 日与原文一致。<sup class="c">[2]</sup>原文所说的拉丝金属播放器指当时的 QuickTime 播放器；拉丝金属后来在 Mac OS X 里成为一整套窗口风格（属于本系列后续篇目的内容）。</div>
+</section>
+
+<section class="ch" id="end" data-title="第一系列收官">
+  <div class="ch-head">
+    <span class="num">11</span>
+    <h2>Mac 系统第一系列自此收官</h2>
+    <p class="lead">十五年、九个大版本，原文最后总结出哪几条？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「下一条」逐条展开原文的五点总结。</div>
+    <div data-demo="summary"></div>
+    <div class="final">自家电脑，用自家系统：Classic Mac OS 在交互框架上一脉相承，在每一代的屏幕条件下把模拟现实的视觉做到极致。但从 System 7 开始危机已经出现，1991 到 1999 年暗地里发生的事，是下一篇的内容。</div>
+    <p class="src">原文结尾预告：下一篇依然是 Mac 系统的视觉史，内容包括 Windows、NeXTSTEP、BeOS，当然还有 Mac OS X。</p>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据陈子木的《<a href="https://sspai.com/post/60484">Mac 视觉史（一）：从 Macintosh 到 Mac OS</a>》（少数派，2020-05-19 经授权转载；首发于优设网，原题《Mac 视觉史 vol.1：从 Macintosh 到 Mac OS》）制作。原文中的截图与插图均已改用内联 SVG、canvas 和 JS 做示意性重绘，未引用外链图片；线框不代表各版本界面的像素级原貌。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>陈子木，《Mac 视觉史（一）：从 Macintosh 到 Mac OS》，少数派（2020-05-19）。原文所附参考链接：history-computer.com 的 Macintosh 条目、Wikipedia 的 Xerox Alto / System 7 / Macintosh clone / Classic Mac OS 条目、apple.com/macos 的 2000 年存档、Apple Wiki 的 Mac OS 8.5 条目、versionmuseum.com 的 Classic Mac OS 历史。</li>
+    <li>Wikipedia 条目 Classic Mac OS：Macintosh 于 1984-01-24 发布；System 7.5.1 首次在启动画面显示「Mac OS」标志，7.6 正式改名；兼容机 1995–1997；Mac OS 9 于 1999-10-23 发布，8.7 列为其初始版本号。<a href="https://en.wikipedia.org/wiki/Classic_Mac_OS">链接</a></li>
+    <li>Wikipedia 条目 System 7：1991-05-13 发布；彩色化界面；Balloon Help；MultiFinder 成为强制。<a href="https://en.wikipedia.org/wiki/System_7">链接</a></li>
+    <li>Wikipedia 条目 Mac OS 8：1997-07-26 发布；测试版称 7.7；Platinum 外观；8.5 的主题功能在正式版前被移除；8.5 的 Font Smoothing。<a href="https://en.wikipedia.org/wiki/Mac_OS_8">链接</a></li>
+    <li>Wikipedia 条目 Macintosh 128K：512×342 单色屏、72 ppi；Burrell Smith 设计主板；1979 年 Apple 工程师参观 PARC。<a href="https://en.wikipedia.org/wiki/Macintosh_128K">链接</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面线框均为示意，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const S = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', 'aria-pressed': i === init ? 'true' : 'false', onclick: () => { set(i); onPick(i, o); } }, o));
+  const set = (i) => bs.forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); });
+  box.append(...bs); box.set = set;
+  return box;
+};
+const keyAct = (node, fn) => { node.addEventListener('click', fn); node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } }); };
+let uid = 0;
+const K = '#111', W = '#fff';
+/* 1-bit 抖动灰：屏幕像素用固定色 */
+const dither = (svgRoot, a = K, b = W, size = 2) => {
+  const id = 'd' + (++uid);
+  svgRoot.append(S('defs', {}, S('pattern', { id, width: size * 2, height: size * 2, patternUnits: 'userSpaceOnUse' },
+    S('rect', { width: size * 2, height: size * 2, fill: b }), S('rect', { width: size, height: size, fill: a }), S('rect', { x: size, y: size, width: size, height: size, fill: a }))));
+  return `url(#${id})`;
+};
+const grad = (svgRoot, stops, vertical = true) => {
+  const id = 'g' + (++uid);
+  svgRoot.append(S('defs', {}, S('linearGradient', { id, x1: 0, y1: 0, x2: vertical ? 0 : 1, y2: vertical ? 1 : 0 }, ...stops.map(([o, c]) => S('stop', { offset: o, 'stop-color': c })))));
+  return `url(#${id})`;
+};
+const APPLE = 'M8 6C5 6 3 8.5 3 11.5 3 15 5.5 18 7.5 18 8.5 18 9 17.4 10 17.4 11 17.4 11.5 18 12.5 18 14.5 18 17 15 17 11.5 17 8.5 15 6 12 6 11 6 10.5 6.6 10 6.6 9.5 6.6 9 6 8 6ZM10 6C10 4 11.5 2.5 13 2.3 13 4 11.5 5.6 10 6Z';
+const RAINBOW = ['#5ebd3e', '#ffb900', '#f78200', '#e23838', '#973999', '#009cdf'];
+const appleGlyph = (root, x, y, s, rainbow) => {
+  const g = S('g', { transform: `translate(${x},${y}) scale(${s})` });
+  if (!rainbow) { g.append(S('path', { d: APPLE, fill: K })); return g; }
+  const id = 'c' + (++uid);
+  root.append(S('defs', {}, S('clipPath', { id }, S('path', { d: APPLE }))));
+  const st = S('g', { 'clip-path': `url(#${id})` });
+  RAINBOW.forEach((c, i) => st.append(S('rect', { x: 0, y: 2 + i * 2.7, width: 20, height: 2.8, fill: c })));
+  g.append(st); return g;
+};
+
+/* ============ 共用：窗口、图标的示意画法（style: mono / color / plat / metal） ============ */
+function titleBar(g, x, y, w, style, title, opts = {}) {
+  const h = 18;
+  if (style === 'metal') {
+    return; // 拉丝金属窗口单独画
+  }
+  const plat = style === 'plat';
+  g.append(S('rect', { x, y, width: w, height: h, fill: plat ? '#dddddd' : W }));
+  const lc = style === 'mono' ? K : plat ? '#a2a2a2' : '#8a8a8a';
+  for (let i = 0; i < 6; i++) g.append(S('line', { x1: x + 3, x2: x + w - 3, y1: y + 4 + i * 2 + .5, y2: y + 4 + i * 2 + .5, stroke: lc, 'stroke-width': 1 }));
+  const tw = title.length * 6.4 + 14;
+  g.append(S('rect', { x: x + w / 2 - tw / 2, y: y + 2, width: tw, height: h - 4, fill: plat ? '#dddddd' : W }));
+  g.append(S('text', { x: x + w / 2, y: y + 13, 'text-anchor': 'middle', 'font-size': 10.5, 'font-weight': 700, fill: K }, title));
+  const box = (bx) => {
+    if (style === 'mono') { g.append(S('rect', { x: bx - 6, y: y + 3, width: 12, height: 12, fill: W, stroke: K })); return; }
+    g.append(S('rect', { x: bx - 6, y: y + 3, width: 12, height: 12, fill: plat ? '#e9e9e9' : W, stroke: plat ? '#555' : K }));
+    g.append(S('path', { d: `M${bx - 5} ${y + 13}V${y + 4}H${bx + 5}`, stroke: W, fill: 'none' }));
+    g.append(S('path', { d: `M${bx - 5} ${y + 14}H${bx + 5}V${y + 4}`, stroke: '#888', fill: 'none' }));
+  };
+  const lbx = x + 14; g.append(S('rect', { x: lbx - 8, y: y + 2, width: 16, height: 14, fill: plat ? '#dddddd' : W })); box(lbx);
+  if (style !== 'mono') {
+    const r1 = x + w - 14; g.append(S('rect', { x: r1 - 8, y: y + 2, width: 16, height: 14, fill: plat ? '#dddddd' : W })); box(r1);
+    g.append(S('rect', { x: r1 - 4, y: y + 5, width: 6, height: 6, fill: 'none', stroke: '#555' }));
+    if (plat) { const r2 = x + w - 32; g.append(S('rect', { x: r2 - 8, y: y + 2, width: 16, height: 14, fill: '#dddddd' })); box(r2); g.append(S('line', { x1: r2 - 4, x2: r2 + 4, y1: y + 9, y2: y + 9, stroke: '#555' })); }
+  }
+  if (opts.line !== false) g.append(S('line', { x1: x, x2: x + w, y1: y + h, y2: y + h, stroke: plat ? '#666' : K }));
+}
+function folderIcon(g, x, y, style, label, shadow) {
+  const fill = style === 'mono' ? W : style === 'color' ? '#c9c9f5' : '#a9a9ec';
+  const stroke = style === 'mono' ? K : '#33335a';
+  if (shadow) g.append(S('path', { d: `M${x + 3} ${y + 7}h10l3 3h16v18h-29z`, fill: 'rgba(0,0,0,.25)' }));
+  g.append(S('path', { d: `M${x} ${y + 4}h10l3 3h16v18h-29z`, fill, stroke, 'stroke-width': 1 }));
+  if (style === 'plat') g.append(S('path', { d: `M${x + 1} ${y + 10}h27`, stroke: '#d7d7fb', 'stroke-width': 1.2 }));
+  if (label) {
+    const tw = label.length * 4.9 + 6;
+    g.append(S('rect', { x: x + 14.5 - tw / 2, y: y + 27, width: tw, height: 11, fill: W }));
+    g.append(S('text', { x: x + 14.5, y: y + 35.5, 'text-anchor': 'middle', 'font-size': 8.5, fill: K }, label));
+  }
+}
+function scrollV(g, x, y, h, style) {
+  const plat = style === 'plat';
+  const dfill = style === 'mono' ? g.__dither : style === 'color' ? '#cccccc' : '#b4b4b4';
+  g.append(S('rect', { x, y, width: 14, height: h, fill: dfill, stroke: plat ? '#666' : K }));
+  [y, y + h - 14].forEach((yy, i) => {
+    g.append(S('rect', { x, y: yy, width: 14, height: 14, fill: plat ? '#e2e2e2' : W, stroke: plat ? '#666' : K }));
+    const t = i === 0 ? `M${x + 3} ${yy + 10}L${x + 7} ${yy + 4}L${x + 11} ${yy + 10}Z` : `M${x + 3} ${yy + 4}L${x + 7} ${yy + 10}L${x + 11} ${yy + 4}Z`;
+    g.append(S('path', { d: t, fill: style === 'mono' ? W : '#333', stroke: K, 'stroke-width': style === 'mono' ? 1 : 0 }));
+  });
+  const ty = y + 20;
+  g.append(S('rect', { x: x + (plat ? 1 : 0), y: ty, width: plat ? 12 : 14, height: 16, fill: plat ? '#9c9cd9' : W, stroke: plat ? '#444' : K }));
+  if (plat) for (let i = 0; i < 3; i++) g.append(S('line', { x1: x + 4, x2: x + 10, y1: ty + 5 + i * 3, y2: ty + 5 + i * 3, stroke: '#2e2e66' }));
+}
+function trashIcon(g, x, y, style, full, label = 'Trash') {
+  const fill = style === 'mono' ? W : style === 'color' ? '#d6d6d6' : null;
+  let bodyFill = fill;
+  if (style === 'plat') bodyFill = grad(g.ownerSVGElement || g, [[0, '#f2f2f2'], [.55, '#bdbdbd'], [1, '#8d8d8d']], false);
+  if (full) {
+    g.append(S('path', { d: `M${x + 3} ${y + 8}q5 -9 10 -2q4 -8 9 0z`, fill: style === 'mono' ? W : '#f4f0d0', stroke: K }));
+    g.append(S('path', { d: `M${x} ${y + 3}l24 -5l1 3l-24 5z`, fill: bodyFill, stroke: K }));
+  } else g.append(S('rect', { x: x - 1, y: y + 4, width: 26, height: 4, fill: bodyFill, stroke: K }));
+  g.append(S('path', { d: `M${x + 1} ${y + 8}h22l-2 ${full ? 23 : 21}h-18z`, fill: bodyFill, stroke: K }));
+  for (let i = 0; i < 3; i++) g.append(S('line', { x1: x + 7 + i * 5, x2: x + 7 + i * 5, y1: y + 11, y2: y + 26, stroke: style === 'mono' ? K : '#555' }));
+  if (style === 'plat') g.append(S('path', { d: `M${x + 4} ${y + 32}h20`, stroke: 'rgba(0,0,0,.3)', 'stroke-width': 2 }));
+  const tw = label.length * 5 + 6;
+  g.append(S('rect', { x: x + 12 - tw / 2, y: y + 33, width: tw, height: 11, fill: W }));
+  g.append(S('text', { x: x + 12, y: y + 41.5, 'text-anchor': 'middle', 'font-size': 8.5, fill: K }, label));
+}
+
+/* ======================= 00 年代滑块：一张桌面看十五年 ======================= */
+const ERAS = [
+  { id: 's1', name: 'System 1', short: 'Sys 1', year: '1984', style: 'mono', menus: ['File', 'Edit', 'View', 'Special'], trash2: false, disk: 'floppy', mf: false, help: false, metal: false, desk: 'dither', changes: [],
+    feats: ['开机有可爱的欢迎界面', '菜单与窗口概念清晰，比 Xerox Alto 成熟', '左上角苹果菜单本质上是一个程序列表', '文件夹只是界面概念，文件系统里不存在', '出错时用炸弹图标提示', '自带一系列系统字体（如 San Francisco）', '可以玩游戏'] },
+  { id: 's3', name: 'System 3', short: 'Sys 3', year: '1986', style: 'mono', menus: ['File', 'Edit', 'View', 'Special'], trash2: true, disk: 'floppy', mf: false, help: false, metal: false, desk: 'dither', changes: ['trash', 'window'],
+    feats: ['垃圾桶区分「有垃圾文件」与「已清空」两种状态', '新增欢迎界面', '文件夹不再只是虚拟概念', '游戏更精美；控制面板细节更丰富', '整体观感与 System 1 差别不大'] },
+  { id: 's6', name: 'System 5/6', short: 'Sys 5/6', year: '1987–88', style: 'mono', menus: ['File', 'Edit', 'View', 'Special'], trash2: true, disk: 'hd', mf: true, help: false, metal: false, desk: 'dither', changes: ['mf'],
+    feats: ['System 5 加入 MultiFinder 多任务（跑多任务时更慢）', 'System 5 起正式命名为 Macintosh System Software', 'System 6 统一了系统与软件的版本号，集大成', 'SE/30、Macintosh Portable 在此期间发售'] },
+  { id: 's7', name: 'System 7', short: 'Sys 7', year: '1991', style: 'color', menus: ['File', 'Edit', 'View', 'Label', 'Special'], trash2: true, disk: 'hd', mf: true, help: true, metal: false, desk: 'gray', changes: ['apple', 'window', 'icons', 'help', 'trash'],
+    feats: ['彩色用户界面，苹果标志变成彩虹色', '图标拟真度提升（垃圾桶有光影）', '用户可做全局色彩设置', '安装进度清晰、重要信息标红', '计算器、键盘等拟物设计', '内置交互式帮助（菜单栏的问号）', '控制面板图标统一，但缺文本标签不易辨认'] },
+  { id: 'o8', name: 'Mac OS 8', short: 'OS 8', year: '1997', style: 'plat', menus: ['File', 'Edit', 'View', 'Special', 'Help'], trash2: true, disk: 'hd', mf: true, help: false, metal: false, desk: 'blue', changes: ['menubar', 'window', 'icons', 'trash'],
+    feats: ['原定 7.7，直接命名为 Mac OS 8', 'Platinum 灰色立体外观，窗口多了折叠按钮；桌面换成纯色（示意）', '加入主题选择（见第 09 节补充）', '类 2.5D 图标成为风尚', '多媒体软件视觉效果炫酷', '苹果菜单仍是程序列表'] },
+  { id: 'o85', name: 'Mac OS 8.5', short: 'OS 8.5', year: '1998', style: 'plat', menus: ['File', 'Edit', 'View', 'Special', 'Help'], trash2: true, disk: 'hd', mf: true, help: false, metal: false, desk: 'blue2', smooth: true, changes: ['text'],
+    feats: ['文本抗锯齿，文字更易读（见第 09 节演示）', '更柔和自然的光影变化', '更复杂的交互与界面元素'] },
+  { id: 'o9', name: 'Mac OS 9', short: 'OS 9', year: '1999', style: 'plat', menus: ['File', 'Edit', 'View', 'Special', 'Help'], trash2: true, disk: 'hd', mf: true, help: false, metal: true, desk: 'blue2', smooth: true, changes: ['metal'],
+    feats: ['原定 8.7，「有史以来网络功能最好的操作系统」', '播放器的不锈钢拉丝效果', '窗口元素细腻的光影起伏', '搜索应用的内阴影、高度拟物的小图标', '逻辑分组、标签页、层级丰富的排版', '文字投影'] },
+];
+reg('era', (node) => {
+  let i = 0, full = true, showDiff = true, timer = 0;
+  const host = el('div', { class: 'screen' });
+  const svgEl = S('svg', { viewBox: '0 0 480 320', width: '100%', class: 'gui', role: 'img', 'aria-label': '经典 Mac 桌面示意线框' });
+  host.append(svgEl);
+  const range = el('input', { type: 'range', min: 0, max: ERAS.length - 1, value: 0, step: 1, class: 'era-range', 'aria-label': '选择系统版本' });
+  const ticks = el('div', { class: 'era-ticks' });
+  const tickBtns = ERAS.map((e, k) => el('button', { type: 'button', onclick: () => go(k) }, e.short, el('br'), e.year));
+  ticks.append(...tickBtns);
+  const panel = el('div', { class: 'panel', style: 'margin-top:10px' });
+  const status = el('div', { class: 'status' });
+  const diffBox = el('input', { type: 'checkbox', checked: '' });
+  diffBox.addEventListener('change', () => { showDiff = diffBox.checked; draw(); });
+  const play = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (timer) { stopPlay(); return; } play.textContent = '❚❚ 暂停'; if (i === ERAS.length - 1) go(0); timer = setInterval(() => { if (i >= ERAS.length - 1) { stopPlay(); return; } go(i + 1); }, RM ? 400 : 2200); } }, '▶ 自动播放');
+  const stopPlay = () => { clearInterval(timer); timer = 0; play.textContent = '▶ 自动播放'; };
+  const ctrl = el('div', { class: 'ctrl' },
+    el('button', { class: 'btn', type: 'button', onclick: () => go(Math.max(0, i - 1)) }, '← 上一版'),
+    el('button', { class: 'btn', type: 'button', onclick: () => go(Math.min(ERAS.length - 1, i + 1)) }, '下一版 →'),
+    play, el('label', { class: 'chk' }, diffBox, '标出变化'));
+  range.addEventListener('input', () => go(+range.value));
+
+  function mark(g, x, y, w, h, key, e) {
+    if (!showDiff || !e.changes.includes(key)) return;
+    g.append(S('rect', { x, y, width: w, height: h, rx: 4, fill: 'none', stroke: '#e8731f', 'stroke-width': 2.2, 'stroke-dasharray': '5 3', class: RM ? '' : 'mark-new' }));
+  }
+  function draw() {
+    const e = ERAS[i];
+    svgEl.replaceChildren();
+    const g = S('g'); g.__dither = dither(svgEl); svgEl.append(g);
+    const st = e.style;
+    /* 桌面 */
+    const deskFill = e.desk === 'dither' ? g.__dither : e.desk === 'gray' ? dither(svgEl, '#7a7a7a', '#a4a4a4') : e.desk === 'blue' ? '#6576a8' : '#5b7fb5';
+    g.append(S('rect', { width: 480, height: 320, fill: deskFill }));
+    /* 菜单栏 */
+    const plat = st === 'plat';
+    g.append(S('rect', { width: 480, height: 20, fill: plat ? grad(svgEl, [[0, '#f0f0f0'], [1, '#d2d2d2']]) : W }));
+    g.append(S('line', { x1: 0, x2: 480, y1: 20, y2: 20, stroke: K }));
+    g.append(appleGlyph(svgEl, 12, 0, .95, st !== 'mono'));
+    let mx = 40;
+    e.menus.forEach((m) => { g.append(S('text', { x: mx, y: 14.5, 'font-size': 11, 'font-weight': 700, fill: K }, m)); mx += m.length * 7 + 16; });
+    mark(g, 8, 1, 24, 18, 'apple', e);
+    mark(g, 2, 1, 476, 18, 'menubar', e);
+    let rx = 466;
+    if (e.mf) {
+      g.append(S('rect', { x: rx - 7, y: 3, width: 14, height: 14, rx: 2, fill: plat ? '#c9d6f2' : W, stroke: K }));
+      g.append(S('rect', { x: rx - 4, y: 6, width: 8, height: 6, fill: 'none', stroke: K }));
+      mark(g, rx - 10, 1, 20, 18, 'mf', e); rx -= 24;
+    }
+    if (e.help) {
+      g.append(S('path', { d: `M${rx - 8} 4h16v10h-8l-4 4v-4h-4z`, fill: '#ffffcc', stroke: K }));
+      g.append(S('text', { x: rx, y: 12.5, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700, fill: K }, '?'));
+      mark(g, rx - 11, 1, 22, 19, 'help', e);
+    }
+    /* 窗口 */
+    const wx = 26, wy = 40, ww = 300, wh = 200;
+    g.append(S('rect', { x: wx + 2, y: wy + 2, width: ww, height: wh, fill: K }));
+    g.append(S('rect', { x: wx, y: wy, width: ww, height: wh, fill: W, stroke: plat ? '#555' : K }));
+    titleBar(g, wx, wy, ww, st, e.disk === 'floppy' ? 'System Disk' : 'Macintosh HD');
+    let cy = wy + 18;
+    if (st !== 'mono') {
+      g.append(S('rect', { x: wx, y: cy, width: ww, height: 16, fill: plat ? '#e6e6e6' : W }));
+      g.append(S('text', { x: wx + ww / 2, y: cy + 11.5, 'text-anchor': 'middle', 'font-size': 8.5, fill: K }, '4 items      38.2 MB available'));
+      g.append(S('line', { x1: wx, x2: wx + ww, y1: cy + 16, y2: cy + 16, stroke: plat ? '#777' : K }));
+      cy += 16;
+    } else {
+      g.append(S('text', { x: wx + 8, y: cy + 11, 'font-size': 8.5, fill: K }, '4 items'));
+      g.append(S('text', { x: wx + ww - 22, y: cy + 11, 'text-anchor': 'end', 'font-size': 8.5, fill: K }, '310K available'));
+      g.append(S('line', { x1: wx, x2: wx + ww, y1: cy + 15, y2: cy + 15, stroke: K }));
+      g.append(S('line', { x1: wx, x2: wx + ww, y1: cy + 17, y2: cy + 17, stroke: K }));
+      cy += 17;
+    }
+    scrollV(g, wx + ww - 14, cy, wy + wh - cy - 14, st);
+    g.append(S('rect', { x: wx, y: wy + wh - 14, width: ww - 14, height: 14, fill: st === 'mono' ? g.__dither : plat ? '#b4b4b4' : '#cccccc', stroke: plat ? '#666' : K }));
+    g.append(S('rect', { x: wx + ww - 14, y: wy + wh - 14, width: 14, height: 14, fill: plat ? '#e2e2e2' : W, stroke: plat ? '#666' : K }));
+    mark(g, wx - 4, wy - 4, ww + 8, 24, 'window', e);
+    const names = ['System Folder', 'Applications', 'Documents', 'Games'];
+    names.forEach((n, k) => folderIcon(g, wx + 30 + k * 66, cy + 24, st, n, plat));
+    if (e.id === 's1') g.append(S('text', { x: wx + 14, y: cy + 100, 'font-size': 9, fill: '#444' }, '（文件夹：只是 Finder 的界面概念）'));
+    mark(g, wx + 22, cy + 18, 268, 56, 'icons', e);
+    mark(g, wx + 4, cy + 2, ww - 22, wh - (cy - wy) - 18, 'text', e);
+    if (e.smooth) g.append(S('text', { x: wx + 14, y: cy + 100, 'font-size': 9.5, fill: '#333', 'font-weight': 400 }, '8.5 起：系统级文字平滑'));
+    /* 桌面图标：磁盘 + 垃圾桶 */
+    const dx = 420, dy = 34;
+    if (e.disk === 'floppy') {
+      g.append(S('rect', { x: dx, y: dy, width: 26, height: 26, fill: W, stroke: K }));
+      g.append(S('rect', { x: dx + 6, y: dy, width: 14, height: 9, fill: W, stroke: K }));
+      g.append(S('rect', { x: dx + 5, y: dy + 14, width: 16, height: 12, fill: W, stroke: K }));
+    } else {
+      const f = st === 'mono' ? W : plat ? grad(svgEl, [[0, '#f4f4f4'], [1, '#a9a9a9']]) : '#dcdcdc';
+      g.append(S('rect', { x: dx - 3, y: dy + 6, width: 32, height: 16, rx: 2, fill: f, stroke: K }));
+      g.append(S('circle', { cx: dx + 23, cy: dy + 17, r: 1.6, fill: st === 'mono' ? K : '#3c3' }));
+    }
+    const dl = e.disk === 'floppy' ? 'System Disk' : 'Macintosh HD', dw = dl.length * 5 + 6;
+    g.append(S('rect', { x: dx + 13 - dw / 2, y: dy + 30, width: dw, height: 11, fill: e.disk === 'floppy' ? K : W }));
+    g.append(S('text', { x: dx + 13, y: dy + 38.5, 'text-anchor': 'middle', 'font-size': 8.5, fill: e.disk === 'floppy' ? W : K }, dl));
+    const tg = S('g', { class: 'pick', tabindex: 0, role: 'button', 'aria-label': '垃圾桶，点击切换状态', style: 'cursor:pointer' });
+    trashIcon(tg, 421, 252, st, e.trash2 ? full : false);
+    g.append(tg);
+    keyAct(tg, () => {
+      if (!e.trash2) { status.innerHTML = `${e.name} 的垃圾桶<span class="bad">只有一种样子</span>：原文说到 System 3 才区分「有垃圾文件」和「已清空」。`; return; }
+      full = !full; draw(); status.innerHTML = `${e.name}：垃圾桶现在是 <b>${full ? '有垃圾文件' : '已清空'}</b> 的状态。`;
+    });
+    mark(g, 410, 240, 48, 60, 'trash', e);
+    /* Mac OS 9：拉丝金属播放器 */
+    if (e.metal) {
+      const mx0 = 210, my0 = 170, mw = 180, mh = 120;
+      const mg = S('g');
+      mg.append(S('rect', { x: mx0 + 2, y: my0 + 3, width: mw, height: mh, rx: 6, fill: 'rgba(0,0,0,.35)' }));
+      mg.append(S('rect', { x: mx0, y: my0, width: mw, height: mh, rx: 6, fill: grad(svgEl, [[0, '#e6e6e6'], [.5, '#bdbdbd'], [1, '#d8d8d8']]), stroke: '#555' }));
+      for (let k = 0; k < 22; k++) mg.append(S('line', { x1: mx0 + 4, x2: mx0 + mw - 4, y1: my0 + 4 + k * 5.2, y2: my0 + 4 + k * 5.2, stroke: k % 2 ? '#fff' : '#9a9a9a', 'stroke-width': .5, opacity: .55 }));
+      mg.append(S('text', { x: mx0 + mw / 2, y: my0 + 13, 'text-anchor': 'middle', 'font-size': 9, fill: '#222' }, 'Player'));
+      mg.append(S('rect', { x: mx0 + 12, y: my0 + 20, width: mw - 24, height: 62, rx: 2, fill: '#1b2333', stroke: '#444' }));
+      mg.append(S('circle', { cx: mx0 + 28, cy: my0 + 100, r: 10, fill: grad(svgEl, [[0, '#fafafa'], [1, '#8f8f8f']]), stroke: '#555' }));
+      mg.append(S('path', { d: `M${mx0 + 25} ${my0 + 95}l8 5l-8 5z`, fill: '#333' }));
+      mg.append(S('rect', { x: mx0 + 46, y: my0 + 97, width: mw - 60, height: 6, rx: 3, fill: '#888', stroke: '#555' }));
+      g.append(mg);
+      mark(g, mx0 - 4, my0 - 4, mw + 8, mh + 8, 'metal', e);
+    }
+    /* 文字状态 */
+    range.value = i;
+    tickBtns.forEach((b, k) => b.classList.toggle('on', k === i));
+    panel.innerHTML = `<b>${e.name}（${e.year}）</b>　<span class="tag">原文提到的变化</span><ul>${e.feats.map((f) => `<li>${f}</li>`).join('')}</ul>`;
+  }
+  function go(k) { i = k; draw(); status.textContent = i === 0 ? '起点：1984 年，512×342 黑白屏。' : `从 ${ERAS[i - 1].name} 到 ${ERAS[i].name}。`; }
+  node.append(host, range, ticks, ctrl, panel, status);
+  go(0);
+  return { stop: stopPlay };
+});
+
+/* ======================= 01 命名时间线 ======================= */
+reg('timeline', (node) => {
+  const Y0 = 1984, Y1 = 2020;
+  const ERA = [
+    { a: 1984, b: 1987, c: 'var(--surface-2)', name: '无正式名称', v: 'System 1 – System 4', d: 'Macintosh 电脑名满天下，系统却没有官方名字，只有「System 1」这样的非正式叫法。' },
+    { a: 1987, b: 1997, c: 'var(--y-soft)', name: 'Macintosh System Software', v: 'System 5 – System 7.5', d: '从 System 5 起系统正式叫 Macintosh（完整名 Macintosh System Software）。这一时期覆盖黑白的 System 6 与彩色的 System 7。' },
+    { a: 1997, b: 2001, c: 'var(--o-soft)', name: 'Mac OS', v: 'Mac OS 7.6 – Mac OS 9', d: '原文：Mac OS 的称谓在第 7 个大版本时提出，最初是为了让授权兼容机和原装 Macintosh 区分开；随后 7.7 改叫 8、8.7 改叫 9。老用户常简称「OS 8」「OS 9」。' },
+    { a: 2001, b: 2012, c: 'var(--p-soft)', name: 'Mac OS X', v: '10.0 – 10.7', d: '第二个系列。X 是罗马数字 10。很多人至今仍把它简称为「OS X」。' },
+    { a: 2012, b: 2016, c: 'var(--t-soft)', name: 'OS X', v: '10.8 Mountain Lion – 10.11', d: '乔布斯去世次年的 WWDC（2012）上，10.8 的正式名称去掉了「Mac」，成为 OS X 10.8 Mountain Lion。原文说这更像「小名转正」。' },
+    { a: 2016, b: 2020, c: 'var(--r-soft)', name: 'macOS', v: '10.12 Sierra 起', d: '为了和 iOS、tvOS、watchOS 的命名保持一致而改名，原文说这相当于 Mac OS X 品牌的一次重启。（色条画到 2020 年原文发表时。）' },
+  ];
+  const bar = el('div', { class: 'tbar', role: 'group', 'aria-label': '命名时间线' });
+  const chips = el('div', { class: 'chips' });
+  const panel = el('div', { class: 'panel', style: 'margin-top:10px' });
+  const bs = ERA.map((e, k) => el('button', { type: 'button', style: `flex:${e.b - e.a} 1 0;background:${e.c}`, 'aria-label': e.name, onclick: () => pick(k) }));
+  const cs = ERA.map((e, k) => el('button', { type: 'button', class: 'chip', onclick: () => pick(k) }, el('i', { style: `background:${e.c};border:1px solid var(--line)` }), e.name));
+  bar.append(...bs); chips.append(...cs);
+  const years = el('div', { class: 'tyears' }, ...[1984, 1991, 1997, 2001, 2012, 2016, 2020].map((y) => el('span', {}, y)));
+  const series = el('div', { class: 'tyears', style: 'margin-top:2px' }, el('span', {}, '← 第一系列 Classic Mac OS（1984–2001）'), el('span', {}, '第二系列 Mac OS X / macOS →'));
+  function pick(k) {
+    bs.forEach((b, j) => b.classList.toggle('on', j === k)); cs.forEach((c, j) => c.classList.toggle('on', j === k));
+    const e = ERA[k];
+    panel.innerHTML = `<b>${e.name}</b>　<span class="tag">${e.a}–${k === ERA.length - 1 ? '今' : e.b}</span>　<span class="tag">${e.v}</span><br>${e.d}`;
+  }
+  node.append(bar, years, series, chips, panel, el('p', { class: 'src' }, '原文的结论：如果不深究细节，Macintosh、Mac OS、Mac OS X、macOS 四个名字都可以简称「Mac 系统」。版本区间按原文与维基百科整理，边界年份为近似。'));
+  pick(0);
+});
+
+/* ======================= 02 Alto vs Macintosh 线框 ======================= */
+reg('alto', (node) => {
+  const s = S('svg', { viewBox: '0 0 240 300', width: '100%', class: 'gui', style: 'max-width:240px;margin:0 auto', role: 'img', 'aria-label': 'Xerox Alto 界面示意' });
+  s.append(S('rect', { width: 240, height: 300, fill: W, stroke: K }));
+  const pane = (x, y, w, h, t, lines) => {
+    s.append(S('rect', { x: x + 2, y: y + 2, width: w, height: h, fill: K }), S('rect', { x, y, width: w, height: h, fill: W, stroke: K }));
+    s.append(S('rect', { x, y, width: w, height: 12, fill: K }), S('text', { x: x + 4, y: y + 9, 'font-size': 8, fill: W }, t));
+    for (let k = 0; k < lines; k++) s.append(S('rect', { x: x + 6, y: y + 18 + k * 9, width: (w - 12) * (0.4 + ((k * 37) % 50) / 100), height: 3, fill: '#555' }));
+  };
+  pane(8, 10, 150, 110, 'System Browser', 9);
+  pane(60, 70, 170, 120, 'Workspace', 10);
+  pane(20, 170, 150, 110, 'Transcript', 9);
+  s.append(S('rect', { x: 120, y: 118, width: 70, height: 50, fill: W, stroke: K, 'stroke-width': 1.5 }));
+  ['again', 'copy', 'cut', 'paste', 'doit'].forEach((m, k) => s.append(S('text', { x: 126, y: 128 + k * 9, 'font-size': 7.5, fill: K }, m)));
+  s.append(S('path', { d: 'M186 150l0 12l3 -3l3 6l2 -1l-3 -6l4 0z', fill: K }));
+  node.append(s, el('p', { class: 'src', style: 'text-align:center' }, 'Xerox Alto（竖屏）：窗格叠放，菜单在窗格内弹出'));
+});
+reg('mac84', (node) => {
+  const s = S('svg', { viewBox: '0 0 300 200', width: '100%', class: 'gui', style: 'max-width:330px;margin:20px auto 0', role: 'img', 'aria-label': '1984 年 Macintosh 界面示意' });
+  const g = S('g'); g.__dither = dither(s); s.append(g);
+  g.append(S('rect', { width: 300, height: 200, fill: g.__dither, stroke: K }));
+  g.append(S('rect', { width: 300, height: 16, fill: W }), S('line', { x1: 0, x2: 300, y1: 16, y2: 16, stroke: K }));
+  g.append(appleGlyph(s, 8, -1.5, .8, false));
+  ['File', 'Edit', 'View', 'Special'].forEach((m, k) => g.append(S('text', { x: 32 + k * 40, y: 12, 'font-size': 9.5, 'font-weight': 700, fill: K }, m)));
+  g.append(S('rect', { x: 32, y: 2, width: 30, height: 13, fill: K }));
+  g.append(S('text', { x: 32 + 2, y: 12, 'font-size': 9.5, 'font-weight': 700, fill: W }, 'File'));
+  g.append(S('rect', { x: 34, y: 34, width: 180, height: 120, fill: K }), S('rect', { x: 32, y: 32, width: 180, height: 120, fill: W, stroke: K }));
+  titleBar(g, 32, 32, 180, 'mono', 'Disk');
+  folderIcon(g, 50, 60, 'mono', 'Folder', false); folderIcon(g, 110, 60, 'mono', 'Games', false);
+  g.append(S('rect', { x: 33, y: 17, width: 70, height: 58, fill: W, stroke: K }));
+  ['Open', 'Duplicate', 'Get Info', 'Close', 'Eject'].forEach((m, k) => g.append(S('text', { x: 40, y: 29 + k * 10.5, 'font-size': 8.5, fill: k === 2 ? '#888' : K }, m)));
+  trashIcon(g, 255, 140, 'mono', false);
+  node.append(s, el('p', { class: 'src', style: 'text-align:center' }, 'Macintosh（1984）：顶部固定菜单栏 + 下拉菜单 + 窗口 + 桌面图标'));
+});
+
+/* ======================= 03 名字对齐 ======================= */
+(() => {
+  const box = document.getElementById('lettersBox');
+  const a = ['M', 'c', '', 'I', 'n', 't', 'o', 's', 'h'], b = ['M', 'a', 'c', 'i', 'n', 't', 'o', 's', 'h'];
+  const diff = a.map((x, k) => x !== b[k]);
+  const row = (lab, arr) => el('div', { class: 'row' }, el('em', {}, lab), ...arr.map((x, k) => el('span', { class: (x ? '' : 'gap ') + (diff[k] ? 'diff' : '') }, x || '·')));
+  box.append(row('苹果品种', a), row('电脑与系统', b));
+  box.append(el('p', { class: 'src', style: 'text-align:center' }, '「Mc」写成「Mac」，并把大写的 I 改成小写 i：读音几乎不变，拼写却与 McIntosh Laboratory 区分开。'));
+})();
+
+/* ======================= 03b 像素预算 ======================= */
+reg('pixels', (node) => {
+  const SCR = [
+    { n: 'Macintosh 128K（1984）', w: 512, h: 342, bpp: 1, ram: 128 * 1024, note: '原文：512×342 单色屏' },
+    { n: 'Xerox Alto（1973，参考）', w: 606, h: 808, bpp: 1, note: '竖屏，本页补充的参考值' },
+    { n: 'Macintosh II（1987，参考）', w: 640, h: 480, bpp: 8, note: '256 色，本页补充的参考值' },
+    { n: '1024×768 千万色（90 年代末常见设置，参考）', w: 1024, h: 768, bpp: 24, note: '对应原文「进入高清时代」，示意' },
+  ];
+  const maxW = 1024, maxH = 808, sc = 300 / maxH;
+  const s = S('svg', { viewBox: `0 0 ${maxW * sc + 10} ${maxH * sc + 10}`, width: '100%', style: 'max-width:420px;margin:0 auto', role: 'img', 'aria-label': '屏幕分辨率同比例对比' });
+  const rects = SCR.map((d, k) => { const r = S('rect', { x: 5, y: 5, width: d.w * sc, height: d.h * sc, fill: 'none', stroke: 'var(--line)', 'stroke-width': 1.5 }); s.append(r); return r; });
+  const lab = S('text', { x: 10, y: 20, class: 'lbl big' }, '');
+  s.append(lab);
+  const panel = el('div', { class: 'panel', style: 'margin-top:8px' });
+  function pick(k) {
+    const d = SCR[k];
+    rects.forEach((r, j) => { r.setAttribute('stroke', j === k ? 'var(--p)' : 'var(--line)'); r.setAttribute('fill', j === k ? 'var(--p-soft)' : 'none'); r.setAttribute('stroke-width', j === k ? 2.5 : 1.2); });
+    s.append(rects[k], lab);
+    const px = d.w * d.h, bytes = px * d.bpp / 8, colors = Math.pow(2, d.bpp);
+    lab.textContent = `${d.w} × ${d.h}`;
+    lab.setAttribute('x', 10); lab.setAttribute('y', 22);
+    const base = 512 * 342;
+    panel.innerHTML = `<b>${d.n}</b>：${d.note}<br>像素数 <b>${px.toLocaleString('en-US')}</b>（是 Macintosh 128K 的 ${(px / base).toFixed(2)} 倍）　｜　每像素 ${d.bpp} 位 → ${colors >= 1e6 ? (colors / 1e6).toFixed(1) + ' 百万' : colors.toLocaleString('en-US')} 种颜色　｜　一帧画面 <b>${(bytes / 1024).toFixed(1)} KB</b>` +
+      (d.ram ? `<br>这台机器总共只有 128 KB 内存，屏幕就要占掉 <b>${(bytes / d.ram * 100).toFixed(1)}%</b>：这就是原文说的「寸土寸金」。` : '');
+  }
+  node.append(s, el('div', { class: 'ctrl' }, seg(SCR.map((d) => d.n.replace(/（.*$/, '')), (k) => pick(k))), panel);
+  pick(0);
+});
+
+/* ======================= 05 炸弹报错 ======================= */
+reg('bomb', (node) => {
+  const s = S('svg', { viewBox: '0 0 360 150', width: '100%', class: 'gui', style: 'max-width:420px;margin:0 auto', role: 'img', 'aria-label': '炸弹报错框示意' });
+  const g = S('g'); g.__dither = dither(s); s.append(g);
+  const status = el('div', { class: 'status' }, '一切正常。');
+  let crashed = false, code = 2;
+  const CODES = { 1: '总线错误', 2: '地址错误', 3: '非法指令', 25: '内存不足', 28: '栈与堆冲突' };
+  function draw() {
+    g.replaceChildren();
+    g.append(S('rect', { width: 360, height: 150, fill: g.__dither }));
+    if (!crashed) { g.append(S('rect', { x: 110, y: 55, width: 140, height: 40, fill: W, stroke: K }), S('text', { x: 180, y: 79, 'text-anchor': 'middle', 'font-size': 11, fill: K }, '程序运行中…')); return; }
+    g.append(S('rect', { x: 34, y: 24, width: 296, height: 104, fill: K }), S('rect', { x: 30, y: 20, width: 296, height: 104, fill: W, stroke: K, 'stroke-width': 2 }));
+    g.append(S('rect', { x: 34, y: 24, width: 288, height: 96, fill: 'none', stroke: K }));
+    g.append(S('circle', { cx: 66, cy: 62, r: 15, fill: K }), S('rect', { x: 68, y: 41, width: 8, height: 8, fill: K, transform: 'rotate(40 72 45)' }));
+    g.append(S('path', { d: 'M76 40q6 -8 12 -4', stroke: K, fill: 'none', 'stroke-width': 1.5 }), S('path', { d: 'M88 30l2 4l4 -1l-3 3l2 4l-4 -2l-3 3l1 -4l-4 -2l4 0z', fill: K }));
+    g.append(S('circle', { cx: 60, cy: 56, r: 3, fill: W }));
+    g.append(S('text', { x: 100, y: 55, 'font-size': 12, 'font-weight': 700, fill: K }, 'Sorry, a system error'));
+    g.append(S('text', { x: 100, y: 70, 'font-size': 12, 'font-weight': 700, fill: K }, 'occurred.'));
+    g.append(S('text', { x: 268, y: 70, 'font-size': 11, fill: K }, `ID = ${String(code).padStart(2, '0')}`));
+    const bt = S('g', { class: 'pick', tabindex: 0, role: 'button', 'aria-label': 'Restart', style: 'cursor:pointer' });
+    bt.append(S('rect', { x: 236, y: 88, width: 72, height: 24, rx: 9, fill: W, stroke: K, 'stroke-width': 1.5 }), S('text', { x: 272, y: 104, 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 700, fill: K }, 'Restart'));
+    keyAct(bt, () => { crashed = false; draw(); status.textContent = '已「重启」。'; });
+    g.append(bt);
+  }
+  const ids = Object.keys(CODES);
+  node.append(s, el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: () => { code = +ids[Math.floor(Math.random() * ids.length)]; crashed = true; draw(); status.innerHTML = `出错了：ID = ${code}，常见含义为 <b>${CODES[code]}</b>。点框里的 Restart 恢复。`; } }, '💣 触发系统错误')), status,
+    el('p', { class: 'src' }, '错误码含义为本页补充的常见对照（凭记忆整理，未逐条核对），仅为让示意更具体；原文只提到「使用炸弹图标来进行提示」。'));
+  draw();
+});
+
+/* ======================= 05b MFS vs HFS ======================= */
+reg('fs', (node) => {
+  const TREE = [
+    { n: 'System Folder', kids: ['System', 'Finder'] },
+    { n: 'MacPaint 文件夹', kids: ['MacPaint', '草图'] },
+    { n: '文稿', kids: ['信件', '草图 2'] },
+  ];
+  let mode = 0, sel = null;
+  const left = el('div', { class: 'panel' }), right = el('div', { class: 'panel' });
+  const status = el('div', { class: 'status' });
+  const files = []; TREE.forEach((f) => f.kids.forEach((k) => files.push({ n: k, f: f.n })));
+  function render() {
+    left.replaceChildren(el('b', {}, 'Finder 里看到的（两种文件系统都一样）'));
+    TREE.forEach((f) => {
+      left.append(el('div', { style: 'margin-top:6px' }, '📁 ' + f.n));
+      f.kids.forEach((k) => {
+        const it = el('div', { class: 'pick', tabindex: 0, role: 'button', style: `margin-left:22px;cursor:pointer;border-radius:6px;padding:1px 6px;${sel === k ? 'background:var(--p);color:#fff' : ''}` }, '📄 ' + k);
+        keyAct(it, () => { sel = k; render(); });
+        left.append(it);
+      });
+    });
+    right.replaceChildren(el('b', {}, mode === 0 ? '磁盘上实际存的：MFS（System 1）' : '磁盘上实际存的：HFS（层级）'));
+    if (mode === 0) {
+      const tbl = el('div', { style: 'margin-top:6px;font-family:var(--mono);font-size:12px;display:grid;grid-template-columns:auto 1fr;column-gap:16px;row-gap:1px' });
+      tbl.append(el('div', { style: 'color:var(--muted)' }, '文件名'), el('div', { style: 'color:var(--muted)' }, '「显示在」'));
+      files.forEach((x) => { const st = sel === x.n ? 'background:var(--p);color:#fff;border-radius:4px;padding:0 4px' : 'padding:0 4px'; tbl.append(el('div', { style: st }, x.n), el('div', { style: st }, x.f)); });
+      tbl.append(el('div', { style: 'color:var(--muted);margin-top:4px;grid-column:1 / -1' }, '（一层平铺，没有任何目录）'));
+      right.append(tbl);
+    } else {
+      const tr = el('div', { style: 'margin-top:6px;font-family:var(--mono);font-size:12px' }, el('div', {}, '/ 根目录'));
+      TREE.forEach((f, i) => {
+        tr.append(el('div', { style: 'margin-left:14px' }, (i === TREE.length - 1 ? '└ ' : '├ ') + f.n + '/'));
+        f.kids.forEach((k) => tr.append(el('div', { style: `margin-left:42px;padding:1px 4px;border-radius:4px;${sel === k ? 'background:var(--p);color:#fff' : ''}` }, '· ' + k)));
+      });
+      right.append(tr);
+    }
+    if (!sel) status.textContent = '点左边任意一个文件。';
+    else {
+      const f = files.find((x) => x.n === sel).f;
+      status.innerHTML = mode === 0 ? `「${sel}」在磁盘上和其他所有文件<b>平铺在同一层</b>，「${f}」只是一条给 Finder 看的显示信息：文件夹是虚拟的。` : `「${sel}」真的存放在目录 <b>/${f}/</b> 之下：文件夹在文件系统里真实存在。`;
+    }
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['System 1：MFS', 'System 3：HFS'], (k) => { mode = k; render(); })), el('div', { class: 'grid2' }, left, right), status);
+  render();
+});
+
+/* ======================= 07 System 7 色彩设置 ======================= */
+reg('colors', (node) => {
+  const HL = [['黑白', '#000000', '#ffffff'], ['蓝', '#9fb9ff', '#000'], ['金', '#ffd56a', '#000'], ['绿', '#a5e3a0', '#000'], ['粉', '#ffb3c8', '#000'], ['紫', '#c8b3ff', '#000']];
+  const WC = [['黑白', '#ffffff', '#000'], ['蓝', '#cfe0ff', '#4060a0'], ['绿', '#d8f0d0', '#4f8a40'], ['灰', '#e8e8e8', '#777'], ['薰衣草', '#e2dcff', '#6a5aa8']];
+  let h = 1, w = 4;
+  const s = S('svg', { viewBox: '0 0 360 170', width: '100%', class: 'gui', style: 'max-width:440px;margin:0 auto', role: 'img', 'aria-label': 'System 7 色彩设置示意' });
+  const status = el('div', { class: 'status' });
+  function draw() {
+    s.replaceChildren();
+    const [, hc, ht] = HL[h], [, wc, wl] = WC[w];
+    s.append(S('rect', { width: 360, height: 170, fill: dither(s, '#7a7a7a', '#a4a4a4') }));
+    s.append(S('rect', { x: 32, y: 22, width: 300, height: 130, fill: K }), S('rect', { x: 30, y: 20, width: 300, height: 130, fill: W, stroke: K }));
+    s.append(S('rect', { x: 30, y: 20, width: 300, height: 18, fill: wc }));
+    for (let k = 0; k < 6; k++) s.append(S('line', { x1: 33, x2: 327, y1: 24.5 + k * 2, y2: 24.5 + k * 2, stroke: wl }));
+    s.append(S('rect', { x: 140, y: 22, width: 80, height: 14, fill: wc }), S('text', { x: 180, y: 33, 'text-anchor': 'middle', 'font-size': 10.5, 'font-weight': 700, fill: K }, 'Letter'));
+    s.append(S('line', { x1: 30, x2: 330, y1: 38, y2: 38, stroke: K }));
+    s.append(S('rect', { x: 316, y: 38, width: 14, height: 112, fill: wc, stroke: K }), S('rect', { x: 316, y: 60, width: 14, height: 16, fill: W, stroke: K }));
+    const lines = ['Dear friend,', 'Macintosh System 7 lets you pick', 'a highlight color and a window color', 'for the whole system.'];
+    lines.forEach((t, k) => {
+      const y = 60 + k * 18;
+      if (k === 1) { s.append(S('rect', { x: 38, y: y - 11, width: 190, height: 15, fill: hc })); s.append(S('text', { x: 40, y, 'font-size': 11, fill: ht }, t)); }
+      else s.append(S('text', { x: 40, y, 'font-size': 11, fill: K }, t));
+    });
+    status.innerHTML = `高亮色：<b>${HL[h][0]}</b>　窗口色：<b>${WC[w][0]}</b>。一次设置，所有窗口与选中文字统一生效。`;
+  }
+  node.append(s,
+    el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '高亮色'), seg(HL.map((x) => x[0]), (k) => { h = k; draw(); }, 1)),
+    el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '窗口色'), seg(WC.map((x) => x[0]), (k) => { w = k; draw(); }, 4)), status,
+    el('p', { class: 'src' }, '示意画法；System 7 的色彩控制面板可分别设置「高亮色」与「窗口色」（本页凭记忆补充的细节，原文只说「全局色彩设置」）。'));
+  draw();
+});
+
+/* ======================= 07b 无标签图标测验 ======================= */
+reg('iconquiz', (node) => {
+  const P = (d, f = '#d9d9f2') => S('path', { d, fill: f, stroke: K, 'stroke-width': 1.5 });
+  const ICONS = [
+    ['鼠标', () => [P('M16 10h16a4 4 0 0 1 4 4v18a10 10 0 0 1-10 10h-4a10 10 0 0 1-10-10v-18a4 4 0 0 1 4-4z', '#e8e8e8'), P('M24 10v12M12 22h24', 'none'), P('M24 10q0-6 8-6', 'none')]],
+    ['键盘', () => { const g = [P('M4 16h40v18h-40z', '#e8e8e8')]; for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) g.push(S('rect', { x: 7 + c * 6, y: 19 + r * 5, width: 4, height: 3, fill: '#777' })); return g; }],
+    ['声音', () => [P('M8 19h8l10-8v26l-10-8h-8z', '#ffd56a'), P('M31 18q4 6 0 12', 'none'), P('M35 14q8 10 0 20', 'none')]],
+    ['显示器', () => [P('M6 8h36v26h-36z', '#e8e8e8'), P('M10 12h28v18h-28z', '#9fb9ff'), P('M18 34h12l3 6h-18z', '#bbb')]],
+    ['日期与时间', () => [S('circle', { cx: 24, cy: 24, r: 16, fill: '#fff6d6', stroke: K, 'stroke-width': 1.5 }), P('M24 12v12l8 5', 'none')]],
+    ['内存', () => { const g = [P('M8 16h32v16h-32z', '#7cc47a')]; for (let c = 0; c < 6; c++) { g.push(S('rect', { x: 11 + c * 5, y: 32, width: 2, height: 5, fill: '#c9a227' })); } g.push(S('rect', { x: 14, y: 20, width: 8, height: 8, fill: '#333' }), S('rect', { x: 26, y: 20, width: 8, height: 8, fill: '#333' })); return g; }],
+    ['通用控制', () => [P('M6 8h36v32h-36z', '#e8e8e8'), P('M6 8h36v6h-36z', '#bbb'), P('M12 22h10M12 28h16M12 34h8', 'none')]],
+    ['颜色', () => { const g = []; const cs = ['#e23838', '#f78200', '#ffb900', '#5ebd3e', '#009cdf', '#973999']; cs.forEach((c, k) => { const a0 = k / 6 * Math.PI * 2, a1 = (k + 1) / 6 * Math.PI * 2; g.push(S('path', { d: `M24 24L${24 + 16 * Math.cos(a0)} ${24 + 16 * Math.sin(a0)}A16 16 0 0 1 ${24 + 16 * Math.cos(a1)} ${24 + 16 * Math.sin(a1)}Z`, fill: c, stroke: K, 'stroke-width': .8 })); }); return g; }],
+  ];
+  let shownAll = false, opened = new Set();
+  const grid = el('div', { class: 'icons' });
+  const status = el('div', { class: 'status' });
+  const cells = ICONS.map(([name, mk], k) => {
+    const sv = S('svg', { viewBox: '0 0 48 48', 'aria-hidden': 'true' }, ...mk());
+    const nm = el('span', { class: 'nm' }, '？');
+    const c = el('div', { class: 'ic', tabindex: 0, role: 'button', 'aria-label': '揭晓图标 ' + (k + 1) }, sv, nm);
+    keyAct(c, () => { opened.add(k); upd(); });
+    grid.append(c); return { c, nm, name };
+  });
+  function upd() {
+    cells.forEach(({ c, nm, name }, k) => { const on = shownAll || opened.has(k); c.classList.toggle('shown', on); nm.textContent = on ? name : '？'; });
+    status.innerHTML = shownAll ? '有了文本标签，一眼就知道每个图标是什么，这正是原文说的问题所在。' : `已揭晓 <b>${opened.size}</b> / ${ICONS.length}。你在揭晓前都猜对了吗？`;
+  }
+  const tg = el('button', { class: 'btn', type: 'button', onclick: () => { shownAll = !shownAll; tg.textContent = shownAll ? '隐藏标签' : '显示全部标签'; upd(); } }, '显示全部标签');
+  node.append(grid, el('div', { class: 'ctrl' }, tg, el('button', { class: 'btn', type: 'button', onclick: () => { opened.clear(); shownAll = false; tg.textContent = '显示全部标签'; upd(); } }, '重来')), status);
+  upd();
+});
+
+/* ======================= 08 启动画面 ======================= */
+reg('boot', (node) => {
+  const s = S('svg', { viewBox: '0 0 360 200', width: '100%', class: 'gui', style: 'max-width:440px;margin:0 auto', role: 'img', 'aria-label': '启动画面示意' });
+  const status = el('div', { class: 'status' });
+  function draw(k) {
+    s.replaceChildren();
+    s.append(S('rect', { width: 360, height: 200, fill: dither(s, '#7a7a7a', '#a4a4a4') }));
+    s.append(S('rect', { x: 84, y: 54, width: 196, height: 96, fill: K }), S('rect', { x: 80, y: 50, width: 196, height: 96, fill: W, stroke: K, 'stroke-width': 1.5 }));
+    if (k === 0) {
+      const mx = 160, my = 62;
+      s.append(S('rect', { x: mx, y: my, width: 36, height: 44, rx: 4, fill: '#e8e3d0', stroke: K, 'stroke-width': 1.5 }));
+      s.append(S('rect', { x: mx + 5, y: my + 5, width: 26, height: 20, fill: W, stroke: K }));
+      s.append(S('circle', { cx: mx + 13, cy: my + 12, r: 1.4, fill: K }), S('circle', { cx: mx + 23, cy: my + 12, r: 1.4, fill: K }), S('path', { d: `M${mx + 12} ${my + 18}q6 5 12 0`, stroke: K, fill: 'none', 'stroke-width': 1.3 }));
+      s.append(S('line', { x1: mx + 22, x2: mx + 30, y1: my + 34, y2: my + 34, stroke: K }));
+      s.append(S('text', { x: 178, y: 130, 'text-anchor': 'middle', 'font-size': 13, 'font-weight': 700, fill: K }, 'Welcome to Macintosh.'));
+      status.innerHTML = '<b>原装 Macintosh</b>：启动画面写的仍然是 Macintosh。';
+    } else {
+      const fx = 156, fy = 62;
+      s.append(S('rect', { x: fx, y: fy, width: 22, height: 44, rx: 5, fill: '#7aa7e6', stroke: K }), S('rect', { x: fx + 22, y: fy, width: 22, height: 44, rx: 5, fill: '#cfe0fb', stroke: K }));
+      s.append(S('path', { d: `M${fx + 24} ${fy}q-6 14 -2 20h-4q2 8 6 24`, stroke: K, fill: 'none', 'stroke-width': 1.5 }));
+      s.append(S('rect', { x: fx + 12, y: fy + 12, width: 2, height: 6, fill: K }), S('rect', { x: fx + 32, y: fy + 12, width: 2, height: 6, fill: K }));
+      s.append(S('path', { d: `M${fx + 10} ${fy + 32}q12 6 26 0`, stroke: K, fill: 'none', 'stroke-width': 1.3 }));
+      s.append(S('text', { x: 178, y: 130, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 700, fill: K }, 'Mac OS'));
+      status.innerHTML = '<b>授权兼容机</b>（如 StarMax）：不能写 Macintosh，于是写「Mac OS」。原文称之为当年的「黑苹果」。';
+    }
+  }
+  node.append(s, el('div', { class: 'ctrl' }, seg(['原装 Macintosh', '授权兼容机'], (k) => draw(k))), status,
+    el('p', { class: 'src' }, '两枚图标都是本页按意思自绘的示意，不是原版图标。'));
+  draw(0);
+});
+
+/* ======================= 09 版本号与授权 ======================= */
+reg('license', (node) => {
+  const V = [
+    { v: 'System 7.0', y: '1991', lic: true, d: '彩色界面登场。' },
+    { v: 'System 7.5', y: '', lic: true, d: '第三方授权兼容机在 System 7 时期出现。' },
+    { v: '7.5.1', y: '', lic: true, d: '启动画面第一次出现「Mac OS」标志（本页补充，维基百科）。' },
+    { v: 'Mac OS 7.6', y: '1997', lic: true, d: '原文：第 7 个大版本时提出 Mac OS 的称谓；7.6 是第一个正式以 Mac OS 命名的版本（本页补充）。' },
+    { v: '“7.7”', y: '测试版', lic: true, d: '按原计划它只是 7.x 的又一次更新，仍落在 System 7 授权协议之内。测试版确实以 7.7 命名（本页补充）。' },
+    { v: 'Mac OS 8', y: '1997-07-26', lic: false, d: '直接跳到 8.0：协议基于 System 7，于是后续服务与协议一起被断掉，新名字也与 Macintosh 划清界限。' },
+    { v: 'Mac OS 8.5', y: '1998', lic: false, d: '文本抗锯齿等视觉升级。' },
+    { v: 'Mac OS 9', y: '1999-10-23', lic: false, d: '原定 8.7，同样跳号。' },
+  ];
+  const out = el('output', {}, '');
+  const inp = el('input', { type: 'range', min: 0, max: V.length - 1, value: 4, step: 1, 'aria-label': '版本号' });
+  const s = S('svg', { viewBox: '0 0 560 92', width: '100%', role: 'img', 'aria-label': '版本号与授权覆盖范围' });
+  const x = (k) => 30 + k * 71;
+  s.append(S('rect', { x: x(0) - 18, y: 14, width: x(4) - x(0) + 36, height: 26, rx: 8, fill: 'var(--t-soft)', stroke: 'var(--t)' }));
+  s.append(S('text', { x: (x(0) + x(4)) / 2, y: 31, class: 'lbl mid', style: 'fill:var(--t);font-weight:600' }, '基于 System 7 的第三方授权协议覆盖范围'));
+  s.append(S('line', { x1: x(0), x2: x(V.length - 1), y1: 60, y2: 60, stroke: 'var(--line)', 'stroke-width': 2 }));
+  const dots = V.map((d, k) => { const c = S('circle', { cx: x(k), cy: 60, r: 6, fill: d.lic ? 'var(--t)' : 'var(--r)' }); s.append(c, S('text', { x: x(k), y: 84, class: 'lbl mid', style: 'font-size:11px' }, d.v.replace('System ', '').replace('Mac OS ', ''))); return c; });
+  const ring = S('circle', { cy: 60, r: 11, fill: 'none', stroke: 'var(--p)', 'stroke-width': 2.5 }); s.append(ring);
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    const k = +inp.value, d = V[k];
+    out.textContent = d.v; ring.setAttribute('cx', x(k));
+    status.innerHTML = `<b>${d.v}</b>${d.y ? '（' + d.y + '）' : ''}：${d.lic ? '协议<b>覆盖</b>，兼容机厂商可以继续预装。' : '<span class="bad">协议不覆盖</span>，兼容机拿不到这个版本。'} ${d.d}`;
+  };
+  inp.addEventListener('input', upd);
+  node.append(el('div', { style: 'overflow-x:auto' }, el('div', { style: 'min-width:480px' }, s)), el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '版本', inp, out)), status);
+  upd();
+});
+
+/* ======================= 09b 文本抗锯齿 ======================= */
+reg('smooth', (node) => {
+  let mode = 0, zoom = 7, text = 'Mac OS 8.5';
+  const cv = el('canvas', { style: 'width:100%;image-rendering:pixelated;border-radius:8px;border:1px solid var(--line)', role: 'img', 'aria-label': '放大后的文字像素' });
+  const status = el('div', { class: 'status' });
+  const inp = el('input', { type: 'text', value: text, maxlength: 16, 'aria-label': '要渲染的文字', style: 'font:inherit;font-size:14px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--text);width:150px' });
+  const col = (v) => { const c = document.createElement('canvas').getContext('2d'); c.fillStyle = v; const h = c.fillStyle; if (h[0] === '#') return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)); const m = h.match(/\d+/g); return m ? m.slice(0, 3).map(Number) : [0, 0, 0]; };
+  function draw() {
+    const cs = getComputedStyle(document.documentElement);
+    const fg = col(cs.getPropertyValue('--text').trim()), bg = col(cs.getPropertyValue('--surface').trim());
+    const w = 96, h = 18;
+    const off = document.createElement('canvas'); off.width = w; off.height = h;
+    const o = off.getContext('2d'); o.fillStyle = '#000'; o.font = '12px Geneva, Verdana, sans-serif'; o.textBaseline = 'middle'; o.fillText(text, 2, h / 2 + 1);
+    const data = o.getImageData(0, 0, w, h).data;
+    cv.width = w * zoom; cv.height = h * zoom;
+    const c = cv.getContext('2d');
+    const levels = new Set();
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      let a = data[(y * w + x) * 4 + 3] / 255;
+      if (mode === 0) a = a >= .5 ? 1 : 0; else a = Math.round(a * 15) / 15;
+      levels.add(a);
+      c.fillStyle = `rgb(${bg.map((b, i) => Math.round(b + (fg[i] - b) * a)).join(',')})`;
+      c.fillRect(x * zoom, y * zoom, zoom, zoom);
+    }
+    c.strokeStyle = `rgba(${fg.join(',')},.08)`;
+    if (zoom >= 6) { for (let x = 0; x <= w; x++) { c.beginPath(); c.moveTo(x * zoom + .5, 0); c.lineTo(x * zoom + .5, h * zoom); c.stroke(); } for (let y = 0; y <= h; y++) { c.beginPath(); c.moveTo(0, y * zoom + .5); c.lineTo(w * zoom, y * zoom + .5); c.stroke(); } }
+    status.innerHTML = mode === 0 ? `平滑<b>关闭</b>：每个像素只有 <b>${levels.size}</b> 种取值（非黑即白），斜线和弧线边缘呈锯齿状。` : `平滑<b>开启</b>：边缘像素用了 <b>${levels.size}</b> 级深浅过渡，缩回原大小时字形更圆润、更易读。`;
+  }
+  inp.addEventListener('input', () => { text = inp.value || ' '; draw(); });
+  const zr = el('input', { type: 'range', min: 3, max: 10, value: zoom, step: 1, 'aria-label': '放大倍数' });
+  const zo = el('output', {}, zoom + '×');
+  zr.addEventListener('input', () => { zoom = +zr.value; zo.textContent = zoom + '×'; draw(); });
+  node.append(el('div', { class: 'ctrl' }, seg(['关闭平滑（1 位）', '开启平滑（灰阶）'], (k) => { mode = k; draw(); }), inp), el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '放大', zr, zo)), cv, status,
+    el('p', { class: 'src' }, '文字由你的浏览器在页面里现场渲染到一块 96×18 的小画布，再逐像素放大。「关闭」时把每个像素按 50% 阈值截成黑或白，模拟没有抗锯齿的 1 位显示。'));
+  draw();
+  const mq = matchMedia('(prefers-color-scheme: dark)'); mq.addEventListener && mq.addEventListener('change', draw);
+});
+
+/* ======================= 10 同一控件跨版本 ======================= */
+reg('controls', (node) => {
+  const VERS = [['System 1', '1984', 'mono'], ['System 7', '1991', 'color'], ['Mac OS 8', '1997 · Platinum', 'plat'], ['Mac OS 9', '1999', 'nine']];
+  const NOTE = {
+    button: '黑白时代的默认按钮靠一圈粗黑框表示「按回车就是它」；System 7 的按钮基本沿用黑白圆角；Platinum 改成带高光与阴影的灰色立体按钮，OS 9 的光影过渡更细。',
+    title: '标题栏从黑色细横纹，到 System 7 的灰色横纹与立体小方框，再到 Platinum 多出的折叠按钮；OS 9 的播放器则换上拉丝金属，预告下一代系统。',
+    check: '复选框从「打叉」到「打勾」，从平面方框到有内阴影的凹陷方框。',
+    scroll: '滚动条的轨道从 1 位抖动灰变成纯色；Platinum 的滑块带三道防滑纹，第一次有了「可以抓住」的暗示。',
+  };
+  let ctl = 'button';
+  const grid = el('div', { class: 'cmp' });
+  const status = el('div', { class: 'status' });
+  function one(st) {
+    const s = S('svg', { viewBox: '0 0 160 80', width: '100%', class: 'gui', role: 'img', 'aria-label': ctl + ' ' + st });
+    const g = S('g'); g.__dither = dither(s); s.append(g);
+    const plat = st === 'plat' || st === 'nine';
+    g.append(S('rect', { width: 160, height: 80, fill: plat ? '#dddddd' : W }));
+    if (ctl === 'button') {
+      if (!plat) {
+        g.append(S('rect', { x: 36, y: 24, width: 88, height: 34, rx: 12, fill: 'none', stroke: K, 'stroke-width': 3.5 }));
+        g.append(S('rect', { x: 41, y: 29, width: 78, height: 24, rx: 9, fill: W, stroke: K, 'stroke-width': 1.3 }));
+      } else {
+        const nine = st === 'nine';
+        g.append(S('rect', { x: 36, y: 24, width: 88, height: 34, rx: 7, fill: nine ? grad(s, [[0, '#9a9a9a'], [1, '#c8c8c8']]) : '#a6a6a6', stroke: '#333' }));
+        g.append(S('rect', { x: 41, y: 29, width: 78, height: 24, rx: 5, fill: grad(s, nine ? [[0, '#ffffff'], [.5, '#e4e4e4'], [1, '#bdbdbd']] : [[0, '#f4f4f4'], [1, '#cfcfcf']]), stroke: '#333' }));
+        g.append(S('path', { d: 'M44 50V32h72', stroke: W, fill: 'none' }), S('path', { d: 'M44 51h72V32', stroke: '#888', fill: 'none' }));
+      }
+      g.append(S('text', { x: 80, y: 45.5, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: K }, 'OK'));
+    } else if (ctl === 'title') {
+      if (st === 'nine') {
+        g.append(S('rect', { x: 8, y: 26, width: 144, height: 30, rx: 5, fill: grad(s, [[0, '#ececec'], [.5, '#bcbcbc'], [1, '#dcdcdc']]), stroke: '#555' }));
+        for (let k = 0; k < 9; k++) g.append(S('line', { x1: 12, x2: 148, y1: 29 + k * 3, y2: 29 + k * 3, stroke: k % 2 ? '#fff' : '#999', 'stroke-width': .5, opacity: .7 }));
+        g.append(S('circle', { cx: 20, cy: 41, r: 5, fill: grad(s, [[0, '#fafafa'], [1, '#8f8f8f']]), stroke: '#555' }));
+        g.append(S('text', { x: 84, y: 45, 'text-anchor': 'middle', 'font-size': 10, fill: '#222' }, 'Player'));
+      } else {
+        g.append(S('rect', { x: 8, y: 30, width: 144, height: 40, fill: W, stroke: plat ? '#555' : K }));
+        titleBar(g, 8, 30, 144, st === 'mono' ? 'mono' : st, 'Disk');
+      }
+    } else if (ctl === 'check') {
+      if (!plat) {
+        g.append(S('rect', { x: 30, y: 33, width: 14, height: 14, fill: W, stroke: K, 'stroke-width': 1.3 }));
+        g.append(S('path', { d: 'M30 33l14 14M44 33l-14 14', stroke: K, 'stroke-width': 1.3 }));
+      } else {
+        g.append(S('rect', { x: 30, y: 33, width: 14, height: 14, rx: st === 'nine' ? 2 : 0, fill: grad(s, [[0, '#bcbcbc'], [1, '#f6f6f6']]), stroke: '#444' }));
+        g.append(S('path', { d: 'M31 46V34h12', stroke: '#888', fill: 'none' }));
+        g.append(S('path', { d: 'M33 40l3 4l7 -10', stroke: K, fill: 'none', 'stroke-width': 2.2, 'stroke-linecap': 'round' }));
+      }
+      g.append(S('text', { x: 52, y: 44.5, 'font-size': 11, fill: K }, 'Show Balloons'));
+    } else {
+      const y = 32, x0 = 10, w = 140;
+      const track = st === 'mono' ? g.__dither : st === 'color' ? '#cccccc' : '#a9a9a9';
+      g.append(S('rect', { x: x0, y, width: w, height: 16, fill: track, stroke: plat ? '#555' : K }));
+      [x0, x0 + w - 16].forEach((xx, i) => {
+        g.append(S('rect', { x: xx, y, width: 16, height: 16, fill: plat ? grad(s, [[0, '#f2f2f2'], [1, '#c4c4c4']]) : W, stroke: plat ? '#555' : K }));
+        g.append(S('path', { d: i === 0 ? `M${xx + 11} ${y + 3}L${xx + 4} ${y + 8}L${xx + 11} ${y + 13}Z` : `M${xx + 5} ${y + 3}L${xx + 12} ${y + 8}L${xx + 5} ${y + 13}Z`, fill: st === 'mono' ? W : '#333', stroke: K, 'stroke-width': st === 'mono' ? 1 : 0 }));
+      });
+      const tx = x0 + 50;
+      g.append(S('rect', { x: tx, y: y + (plat ? 1 : 0), width: plat ? 26 : 16, height: plat ? 14 : 16, rx: plat ? 2 : 0, fill: plat ? (st === 'nine' ? grad(s, [[0, '#c8c8ff'], [1, '#8080cc']]) : '#9c9cd9') : W, stroke: plat ? '#333' : K }));
+      if (plat) for (let k = 0; k < 3; k++) g.append(S('line', { x1: tx + 9 + k * 4, x2: tx + 9 + k * 4, y1: y + 4, y2: y + 12, stroke: '#2e2e66' }));
+    }
+    return s;
+  }
+  function render() {
+    grid.replaceChildren(...VERS.map(([n, y, st]) => el('figure', {}, one(st), el('figcaption', {}, el('b', {}, n), y))));
+    status.textContent = NOTE[ctl];
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['按钮', '窗口标题栏', '复选框', '滚动条'], (k) => { ctl = ['button', 'title', 'check', 'scroll'][k]; render(); })), grid, status,
+    el('p', { class: 'src' }, '全部为示意画法，用来比较「视觉层次怎样一代代加厚」，不代表各版本控件的精确像素。'));
+  render();
+});
+
+/* ======================= 11 总结 ======================= */
+reg('summary', (node) => {
+  const pts = [
+    '第一个系列的 Mac 系统在交互和整体框架上保持了高度的延续性。',
+    '模拟现实世界元素的设计理念，从 Xerox Alto 一直延续下来没变过。',
+    '在已有屏幕分辨率的基础上，最大化地提供优质的视觉体验，是它的宗旨。',
+    'Mac 系统很早就开始注意体验和「不言自明」的交互逻辑。',
+    'Mac 的图形化界面，始于施乐，成于乔布斯，在迭代中一步步完善。',
+  ];
+  const items = pts.map((p, i) => el('div', { class: 'tl-step' }, el('span', { class: 'i' }, i + 1), el('p', {}, p)));
+  let k = 0;
+  const status = el('div', { class: 'status' }, '');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (k < items.length) items[k++].classList.add('on'); status.textContent = `已展开 ${k} / ${items.length}`; if (k >= items.length) next.disabled = true; } }, '下一条');
+  const all = el('button', { class: 'btn', type: 'button', onclick: () => { items.forEach((x) => x.classList.add('on')); k = items.length; next.disabled = true; status.textContent = `已展开 ${k} / ${items.length}`; } }, '全部展开');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { items.forEach((x) => x.classList.remove('on')); k = 0; next.disabled = false; status.textContent = '已重置。'; } }, '重置');
+  node.append(el('div', { class: 'steps' }, ...items), el('div', { class: 'ctrl' }, next, all, reset), status);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

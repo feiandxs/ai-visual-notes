@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Windows XP：摆脱机械，拥抱自然（Windows 设计史 03）</title>
+<meta name="description" content="少数派「Windows 设计史」第三篇的可视化讲解：Win95 与 Luna 的线框对比、「睫毛膏」3D 用量滑块、Whistler 启动画面、诱饵主题与 Luna 配色、图标缩小后的辨识度、Bliss 壁纸取色、旗帜徽标变形、开始按钮的菲茨定律、任务栏分组与控制面板任务视图。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+.hero-art{margin-top:22px;max-width:520px}
+.hero-art svg{border-radius:12px;box-shadow:var(--shadow)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.prose{font-size:15.5px;margin:0 0 14px;max-width:760px}
+.prose + .prose{margin-top:-4px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(13px,2.4vw,16px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:10px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:170px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.status .bad{color:var(--r);font-weight:600}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+.lbl.s{font-size:10.5px}
+.ax{stroke:var(--line);stroke-width:1}
+
+/* ===== 本页补充（非原文） ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* ===== 本页组件 ===== */
+.ws text{font-family:Tahoma,Verdana,var(--font)}
+.ws{max-width:560px;margin:0 auto;width:100%}
+.cvwrap canvas{width:100%;height:auto}
+.ws .tb,.ws .okb{transition:filter .15s}
+.ws.glow .tb:hover,.ws.glow .okb:hover{filter:brightness(1.22) saturate(1.15)}
+.ws.glow .okb:hover .hl{stroke:#f5b84a}
+.ws .tb,.ws .okb{cursor:pointer}
+.hlbox{fill:none;stroke:#ff7a00;stroke-width:2.5;stroke-dasharray:6 4;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.diffs{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chipb{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;color:var(--text)}
+.chipb.on{background:var(--o-soft);border-color:var(--o);color:var(--text);font-weight:600}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13.5px;color:var(--muted);margin-top:10px}
+.panel b{color:var(--text)}
+.panel .vs{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
+@media (min-width:640px){ .panel .vs{grid-template-columns:1fr 1fr} }
+.panel .vs div{background:var(--surface);border-radius:8px;padding:6px 10px}
+.swatches{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.sw{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-family:var(--mono)}
+.sw i{width:22px;height:22px;border-radius:6px;display:inline-block;border:1px solid var(--line)}
+.split{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:820px){ .split{grid-template-columns:3fr 2fr;align-items:start} }
+.lin .nd{cursor:pointer}
+.lin .nd circle{stroke-width:2;transition:r .2s}
+.lin .nd:hover circle,.lin .nd:focus circle{r:9}
+.lin .nd.sel circle{stroke:var(--text);stroke-width:3}
+.lin .nd:focus{outline:none}
+.pend .pt{cursor:pointer}
+.pend .pt:focus{outline:none}
+.pend .pt.sel circle{stroke:var(--text);stroke-width:3}
+.cvwrap{background:#000;border-radius:10px;overflow:hidden}
+.icw{background:var(--surface-2);border-radius:10px;padding:10px;display:flex;justify-content:center}
+.icw canvas{image-rendering:pixelated;image-rendering:crisp-edges}
+.icw.gray canvas{filter:grayscale(1)}
+.tbar svg{border-radius:6px}
+.cp{display:grid;gap:6px;margin-top:8px}
+.cp.task{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.cp.classic{grid-template-columns:repeat(auto-fill,minmax(98px,1fr))}
+.cp .it{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 8px;font-size:12.5px;line-height:1.35;display:flex;gap:6px;align-items:center;transition:background .2s,border-color .2s}
+.cp.task .it{font-size:13.5px;padding:9px 10px}
+.cp .it i{flex:none;width:14px;height:14px;border-radius:4px;background:#3f7fdc;display:inline-block}
+.cp.task .it i{width:22px;height:22px;border-radius:6px}
+.cp .it.hit{background:var(--y-soft);border-color:var(--y);font-weight:600}
+.crumb{font-size:13.5px;margin-top:8px}
+.crumb span{display:inline-block;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 8px;margin:2px 0}
+.cards{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){ .cards{grid-template-columns:1fr 1fr} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);font-size:14px}
+.card b{display:block;margin-bottom:4px}
+
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p);word-break:break-all}
+footer ol{padding-left:20px;margin:8px 0}
+
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Windows XP 设计史</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 历史 · Windows 设计史 03</div>
+  <h1>Windows XP：摆脱机械，拥抱自然</h1>
+  <p class="sub">Windows 95 之后几年，Windows 一直是灰暗、棱角分明的「机械」模样。XP 换上了蓝天绿草的 Luna 主题、真实照片做的 Bliss 壁纸、飘扬的旗帜徽标。这一页把这段转向拆开，让你亲手切换、拖动、点击来看。</p>
+  <div class="thesis">Whistler 项目要把 9x 与 NT 两条产品线合并成一个面向普通用户的系统，设计目标是「让操作系统更友好」：摆脱机械的僵化与灰暗，让它感觉更「自然」。途中微软试过一阵「扁平化」，最终发布的 Luna 却仍是一套塑料感的 3D 设计。<sup class="c">[1]</sup></div>
+  <div class="hero-art"><div data-demo="hero"></div></div>
+  <div class="authors">
+    <span class="au"><i>S</i>SUNTRISE（少数派）</span>
+  </div>
+  <p class="meta">原文：「Windows 设计史 03 | Windows XP：摆脱机械，拥抱自然」，SUNTRISE，少数派。本页按原文的章节顺序讲述；原文中的截图都换成了示意性的线框与色块重绘（不是像素还原），并加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="absent" data-title="设计风格的缺席">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>设计风格的缺席</h2>
+    <p class="lead">Windows 95 之后几年的界面到底「机械」在哪里？Luna 把哪些地方换掉了？</p>
+  </div>
+  <p class="prose">原文说，同当时许多操作系统一样，Windows 95 之后几年的设计风格乏善可陈：灰暗、机械，按钮棱角分明，边框突出。虽然可以改标题栏、按钮的颜色，却不能从整体上摆脱机械感。随着 Windows 95 发布，微软注意到设计对操作系统的重要性，也意识到冷冰冰的视觉风格会拉开系统与用户的距离。世纪之交，苹果等系统已开始探索新美学，微软决定跟上。</p>
+  <div class="fig">
+    <div class="cap">同一个窗口、同一条任务栏，分别用 <b>Windows 95 默认主题</b>、<b>XP 保留的「经典」主题</b>与 <b>XP 默认的 Luna 蓝色主题</b>画出来（示意线框）。点下面的部位标签，窗口上会圈出那一处，面板里对比前后的做法。</div>
+    <div class="ctrl"><div class="seg" id="cmpSeg"></div></div>
+    <div data-demo="compare"></div>
+  </div>
+</section>
+
+<section class="ch" id="whistler" data-title="Whistler：合并两条产品线">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>Whistler：一个系统，两种用户</h2>
+    <p class="lead">为什么下一版 Windows 必须「更友好」？因为它要同时接住企业用户和普通消费者。</p>
+  </div>
+  <p class="prose">「Whistler」项目肩负一个任务：统一 Windows 的 9x（面向普通消费者）与 NT（面向商业、企业、服务器端）两条产品线，做一个以 NT 为内核、面向主流消费者的版本。在 NT 适合商业用户的基础上，它还需要增加适当的娱乐性来吸引普通用户。</p>
+  <div class="fig">
+    <div class="cap">两条产品线在 XP 汇合。点任意节点看它在这段历史里的位置（键盘可用 Tab 与 Enter）。</div>
+    <div data-demo="lineage"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：图中各版本的发布年份按通行资料标注：Windows NT 3.1（1993）、Windows 95（1995）、NT 4.0（1996）、Windows 98（1998）、Windows 2000 与 Windows Me（2000）；Windows XP 的发布日期 2001-10-25 来自原文。Neptune 是原系列上一篇的主角，一个未发布的、基于 NT 的消费者版本。</div>
+  <p class="prose" style="margin-top:16px">设计师 Gregory Raiz 大学毕业后加入微软，最初参与的正是「Neptune」项目。可用性测试里他们发现：Windows 用户完成任务的成功率更高，但被问到最喜欢、觉得更友好的电脑时，他们始终更倾向 Mac。iMac G3 半透明的弧形机身、Mac OS 柔和的光影，都让电脑显得更亲近。于是团队把「力求让操作系统体验更加友好」定为目标，又在研究后意识到融入自然元素能让 Windows 不那么机械，由此确立了理念：<b>摆脱「机械」的僵化与灰暗，让操作系统感觉更「自然」</b>。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="flat" data-title="扁平化的开始？">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Windows 扁平化的开始？</h2>
+    <p class="lead">2000 年前后，微软为什么一度把按钮的 3D 效果「卸妆」？</p>
+  </div>
+  <p class="prose">据雷蒙德·陈（Raymond Chen）的文章《诱饵视觉风格》，在最终视觉风格完成前，微软做了一些别的主题向公众展示以分散注意力，称为「Mallard」（野鸭，也指捕猎用的野鸭形诱饵）。原文推测这也可能包括 Whistler 前期的「Watercolor（水彩）」主题。<sup class="c">[2]</sup>这些「诱饵」都透出同一个趋向：弱化按钮等控件的突出感，改用蓝色、黄绿色等明亮颜色，抛弃过去的灰暗色调，与 Neptune 的概念设计一脉相承。登录界面也没有多少突出的控件，「文本」占据了中心。</p>
+  <div class="fig">
+    <div class="cap"><b>启动画面</b>：Whistler 抛弃了 Windows 2000 的机械进度条和 Win95 式加载条。Beta 1 用点状加载条，Beta 2 用四色加载条（原文作者最喜欢的启动界面之一，可惜没进正式版）。选一个版本看它的加载动画（示意重绘）。</div>
+    <div class="ctrl"><div class="seg" id="bootSeg"></div></div>
+    <div data-demo="boot"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">雷蒙德·陈在《Windows UI「睫毛膏」的演变》里解释了这次转向：Windows 从 3.0 起引入 3D 视觉元素，Win95 时大量采用，过多的结果是<b>「对话框上的按钮有太多浓重的黑色轮廓，看起来像是刷了很差的睫毛膏」</b>。为了抑制 3D 的滥用，微软开始在界面元素之间使用「更微妙的分隔线。分隔线变得更柔和，有时甚至完全消失」，向 2D 转变。Word 95 的工具栏还是凸起按钮，Word 97 就改成了平面按钮，只在鼠标悬停或点击时才显示立体效果。<sup class="c">[3]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>睫毛膏用量</b>：拖动滑块从 Windows 95 式的浓重 3D 走到 Word 97 式的平面工具栏，再到 Luna 的「微妙 3D」。把鼠标移到工具栏按钮上、按下去，看平面按钮怎样只在需要时才出现立体感。下方实时统计图中深色轮廓线的总长度。</div>
+    <div data-demo="mascara"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">这种弱化突出效果、更简洁平面的设计也出现在当时微软的其他产品里，比如 Microsoft Money 2000。原文指出，它和约十年后 Windows 8 的「扁平化」颇为相似。</p>
+</section>
+
+<section class="ch" id="luna" data-title="Candy 与 Luna">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>插曲 Candy，主角 Luna：「蓝天绿草」还是「塑料玩具」？</h2>
+    <p class="lead">诱饵之外，真正胜出的 Luna 用了什么颜色、靠什么给反馈？</p>
+  </div>
+  <p class="prose">Whistler 里还有一个约制作于 2000 年 6～8 月的「Candy（糖果）」主题：标题栏按钮与水彩主题差不多，内部按钮、滚动条却很像苹果的 Aqua，据推测只用于测试。最终胜出的是「Luna（月神）」：原型设计始于 1999 年，2001 年 1 月在 CES 2001 上亮相，默认蓝绿配色，另有「银色」和「橄榄绿」。蓝色喻指蓝天，绿色喻指绿草。</p>
+  <div class="fig">
+    <div class="cap">切换 Whistler 时期出现过的主题与 Luna 的三种配色（示意线框，配色为近似取色）。在 Luna 下，把鼠标移到标题栏按钮或「确定」上，它们会亮起来，这正是《Windows XP 视觉指南》说的「邀请您单击」。</div>
+    <div class="ctrl"><div class="seg" id="thSeg"></div></div>
+    <div data-demo="themes"></div>
+  </div>
+  <div class="quote">《Windows XP 视觉指南》用 4 个词概括新风格：<b>清新、向往、多彩、简单</b>。「标题栏和任务栏具有柔软的塑料感，鼠标悬停时按钮会亮起，邀请您单击它们。微妙的三维按钮和控件使用颜色和光线来提供更好的反馈。」「颜色用于提高可发现性并传达按钮的含义，例如绿色的『开始』按钮和红色的『关闭』按钮。告别灰色，迎接更智能、友好的颜色。」<sup class="c">[5]</sup></div>
+  <p class="prose">并非所有人都买账。一些用户和媒体把 Luna 形容为「费雪玩具」（Fisher-Price，美国著名儿童玩具公司），嫌它塑料感太强、略显幼稚。微软的对策是：XP 保留前代的「经典」主题，官网也提供多种主题；主题引擎也更新了，降低了第三方做主题的难度，不过仍须修补系统文件 uxtheme.dll 才能使用非微软签名的主题。</p>
+</section>
+
+<section class="ch" id="icons" data-title="新图标">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>新图标：更细致，也更难分辨</h2>
+    <p class="lead">48×48、32 位色、8 位透明度的 XP 图标，缩小以后还认得出来吗？</p>
+  </div>
+  <p class="prose">与主题相配，系统图标也重新设计：48×48 像素，32 位颜色，8 位透明度，光影更细致，色彩更亮丽。但正如 Marcin Wichary 在《一千平方像素的画布》中所说，许多图标的颜色过于相近，「（颇具讽刺意味的是）就像 Windows 1.0 的情况一样，很难区分一排排看起来相似的蓝色倾斜形状，尤其是当图标缩小时。」<sup class="c">[6]</sup></p>
+  <div class="fig">
+    <div class="cap">六个以蓝色为主的示意图标（本页按 XP 风格自绘，不是原图）。拖动尺寸滑块，图标先在该尺寸下光栅化，再放大显示每一个像素；打开「去色」，只剩明暗时它们几乎是同一团蓝灰色块。下方用 CIELAB 色差 ΔE 现场计算这些主色彼此有多接近。</div>
+    <div data-demo="icons"></div>
+  </div>
+</section>
+
+<section class="ch" id="lostflat" data-title="走失的扁平化">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>走失的「扁平化」</h2>
+    <p class="lead">水彩主题和 Luna 原型都偏平，为什么最终的 Luna 又回到了 3D？</p>
+  </div>
+  <p class="prose">雷蒙德·陈说 Windows XP 也加入了「扁平就是好」的潮流（比如资源管理器的「任务窗格」），可最终的 Luna 减少了扁平元素，《指南》里用的也是「3D 按钮」这样的词，今天人们仍把 XP 归为「拟物化 3D 设计」。原文作者没找到详细解释，给出一种说法：当时仍有相当多人没接触过电脑，界面需要模拟现实才能让更多用户适应；而苹果 Mac OS X 的 Aqua 把拟物推向了新的高度。雷蒙德·陈在 2004 年的文章结尾问：「当人们厌倦了平面的僵硬感时，3D 会强势回归吗？」<sup class="c">[3]</sup>他的预感在 XP 的下一代成了现实。扁平化并没有消失，而是在 Media Center 等产品中若隐若现，约十年后才有了自己的名字「Metro」（微软称其正式名称是 Microsoft Design Language，Metro 只是代号）。</p>
+  <div class="fig">
+    <div class="cap"><b>扁平与立体的钟摆</b>：横轴是年份，纵轴是「3D/拟物程度」。纵向位置是本页按原文描述做的<b>示意定位</b>，不是测量值。点任一个点，看原文怎么说它。</div>
+    <div class="scrollx"><div data-demo="pendulum" style="min-width:520px"></div></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：图中「Windows Vista / Aero（2007）」与「Windows 8（2012）」两个点的年份为通行资料；原文只说 3D 在 XP 的下一代回归、扁平化约十年后以 Metro 之名出现，具体是下一篇的内容。</div>
+</section>
+
+<section class="ch" id="bliss" data-title="Bliss 壁纸">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>告别纯色背景：自然之「极乐」</h2>
+    <p class="lead">一张草地照片，为什么恰好配得上 Luna？</p>
+  </div>
+  <p class="prose">Windows 3.x 就支持设置桌面壁纸，但 9x 的默认壁纸仍是纯色，NT 系列只是用 Windows 徽标做壁纸（Windows 2000 甚至也是纯色）。Whistler 决定用一张真正的照片凸显个性，主题选了大自然；设计经理 Rob Girling 的用户研究也发现人们普遍偏爱风景壁纸。摄影师 Charles O'Rear 1996 年 1 月去看女友 Daphne Irwin 时，在加州索诺玛（Sonoma）的公路旁拍下一张草地照片，原名「Bucolic Green Hills」。XP 产品设计主管 Jen Shetterly 看中了它：既符合 Luna 的配色，又与 Windows 95 起采用的「云」元素不谋而合。2000 年微软通过 Corbis 买下照片，命名为「Bliss（极乐）」。<sup class="c">[1][9]</sup></p>
+  <div class="fig">
+    <div class="cap">切换各版本的默认桌面（示意）。在 XP 的 Bliss 上点天空、云、草地，看这块颜色离 Luna 的哪个界面色最近（ΔE 由页面现场计算；Bliss 的颜色是本页示意取色，并非原图像素）。</div>
+    <div class="ctrl"><div class="seg" id="wallSeg"></div></div>
+    <div data-demo="wall"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">同样出自 O'Rear 的「红月沙漠（Red Moon Desert）」也曾被用作 XP 的默认壁纸，后来成为内置壁纸之一。Girling 还计划给 XP 专业版用办公楼照片做默认壁纸，被高层否决，可能因为 Bliss 已大量出现在营销中。不同语言版本对 Bliss 的命名也不同：荷兰语版叫「Ierland」，葡萄牙语（葡萄牙）版叫「Alentejo」。Bliss 结束了 Windows 桌面默认纯色的历史，此后壁纸成了每一版展示设计风格的舞台。27 年后，另一个系统的设计团队来到这片土地，「索诺玛」成了 macOS Sonoma 的名字和壁纸取景地。</p>
+</section>
+
+<section class="ch" id="logo" data-title="旗帜徽标">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>鲜明的「旗帜」：徽标的变化</h2>
+    <p class="lead">四色徽标是「窗口」还是「旗帜」？XP 选了旗帜，并让它飘起来。</p>
+  </div>
+  <p class="prose">微软委托 Frog Design（也参与过早期苹果电脑的设计）为新版本设计徽标，要求「保持其在悠久历史中积累的品牌资产，同时也要向更灵活、用户友好的品牌演变」。Frog 认为经典的四色排列既是「打开世界的窗口」，也是「探索和发现的旗帜」，于是设计了 50 个新徽标，有偏「窗口」的也有偏「旗帜」的；最终由 Cathy Potter 设计的 3 种交给微软。新徽标完成了从机械方形旗帜到飘扬的自然旗帜的转向。Frog Design 还设计了 XP 的媒体播放器等组件界面。</p>
+  <div class="fig">
+    <div class="cap">拖动滑块，从 Windows 95～2000 时期的徽标（黑色描边、左侧像素拖尾）过渡到 XP 的徽标（去掉描边，更圆润的飘动与高光）。两端都是本页的示意重绘。最后一个按钮是原文留下的「后话」。</div>
+    <div data-demo="flag"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文参考资料中该设计师作品页的域名是 caseypotterdesign.com，名字可能应为 Casey Potter；本页未能核实，正文按原文保留。原文结尾的「灵魂拷问」（你叫「窗户」，为什么徽标用旗帜？）指向 Windows 8 的徽标重设计，据通行资料出自 Pentagram 的 Paula Scher，本页未逐一核对。</div>
+</section>
+
+<section class="ch" id="xp" data-title="eXPerience">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>「eXPerience」：除了外观，还改了什么</h2>
+    <p class="lead">开始按钮挪到角落、任务栏分组、按任务排的控制面板，各自解决什么问题？</p>
+  </div>
+  <p class="prose">2001 年 10 月 25 日，Windows XP 正式发布。「XP」来自「eXPerience（体验）」，这一版的变化集中在用户体验上。开始菜单变成双列，左侧显示最近使用的程序，也可固定常用程序；任务栏可以把同一程序的多个窗口合并成组；「开始」按钮延伸到了屏幕角落，直接点任务栏一角就能打开菜单，这应用了菲茨定律：目标越远、越小，鼠标捕获它的时间越长，而屏幕四角最容易到达。</p>
+  <div class="fig">
+    <div class="cap"><b>菲茨定律与屏幕角落</b>：在「屏幕」里任意点一下放置鼠标，再选「瞄准点击」或「直接甩向左下角」。按原文的说法，Win95 的开始按钮与屏幕边缘之间留有空隙，XP 的按钮延伸到了角落（示意几何）。</div>
+    <div class="ctrl"><div class="seg" id="fittsSeg"></div></div>
+    <div data-demo="fitts"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：菲茨定律由 Paul Fitts 于 1954 年提出。人机交互里常用 MacKenzie 的 Shannon 形式：MT = a + b · log₂(D/W + 1)，D 是到目标的距离，W 是目标沿运动方向的宽度，log 项叫难度指数 ID（单位 bit）。屏幕边缘会挡住鼠标，贴边的目标在那个方向上相当于无限宽，这就是「角落最快」的原因。演示里的 a、b 取 0.1 s 与 0.15 s/bit 仅作示意。<sup class="c">[12][13]</sup></div>
+  <div class="fig">
+    <div class="cap"><b>任务栏分组</b>：拖动滑块增加打开的窗口数（来自 4 个程序），比较不分组与分组时任务栏的样子。</div>
+    <div data-demo="taskbar"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：XP 默认在任务栏按钮挤不下时才把同一程序的窗口合并（「分组相似任务栏按钮」选项），演示按这一行为建模；按钮的最小宽度等数字为示意，本页未核对 XP 的确切阈值。</div>
+  <p class="prose" style="margin-top:16px">控制面板借鉴了 Neptune 项目的「引导式导航」，按「任务」编排设置项目，也可切换回「经典视图」直接显示全部选项；资源管理器的「任务窗格」也是同样的思路。另一个细节：从 XP 起，全新安装后的桌面默认只有一个「回收站」图标（不少人以为默认还有「我的电脑」，可能是受非原版 Windows 影响）。</p>
+  <div class="fig">
+    <div class="cap"><b>控制面板：任务视图与经典视图</b>。选一个你想完成的事，看两种视图下各要点哪里。分类与项目名称按 XP 中文版的常见叫法示意。</div>
+    <div data-demo="cpanel"></div>
+  </div>
+</section>
+
+<section class="ch" id="end" data-title="从别人想要到我想要">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>结尾：从「别人想要」到「我想要」</h2>
+    <p class="lead">用户测试里，人们夸 Luna 的方式透露了什么？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">雷蒙德·陈在《Luna 的外观》里记下了用户测试中的反应。<sup class="c">[4]</sup></div>
+    <div class="cards">
+      <div class="card"><b>对 Luna 的反应</b>「哇，这对 <u>我爸爸 / 我的员工 / 我女儿</u> 来说会是一个很棒的 UI。」人们并不认为自己会认可这套 UI，他们认为别人会接受它。</div>
+      <div class="card"><b>对下一套 UI 的反应</b>「哇，这对 <u>我</u> 来说会是一个很棒的 UI。」这套 UI 就是下期的主角：Aero。</div>
+    </div>
+    <div class="final">XP 用蓝天、绿草、飘扬的旗帜和一张真实的草地照片，把 Windows 从灰色的机械感里拉了出来；它试过扁平，又退回塑料感的 3D，并把「下一步往哪走」的问题留给了 Longhorn。</div>
+    <p class="src">原文结尾预告：XP 的下一代（代号 Longhorn）是 Windows 历史上开发周期最长的一代（原文注：指开发周期而非发布间隔），「疯狂到，到最后，必须从头再来」。</p>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 SUNTRISE 在少数派发表的《<a href="https://sspai.com/post/88722">Windows 设计史 03 | Windows XP：摆脱机械，拥抱自然</a>》制作（「Windows 设计史」系列第三篇；前两篇：<a href="https://sspai.com/post/87835">01 从青涩到成熟</a>、<a href="https://sspai.com/post/88506">02「海王星」项目</a>）。原文中的截图与插图均已用内联 SVG、canvas 与 JS 示意性重绘，未引用外链图片；配色为近似取色。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>SUNTRISE，《Windows 设计史 03 | Windows XP：摆脱机械，拥抱自然》，少数派，<a href="https://sspai.com/post/88722">sspai.com/post/88722</a>（含原文脚注 1–5）。</li>
+    <li>Raymond Chen, The decoy visual style, The Old New Thing (2006-01-11). <a href="https://devblogs.microsoft.com/oldnewthing/20060111-09/?p=32693">链接</a>（原文参考资料）</li>
+    <li>Raymond Chen, The evolution of mascara in Windows UI, The Old New Thing (2004-07-28). <a href="https://devblogs.microsoft.com/oldnewthing/20040728-00/?p=38313">链接</a>（原文参考资料）</li>
+    <li>Raymond Chen, The look of Luna, The Old New Thing (2004-03-31). <a href="https://devblogs.microsoft.com/oldnewthing/20040331-00/?p=39953">链接</a>（原文参考资料）</li>
+    <li>Microsoft, Windows XP Visual Guide（《Windows XP 视觉指南》）. <a href="http://interface.free.fr/Archives/GUI_Xp.pdf">存档 PDF</a>（原文参考资料）</li>
+    <li>Marcin Wichary, One thousand square pixels of canvas, GUIdebook. <a href="https://guidebookgallery.org/articles/onethousandsquarepixelsofcanvas">链接</a>（原文参考资料）</li>
+    <li>Wikipedia 条目 Windows XP visual styles. <a href="https://en.wikipedia.org/wiki/Windows_XP_visual_styles">链接</a>（原文参考资料）</li>
+    <li>Betawiki, Watercolor. <a href="https://betawiki.net/wiki/Watercolor">链接</a>（原文参考资料）</li>
+    <li>Windows Wallpaper Wiki, Windows XP. <a href="https://windowswallpaper.miraheze.org/wiki/Windows_XP">链接</a>（原文参考资料）</li>
+    <li>Windows XP 徽标设计作品页. <a href="https://www.caseypotterdesign.com/windowsxp">caseypotterdesign.com/windowsxp</a>（原文参考资料）</li>
+    <li>Jensen Harris, Giving You Fitts, Microsoft Learn 博客存档. <a href="https://learn.microsoft.com/zh-cn/archive/blogs/jensenh/giving-you-fitts">链接</a>（原文参考资料）</li>
+    <li>Fitts, P. M. (1954). The information capacity of the human motor system in controlling the amplitude of movement. <i>Journal of Experimental Psychology</i> 47(6), 381–391.（本页补充）</li>
+    <li>MacKenzie, I. S. (1992). Fitts' law as a research and design tool in human-computer interaction. <i>Human–Computer Interaction</i> 7(1), 91–139.（本页补充）</li>
+    <li>原文其余参考资料：Quora「Who designed the Windows XP's GUI?」；Greg Melander, Inside the arc of innovation: a designer's story (Medium)；Greg Raiz 的推文；Iconfactory, Microsoft Windows XP 图标；archive.org, Windows XP 演示 "eXPerience the excitement!"。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面线框、配色与几何均为示意，史实细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+/* 分段按钮：返回 {node, set} */
+function segment(host, items, onPick, init = 0) {
+  const bs = items.map((t, i) => el('button', { type: 'button', onclick: () => pick(i) }, t));
+  function pick(i) { bs.forEach((b, j) => { b.classList.toggle('on', i === j); b.setAttribute('aria-pressed', i === j); }); onPick(i); }
+  host.append(...bs);
+  pick(init);
+  return pick;
+}
+const keyAct = (n, f) => n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } });
+
+/* ---------- 颜色工具：sRGB → CIELAB，ΔE76 ---------- */
+function hex2rgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgb2lab([r, g, b]) {
+  const f = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const R = f(r), G = f(g), B = f(b);
+  let X = (R * 0.4124 + G * 0.3576 + B * 0.1805) / 0.95047, Y = R * 0.2126 + G * 0.7152 + B * 0.0722, Z = (R * 0.0193 + G * 0.1192 + B * 0.9505) / 1.08883;
+  const g3 = (t) => t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116;
+  X = g3(X); Y = g3(Y); Z = g3(Z);
+  return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
+}
+const dE = (a, b) => { const p = rgb2lab(hex2rgb(a)), q = rgb2lab(hex2rgb(b)); return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]); };
+function hue(h) { const [r, g, b] = hex2rgb(h).map((x) => x / 255); const M = Math.max(r, g, b), m = Math.min(r, g, b), d = M - m; if (!d) return 0; let H = M === r ? ((g - b) / d) % 6 : M === g ? (b - r) / d + 2 : (r - g) / d + 4; H *= 60; return Math.round(H < 0 ? H + 360 : H); }
+
+/* ======================= 窗口线框渲染器 ======================= */
+let GID = 0;
+const TH = {
+  win95: { name: 'Windows 95', kind: 'bevel', desk: '#008080', title: ['#000080', '#000080'], face: '#c0c0c0' },
+  classic: { name: 'XP 经典主题', kind: 'bevel', desk: '#3a6ea5', title: ['#0a246a', '#a6caf0'], face: '#d4d0c8' },
+  watercolor: { name: 'Watercolor（水彩）', kind: 'soft', desk: '#8fb0d9', title: '#e8eff9', titleText: '#1e4d8c', face: '#f4f7fb', frame: '#9fb6d8', bar: '#dde7f4', startFill: '#c9ddf3' },
+  candy: { name: 'Candy（糖果）', kind: 'soft', candy: true, desk: '#8fb0d9', title: '#e8eff9', titleText: '#1e4d8c', face: '#f4f7fb', frame: '#9fb6d8', bar: '#dde7f4', startFill: '#c9ddf3' },
+  lunaBlue: { name: 'Luna 蓝色（默认）', kind: 'luna', bliss: true, title: ['#4a96f8', '#0a5fd8', '#0b4fc8'], titleText: '#fff', frame: '#0b4fc8', face: '#ece9d8', tbtn: '#2a74f0', tglyph: '#fff', close: '#e0533a', bar: ['#3b7cf0', '#245edb', '#1a46b0'], tray: '#0f8be8', trayText: '#fff', start: ['#62bd5c', '#3c9b37', '#2c7a28'], scroll: '#c1d3fb' },
+  lunaSilver: { name: 'Luna 银色', kind: 'luna', bliss: true, title: ['#fbfbfd', '#c8c9d8', '#a6a8ba'], titleText: '#1a1a2a', frame: '#a6a8ba', face: '#ece9e8', tbtn: '#e6e6ee', tglyph: '#333', close: '#d9604a', bar: ['#f2f2f6', '#cfd0dc', '#a6a8ba'], tray: '#dcdce6', trayText: '#222', start: ['#62bd5c', '#3c9b37', '#2c7a28'], scroll: '#e1e2ea' },
+  lunaOlive: { name: 'Luna 橄榄绿', kind: 'luna', bliss: true, title: ['#c9d7a0', '#9eb070', '#82964f'], titleText: '#fff', frame: '#82964f', face: '#ece9d8', tbtn: '#adbd84', tglyph: '#fff', close: '#d9604a', bar: ['#c4cf9c', '#a1b073', '#7c8c4e'], tray: '#b6c28c', trayText: '#2b331a', start: ['#62bd5c', '#3c9b37', '#2c7a28'], scroll: '#d6dfb8' },
+};
+const GEO = { X: 22, Y: 12, W: 300, H: 182, TB: 212 };
+function lg(id, stops, horiz) {
+  const st = stops.map((c, i) => `<stop offset="${stops.length === 1 ? 0 : i / (stops.length - 1)}" stop-color="${c}"/>`).join('');
+  return `<linearGradient id="${id}" x1="0" y1="0" x2="${horiz ? 1 : 0}" y2="${horiz ? 0 : 1}">${st}</linearGradient>`;
+}
+function glyph(kind, x, y, s, col, sw) {
+  const c = x + s / 2, m = y + s / 2, r = s * 0.24;
+  if (kind === 'min') return `<line x1="${c - r}" y1="${m + r}" x2="${c + r * 0.5}" y2="${m + r}" stroke="${col}" stroke-width="${sw}"/>`;
+  if (kind === 'max') return `<rect x="${c - r}" y="${m - r}" width="${2 * r}" height="${2 * r}" fill="none" stroke="${col}" stroke-width="${sw}"/>`;
+  return `<path d="M${c - r} ${m - r}L${c + r} ${m + r}M${c + r} ${m - r}L${c - r} ${m + r}" stroke="${col}" stroke-width="${sw}"/>`;
+}
+function bevel(x, y, w, h, face, o = {}) {
+  let s = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${face}"/>`;
+  if (o.sunken) {
+    s += `<path d="M${x} ${y + h}V${y}H${x + w}" stroke="#808080" fill="none"/><path d="M${x} ${y + h}H${x + w}V${y}" stroke="#ffffff" fill="none"/>`;
+    return s;
+  }
+  s += `<path d="M${x + .5} ${y + h}V${y + .5}H${x + w}" stroke="#ffffff" fill="none"/>`;
+  s += `<path d="M${x} ${y + h - .5}H${x + w - .5}V${y}" stroke="#000" fill="none"/>`;
+  s += `<path d="M${x + 1.5} ${y + h - 1.5}H${x + w - 1.5}V${y + 1.5}" stroke="#808080" fill="none"/>`;
+  if (o.def) s += `<rect x="${x - 1}" y="${y - 1}" width="${w + 2}" height="${h + 2}" fill="none" stroke="#000"/>`;
+  return s;
+}
+function flagMini(x, y, s) {
+  const q = s / 2 - .6;
+  return `<rect x="${x}" y="${y}" width="${q}" height="${q}" fill="#f25022"/><rect x="${x + q + 1.2}" y="${y}" width="${q}" height="${q}" fill="#7fba00"/><rect x="${x}" y="${y + q + 1.2}" width="${q}" height="${q}" fill="#00a4ef"/><rect x="${x + q + 1.2}" y="${y + q + 1.2}" width="${q}" height="${q}" fill="#ffb900"/>`;
+}
+/* Bliss 示意：天空、云、草坡 */
+const BLISS = { skyTop: '#2463c6', skyLow: '#7fb2ea', cloud: '#f2f6fb', grassLight: '#7cc242', grassDark: '#3d8a1f' };
+function blissSVG(u, h = 220, zones = false) {
+  const k = h / 220;
+  const z = (name, inner) => zones ? `<g class="bz" data-z="${name}" tabindex="0" role="button" aria-label="${name}" style="cursor:pointer">${inner}</g>` : inner;
+  return `<defs><linearGradient id="${u}sky" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="160"><stop offset="0" stop-color="${BLISS.skyTop}"/><stop offset=".5" stop-color="#4f8ad8"/><stop offset="1" stop-color="${BLISS.skyLow}"/></linearGradient>${lg(u + 'gr', [BLISS.grassLight, '#58a52f', BLISS.grassDark])}</defs>
+  <g transform="scale(1,${k})">
+  ${z('skyTop', `<rect width="360" height="96" fill="url(#${u}sky)"/>`)}
+  ${z('skyLow', `<rect y="95" width="360" height="70" fill="url(#${u}sky)"/>`)}
+  ${z('cloud', `<g fill="${BLISS.cloud}"><ellipse cx="88" cy="58" rx="46" ry="13" opacity=".95"/><ellipse cx="120" cy="50" rx="30" ry="12"/><ellipse cx="250" cy="82" rx="58" ry="11" opacity=".9"/><ellipse cx="280" cy="74" rx="26" ry="10"/><ellipse cx="320" cy="38" rx="34" ry="8" opacity=".8"/></g>`)}
+  ${z('grassLight', `<path d="M0 150 Q 70 112 170 118 Q 270 124 360 152 V220 H0Z" fill="url(#${u}gr)"/>`)}
+  ${z('grassDark', `<path d="M0 196 Q 120 176 230 190 Q 300 198 360 186 V220 H0Z" fill="${BLISS.grassDark}"/>`)}
+  </g>`;
+}
+function winSVG(k, opts = {}) {
+  const T = TH[k], u = 'w' + (++GID), { X, Y, W, H, TB } = GEO;
+  const luna = T.kind === 'luna', bev = T.kind === 'bevel', soft = T.kind === 'soft';
+  let d = '<defs>';
+  if (luna) { d += lg(u + 't', T.title) + lg(u + 'b', T.bar) + lg(u + 's', T.start) + lg(u + 'k', ['#ffffff', '#f3f3ef', '#dcdcd4']); }
+  if (bev) d += lg(u + 't', T.title, true);
+  if (T.candy) d += lg(u + 'g', ['#a9d0ff', '#3b86e6', '#1f5fcf']);
+  d += '</defs>';
+  let s = d;
+  // 桌面
+  s += T.bliss ? blissSVG(u + 'd', TB) : `<rect width="360" height="${TB}" fill="${T.desk}"/>`;
+  if (k === 'win95') s += `<g opacity=".9"><rect x="330" y="20" width="18" height="15" fill="#fff" stroke="#000"/><text x="339" y="48" font-size="7" fill="#fff" text-anchor="middle">我的电脑</text></g>`;
+  // 窗口框
+  const th = luna ? 26 : soft ? 24 : 21;
+  if (bev) {
+    s += bevel(X, Y, W, H, T.face);
+    s += `<rect x="${X + 3}" y="${Y + 3}" width="${W - 6}" height="18" fill="url(#${u}t)"/>`;
+    s += `<text x="${X + 9}" y="${Y + 16}" font-size="11" font-weight="700" fill="#fff">我的文档</text>`;
+    [['min', 50], ['max', 34], ['close', 18]].forEach(([g, o]) => { s += `<g class="tb">${bevel(X + W - o - 2, Y + 5, 15, 13, T.face)}${glyph(g, X + W - o - 2, Y + 5, 15, '#000', 1.6)}</g>`; });
+  } else if (luna) {
+    s += `<path d="M${X} ${Y + H}V${Y + 8}Q${X} ${Y} ${X + 8} ${Y}H${X + W - 8}Q${X + W} ${Y} ${X + W} ${Y + 8}V${Y + H}Z" fill="${T.frame}"/>`;
+    s += `<rect x="${X + 3}" y="${Y + th}" width="${W - 6}" height="${H - th - 3}" fill="${T.face}"/>`;
+    s += `<path d="M${X} ${Y + th}V${Y + 8}Q${X} ${Y} ${X + 8} ${Y}H${X + W - 8}Q${X + W} ${Y} ${X + W} ${Y + 8}V${Y + th}Z" fill="url(#${u}t)"/>`;
+    s += `<text x="${X + 11}" y="${Y + 18}" font-size="12" font-weight="700" fill="${T.titleText}" style="paint-order:stroke" stroke="rgba(0,0,0,.18)" stroke-width="1">我的文档</text>`;
+    [['min', 66, T.tbtn], ['max', 45, T.tbtn], ['close', 24, T.close]].forEach(([g, o, f]) => { s += `<g class="tb"><rect x="${X + W - o}" y="${Y + 4}" width="19" height="19" rx="3.5" fill="${f}" stroke="#fff" stroke-width="1"/>${glyph(g, X + W - o, Y + 4, 19, g === 'close' ? '#fff' : T.tglyph, 2.2)}</g>`; });
+  } else {
+    s += `<rect x="${X}" y="${Y}" width="${W}" height="${H}" rx="5" fill="${T.face}" stroke="${T.frame}"/>`;
+    s += `<path d="M${X} ${Y + th}V${Y + 5}Q${X} ${Y} ${X + 5} ${Y}H${X + W - 5}Q${X + W} ${Y} ${X + W} ${Y + 5}V${Y + th}Z" fill="${T.title}"/>`;
+    s += `<line x1="${X}" y1="${Y + th}" x2="${X + W}" y2="${Y + th}" stroke="${T.frame}"/>`;
+    s += `<text x="${X + 10}" y="${Y + 16}" font-size="11.5" font-weight="700" fill="${T.titleText}">我的文档</text>`;
+    [['min', 58], ['max', 40], ['close', 22]].forEach(([g, o]) => { s += `<g class="tb"><rect x="${X + W - o}" y="${Y + 4}" width="16" height="16" fill="transparent"/>${glyph(g, X + W - o, Y + 4, 16, g === 'close' ? '#c0392b' : T.titleText, 1.6)}</g>`; });
+  }
+  // 菜单
+  const my = Y + th + 13, mcol = luna || bev ? '#000' : T.titleText;
+  s += `<text x="${X + 10}" y="${my}" font-size="10" fill="${mcol}">文件(F)　编辑(E)　查看(V)　帮助(H)</text>`;
+  // 内容区
+  const cx = X + 8, cy = Y + th + 20, cw = W - 16, ch = H - th - 20 - 36;
+  if (bev) s += bevel(cx, cy, cw, ch, '#fff', { sunken: true });
+  else s += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" fill="#fff" stroke="${luna ? '#7f9db9' : T.frame}"/>`;
+  [0.62, 0.8, 0.45, 0.7].forEach((f, i) => { s += `<rect x="${cx + 10}" y="${cy + 12 + i * 15}" width="${(cw - 40) * f}" height="5" rx="2" fill="#c9cdd5"/>`; });
+  // 滚动条
+  const sx = cx + cw - 14, sy = cy + 2, sh = ch - 4;
+  if (bev) { s += `<rect x="${sx}" y="${sy}" width="12" height="${sh}" fill="#e3e1dc"/>` + bevel(sx, sy + 14, 12, 26, T.face) + bevel(sx, sy, 12, 12, T.face) + bevel(sx, sy + sh - 12, 12, 12, T.face); }
+  else if (luna) { s += `<rect x="${sx}" y="${sy}" width="12" height="${sh}" fill="#f4f4f0"/><rect x="${sx + .5}" y="${sy + 14}" width="11" height="28" rx="3" fill="${T.scroll}" stroke="#7f9db9"/><rect x="${sx + .5}" y="${sy}" width="11" height="12" rx="2" fill="${T.scroll}" stroke="#7f9db9"/><rect x="${sx + .5}" y="${sy + sh - 12}" width="11" height="12" rx="2" fill="${T.scroll}" stroke="#7f9db9"/>`; }
+  else if (T.candy) { s += `<rect x="${sx + 2}" y="${sy}" width="9" height="${sh}" rx="4.5" fill="#e6edf6" stroke="#b9c9e0"/><rect x="${sx + 2}" y="${sy + 12}" width="9" height="30" rx="4.5" fill="url(#${u}g)"/><rect x="${sx + 4}" y="${sy + 14}" width="3" height="20" rx="1.5" fill="#fff" opacity=".55"/>`; }
+  else { s += `<rect x="${sx + 4}" y="${sy + 12}" width="5" height="30" rx="2.5" fill="#b9cbe6"/>`; }
+  // 按钮
+  const by = Y + H - 28, bw = 58, b2 = X + W - 8 - bw, b1 = b2 - bw - 8;
+  [[b1, '确定', true], [b2, '取消', false]].forEach(([bx, t, def]) => {
+    if (bev) s += `<g class="okb">${bevel(bx, by, bw, 20, T.face, { def })}<text x="${bx + bw / 2}" y="${by + 14}" font-size="10.5" text-anchor="middle" fill="#000">${t}</text></g>`;
+    else if (luna) s += `<g class="okb"><rect x="${bx}" y="${by}" width="${bw}" height="20" rx="3" fill="url(#${u}k)" stroke="#003c74"/><rect class="hl" x="${bx + 1.5}" y="${by + 1.5}" width="${bw - 3}" height="17" rx="2" fill="none" stroke="${def ? '#a5c3f2' : 'transparent'}" stroke-width="1.5"/><text x="${bx + bw / 2}" y="${by + 14}" font-size="10.5" text-anchor="middle" fill="#000">${t}</text></g>`;
+    else if (T.candy) s += `<g class="okb"><rect x="${bx}" y="${by}" width="${bw}" height="20" rx="10" fill="${def ? `url(#${u}g)` : '#eef2f8'}" stroke="${def ? '#1f5fcf' : '#9fb6d8'}"/><ellipse cx="${bx + bw / 2}" cy="${by + 6}" rx="${bw / 2 - 6}" ry="3.5" fill="#fff" opacity="${def ? .5 : .8}"/><text x="${bx + bw / 2}" y="${by + 14}" font-size="10.5" text-anchor="middle" fill="${def ? '#fff' : '#1e4d8c'}">${t}</text></g>`;
+    else s += `<g class="okb"><rect x="${bx}" y="${by}" width="${bw}" height="20" rx="2" fill="${T.face}" stroke="${def ? '#1e4d8c' : T.frame}"/><text x="${bx + bw / 2}" y="${by + 14}" font-size="10.5" text-anchor="middle" fill="${T.titleText}">${t}</text></g>`;
+  });
+  // 任务栏
+  if (bev) {
+    s += `<rect y="${TB}" width="360" height="28" fill="${T.face}"/><line x1="0" y1="${TB + .5}" x2="360" y2="${TB + .5}" stroke="#fff"/>`;
+    s += `<g class="tb">${bevel(2, TB + 3, 54, 22, T.face)}${flagMini(7, TB + 8, 11)}<text x="22" y="${TB + 18}" font-size="10.5" font-weight="700" fill="#000">开始</text></g>`;
+    s += bevel(62, TB + 3, 100, 22, '#e8e6e0', { sunken: true }) + flagMini(67, TB + 9, 9) + `<text x="80" y="${TB + 18}" font-size="10" font-weight="700" fill="#000">我的文档</text>`;
+    s += bevel(300, TB + 3, 56, 22, T.face, { sunken: true }) + `<text x="328" y="${TB + 18}" font-size="10" text-anchor="middle" fill="#000">12:00</text>`;
+  } else if (luna) {
+    s += `<rect y="${TB}" width="360" height="28" fill="url(#${u}b)"/>`;
+    s += `<g class="tb"><path d="M0 ${TB}H80Q94 ${TB} 94 ${TB + 14}Q94 ${TB + 28} 80 ${TB + 28}H0Z" fill="url(#${u}s)"/>${flagMini(10, TB + 8, 13)}<text x="30" y="${TB + 19}" font-size="14" font-weight="700" font-style="italic" fill="#fff" style="paint-order:stroke" stroke="rgba(0,0,0,.25)" stroke-width="1">开始</text></g>`;
+    s += `<rect x="102" y="${TB + 4}" width="110" height="20" rx="3" fill="#ffffff" opacity=".22"/><text x="112" y="${TB + 18}" font-size="10" fill="${T.trayText}">我的文档</text>`;
+    s += `<rect x="290" y="${TB}" width="70" height="28" fill="${T.tray}"/><text x="325" y="${TB + 18}" font-size="10" text-anchor="middle" fill="${T.trayText}">12:00</text>`;
+  } else {
+    s += `<rect y="${TB}" width="360" height="28" fill="${T.bar}"/><line x1="0" y1="${TB + .5}" x2="360" y2="${TB + .5}" stroke="${T.frame}"/>`;
+    s += `<g class="tb"><rect x="4" y="${TB + 4}" width="62" height="20" rx="${T.candy ? 10 : 4}" fill="${T.startFill}" stroke="${T.frame}"/>${flagMini(11, TB + 9, 10)}<text x="27" y="${TB + 18}" font-size="11" font-weight="700" fill="${T.titleText}">开始</text></g>`;
+    s += `<rect x="74" y="${TB + 4}" width="110" height="20" rx="3" fill="#fff" stroke="${T.frame}"/><text x="84" y="${TB + 18}" font-size="10" fill="${T.titleText}">我的文档</text>`;
+    s += `<text x="330" y="${TB + 18}" font-size="10" text-anchor="middle" fill="${T.titleText}">12:00</text>`;
+  }
+  if (opts.hl) { const [x, y, w, h] = opts.hl; s += `<rect class="hlbox" x="${x}" y="${y}" width="${w}" height="${h}" rx="4"/>`; }
+  return `<svg viewBox="0 0 360 240" class="ws${luna ? ' glow' : ''}" role="img" aria-label="${T.name} 界面线框示意">${s}</svg>`;
+}
+
+/* ---------- 标题区 ---------- */
+reg('hero', (node) => { node.innerHTML = winSVG('lunaBlue'); });
+
+/* ---------- 01 对比 ---------- */
+reg('compare', (node) => {
+  const { X, Y, W, H, TB } = GEO;
+  const R = {
+    '桌面': [[2, 2, 356, TB - 4], 'Windows 95 默认是一块纯色（青绿色）桌面', 'XP 默认是真实照片 Bliss：蓝天、白云、绿草（见第 07 节）'],
+    '标题栏': [[X, Y, W, 26], '藏青色的直角色条，粗体白字，窗框靠白灰黑三色线条刻出凸起', '圆角、带上下高光渐变的蓝色标题栏，《指南》称之为「柔软的塑料感」'],
+    '关闭按钮': [[X + W - 26, Y + 2, 24, 24], '和最小化、最大化一样的灰色凸起方块，只靠符号区分', '单独用红色，颜色本身就在「传达按钮的含义」；悬停会亮起'],
+    '对话框按钮': [[X + W - 136, Y + H - 32, 130, 28], '灰色凸起方块，默认按钮再加一圈黑框：这就是「睫毛膏」', '浅色圆角按钮，深蓝细边；悬停时出现暖色高光，用颜色和光线做反馈'],
+    '开始按钮': [[0, TB, 96, 28], '灰色凸起小按钮，与屏幕边缘之间留有边距（原文语）', '绿色、斜体大字，延伸到屏幕左下角，用菲茨定律让它更好点（见第 09 节）'],
+    '任务栏': [[98, TB, 262, 28], '与窗口同色的灰条，通知区是一块凹槽', '蓝色渐变的「塑料」条，右侧通知区换成浅一号的蓝'],
+  };
+  const keys = Object.keys(R);
+  let theme = 'win95', part = null;
+  const box = el('div'), panel = el('div', { class: 'panel' }), chips = el('div', { class: 'diffs' });
+  const cb = keys.map((k) => el('button', { type: 'button', class: 'chipb', onclick: () => { part = part === k ? null : k; draw(); } }, k));
+  chips.append(...cb);
+  function draw() {
+    box.innerHTML = winSVG(theme, part ? { hl: R[part][0] } : {});
+    cb.forEach((b) => b.classList.toggle('on', b.textContent === part));
+    if (!part) panel.innerHTML = `当前：<b>${TH[theme].name}</b>。点上面的部位标签对比 Windows 95 与 Luna 的做法。`;
+    else panel.innerHTML = `<b>${part}</b><div class="vs"><div><b>Windows 95</b>：${R[part][1]}</div><div><b>XP Luna</b>：${R[part][2]}</div></div>`;
+  }
+  segment(document.getElementById('cmpSeg'), ['Windows 95', 'XP 经典主题', 'XP Luna'], (i) => { theme = ['win95', 'classic', 'lunaBlue'][i]; draw(); });
+  node.append(box, chips, panel);
+  draw();
+});
+
+/* ---------- 02 产品线 ---------- */
+reg('lineage', (node) => {
+  const N = [
+    { id: 'nt31', y: 1993, line: 'nt', t: 'Windows NT 3.1', d: 'NT 产品线的起点，面向商业、企业与服务器。' },
+    { id: 'w95', y: 1995, line: '9x', t: 'Windows 95', d: '9x 产品线面向普通消费者。原文：它让微软注意到设计的重要性，但视觉上仍是灰暗、机械的风格。' },
+    { id: 'nt4', y: 1996, line: 'nt', t: 'Windows NT 4.0', d: '换上了 95 式外观；默认壁纸只是 Windows 徽标（原文）。' },
+    { id: 'w98', y: 1998, line: '9x', t: 'Windows 98', d: '9x 线继续面向家庭用户，默认仍是纯色桌面。' },
+    { id: 'nep', y: 1999, line: 'mid', t: 'Neptune（未发布）', d: '上一篇的主角：基于 NT 的消费者版本试验，「活动中心」与引导式导航都来自这里。项目无果而终，但为后来的界面指了方向。' },
+    { id: 'w2k', y: 2000, line: 'nt', t: 'Windows 2000', d: 'NT 线的成熟版本，启动界面是「机械进度条」，默认桌面甚至也是纯色（原文）。' },
+    { id: 'me', y: 2000, line: '9x', t: 'Windows Me', d: '9x 线的最后一版。' },
+    { id: 'xp', y: 2001.8, line: 'mid', t: 'Windows XP（Whistler）', d: '2001-10-25 发布。以 NT 为内核、面向主流消费者，合并了两条产品线；因此要在 NT 的可靠之上增加「适当的娱乐性」，设计目标定为「更友好」。' },
+  ];
+  const x = (y) => 96 + (y - 1993) * 56, yy = { '9x': 50, nt: 150, mid: 100 };
+  const col = { '9x': 'var(--o)', nt: 'var(--p)', mid: 'var(--t)' };
+  const root = svg('svg', { viewBox: '0 0 640 200', class: 'lin', role: 'img', 'aria-label': 'Windows 9x 与 NT 产品线汇合到 XP 的时间线' });
+  for (let y = 1993; y <= 2001; y++) { root.append(svg('line', { x1: x(y), y1: 18, x2: x(y), y2: 184, class: 'ax', 'stroke-dasharray': '2 4' }), svg('text', { x: x(y), y: 196, class: 'lbl s mid' }, String(y))); }
+  root.append(svg('text', { x: 4, y: 54, class: 'lbl s', style: 'fill:var(--o)' }, '9x：消费者'), svg('text', { x: 4, y: 154, class: 'lbl s', style: 'fill:var(--p)' }, 'NT：商业/企业'));
+  const p9 = svg('path', { d: `M${x(1995)} 50 H${x(2000)} C ${x(2001)} 50, ${x(2001.2)} 100, ${x(2001.8)} 100`, fill: 'none', stroke: 'var(--o)', 'stroke-width': 3 });
+  const pn = svg('path', { d: `M${x(1993)} 150 H${x(2000)} C ${x(2001)} 150, ${x(2001.2)} 100, ${x(2001.8)} 100`, fill: 'none', stroke: 'var(--p)', 'stroke-width': 3 });
+  const pe = svg('path', { d: `M${x(1996)} 150 C ${x(1997.5)} 150, ${x(1998)} 100, ${x(1999)} 100`, fill: 'none', stroke: 'var(--t)', 'stroke-width': 2, 'stroke-dasharray': '5 4' });
+  root.append(p9, pn, pe);
+  const status = el('div', { class: 'status' });
+  const gs = N.map((n) => {
+    const g = svg('g', { class: 'nd', tabindex: 0, role: 'button', 'aria-label': n.t },
+      svg('circle', { cx: x(n.y), cy: yy[n.line], r: 7, fill: n.id === 'xp' ? col.mid : 'var(--surface)', stroke: col[n.line] }),
+      svg('text', { x: x(n.y) + (n.id === 'xp' ? 10 : 0), y: yy[n.line] + (n.line === 'nt' ? 22 : -13), 'text-anchor': n.id === 'xp' ? 'end' : 'middle', class: 'lbl s', style: 'fill:var(--text)' }, n.t.replace('（Whistler）', '').replace('（未发布）', '')));
+    const f = () => { gs.forEach((q) => q.classList.remove('sel')); g.classList.add('sel'); status.innerHTML = `<b>${n.t}</b>：${n.d}`; };
+    g.addEventListener('click', f); keyAct(g, f); root.append(g); g._f = f; return g;
+  });
+  node.append(el('div', { class: 'scrollx' }, el('div', { style: 'min-width:520px' }, root)), status);
+  gs[gs.length - 1]._f();
+});
+
+/* ---------- 03a 启动画面 ---------- */
+reg('boot', (node) => {
+  const cv = el('canvas', { width: 720, height: 300, 'aria-label': '启动画面加载动画示意' });
+  const ctx = cv.getContext('2d');
+  const status = el('div', { class: 'status' });
+  const M = [
+    ['Windows 95', '天空与白云背景，底部一条不断滚动的渐变加载条。云这个元素后来在 Bliss 那里又呼应上了（见第 07 节）。'],
+    ['Windows 2000', '黑底白字，一格一格填满的「机械」进度条。'],
+    ['Whistler Beta 1', '点状加载条：一串小点依次亮起。'],
+    ['Whistler Beta 2', '四色加载条，更活泼；原文作者最喜欢的启动界面之一，可惜没进正式版。'],
+    ['XP 正式版（本页补充）', '本页补充（非原文）：正式版用的是黑底上三个蓝色小块在圆角槽里循环滑动的加载条。'],
+  ];
+  let mode = 0, raf = 0, t0 = 0, running = false;
+  const flag4 = (x, y, s) => { const q = s / 2 - 2; [['#f25022', 0, 0], ['#7fba00', 1, 0], ['#00a4ef', 0, 1], ['#ffb900', 1, 1]].forEach(([c, i, j]) => { ctx.fillStyle = c; ctx.fillRect(x + i * (q + 4), y + j * (q + 4), q, q); }); };
+  function frame(t) {
+    const W = 720, H = 300, s = (t - t0) / 1000;
+    ctx.clearRect(0, 0, W, H);
+    if (mode === 0) {
+      const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2f6fd0'); g.addColorStop(1, '#8cc0f0'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255,255,255,.9)';
+      [[120, 70, 70, 20], [180, 60, 50, 18], [560, 110, 90, 22], [610, 98, 50, 18], [360, 220, 110, 20], [80, 200, 60, 14]].forEach(([x, y, rx, ry]) => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); });
+      flag4(250, 110, 44); ctx.fillStyle = '#fff'; ctx.font = 'bold 40px Tahoma, sans-serif'; ctx.fillText('Windows 95', 310, 148);
+      const off = (s * 220) % W; const gb = ctx.createLinearGradient(-W + off, 0, W + off, 0);
+      ['#1f3fa0', '#fff', '#1f3fa0', '#fff', '#1f3fa0'].forEach((c, i) => gb.addColorStop(i / 4, c)); ctx.fillStyle = gb; ctx.fillRect(0, H - 14, W, 14);
+    } else {
+      ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+      flag4(250, 90, 44);
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 38px Tahoma, sans-serif';
+      ctx.fillText(mode === 1 ? 'Windows 2000' : mode === 4 ? 'Windows XP' : 'Whistler', 310, 126);
+      ctx.font = '16px Tahoma, sans-serif'; ctx.fillStyle = '#9aa';
+      ctx.fillText(mode === 1 ? 'Professional' : mode === 2 ? 'Beta 1' : mode === 3 ? 'Beta 2' : '', 312, 150);
+      const bx = 220, by = 210, bw = 280, bh = 18;
+      if (mode === 1) {
+        ctx.strokeStyle = '#ccc'; ctx.strokeRect(bx, by, bw, bh);
+        const n = Math.floor((s * 6) % 26); ctx.fillStyle = '#2b62c8'; for (let i = 0; i < n; i++) ctx.fillRect(bx + 3 + i * 10.6, by + 3, 8.6, bh - 6);
+      } else if (mode === 2) {
+        const n = 12, k = Math.floor(s * 8) % (n + 4);
+        for (let i = 0; i < n; i++) { ctx.beginPath(); ctx.arc(bx + 20 + i * 22, by + 9, 5, 0, Math.PI * 2); ctx.fillStyle = Math.abs(i - k) < 3 ? '#cfe3ff' : '#333a48'; ctx.fill(); }
+      } else if (mode === 3) {
+        ctx.save(); ctx.beginPath(); ctx.rect(bx, by, bw, bh); ctx.clip(); ctx.fillStyle = '#222'; ctx.fillRect(bx, by, bw, bh);
+        const C = ['#f25022', '#7fba00', '#00a4ef', '#ffb900'], seg = 26, off = (s * 120) % (seg * 4);
+        for (let i = -4; i < bw / seg + 4; i++) { ctx.fillStyle = C[((i % 4) + 4) % 4]; ctx.fillRect(bx + i * seg + off, by + 4, seg - 6, bh - 8); }
+        ctx.restore(); ctx.strokeStyle = '#666'; ctx.strokeRect(bx, by, bw, bh);
+      } else {
+        const tw = 160, tx = W / 2 - tw / 2; ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(tx, by, tw, bh, 5) : ctx.rect(tx, by, tw, bh); ctx.stroke(); ctx.lineWidth = 1;
+        ctx.save(); ctx.beginPath(); ctx.rect(tx + 2, by, tw - 4, bh); ctx.clip();
+        const p = ((s * 90) % (tw + 60)) - 40; for (let i = 0; i < 3; i++) { const g = ctx.createLinearGradient(0, by, 0, by + bh); g.addColorStop(0, '#6fa3ff'); g.addColorStop(1, '#1d4fc4'); ctx.fillStyle = g; ctx.fillRect(tx + p + i * 12, by + 4, 9, bh - 8); }
+        ctx.restore();
+      }
+    }
+    if (running && !RM) raf = requestAnimationFrame(frame);
+  }
+  function start() { if (running) return; running = true; t0 = performance.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
+  function stop() { running = false; cancelAnimationFrame(raf); }
+  segment(document.getElementById('bootSeg'), M.map((m) => m[0].replace('（本页补充）', '')), (i) => { mode = i; status.innerHTML = `<b>${M[i][0]}</b>：${M[i][1]}`; t0 = performance.now() - 1500; if (!running || RM) frame(performance.now()); });
+  node.append(el('div', { class: 'cvwrap' }, cv), status);
+  return { start, stop };
+});
+
+/* ---------- 03b 睫毛膏 ---------- */
+reg('mascara', (node) => {
+  const L = [
+    ['Windows 95：浓重 3D', '每个按钮都被黑色右下边与白色左上边刻出凸起，默认按钮再套一圈黑框；工具栏按钮常年凸起。'],
+    ['Word 97：平面工具栏', '工具栏改成 2D 按钮，平时只有图标，鼠标悬停才浮出细边、按下才凹陷；对话框按钮暂时不变。'],
+    ['Whistler 水彩：几乎全平', '按钮只剩一条浅色细线，分隔线「变得更柔和，有时甚至完全消失」。'],
+    ['Luna：微妙 3D', '回到一点立体：圆角、浅渐变、深蓝细边，用颜色和光线而不是黑线来给反馈。'],
+  ];
+  const range = el('input', { type: 'range', min: 0, max: 3, step: 1, value: 0, 'aria-label': '3D 风格' });
+  const out = el('output');
+  const box = el('div'), status = el('div', { class: 'status' });
+  let lv = 0, hov = -1, down = -1;
+  const icons = ['新建', '打开', '保存', '打印', '剪切'];
+  function draw() {
+    let dark = 0, s = '';
+    const face = lv === 3 ? '#ece9d8' : lv === 2 ? '#f4f7fb' : '#c0c0c0';
+    s += `<rect width="360" height="190" fill="${face}"/>`;
+    // 工具栏
+    s += `<text x="12" y="20" font-size="10" fill="#555">工具栏</text>`;
+    icons.forEach((n, i) => {
+      const x = 12 + i * 34, y = 28, w = 28, h = 26, on = hov === i, pr = down === i;
+      let b = '';
+      if (lv === 0) { b = pr ? bevel(x, y, w, h, face, { sunken: true }) : bevel(x, y, w, h, face); dark += pr ? 0 : (w + h); }
+      else if (lv === 1) { if (pr) b = bevel(x, y, w, h, face, { sunken: true }); else if (on) b = `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${face}"/><path d="M${x} ${y + h}V${y}H${x + w}" stroke="#fff" fill="none"/><path d="M${x} ${y + h}H${x + w}V${y}" stroke="#808080" fill="none"/>`; }
+      else if (lv === 2) { if (on || pr) b = `<rect x="${x + .5}" y="${y + .5}" width="${w - 1}" height="${h - 1}" rx="3" fill="${pr ? '#d6e3f4' : '#e8f0fa'}" stroke="#9fb6d8"/>`; }
+      else { if (on || pr) b = `<rect x="${x + .5}" y="${y + .5}" width="${w - 1}" height="${h - 1}" rx="3" fill="${pr ? '#e3e3db' : '#fbfbf7'}" stroke="${pr ? '#9d9d92' : '#c9c7ba'}"/>`; }
+      const ic = ['#ffffff', '#f2c230', '#3a6fd0', '#888', '#d64550'][i];
+      s += `<g class="tbx" data-i="${i}" style="cursor:pointer"><rect x="${x}" y="${y}" width="${w}" height="${h}" fill="transparent"/>${b}<rect x="${x + 8 + (pr ? 1 : 0)}" y="${y + 6 + (pr ? 1 : 0)}" width="12" height="14" rx="1.5" fill="${ic}" stroke="#555" stroke-width=".8"/><title>${n}</title></g>`;
+    });
+    // 分隔线
+    s += lv === 0 ? `<line x1="0" y1="64" x2="360" y2="64" stroke="#808080"/><line x1="0" y1="65" x2="360" y2="65" stroke="#fff"/>` : lv === 1 ? `<line x1="0" y1="64" x2="360" y2="64" stroke="#a0a0a0"/>` : lv === 3 ? `<line x1="0" y1="64" x2="360" y2="64" stroke="#d6d3c2"/>` : '';
+    // 对话框
+    s += `<text x="12" y="90" font-size="10" fill="#555">对话框</text>`;
+    s += `<text x="12" y="112" font-size="11" fill="#000">要保存对「文档 1」的更改吗？</text>`;
+    const bx = [92, 172, 252], bt = ['是(Y)', '否(N)', '取消'];
+    bx.forEach((x, i) => {
+      const y = 140, w = 72, h = 24, def = i === 0;
+      if (lv <= 1) { s += bevel(x, y, w, h, face, { def }); dark += (w + h) + (def ? 2 * (w + h + 4) : 0); }
+      else if (lv === 2) s += `<rect x="${x + .5}" y="${y + .5}" width="${w - 1}" height="${h - 1}" rx="2" fill="#fff" stroke="${def ? '#5b84c4' : '#b9cbe6'}"/>`;
+      else s += `<rect x="${x + .5}" y="${y + .5}" width="${w - 1}" height="${h - 1}" rx="3" fill="#fbfbf8" stroke="#003c74"/>${def ? `<rect x="${x + 2}" y="${y + 2}" width="${w - 4}" height="${h - 4}" rx="2" fill="none" stroke="#a5c3f2" stroke-width="1.5"/>` : ''}`;
+      s += `<text x="${x + w / 2}" y="${y + 16}" font-size="11" text-anchor="middle" fill="#000">${bt[i]}</text>`;
+    });
+    box.innerHTML = `<svg viewBox="0 0 360 190" class="ws" role="img" aria-label="工具栏与对话框按钮的 3D 风格示意">${s}</svg>`;
+    out.textContent = ['95', '97', '水彩', 'Luna'][lv];
+    status.innerHTML = `<b>${L[lv][0]}</b>：${L[lv][1]}<br>图中纯黑轮廓线总长：<b>${dark} px</b>${lv === 0 ? '（满屏「睫毛膏」）' : dark ? '' : '（Luna 的边框是深蓝细线，不计入纯黑）'}`;
+  }
+  const idx = (e) => { const g = e.target.closest && e.target.closest('.tbx'); return g ? +g.dataset.i : -1; };
+  box.addEventListener('pointerover', (e) => { const i = idx(e); if (i !== hov) { hov = i; draw(); } });
+  box.addEventListener('pointerleave', () => { hov = -1; down = -1; draw(); });
+  box.addEventListener('pointerdown', (e) => { down = idx(e); hov = down; draw(); });
+  box.addEventListener('pointerup', () => { down = -1; draw(); });
+  range.addEventListener('input', () => { lv = +range.value; draw(); });
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '3D 用量', range, out)), box, status);
+  draw();
+});
+
+/* ---------- 04 主题画廊 ---------- */
+reg('themes', (node) => {
+  const K = ['watercolor', 'candy', 'lunaBlue', 'lunaSilver', 'lunaOlive', 'classic'];
+  const D = {
+    watercolor: 'Whistler 前期的「诱饵」之一：浅色标题栏、几乎没有凸起的控件，蓝色与黄绿色的明亮调子，与 Neptune 概念一脉相承。',
+    candy: '约 2000 年 6～8 月的测试主题：标题栏按钮和水彩差不多，内部按钮、滚动条却像苹果 Aqua 的「果冻」。没有进入正式版。',
+    lunaBlue: '默认配色：蓝色喻指蓝天，绿色的「开始」喻指绿草；红色关闭按钮用颜色传达含义。',
+    lunaSilver: 'Luna 的银色配色方案：同样的形状与光影，换成金属灰调。',
+    lunaOlive: 'Luna 的橄榄绿配色方案。',
+    classic: 'XP 保留的「经典」主题，给不喜欢「费雪玩具」风格的用户一条退路。',
+  };
+  const box = el('div'), status = el('div', { class: 'status' }), sw = el('div', { class: 'swatches' });
+  segment(document.getElementById('thSeg'), ['水彩', 'Candy', 'Luna 蓝', 'Luna 银', 'Luna 橄榄绿', '经典'], (i) => {
+    const k = K[i], T = TH[k];
+    box.innerHTML = winSVG(k);
+    status.innerHTML = `<b>${T.name}</b>：${D[k]}`;
+    const cols = T.kind === 'luna' ? [['标题栏', T.title[1]], ['任务栏', T.bar[1]], ['开始', T.start[1]], ['关闭', T.close], ['窗体', T.face]]
+      : T.kind === 'soft' ? [['标题栏', T.title], ['边框', T.frame], ['窗体', T.face], ['任务栏', T.bar]] : [['标题栏', T.title[0]], ['窗体', T.face], ['桌面', T.desk]];
+    sw.innerHTML = cols.map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${n} ${c}</span>`).join('');
+  }, 2);
+  node.append(box, sw, status);
+});
+
+/* ---------- 05 图标 ---------- */
+reg('icons', (node) => {
+  const rr = (c, x, y, w, h, r) => { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  const lgr = (c, a, b, y0, y1) => { const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g; };
+  const IC = [
+    { n: '我的电脑', main: '#3a78d8', f(c) { c.fillStyle = '#cfd6e2'; rr(c, 5, 6, 38, 29, 3); c.fill(); c.fillStyle = lgr(c, '#6aa6f2', '#1d5fc8', 10, 30); c.fillRect(9, 10, 30, 21); c.fillStyle = '#9aa6b8'; c.fillRect(19, 35, 10, 4); c.fillStyle = '#cfd6e2'; rr(c, 11, 39, 26, 5, 2); c.fill(); } },
+    { n: '网上邻居', main: '#2f6fd6', f(c) { c.fillStyle = lgr(c, '#7cc0f0', '#2f6fd6', 6, 34); c.beginPath(); c.arc(30, 20, 14, 0, 7); c.fill(); c.strokeStyle = '#1f55b0'; c.lineWidth = 1.5; c.beginPath(); c.ellipse(30, 20, 6, 14, 0, 0, 7); c.moveTo(16, 20); c.lineTo(44, 20); c.stroke(); c.fillStyle = '#cfd6e2'; c.fillRect(4, 26, 22, 16); c.fillStyle = '#2f6fd6'; c.fillRect(7, 29, 16, 10); } },
+    { n: 'Internet Explorer', main: '#1e74d0', f(c) { c.strokeStyle = lgr(c, '#5aa0ee', '#1e74d0', 8, 40); c.lineWidth = 8; c.beginPath(); c.arc(24, 25, 13, 0.2 * Math.PI, 1.95 * Math.PI); c.stroke(); c.fillStyle = '#1e74d0'; c.fillRect(13, 22, 24, 6); c.strokeStyle = '#f2c230'; c.lineWidth = 2.5; c.beginPath(); c.ellipse(24, 25, 22, 8, -0.5, 0, 7); c.stroke(); } },
+    { n: '控制面板', main: '#3f7fdc', f(c) { c.fillStyle = lgr(c, '#78aaf0', '#3f7fdc', 6, 42); rr(c, 6, 6, 36, 36, 4); c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 2.5; [14, 24, 34].forEach((x, i) => { c.beginPath(); c.moveTo(x, 12); c.lineTo(x, 36); c.stroke(); c.fillStyle = '#e8eefc'; c.fillRect(x - 4, 14 + i * 7, 8, 5); }); } },
+    { n: '搜索', main: '#2c6cc4', f(c) { c.strokeStyle = '#555'; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.moveTo(29, 29); c.lineTo(41, 41); c.stroke(); c.fillStyle = '#bcd8f7'; c.beginPath(); c.arc(20, 20, 12, 0, 7); c.fill(); c.strokeStyle = '#2c6cc4'; c.lineWidth = 5; c.stroke(); } },
+    { n: '帮助和支持', main: '#3a7de0', f(c) { c.fillStyle = lgr(c, '#7fb0f4', '#2f6ad0', 4, 44); c.beginPath(); c.arc(24, 24, 19, 0, 7); c.fill(); c.fillStyle = '#fff'; c.font = 'bold 26px Tahoma, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('?', 24, 26); } },
+  ];
+  const BOX = 76;
+  const cv = el('canvas', { width: IC.length * BOX, height: BOX + 18, 'aria-label': '示意图标在不同尺寸下的像素化效果' });
+  const ctx = cv.getContext('2d');
+  const wrap = el('div', { class: 'icw' }, cv);
+  const range = el('input', { type: 'range', min: 0, max: 3, step: 1, value: 3, 'aria-label': '图标尺寸' });
+  const out = el('output');
+  const gray = el('button', { type: 'button', class: 'btn', onclick: () => { wrap.classList.toggle('gray'); gray.textContent = wrap.classList.contains('gray') ? '恢复彩色' : '去色（只看明暗）'; } }, '去色（只看明暗）');
+  const status = el('div', { class: 'status' });
+  const sizes = [16, 24, 32, 48];
+  function draw() {
+    const N = sizes[+range.value]; out.textContent = N + '×' + N;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.imageSmoothingEnabled = false;
+    IC.forEach((ic, i) => {
+      const off = document.createElement('canvas'); off.width = N; off.height = N;
+      const c = off.getContext('2d'); c.scale(N / 48, N / 48); ic.f(c);
+      const sz = 56; ctx.drawImage(off, 0, 0, N, N, i * BOX + (BOX - sz) / 2, 4, sz, sz);
+    });
+    ctx.fillStyle = getComputedStyle(document.body).color; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    IC.forEach((ic, i) => ctx.fillText(ic.n.length > 8 ? 'IE' : ic.n, i * BOX + BOX / 2, BOX + 10));
+  }
+  // ΔE：两两比较主色
+  const pairs = [];
+  for (let i = 0; i < IC.length; i++) for (let j = i + 1; j < IC.length; j++) pairs.push([IC[i].n, IC[j].n, dE(IC[i].main, IC[j].main)]);
+  pairs.sort((a, b) => a[2] - b[2]);
+  const avg = pairs.reduce((s, p) => s + p[2], 0) / pairs.length;
+  const ref = dE('#3a78d8', '#3c9b37');
+  status.innerHTML = `六个主色两两之间的平均色差 <b>ΔE ≈ ${avg.toFixed(1)}</b>，最接近的一对（本页自定的示意主色）是「${pairs[0][0]}」与「${pairs[0][1]}」，ΔE ≈ <b>${pairs[0][2].toFixed(1)}</b>。作为对照，Luna 的蓝与「开始」按钮的绿之间 ΔE ≈ ${ref.toFixed(1)}。一般认为 ΔE 在 2～3 以下肉眼就难分辨；形状小到十几像素时，能拉开差别的主要就只剩颜色了。`;
+  range.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '尺寸', range, out), gray), wrap, status);
+  draw();
+});
+
+/* ---------- 06 钟摆 ---------- */
+reg('pendulum', (node) => {
+  const P = [
+    [1990, .72, 'Windows 3.0', '原文（引雷蒙德·陈）：Windows 自 3.0 起引入 3D 视觉元素。', 'win'],
+    [1995, .92, 'Windows 95', '3D 被大量采用，按钮「刷了很差的睫毛膏」。', 'win'],
+    [1997, .5, 'Word 97', '工具栏从 3D 凸起按钮改为 2D 按钮，只在点击后显示按下效果。', 'ms'],
+    [1999.3, .28, 'Money 2000', '弱化突出效果、更简洁平面；原文说它的按钮与 Win8 扁平按钮很像。', 'ms'],
+    [1999.8, .48, 'Luna 原型（1999）', '原文：对比水彩主题、Luna 原始设计与最终 Luna，「扁平化」似乎变少了。', 'win'],
+    [2000.4, .25, 'Watercolor', 'Whistler 前期的诱饵主题：弱化控件突出感、明亮配色。', 'win'],
+    [2001.8, .78, 'Luna（XP 正式版）', '《指南》用「3D 按钮」描述它，今天仍被归为拟物化 3D 设计。', 'win'],
+    [2001.2, .96, 'Mac OS X Aqua', '原文：Aqua 把拟物化设计推向了新的高度。', 'other'],
+    [2002.6, .34, 'Media Center', '扁平化没有消失，在 Media Center 等产品里若隐若现。', 'ms'],
+    [2007, .9, 'Vista / Aero', '雷蒙德·陈 2004 年问「3D 会强势回归吗？」，在 XP 的下一代成了现实（年份为本页补充）。', 'win'],
+    [2012, .06, 'Windows 8 / Metro', '约十年后，扁平化有了自己的名字 Metro（年份为本页补充）。', 'win'],
+  ];
+  const OFF = { 'Word 97': [-6, 20, 'end'], 'Luna 原型（1999）': [10, -10, 'start'], 'Money 2000': [-8, 18, 'end'], 'Watercolor': [8, 20, 'start'], 'Media Center': [10, 4, 'start'], 'Windows 8 / Metro': [-10, 4, 'end'], 'Luna（XP 正式版）': [10, 16, 'start'], 'Mac OS X Aqua': [0, -12, 'middle'] };
+  const x = (y) => 40 + (y - 1989) * 21.5, y = (v) => 210 - v * 180;
+  const C = { win: 'var(--p)', ms: 'var(--t)', other: 'var(--o)' };
+  const root = svg('svg', { viewBox: '0 0 560 250', class: 'pend', role: 'img', 'aria-label': '1990 到 2012 年扁平与 3D 风格的示意钟摆图' });
+  [1990, 1995, 2000, 2005, 2010].forEach((yr) => root.append(svg('line', { x1: x(yr), y1: 24, x2: x(yr), y2: 214, class: 'ax', 'stroke-dasharray': '2 4' }), svg('text', { x: x(yr), y: 232, class: 'lbl s mid' }, yr)));
+  root.append(svg('text', { x: 4, y: 30, class: 'lbl s' }, '3D / 拟物'), svg('text', { x: 4, y: 208, class: 'lbl s' }, '扁平'));
+  const wins = P.filter((p) => p[4] === 'win').sort((a, b) => a[0] - b[0]);
+  root.append(svg('polyline', { points: wins.map((p) => `${x(p[0])},${y(p[1])}`).join(' '), fill: 'none', stroke: 'var(--p)', 'stroke-width': 1.5, opacity: .45 }));
+  const status = el('div', { class: 'status' }, '点一个点。蓝：Windows 本身；青：微软其他产品；橙：苹果。');
+  const gs = P.map((p) => {
+    const g = svg('g', { class: 'pt', tabindex: 0, role: 'button', 'aria-label': p[2] },
+      svg('circle', { cx: x(p[0]), cy: y(p[1]), r: 7, fill: C[p[4]], stroke: 'var(--surface)', 'stroke-width': 2 }),
+      svg('text', { x: x(p[0]) + (OFF[p[2]] ? OFF[p[2]][0] : 0), y: y(p[1]) + (OFF[p[2]] ? OFF[p[2]][1] : (p[1] > .6 ? -12 : 20)), 'text-anchor': OFF[p[2]] ? OFF[p[2]][2] : 'middle', class: 'lbl s', style: 'fill:var(--text)' }, p[2]));
+    const f = () => { gs.forEach((q) => q.classList.remove('sel')); g.classList.add('sel'); status.innerHTML = `<b>${p[2]}</b>：${p[3]}`; };
+    g.addEventListener('click', f); keyAct(g, f); root.append(g); return g;
+  });
+  node.append(root, status);
+});
+
+/* ---------- 07 壁纸 ---------- */
+reg('wall', (node) => {
+  const LUNA = { '标题栏蓝': '#0a5fd8', '任务栏蓝': '#245edb', '通知区浅蓝': '#0f8be8', '开始按钮绿': '#3c9b37', '关闭按钮红': '#e0533a', '窗体米色': '#ece9d8' };
+  const ZN = { skyTop: '天空上部', skyLow: '近地平线的天空', cloud: '云', grassLight: '向阳的草坡', grassDark: '前景暗部草地' };
+  const box = el('div'), status = el('div', { class: 'status' }), sw = el('div', { class: 'swatches' });
+  sw.innerHTML = Object.entries(LUNA).map(([n, c]) => `<span class="sw"><i style="background:${c}"></i>${n}</span>`).join('');
+  const W = [
+    ['Windows 95', '纯色青绿桌面（9x 的默认）。'],
+    ['NT 4.0', 'NT 系列只是简单地用 Windows 徽标做壁纸（示意）。'],
+    ['Windows 2000', '甚至也是纯色。'],
+    ['XP：Bliss', '第一次用真实照片做默认壁纸。点画面上的区域看取色分析。'],
+  ];
+  let mode = 3;
+  function pickZone(z) {
+    const c = BLISS[z];
+    const near = Object.entries(LUNA).map(([n, v]) => [n, v, dE(c, v)]).sort((a, b) => a[2] - b[2]);
+    status.innerHTML = `<b>${ZN[z]}</b> <span class="sw" style="display:inline-flex;vertical-align:middle"><i style="background:${c}"></i>${c}</span> 色相 ${hue(c)}°。最接近的 Luna 界面色：<b>${near[0][0]}</b>（ΔE ≈ ${near[0][2].toFixed(1)}），其次 ${near[1][0]}（ΔE ≈ ${near[1][2].toFixed(1)}）。`;
+  }
+  function draw() {
+    const u = 'wl' + (++GID);
+    let s;
+    if (mode === 3) s = blissSVG(u, 220, true);
+    else if (mode === 1) s = `<rect width="360" height="220" fill="#00807f"/><g transform="translate(150 70)">${flagMini(0, 0, 60)}</g><text x="180" y="160" font-size="14" fill="#fff" text-anchor="middle" font-family="Tahoma">Windows NT Workstation</text>`;
+    else s = `<rect width="360" height="220" fill="${mode === 0 ? '#008080' : '#3a6ea5'}"/>`;
+    box.innerHTML = `<svg viewBox="0 0 360 220" role="img" aria-label="${W[mode][0]} 默认桌面示意" style="border-radius:10px;max-width:560px;margin:0 auto">${s}</svg>`;
+    if (mode === 3) {
+      box.querySelectorAll('.bz').forEach((g) => { const f = () => pickZone(g.dataset.z); g.addEventListener('click', f); keyAct(g, f); });
+      pickZone('grassLight');
+    } else status.innerHTML = `<b>${W[mode][0]}</b>：${W[mode][1]}`;
+    sw.style.display = mode === 3 ? '' : 'none';
+  }
+  segment(document.getElementById('wallSeg'), W.map((w) => w[0]), (i) => { mode = i; draw(); }, 3);
+  node.append(box, status, sw);
+});
+
+/* ---------- 08 旗帜 ---------- */
+reg('flag', (node) => {
+  const range = el('input', { type: 'range', min: 0, max: 100, value: 0, 'aria-label': '从旧徽标到 XP 徽标' });
+  const out = el('output');
+  const box = el('div', { style: 'max-width:420px;margin:0 auto' }), status = el('div', { class: 'status' });
+  let win8 = false;
+  const b8 = el('button', { type: 'button', class: 'btn', onclick: () => { win8 = !win8; b8.textContent = win8 ? '回到旗帜' : '后话：「为什么用旗帜？」'; draw(); } }, '后话：「为什么用旗帜？」');
+  const COL = [['#f25022', '#ff8a5c'], ['#7fba00', '#b5e04a'], ['#00a4ef', '#6fd0ff'], ['#ffb900', '#ffe066']];
+  function tile(x0, y0, w, h, amp, ph, n = 10) {
+    const f = (x, y) => [x + (y - 100) * 0.08 * amp, y + amp * 9 * Math.sin((x - 80) / 120 * Math.PI * 1.5 + ph) - (x - 80) * 0.04 * amp];
+    const pts = [];
+    for (let i = 0; i <= n; i++) pts.push(f(x0 + w * i / n, y0));
+    for (let i = 0; i <= n; i++) pts.push(f(x0 + w, y0 + h * i / n));
+    for (let i = n; i >= 0; i--) pts.push(f(x0 + w * i / n, y0 + h));
+    for (let i = n; i >= 0; i--) pts.push(f(x0, y0 + h * i / n));
+    return 'M' + pts.map((p) => p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('L') + 'Z';
+  }
+  function draw() {
+    const t = +range.value / 100; out.textContent = t < .5 ? '95–2000' : 'XP';
+    const u = 'fl' + (++GID);
+    let s = '<defs>' + COL.map((c, i) => `<linearGradient id="${u}${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c[1]}"/><stop offset=".55" stop-color="${c[0]}"/></linearGradient>`).join('') + '</defs>';
+    if (win8) {
+      const q = (x, y, w, h) => `M${x} ${y + h * .08}L${x + w} ${y}L${x + w} ${y + h}L${x} ${y + h * .92}Z`;
+      s += [[90, 50, 88, 70], [184, 42, 100, 78], [90, 126, 88, 66], [184, 126, 100, 76]].map(([x, y, w, h]) => `<path d="${q(x, y, w, h)}" fill="#00a4ef"/>`).join('');
+      status.innerHTML = '<b>后话</b>：约十年后，有设计师问「你的名字是 Windows（窗户），为什么徽标要用旗帜？」徽标又回到了「窗」，而且是扁平的（示意）。';
+    } else {
+      const amp = 0.55 + 0.45 * t, gap = 6 + 2 * t, sw = 3.2 * (1 - t), w = 80, h = 62, X0 = 100, Y0 = 52;
+      // 像素拖尾（旧徽标）
+      if (t < 1) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) {
+        const sz = 9 - k * 1.8, x = X0 - 16 - k * 15, y = Y0 + 6 + r * 30 + k * 2;
+        s += `<rect x="${x}" y="${y}" width="${sz}" height="${sz}" fill="${COL[(r < 2 ? 0 : 2) + (k % 2)][0]}" opacity="${(1 - t) * (1 - k * 0.2)}" stroke="#000" stroke-width="${sw * 0.5}"/>`;
+      }
+      [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([i, j], n) => {
+        const d = tile(X0 + i * (w + gap), Y0 + j * (h + gap), w, h, amp, 0.2);
+        s += `<path d="${d}" fill="${t > .02 ? `url(#${u}${n})` : COL[n][0]}" stroke="#000" stroke-width="${sw}" stroke-linejoin="round"/>`;
+        if (t > 0) s += `<path d="${d}" fill="#fff" opacity="${0.18 * t}" transform="translate(0 -3)" style="mix-blend-mode:soft-light"/>`;
+      });
+      status.innerHTML = t < .5 ? '<b>Windows 95～2000 徽标（示意）</b>：四色旗帜带黑色描边，左侧拖着一串像素方块，仍有「机械」与屏幕像素的味道。'
+        : '<b>Windows XP 徽标（示意）</b>：去掉黑框与像素拖尾，四块色彩带上柔和渐变与高光，旗帜像在风里飘，契合「自然」的理念。';
+    }
+    box.innerHTML = `<svg viewBox="0 0 380 240" role="img" aria-label="Windows 徽标变化示意">${s}</svg>`;
+  }
+  range.addEventListener('input', () => { if (win8) { win8 = false; b8.textContent = '后话：「为什么用旗帜？」'; } draw(); });
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '旧 → XP', range, out), b8), box, status);
+  draw();
+});
+
+/* ---------- 09a 菲茨定律 ---------- */
+reg('fitts', (node) => {
+  const SW = 360, SH = 220, TB = 192;
+  let mode = 1, cur = { x: 250, y: 70 }, anim = 0, menu = false, info = '';
+  const BTN = [{ x: 2, y: TB + 3, w: 54, h: 24 }, { x: 0, y: TB, w: 92, h: 28 }];
+  const box = el('div', { style: 'touch-action:manipulation' }), status = el('div', { class: 'status' }), eq = el('div', { class: 'eq' });
+  const a = 0.1, b = 0.15;
+  const hit = (p, B) => p.x >= B.x && p.x <= B.x + B.w && p.y >= B.y && p.y <= B.y + B.h;
+  function draw() {
+    const B = BTN[mode], u = 'ft' + (++GID);
+    let s = mode === 1 ? blissSVG(u, TB) : `<rect width="${SW}" height="${TB}" fill="#008080"/>`;
+    if (mode === 1) s += `<defs>${lg(u + 'b', ['#3b7cf0', '#245edb', '#1a46b0'])}${lg(u + 's', ['#62bd5c', '#3c9b37', '#2c7a28'])}</defs><rect y="${TB}" width="${SW}" height="28" fill="url(#${u}b)"/><path d="M0 ${TB}H78Q92 ${TB} 92 ${TB + 14}Q92 ${TB + 28} 78 ${TB + 28}H0Z" fill="url(#${u}s)"/>${flagMini(9, TB + 8, 13)}<text x="28" y="${TB + 19}" font-size="14" font-weight="700" font-style="italic" fill="#fff" font-family="Tahoma">开始</text>`;
+    else s += `<rect y="${TB}" width="${SW}" height="28" fill="#c0c0c0"/><line x1="0" y1="${TB + .5}" x2="${SW}" y2="${TB + .5}" stroke="#fff"/>${bevel(B.x, B.y, B.w, B.h, '#c0c0c0')}${flagMini(7, TB + 9, 11)}<text x="22" y="${TB + 19}" font-size="10.5" font-weight="700" fill="#000" font-family="Tahoma">开始</text>`;
+    // 目标框
+    s += `<rect x="${B.x}" y="${B.y}" width="${B.w}" height="${B.h}" fill="none" stroke="#ff7a00" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    if (menu) {
+      if (mode === 1) {
+        s += `<rect x="0" y="40" width="210" height="152" rx="6" fill="#fff" stroke="#1a46b0"/><rect x="0" y="40" width="210" height="24" rx="6" fill="#1f5fcf"/><text x="10" y="56" font-size="10" font-weight="700" fill="#fff" font-family="Tahoma">用户</text><rect x="110" y="64" width="100" height="108" fill="#d3e5fa"/>`;
+        ['Internet', '电子邮件', '记事本', '画图', '所有程序 ▸'].forEach((t, i) => s += `<text x="10" y="${82 + i * 19}" font-size="9.5" fill="#000" font-family="Tahoma">${t}</text>`);
+        ['我的文档', '我的电脑', '控制面板', '帮助和支持', '运行…'].forEach((t, i) => s += `<text x="118" y="${82 + i * 19}" font-size="9.5" fill="#0b2d6b" font-family="Tahoma">${t}</text>`);
+        s += `<rect x="0" y="172" width="210" height="20" fill="#1f5fcf"/><text x="120" y="186" font-size="9" fill="#fff" font-family="Tahoma">注销　关闭计算机</text>`;
+      } else {
+        s += bevel(2, 60, 150, 132, '#c0c0c0') + `<rect x="5" y="63" width="20" height="126" fill="#808080"/><text transform="translate(20 185) rotate(-90)" font-size="12" font-weight="700" fill="#c0c0c0" font-family="Tahoma">Windows95</text>`;
+        ['程序', '文档', '设置', '查找', '帮助', '运行…', '关闭系统…'].forEach((t, i) => s += `<text x="32" y="${80 + i * 17}" font-size="9.5" fill="#000" font-family="Tahoma">${t}</text>`);
+      }
+    }
+    const cx = B.x + B.w / 2, cy = B.y + B.h / 2;
+    s += `<line x1="${cur.x}" y1="${cur.y}" x2="${cx}" y2="${cy}" stroke="#fff" stroke-dasharray="3 3" opacity=".8"/>`;
+    s += `<path d="M${cur.x} ${cur.y}l0 15l4 -4l3 6l2.5 -1.2l-3 -6l5.5 0z" fill="#fff" stroke="#000" stroke-width="1"/>`;
+    box.innerHTML = `<svg viewBox="0 0 ${SW} ${SH}" role="img" aria-label="屏幕与开始按钮示意，点击放置鼠标" style="border-radius:8px;cursor:crosshair;max-width:560px;margin:0 auto">${s}</svg>`;
+    const D = Math.hypot(cx - cur.x, cy - cur.y), Wd = Math.min(B.w, B.h) + 0, ID = Math.log2(D / Wd + 1);
+    eq.textContent = `瞄准：D ≈ ${D.toFixed(0)} px，W ≈ ${Wd} px，ID = log₂(D/W + 1) ≈ ${ID.toFixed(2)} bit，MT ≈ ${(a + b * ID).toFixed(2)} s`;
+    status.innerHTML = info;
+  }
+  box.addEventListener('click', (e) => {
+    const sv = box.querySelector('svg'); const pt = sv.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(sv.getScreenCTM().inverse());
+    if (p.y < TB - 6) { cancelAnimationFrame(anim); cur = { x: p.x, y: p.y }; menu = false; info = '已放置鼠标。选一种方式去点「开始」。'; draw(); }
+  });
+  function go(target, done) {
+    cancelAnimationFrame(anim); menu = false;
+    const from = { ...cur }, t0 = performance.now(), dur = RM ? 1 : 520;
+    const step = (now) => { const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3); cur = { x: from.x + (target.x - from.x) * e, y: from.y + (target.y - from.y) * e }; draw(); if (k < 1) anim = requestAnimationFrame(step); else done(); };
+    anim = requestAnimationFrame(step);
+  }
+  const aim = el('button', { type: 'button', class: 'btn', onclick: () => { const B = BTN[mode]; go({ x: B.x + B.w / 2, y: B.y + B.h / 2 }, () => { menu = true; info = `<b>命中</b>：精确瞄准时，难度由距离和按钮大小决定。XP 的按钮更大，所以同样距离 ID 更低。`; draw(); }); } }, '瞄准点击');
+  const fling = el('button', { type: 'button', class: 'btn primary', onclick: () => {
+    go({ x: 0, y: SH }, () => {
+      const ok = hit({ x: 0, y: SH }, BTN[mode]); menu = ok;
+      info = ok ? '<b>命中</b>：鼠标被屏幕边缘挡在角落，而角落正是按钮的一部分，相当于目标在这个方向上无限大，ID → 0，几乎不用瞄准。'
+        : '<span class="bad">落空</span>：鼠标停在了屏幕最角上的那一个点，但按钮与边缘之间有空隙，角落不属于按钮，还得回头再瞄一次（按原文说法建模）。';
+      draw();
+    });
+  } }, '直接甩向左下角');
+  segment(document.getElementById('fittsSeg'), ['Windows 95', 'Windows XP'], (i) => { mode = i; menu = false; cancelAnimationFrame(anim); info = `当前：<b>${['Windows 95', 'Windows XP'][i]}</b>。点屏幕任意处放置鼠标，再选一种方式。`; draw(); }, 1);
+  node.append(box, el('div', { class: 'ctrl' }, aim, fling), eq, status);
+  draw();
+  return { stop() { cancelAnimationFrame(anim); } };
+});
+
+/* ---------- 09b 任务栏分组 ---------- */
+reg('taskbar', (node) => {
+  const PR = [['Internet Explorer', '#1e74d0'], ['资源管理器', '#e8b53a'], ['记事本', '#7aa7d9'], ['Word', '#2b5797']];
+  const SEQ = [0, 1, 0, 2, 0, 1, 3, 0, 1, 2, 0, 3, 1, 0, 2, 0];
+  const range = el('input', { type: 'range', min: 1, max: 16, value: 12, 'aria-label': '打开的窗口数' });
+  const out = el('output'), a = el('div', { class: 'tbar' }), b = el('div', { class: 'tbar' }), status = el('div', { class: 'status' });
+  const AV = 470, MAX = 150, MIN = 52;
+  function bar(btns, pages) {
+    const gid = 'tbg' + (++GID);
+    let s = `<defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b7cf0"/><stop offset=".5" stop-color="#245edb"/><stop offset="1" stop-color="#1a46b0"/></linearGradient></defs><rect width="600" height="34" fill="url(#${gid})"/><path d="M0 0H70Q84 0 84 17Q84 34 70 34H0Z" fill="#3c9b37"/><text x="20" y="22" font-size="14" font-weight="700" font-style="italic" fill="#fff" font-family="Tahoma">开始</text><rect x="560" y="0" width="40" height="34" fill="#0f8be8"/>`;
+    let x = 88;
+    btns.forEach(({ w, t, c, n }) => {
+      const chars = Math.max(0, Math.floor((w - 26 - (n ? 14 : 0)) / 7));
+      const label = t.length > chars ? (chars > 1 ? t.slice(0, chars - 1) + '…' : '') : t;
+      s += `<rect x="${x + 1}" y="4" width="${w - 3}" height="26" rx="3" fill="#ffffff" opacity=".2"/><rect x="${x + 6}" y="11" width="12" height="12" rx="2" fill="${c}" stroke="#fff" stroke-width=".8"/>`;
+      if (n) s += `<text x="${x + 22}" y="22" font-size="10" font-weight="700" fill="#fff" font-family="Tahoma">${n}</text>`;
+      s += `<text x="${x + (n ? 34 : 22)}" y="22" font-size="10" fill="#fff" font-family="Tahoma">${label}${n ? ' ▾' : ''}</text>`;
+      x += w;
+    });
+    if (pages > 1) s += `<text x="${88 + AV - 4}" y="16" font-size="9" fill="#fff" text-anchor="end">▲</text><text x="${88 + AV - 4}" y="29" font-size="9" fill="#fff" text-anchor="end">▼</text>`;
+    return `<svg viewBox="0 0 600 34" role="img" aria-label="任务栏示意">${s}</svg>`;
+  }
+  function draw() {
+    const n = +range.value; out.textContent = n;
+    const wins = SEQ.slice(0, n).map((p, i) => ({ p, t: PR[p][0] + (SEQ.slice(0, i).filter((q) => q === p).length ? ' ' + (SEQ.slice(0, i).filter((q) => q === p).length + 1) : '') }));
+    // 不分组
+    let w = Math.min(MAX, AV / n), fit = n, pages = 1;
+    if (w < MIN) { fit = Math.floor((AV - 14) / MIN); w = (AV - 14) / fit; pages = Math.ceil(n / fit); }
+    a.innerHTML = bar(wins.slice(0, fit).map((x) => ({ w, t: x.t, c: PR[x.p][1] })), pages);
+    // 分组：仅在挤不下时，从窗口最多的程序开始合并
+    const cnt = PR.map((_, i) => wins.filter((x) => x.p === i).length);
+    let grouped = new Set(), items;
+    const build = () => { items = []; const seen = new Set(); wins.forEach((x) => { if (grouped.has(x.p)) { if (!seen.has(x.p)) { seen.add(x.p); items.push({ t: PR[x.p][0], c: PR[x.p][1], n: cnt[x.p] }); } } else items.push({ t: x.t, c: PR[x.p][1] }); }); };
+    build();
+    const order = cnt.map((c, i) => [c, i]).filter((q) => q[0] > 1).sort((p, q) => q[0] - p[0]);
+    while (AV / items.length < MIN && order.length) { grouped.add(order.shift()[1]); build(); }
+    const gw = Math.min(MAX, AV / items.length);
+    b.innerHTML = bar(items.map((x) => ({ ...x, w: gw })), 1);
+    status.innerHTML = `${n} 个窗口。不分组：每个按钮约 <b>${Math.round(w)} px</b>${pages > 1 ? `，只放得下 ${fit} 个，需要翻 <b>${pages}</b> 页` : ''}。分组：${grouped.size ? `合并了 ${[...grouped].map((i) => PR[i][0]).join('、')}，` : '还不挤，暂不合并，'}共 <b>${items.length}</b> 个按钮，每个约 <b>${Math.round(gw)} px</b>。`;
+  }
+  range.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '窗口数', range, out)), el('div', { class: 'cap', style: 'margin:6px 0 4px' }, '不分组'), a, el('div', { class: 'cap', style: 'margin:10px 0 4px' }, '分组（XP）'), b, status);
+  draw();
+});
+
+/* ---------- 09c 控制面板 ---------- */
+reg('cpanel', (node) => {
+  const TASK = ['外观和主题', '网络和 Internet 连接', '添加/删除程序', '声音、语音和音频设备', '性能和维护', '打印机和其它硬件', '用户帐户', '日期、时间、语言和区域设置', '辅助功能选项'];
+  const CLASSIC = ['辅助功能选项', '添加硬件', '添加或删除程序', '管理工具', '日期和时间', '显示', '文件夹选项', '字体', '游戏控制器', 'Internet 选项', '键盘', '鼠标', '网络连接', '电话和调制解调器选项', '电源选项', '打印机和传真', '区域和语言选项', '扫描仪和照相机', '任务计划', '声音和音频设备', '语音', '系统', '任务栏和「开始」菜单', '用户帐户'];
+  const GOALS = {
+    '换桌面背景': [['外观和主题', '更改桌面背景'], ['显示', '「桌面」选项卡']],
+    '卸载一个程序': [['添加/删除程序'], ['添加或删除程序']],
+    '调鼠标速度': [['打印机和其它硬件', '鼠标'], ['鼠标', '「指针选项」选项卡']],
+    '新建一个用户': [['用户帐户', '创建一个新帐户'], ['用户帐户', '创建一个新帐户']],
+  };
+  const COLS = ['#3f7fdc', '#2f9e6b', '#d9822b', '#7a5cc8', '#3a8fb7', '#5d7a99', '#c45a7a', '#4f9a3a', '#2b6cb0'];
+  let view = 0, goal = '换桌面背景';
+  const vs = el('div', { class: 'seg' }), gs = el('div', { class: 'diffs' }), grid = el('div'), crumb = el('div', { class: 'crumb' }), status = el('div', { class: 'status' });
+  const gb = Object.keys(GOALS).map((g) => el('button', { type: 'button', class: 'chipb', onclick: () => { goal = g; draw(); } }, g));
+  gs.append(...gb);
+  function draw() {
+    gb.forEach((x) => x.classList.toggle('on', x.textContent === goal));
+    const path = GOALS[goal][view], list = view ? CLASSIC : TASK;
+    grid.className = 'cp ' + (view ? 'classic' : 'task');
+    grid.innerHTML = list.map((t, i) => `<div class="it${t === path[0] ? ' hit' : ''}"><i style="background:${COLS[i % COLS.length]}"></i>${t}</div>`).join('');
+    crumb.innerHTML = '路径：' + path.map((p) => `<span>${p}</span>`).join(' → ');
+    status.innerHTML = view ? `<b>经典视图</b>：第一屏有 ${CLASSIC.length} 个图标，得先知道该点哪一个（名字按功能部件起，而不是按你要做的事）。熟手直达，新手要猜。`
+      : `<b>任务视图</b>：第一屏只有 ${TASK.length} 个分类，按「你想做什么」组织，下一层再列出具体任务。这就是从 Neptune 借来的引导式导航。`;
+  }
+  segment(vs, ['任务视图（XP 默认）', '经典视图'], (i) => { view = i; draw(); });
+  node.append(el('div', { class: 'ctrl' }, vs), el('div', { class: 'cap', style: 'margin:0' }, '我想要：'), gs, grid, crumb, status);
+  draw();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

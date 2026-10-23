@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>祖先的「决定」：未接触部落是「原始」还是「选择」</title>
+<meta name="description" content="以 fivestone 的短文《祖先的「决定」》为骨架：Ricardo Stuckert 航拍的亚马逊隔绝村落、「两万年前」说法的核对、接触与退避的决策树、1987 年不接触政策与受控接触之争，以及单线进化阶梯与分枝树的对比。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+@media (min-width:1024px){ .toc-sheet,.toc-mask{display:none} }
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* ===== 本页专用 ===== */
+.pick rect,.pick ellipse,.pick path.hit{transition:stroke .2s,stroke-width .2s}
+.hot{cursor:pointer;outline:none}
+.hot .ring{fill:none;stroke:var(--p);stroke-width:2;stroke-dasharray:4 3;opacity:.0;transition:opacity .2s}
+.hot:hover .ring,.hot:focus .ring{opacity:.7}
+.hot.sel .ring{opacity:1;stroke-dasharray:none}
+.hot .dot{fill:var(--p)}
+.hot .dot-t{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:var(--font)}
+.factcard{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--surface-2);font-size:14px;min-height:4.5em}
+.factcard h4{margin:0 0 4px;font-size:15px}
+.verdict{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;margin-left:6px;font-weight:600}
+.verdict.no{background:var(--r-soft);color:var(--r)}
+.verdict.mid{background:var(--y-soft);color:var(--y)}
+.verdict.yes{background:var(--t-soft);color:var(--t)}
+.frames{display:grid;gap:8px;margin-top:10px}
+.frow{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2)}
+@media (min-width:640px){ .frow{grid-template-columns:200px minmax(0,1fr);gap:12px;align-items:start} }
+.frow .obs{font-weight:600;font-size:14px}
+.frow .obs small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.frow .rd{font-size:14px;transition:opacity .25s}
+.frow .rd.fade{opacity:0}
+.frames.prim .frow{border-left:4px solid var(--r)}
+.frames.choice .frow{border-left:4px solid var(--t)}
+.fconc{margin-top:10px;padding:12px 14px;border-radius:10px;font-size:15px;font-weight:600}
+.fconc.prim{background:var(--r-soft)}
+.fconc.choice{background:var(--t-soft)}
+.kit{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.kit span{font-size:13px;padding:3px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--surface-2);transition:all .25s}
+.kit span.on{background:var(--t-soft);color:var(--t);border-color:var(--t);font-weight:600}
+.tree{display:grid;gap:10px}
+.tnode{padding:12px 14px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font-size:14px}
+.tnode.root{border-color:var(--o);background:var(--o-soft)}
+.tnode h4{margin:0 0 6px;font-size:15px}
+.opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.opts .btn.on{background:var(--p);border-color:var(--p);color:#fff}
+.arrow{text-align:center;color:var(--muted);font-size:18px;line-height:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--o-soft);border-color:var(--o);color:var(--text);font-weight:600}
+.pol{display:grid;grid-template-columns:1fr;gap:10px;margin-top:8px}
+@media (min-width:640px){ .pol{grid-template-columns:1fr 1fr} }
+.pol .card{padding:12px 14px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);font-size:14px}
+.pol .card h4{margin:0 0 6px;font-size:14px}
+.pol .card .rec{font-size:16px;font-weight:700;margin:4px 0}
+.pol .card.a .rec{color:var(--t)}
+.pol .card.b .rec{color:var(--o)}
+.tweet{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);font-size:14px}
+.tweet .who{font-size:12px;color:var(--muted);margin-bottom:6px}
+.tweet b.hl{background:var(--r-soft);color:var(--r);padding:0 3px;border-radius:4px}
+.lad-node{transition:transform .7s cubic-bezier(.4,.1,.2,1)}
+@media (prefers-reduced-motion: reduce){ .lad-node{transition:none} }
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">祖先的「决定」</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">人类学 · 未接触部落 · 叙事框架</div>
+  <h1>祖先的「决定」：未接触部落是「原始」还是「选择」？</h1>
+  <p class="sub">一张从直升机上拍下的亚马逊村落照片，被配上「他们像两万年前的祖先一样生活」。同样的画面，换一个叙事框架，读出来的完全是另一个故事。</p>
+  <div class="thesis">把同时代的人说成「活在两万年前」，是一种从进化论时代就有的老视角。照片里的人种木薯玉米、用钢刀，他们的「隔绝」更像是祖辈在殖民、橡胶热与疫病面前做出、并且至今仍在维持的选择。<sup class="c">[1][2][5]</sup></div>
+  <div class="authors">
+    <span class="au"><i>F</i>fivestone（@fivestone）</span>
+  </div>
+  <p class="meta">原文：「祖先的『决定』」，fivestone，个人博客 fieldnotes（anthropology.fivest.one，2020-05-11）。原文很短，只记下了一条推文和作者「这是个老视角」的感想。本页以这个观点为骨架<b>重新组织</b>，补充了照片的来历、「未接触部落」相关的历史与政策争论，凡原文没有的内容都放在标注为「本页改写 / 本页补充（非原文）」的虚线框里。</p>
+</header>
+
+<section class="ch" id="s1" data-title="一条推文，两种读法">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一条推文，两种读法</h2>
+    <p class="lead">同样一组事实，为什么会被读成「祖先把子孙坑了」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>原文转引的推文</b>（作者说发推的是一位「和人类学无关的推友」）：</div>
+    <div class="tweet">
+      <div class="who">推文，2020 年 5 月</div>
+      里卡多·斯塔克特（Ricardo Stuckert）拍摄的照片是亚马逊雨林中的一个部落，该部落与外界没有任何联系。专家们怀疑他们像 2 万年前的祖先一样生活。<br><br>
+      很多时候，<b class="hl">祖先的一个决定就把子孙后代全坑了，且永远不得翻身</b>。
+    </div>
+    <p style="margin-top:12px;font-size:15px">原文作者的回应很克制：他猜发推者看到「隔绝」，联想到的大概是中国的网络防火墙；但这种<b>用现代口吻评论土著</b>的角度并不新鲜，「从进化论的时代应该就有这种视角了」，只是他很久没从这个角度想过，于是记了下来。<sup class="c">[1]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>切换叙事框架</b>：左边是同一组观察，右边的解读随框架改变。看看哪个框架更贴合事实。</div>
+    <div data-demo="frames"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：原文没有展开「选择」这一框架，只指出「原始」视角由来已久。右侧「选择」一栏的解读依据本页后面几章引用的报道与研究。</div>
+</section>
+
+<section class="ch" id="s2" data-title="照片里有什么">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>照片里到底有什么</h2>
+    <p class="lead">那组照片拍到的，真的是「两万年前的生活」吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">示意重绘（非照片还原）：2016 年 12 月，斯塔克特乘直升机途经巴西阿克里州（Acre）靠近秘鲁边境的一处村落。<b>点图上的编号</b>，看每样东西说明了什么。</div>
+    <div data-demo="scene"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：斯塔克特本是去给另一个已接触的族群拍书，途中因风暴改道，从上空经过这片村落。同机的 José Carlos Meirelles 是巴西国家印第安人基金会（FUNAI）的资深「探路人」（sertanista），在这一带工作四十多年。《国家地理》2016-12-21 由 Scott Wallace 撰文刊出部分照片；当时多家媒体在转述中都用了「新石器时代的生活方式」「像两万年前的祖先一样生活」这类说法，推文里的话正是从这里来的。<sup class="c">[2][3]</sup></div>
+</section>
+
+<section class="ch" id="s3" data-title="「两万年前」的时钟">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>「两万年前」的时钟</h2>
+    <p class="lead">如果真像两万年前那样生活，这些人手里应该有什么、没有什么？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">拖动滑块（或点时间轴上的点）在几个时刻之间移动。横轴是对数刻度：越往右越靠近今天。下方「工具箱」亮起的，是那个时刻这一带的人<b>可能已有</b>的东西。</div>
+    <div data-demo="clock"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：亚马逊西南缘（今玻利维亚）已发现约 10,350 年前的木薯种植证据，这里是木薯的驯化地之一<sup class="c">[4]</sup>；美洲最早的可靠人类遗址如智利 Monte Verde 约 1.45 万年前，更早的说法仍有争议。照片里的木薯园和钢刀，都与「两万年前」对不上。</div>
+</section>
+
+<section class="ch" id="s4" data-title="祖先做了什么「决定」">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>祖先做了什么「决定」</h2>
+    <p class="lead">推文说「祖先的一个决定」，那么在当时的处境里，摆在他们面前的选项是什么？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>接触 / 退避决策树</b>：这是一个依据多个族群历史概括出的<b>示意</b>，不是某一个部落的确切族谱。逐级选择，看每条路通往哪里。</div>
+    <div data-demo="tree"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：秘鲁的 Mashco-Piro 人在 19 世纪末还住在马努河上游的定居农业村落；1894 年橡胶商 Fitzcarrald 打开马努流域后，他们退入森林，今天被视为「自愿隔绝」的族群。人类学家 Glenn Shepard 因此反对「石器时代」的说法。<sup class="c">[5]</sup>巴西的 Awá-Guajá 人也被认为原本务农，在殖民压力下转向游动的狩猎采集，人类学里称这类现象为「农业退化」（agricultural regression，Balée 等）。<sup class="c">[6]</sup>在被动接触的年代，接触后两年内人口死亡可达七成。<sup class="c">[7]</sup></div>
+</section>
+
+<section class="ch" id="s5" data-title="接触还是不接触">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>今天：接触还是不接触</h2>
+    <p class="lead">如果隔绝是一种选择，外界应该尊重它，还是应该「拉他们一把」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">勾选现实中可能出现的情况，看两种主张各自给出什么建议。这是对两方公开立场的<b>简化</b>，不代表任何一方的完整论证。</div>
+    <div data-demo="policy"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：1987 年，FUNAI 在 Sydney Possuelo 主导下放弃了此前「找到并接触、帮助同化」的做法，改为划定并巡护领地、不主动接触，只在族群面临灭绝威胁时才接触。<sup class="c">[7][8]</sup>2015 年，人类学家 Robert Walker 与 Kim Hill 在《科学》发表社论，主张在伐木、采矿压力下进行「受控接触」；Survival International 等组织批评这一主张「危险且误导」，认为领地受保护的隔绝族群过得很好。<sup class="c">[9][10]</sup>这场争论至今没有定论。</div>
+</section>
+
+<section class="ch" id="s6" data-title="梯子还是树">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>梯子还是树：那个「老视角」从哪来</h2>
+    <p class="lead">原文说这种视角「从进化论的时代就有」，它到底长什么样？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">同一批社会，用两种图来摆放。<b>切换</b>看看每个社会的位置怎么变。</div>
+    <div data-demo="ladder"></div>
+    <div class="final">照片里的人和拍照的人站在同一个 2016 年。所谓「祖先的决定」，与其说是把子孙「坑了」，不如说是一个在入侵者、疫病和橡胶商的枪口面前，至今看来并不愚蠢的选择。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：19 世纪的「社会进化论」把人类社会排成一条单线阶梯，最有名的是 Lewis Henry Morgan《古代社会》（1877）里的「蒙昧—野蛮—文明」。人类学家 Johannes Fabian 在《时间与他者》（1983）中把这种把同时代人放进「过去」的写法称为对「同时代性」（coevalness）的否认。<sup class="c">[11][12]</sup>原文作者那句「用现代口吻评论土著」，指向的正是这个传统。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页以 fivestone 在个人博客 fieldnotes 发表的<a href="https://anthropology.fivest.one/archives/76">《祖先的「决定」》</a>（2020-05-11）为骨架重新组织。原文只包含一条推文的转引与作者的简短评论；照片背景、历史、政策争论与图示均为本页改写或补充，已逐处标注。原文末尾的一张配图未转存，本页用文字与内联 SVG 示意图代替，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>原文：fivestone，《祖先的「决定」》，fieldnotes（anthropology.fivest.one，2020-05-11），及其转引的推文。</li>
+    <li>Wallace, S. (2016-12-21). <a href="https://www.nationalgeographic.com/culture/article/uncontacted-tribe-amazon-brazil-photos">斯塔克特航拍照片报道</a>. <i>National Geographic</i>.（照片背景、园地作物、箭、Meirelles 的话、1910 年起袭取钢铁工具的记录）</li>
+    <li>PetaPixel (2016-12-26). <a href="https://petapixel.com/2016/12/26/photographer-spots-uncontacted-tribe-amazon/">Photographer Spots an Uncontacted Tribe in the Amazon</a>.（风暴改道的经过）</li>
+    <li>Lombardo, U. et al. (2020). Early Holocene crop cultivation and landscape modification in Amazonia. <i>Nature</i> 581.（约 10,350 年前的木薯）</li>
+    <li>Shepard, G. (2013-10-04). <a href="https://www.savageminds.org/2013/10/04/too-close-encounters/">Too close encounters</a>. <i>Savage Minds</i>.（Mashco-Piro 的定居农业史与 1894 年橡胶商入侵）</li>
+    <li>Instituto Socioambiental, <a href="https://pib.socioambiental.org/en/Povo:Awa_Guaj%C3%A1">Awá Guajá</a>（Povos Indígenas no Brasil）；Balée, W. (1994). <i>Footprints of the Forest</i>. Columbia University Press.（农业退化）</li>
+    <li>The Globe and Mail, <a href="https://www.theglobeandmail.com/news/world/the-last-lost-tribes-of-the-amazon/article20369296">The last lost tribes of the Amazon</a>.（1987 年政策转向、接触后两年内死亡可达七成）</li>
+    <li>Survival International, <a href="https://survivalinternational.org/about/funai">FUNAI</a>.（隔绝印第安人协调处 1987 年成立）</li>
+    <li>Walker, R. S. &amp; Hill, K. R. (2015). Protecting isolated tribes. <i>Science</i> 348.</li>
+    <li>Survival International (2015). <a href="https://survivalinternational.org/news/10800">Survival International attacks Science editorial as 'dangerous and misleading'</a>.</li>
+    <li>Morgan, L. H. (1877). <i>Ancient Society</i>. New York: Henry Holt.</li>
+    <li>Fabian, J. (1983). <i>Time and the Other: How Anthropology Makes Its Object</i>. Columbia University Press.</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；历史与政策细节以原文与文献为准。决策树与政策对照均为示意性简化。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+/* ---------- 1. 叙事框架切换 ---------- */
+reg('frames', (node) => {
+  const rows = [
+    ['与外界没有联系', '推文的说法', '封闭、停滞，没有赶上历史进程。', '并非毫无往来：至少从 1910 年起就有袭取砍刀、斧头的记录。他们是在有意不与国家社会建立长期关系。'],
+    ['茅屋、裸身、弓箭', '照片里看得到', '这就是「两万年前」的生活方式。', '适应雨林的当代生活方式。长屋和弓箭在亚马逊许多已接触的族群里也仍在使用。'],
+    ['向直升机射箭', '照片里看得到', '野蛮、敌意、不懂外面的世界。', '一个清楚的表态。同机的 FUNAI 老探路人 Meirelles 说：这些箭的意思是「别来打扰我们」。'],
+    ['种玉米、木薯、香蕉', '报道里写了，推文没提', '（在这个框架里，这一条通常被略过。）', '这是农业村落，种的香蕉还是欧洲人到来后才进入美洲的作物。与「两万年前」直接矛盾。'],
+    ['祖先的一个「决定」', '推文的结论', '一个错误决定，子孙永世不得翻身。', '在疫病、奴役和橡胶热面前的退避，而且每一代人都在重新确认这个选择。'],
+  ];
+  const seg = el('div', { class: 'seg', role: 'tablist' });
+  const list = el('div', { class: 'frames' });
+  const conc = el('div', { class: 'fconc' });
+  const rds = rows.map(([o, src]) => {
+    const rd = el('div', { class: 'rd' });
+    list.append(el('div', { class: 'frow' }, el('div', { class: 'obs' }, o, el('small', {}, src)), rd));
+    return rd;
+  });
+  const modes = { prim: ['「原始」叙事', '他们是过去的残留，停在时间里，等着被「带进」现代。'], choice: ['「选择」叙事', '他们是我们的同时代人；隔绝是一种在外部压力下形成、并被持续维持的策略。'] };
+  let cur = null;
+  const set = (m) => {
+    if (m === cur) return; cur = m;
+    [...seg.children].forEach((b) => { const on = b.dataset.m === m; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+    list.className = 'frames ' + m; conc.className = 'fconc ' + m;
+    rds.forEach((rd, i) => {
+      rd.classList.add('fade');
+      setTimeout(() => { rd.textContent = rows[i][m === 'prim' ? 2 : 3]; rd.classList.remove('fade'); }, RM ? 0 : 120 + i * 60);
+    });
+    conc.textContent = '结论：' + modes[m][1];
+  };
+  for (const m of ['prim', 'choice']) seg.append(el('button', { type: 'button', role: 'tab', 'data-m': m, onclick: () => set(m) }, modes[m][0]));
+  node.append(el('div', { class: 'ctrl' }, seg), list, conc);
+  set('prim');
+});
+
+/* ---------- 2. 照片示意图：可点热点 ---------- */
+reg('scene', (node) => {
+  const W = 400, H = 260;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '从直升机俯视的村落示意图：长屋、园地、拉弓的人、直升机阴影', style: 'width:100%;max-width:560px;margin:0 auto;border-radius:10px' });
+  root.append(svg('rect', { x: 0, y: 0, width: W, height: H, fill: 'var(--t-soft)' }));
+  // 树冠
+  let seed = 7; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < 70; i++) {
+    const x = rnd() * W, y = rnd() * H;
+    const dx = (x - 200) / 150, dy = (y - 140) / 95;
+    if (dx * dx + dy * dy < 1) continue;
+    root.append(svg('circle', { cx: x, cy: y, r: 10 + rnd() * 14, fill: 'var(--t)', opacity: (0.18 + rnd() * 0.2).toFixed(2) }));
+  }
+  root.append(svg('ellipse', { cx: 200, cy: 140, rx: 148, ry: 92, fill: 'var(--y-soft)', stroke: 'var(--y)', 'stroke-width': 1, 'stroke-dasharray': '3 4' }));
+  // 园地
+  const garden = svg('g', {});
+  [[70, 80, 70, 46], [64, 134, 60, 52], [270, 170, 72, 44]].forEach(([x, y, w, h]) => {
+    garden.append(svg('rect', { x, y, width: w, height: h, rx: 4, fill: 'var(--surface)', opacity: .55, stroke: 'var(--t)', 'stroke-width': 1 }));
+    for (let yy = y + 8; yy < y + h - 4; yy += 9) for (let xx = x + 7; xx < x + w - 4; xx += 9) garden.append(svg('circle', { cx: xx, cy: yy, r: 2.2, fill: 'var(--t)' }));
+  });
+  // 香蕉（星形叶）
+  [[300, 92], [318, 110], [292, 120]].forEach(([x, y]) => { for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; garden.append(svg('line', { x1: x, y1: y, x2: x + 11 * Math.cos(a), y2: y + 11 * Math.sin(a), stroke: 'var(--t)', 'stroke-width': 3, 'stroke-linecap': 'round' })); } });
+  root.append(garden);
+  // 长屋
+  const maloca = (cx, cy, r) => {
+    const g = svg('g', {});
+    g.append(svg('circle', { cx, cy, r, fill: 'var(--o-soft)', stroke: 'var(--o)', 'stroke-width': 2 }));
+    for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; g.append(svg('line', { x1: cx, y1: cy, x2: cx + r * Math.cos(a), y2: cy + r * Math.sin(a), stroke: 'var(--o)', 'stroke-width': .8, opacity: .7 })); }
+    g.append(svg('circle', { cx, cy, r: 3, fill: 'var(--o)' }));
+    return g;
+  };
+  root.append(maloca(200, 118, 34), maloca(250, 200, 18));
+  // 人
+  const person = (x, y, paint) => svg('g', {}, svg('circle', { cx: x, cy: y, r: 3.6, fill: 'var(--ink)' }), svg('ellipse', { cx: x, cy: y + 8, rx: 3.6, ry: 6, fill: paint ? 'var(--r)' : 'var(--o)' }));
+  [[150, 176, 1], [162, 182, 1], [172, 172, 0], [226, 160, 1], [140, 190, 0]].forEach(([x, y, p]) => root.append(person(x, y, p)));
+  // 拉弓的人与箭
+  root.append(person(318, 148, 1));
+  root.append(svg('path', { d: 'M324 138 Q334 148 324 160', fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.6 }));
+  root.append(svg('line', { x1: 322, y1: 150, x2: 352, y2: 112, stroke: 'var(--ink)', 'stroke-width': 1.4 }));
+  // 砍刀（在长屋旁）
+  root.append(svg('path', { d: 'M108 196 L132 186 L134 190 L111 200 Z', fill: 'var(--muted)' }), svg('rect', { x: 102, y: 196, width: 9, height: 4, rx: 1.5, fill: 'var(--o)', transform: 'rotate(-22 106 198)' }));
+  // 直升机阴影
+  const heli = svg('g', { opacity: .55 });
+  heli.append(svg('ellipse', { cx: 360, cy: 50, rx: 18, ry: 8, fill: 'var(--muted)' }), svg('rect', { x: 330, y: 47, width: 18, height: 4, fill: 'var(--muted)' }));
+  heli.append(svg('circle', { cx: 360, cy: 50, r: 26, fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.2, 'stroke-dasharray': '6 4' }));
+  root.append(heli);
+
+  const spots = [
+    [200, 118, 40, '茅草长屋（maloca）', 'mid', '看不出年代', '大型茅草公共长屋，一栋可住许多人。附近还有同一族群的其他长屋，Meirelles 估计这一群人总数超过 300。长屋是亚马逊许多族群今天仍在用的建筑，并不专属于「远古」。', '[2]'],
+    [95, 120, 40, '玉米、木薯、香蕉园', 'no', '与两万年前不符', 'Meirelles 估计这些园地能养活 80 到 100 人。木薯在亚马逊西南缘约一万年前才被驯化；香蕉原产东南亚，是欧洲人到来之后才传入美洲的。一个种香蕉的村子，不可能「像两万年前那样」生活。', '[2][4]'],
+    [318, 152, 18, '朝直升机拉弓的人', 'yes', '当下的回应', '村民起初四散，随后有人朝低飞的直升机放箭。Meirelles 的解读是：「这些箭的意思是：让我们安静地待着，别来打扰。」这是对一个具体威胁的反应，而不是「不懂外面的世界」。', '[2]'],
+    [160, 180, 24, '身绘与发式', 'mid', '看不出年代', '人们身上有精细的红色彩绘，发式各不相同；Meirelles 说他们看起来营养良好、很健康。照片能告诉你他们过得不坏，却告诉不了你他们「活在哪个年代」。', '[2]'],
+    [118, 194, 16, '钢刀与斧头', 'no', '与两万年前不符', '报道提到，从 1910 年起就有这个族群袭击定居点、取走砍刀与斧头的记录，钢铁工具早已是他们文化的一部分。他们「与外界没有联系」，但并非与外界毫无关系。', '[2]'],
+    [360, 50, 28, '直升机（拍摄者）', 'mid', '说明文字的来源', '风暴让直升机改道，从上空经过几分钟。「像两万年前的祖先一样生活」不是照片里的任何东西，而是后来加在照片上的说明文字，以及推文在此基础上的引申。', '[2][3]'],
+  ];
+  const card = el('div', { class: 'factcard' }, '点图上的编号 1 到 6。');
+  const hs = [];
+  spots.forEach(([x, y, r, title, v, vt, txt, ref], i) => {
+    const g = svg('g', { class: 'hot', tabindex: '0', role: 'button', 'aria-label': `${i + 1}：${title}` });
+    g.append(svg('circle', { class: 'ring', cx: x, cy: y, r }));
+    const bx = x + r * 0.7, by = y - r * 0.7;
+    g.append(svg('circle', { class: 'dot', cx: bx, cy: by, r: 9 }), svg('text', { class: 'dot-t', x: bx, y: by }, String(i + 1)));
+    g.append(svg('circle', { cx: x, cy: y, r, fill: 'transparent' }));
+    const pick = () => {
+      hs.forEach((h) => h.classList.remove('sel')); g.classList.add('sel');
+      card.innerHTML = '';
+      card.append(el('h4', {}, `${i + 1}. ${title}`, el('span', { class: 'verdict ' + v }, vt)), el('div', {}, txt, el('sup', { class: 'c' }, ref)));
+    };
+    g.addEventListener('click', pick);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    hs.push(g); root.append(g);
+  });
+  node.append(root, card);
+});
+
+/* ---------- 3. 「两万年前」的时钟 ---------- */
+reg('clock', (node) => {
+  const kitNames = ['人已到达南美', '木薯种植', '香蕉、铁器经由欧洲人传入', '橡胶商进入雨林', '自家的钢刀斧头', '国家的不接触政策', '头顶的直升机'];
+  const ev = [
+    [20000, '约 2 万年前', '推文里的「祖先」所在的时刻：末次冰期最寒冷的阶段前后。按主流证据，人类大概还没走到南美洲。', []],
+    [14500, '约 1.45 万年前', '智利 Monte Verde 遗址：美洲最早的可靠人类遗址之一。（更早的说法仍有争议。）', [0]],
+    [10350, '约 1.04 万年前', '亚马逊西南缘出现木薯种植的证据（Lombardo 等, 2020）。照片里的园地，至少要从这里算起。', [0, 1]],
+    [500, '约 500 年前', '欧洲人到达美洲。香蕉、铁器和疫病随之而来，很多都先于欧洲人本身深入雨林。', [0, 1, 2]],
+    [122, '1894 年', '橡胶热：橡胶商 Fitzcarrald 打开秘鲁马努流域，原本在河岸务农的 Mashco-Piro 人退入森林。（邻近地区的例子。）', [0, 1, 2, 3]],
+    [106, '1910 年', '照片里这个族群的最早记录之一：袭击定居点，取走砍刀与斧头。', [0, 1, 2, 3, 4]],
+    [29, '1987 年', '巴西 FUNAI 改为「不主动接触」政策，划定并巡护隔绝族群的领地。', [0, 1, 2, 3, 4, 5]],
+    [0, '2016 年', '斯塔克特的直升机从上空经过，拍下照片。', [0, 1, 2, 3, 4, 5, 6]],
+  ];
+  const W = 400, H = 96, L = 24, R = 376;
+  const lx = (ya) => R - (Math.log10(ya + 1) / Math.log10(20001)) * (R - L);
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '对数时间轴：从两万年前到 2016 年', style: 'width:100%' });
+  root.append(svg('line', { x1: L, y1: 50, x2: R, y2: 50, stroke: 'var(--line)', 'stroke-width': 3, 'stroke-linecap': 'round' }));
+  [[20000, '2 万年'], [1000, '1000 年'], [100, '100 年'], [10, '10 年'], [0, '今天']].forEach(([y, t]) => {
+    root.append(svg('line', { x1: lx(y), y1: 44, x2: lx(y), y2: 56, stroke: 'var(--muted)' }), svg('text', { class: 'lbl mid', x: lx(y), y: 78, 'text-anchor': 'middle' }, t));
+  });
+  root.append(svg('text', { class: 'lbl', x: L, y: 18 }, '← 更久以前（对数刻度）'));
+  const dots = ev.map(([ya], i) => {
+    const c = svg('circle', { cx: lx(ya), cy: 50, r: 7, fill: 'var(--surface)', stroke: 'var(--p)', 'stroke-width': 2, style: 'cursor:pointer', tabindex: '0', role: 'button', 'aria-label': ev[i][1] });
+    c.addEventListener('click', () => set(i));
+    c.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); set(i); } });
+    root.append(c); return c;
+  });
+  const input = el('input', { type: 'range', min: '0', max: String(ev.length - 1), value: '0', step: '1', 'aria-label': '时刻' });
+  const out = el('output', {});
+  const status = el('div', { class: 'status' });
+  const kit = el('div', { class: 'kit' }, ...kitNames.map((k) => el('span', {}, k)));
+  const set = (i) => {
+    input.value = i; out.textContent = ev[i][1];
+    dots.forEach((d, j) => { d.setAttribute('fill', j === i ? 'var(--p)' : j < i ? 'var(--p-soft)' : 'var(--surface)'); d.setAttribute('r', j === i ? 9 : 7); });
+    [...kit.children].forEach((s, j) => s.classList.toggle('on', ev[i][3].includes(j)));
+    const n = ev[i][3].length;
+    status.innerHTML = `<b>${ev[i][1]}</b>：${ev[i][2]}<br><span style="color:var(--muted)">工具箱：${n} / ${kitNames.length} 项已出现。${i === 0 ? '推文说他们「像这一刻的祖先一样生活」，可这一刻工具箱是空的。' : ''}</span>`;
+  };
+  input.addEventListener('input', () => set(+input.value));
+  node.append(root, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '时刻', input, out)), kit, status);
+  set(0);
+});
+
+/* ---------- 4. 接触 / 退避决策树 ---------- */
+reg('tree', (node) => {
+  const T = {
+    root: { h: '外来者沿河而来', p: '橡胶商、传教士，后来是伐木者与淘金者。他们带来铁器，也带来枪、劳役和你们从未见过的病。', o: [['接触与交易', 'A'], ['武装抵抗', 'B'], ['退入上游森林', 'C']] },
+    A: { h: '接触与交易', p: '得到砍刀、斧头和新物品，但麻疹、流感等疫病随之而来，许多人被拉去当橡胶劳工。在主动接触的年代，接触后两年内人口死亡可达七成。', o: [['之后……', 'A2']] },
+    A2: { h: '结局（示意）', p: '幸存者被并入国家社会的最底层，失去大部分土地。这条路上的族群，今天在照片里看起来就「不原始」了。', end: 1 },
+    B: { h: '武装抵抗', p: '能暂时守住河道，但在火器面前，抵抗常常招来报复性的围剿。', o: [['继续抵抗', 'B2'], ['转身退入森林', 'C']] },
+    B2: { h: '结局（示意）', p: '许多族群在这条路上人口锐减，甚至消失，后人也就无从被拍到。', end: 1 },
+    C: { h: '退入上游森林', p: '放弃河岸的定居田地，更多依赖狩猎采集，在森林深处重新开出小块园地。人类学称之为「农业退化」，但这是为了活下去的主动调整。代价是土地与交往，换来的是自主和远离疫病。', o: [['一直维持退避', 'C1'], ['偶尔出来袭取铁器', 'C2'], ['某天主动走出森林', 'C3']] },
+    C1: { h: '今天：「自愿隔绝」', p: '这就是照片里那个村子所在的路径。他们的隔绝不是「没开化」，而是祖辈的选择被每一代人重新确认。', end: 1 },
+    C2: { h: '隔绝 ≠ 无关系', p: '照片里的族群从 1910 年起就有袭取砍刀、斧头的记录：他们挑着拿外界的东西，却不接受外界本身。', end: 1 },
+    C3: { h: '重新面对外界', p: '例如秘鲁的 Mashco-Piro 人近年多次在河岸露面，外界多认为与伐木等压力有关。这个「决定」于是又一次摆到了眼前。', end: 1 },
+  };
+  const wrap = el('div', { class: 'tree' });
+  const status = el('div', { class: 'status' });
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => render(['root']) }, '从头再来');
+  const render = (path) => {
+    wrap.innerHTML = '';
+    path.forEach((k, idx) => {
+      const n = T[k];
+      if (idx) wrap.append(el('div', { class: 'arrow', 'aria-hidden': 'true' }, '↓'));
+      const box = el('div', { class: 'tnode' + (idx === 0 ? ' root' : '') }, el('h4', {}, n.h), el('div', {}, n.p));
+      if (n.o) {
+        const opts = el('div', { class: 'opts' });
+        n.o.forEach(([lab, to]) => {
+          const on = path[idx + 1] === to;
+          opts.append(el('button', { class: 'btn' + (on ? ' on' : ''), type: 'button', onclick: () => render(path.slice(0, idx + 1).concat(to)) }, lab));
+        });
+        box.append(opts);
+      }
+      wrap.append(box);
+    });
+    const last = T[path[path.length - 1]];
+    const names = path.slice(1).map((k) => T[k].h);
+    status.innerHTML = last.end ? `你走的路：<b>${names.join(' → ')}</b>。推文看到的，只是其中一条路今天的样子。` : (path.length > 1 ? `已选：${names.join(' → ')}，继续往下选。` : '在第一个框里选一条路。');
+  };
+  node.append(wrap, el('div', { class: 'ctrl' }, reset), status);
+  render(['root']);
+});
+
+/* ---------- 5. 接触还是不接触 ---------- */
+reg('policy', (node) => {
+  const cs = [['land', '领地已划定并有人巡护', true], ['invade', '伐木 / 淘金者正在侵入', false], ['sick', '已出现疫病或暴力冲突', false], ['out', '族群自己走出森林寻求接触', false]];
+  const st = {};
+  const chips = el('div', { class: 'chips' });
+  cs.forEach(([k, lab, d]) => {
+    st[k] = d;
+    const b = el('button', { class: 'chip', type: 'button', 'aria-pressed': String(d), onclick: () => { st[k] = !st[k]; b.setAttribute('aria-pressed', String(st[k])); upd(); } }, lab);
+    chips.append(b);
+  });
+  const recA = el('div', { class: 'rec' }), whyA = el('div', {});
+  const recB = el('div', { class: 'rec' }), whyB = el('div', {});
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    let a, wa, b, wb;
+    if (st.out) { a = '回应接触，先做医疗准备'; wa = '对方主动出现时，重点是防疫隔离与医疗队，而不是推回去。'; }
+    else if (st.sick && (st.invade || !st.land)) { a = '例外：考虑接触'; wa = '1987 年的原则是只在族群面临灭绝威胁时才接触。'; }
+    else if (st.invade || !st.land) { a = '不接触，加强巡护'; wa = '划定领地、驱逐侵入者，比接触更能保护他们。'; }
+    else { a = '不接触，守住边界'; wa = '领地受保护时，隔绝族群过得很好；接触本身就是风险。'; }
+    if (st.out) { b = '接触并提供医疗'; wb = '同意：此时最要紧的是有准备的医疗支持。'; }
+    else if (st.invade || st.sick) { b = '受控接触'; wb = '侵入与疫病难以完全阻止，与其等灾难发生，不如由医疗团队主导、有准备地持续接触。'; }
+    else { b = '提前准备受控接触'; wb = '他们认为在资源开发压力下，长期隔绝难以维持。'; }
+    recA.textContent = a; whyA.textContent = wa; recB.textContent = b; whyB.textContent = wb;
+    status.innerHTML = '两种建议都出自外界。目前唯一来自当事人的明确信号，是照片里那支朝直升机射出的<b>箭</b>。';
+  };
+  node.append(chips,
+    el('div', { class: 'pol' },
+      el('div', { class: 'card a' }, el('h4', {}, 'FUNAI 1987 原则 / Survival International'), recA, whyA),
+      el('div', { class: 'card b' }, el('h4', {}, 'Walker & Hill（2015）「受控接触」'), recB, whyB)),
+    status);
+  upd();
+});
+
+/* ---------- 6. 梯子还是树 ---------- */
+reg('ladder', (node) => {
+  const W = 400, H = 280;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '单线进化阶梯与分枝树的对比', style: 'width:100%;max-width:560px;margin:0 auto' });
+  const lad = svg('g', { style: 'transition:opacity .5s' }), tree = svg('g', { style: 'transition:opacity .5s' });
+  // 梯子
+  lad.append(svg('line', { x1: 34, y1: 30, x2: 34, y2: 250, stroke: 'var(--muted)', 'stroke-width': 3 }), svg('line', { x1: 70, y1: 30, x2: 70, y2: 250, stroke: 'var(--muted)', 'stroke-width': 3 }));
+  [[60, '文明'], [140, '野蛮'], [220, '蒙昧']].forEach(([y, t]) => {
+    lad.append(svg('line', { x1: 34, y1: y, x2: 70, y2: y, stroke: 'var(--muted)', 'stroke-width': 3 }));
+    lad.append(svg('line', { x1: 74, y1: y, x2: 390, y2: y, stroke: 'var(--grid)', 'stroke-dasharray': '4 4' }));
+    lad.append(svg('text', { class: 'lbl big', x: 52, y: y - 8, 'text-anchor': 'middle' }, t));
+  });
+  lad.append(svg('text', { class: 'lbl', x: 390, y: 272, 'text-anchor': 'end' }, '越往下 = 被想象成越「早」'));
+  // 树
+  const tips = [50, 125, 200, 275, 350];
+  tree.append(svg('line', { x1: 20, y1: 40, x2: 380, y2: 40, stroke: 'var(--t)', 'stroke-dasharray': '5 4' }), svg('text', { class: 'lbl', x: 20, y: 28 }, '2016 年：所有人都在这条线上'));
+  const br = (x1, y1, x2, y2) => tree.append(svg('path', { d: `M${x1} ${y1} C${x1} ${(y1 + y2) / 2} ${x2} ${(y1 + y2) / 2} ${x2} ${y2}`, fill: 'none', stroke: 'var(--t)', 'stroke-width': 2.5 }));
+  br(200, 250, 110, 180); br(200, 250, 280, 170); br(110, 180, 50, 52); br(110, 180, 125, 52); br(280, 170, 200, 52); br(280, 170, 312, 110); br(312, 110, 275, 52); br(312, 110, 350, 52);
+  tree.append(svg('circle', { cx: 200, cy: 250, r: 5, fill: 'var(--t)' }), svg('text', { class: 'lbl', x: 212, y: 262 }, '共同的远祖（数万年前）'));
+  root.append(lad, tree);
+  const S = [['阿克里村落', 110, 220], ['Awá 猎人', 230, 220], ['河岸小镇', 170, 140], ['巴西利亚', 120, 60], ['直升机机组', 250, 60]];
+  const nodes = S.map(([t], i) => {
+    const g = svg('g', { class: 'lad-node' });
+    g.append(svg('circle', { cx: 0, cy: 0, r: 9, fill: i < 2 ? 'var(--o)' : 'var(--p)', stroke: 'var(--surface)', 'stroke-width': 2 }), svg('text', { class: 'lbl', x: 0, y: 24, 'text-anchor': 'middle' }, t));
+    root.append(g); return g;
+  });
+  const status = el('div', { class: 'status' });
+  const seg = el('div', { class: 'seg' });
+  const set = (m) => {
+    [...seg.children].forEach((b) => b.classList.toggle('on', b.dataset.m === m));
+    lad.style.opacity = m === 'lad' ? 1 : 0; tree.style.opacity = m === 'tree' ? 1 : 0;
+    nodes.forEach((g, i) => { const [x, y] = m === 'lad' ? [S[i][1], S[i][2]] : [tips[i], 40]; g.style.transform = `translate(${x}px,${y}px)`; });
+    status.innerHTML = m === 'lad'
+      ? '<b>单线阶梯</b>（19 世纪社会进化论）：所有社会走同一条路，只是走到不同的台阶。照片里的村落被放在最下面一格，于是「同时代人」变成了「两万年前的祖先」。'
+      : '<b>分枝树</b>：各个社会从共同的远祖出发，沿不同路径走了同样长的时间，今天都站在 2016 年这条线上。差别来自各自的处境和选择，不是谁「落后」了多少年。';
+  };
+  for (const [m, t] of [['lad', '单线阶梯'], ['tree', '分枝树']]) seg.append(el('button', { type: 'button', 'data-m': m, onclick: () => set(m) }, t));
+  node.append(el('div', { class: 'ctrl' }, seg), root, status);
+  set('lad');
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

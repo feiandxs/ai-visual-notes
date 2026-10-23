@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>为什么 React Hooks 依赖调用顺序</title>
+<meta name="description" content="Dan Abramov《Why Do React Hooks Rely on Call Order?》的可视化讲解：Hooks 按调用顺序存成链表的逐步动画、把 Hook 放进 if 后的错位演示，以及字符串 key、Symbol、闭包工厂、组合 key 等替代方案逐个失效的可操作演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+code{font-family:var(--mono);font-size:.92em;background:var(--surface-2);border-radius:5px;padding:0 4px}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.prose{font-size:15.5px;margin:0 0 14px;max-width:760px}
+.prose p + p{margin-top:10px}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+.grid2 > *{min-width:0}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.ctrl .lab{font-size:12px;color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--p);color:#fff}
+@media (max-width:600px){ .seg{flex-wrap:wrap;border-radius:14px;overflow:visible} }
+@media (min-width:1024px){ .toc-sheet,.toc-mask{display:none} }
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range{white-space:nowrap}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.status .bad,.bad-t{color:var(--r);font-weight:600}
+.status .ok,.ok-t{color:var(--t);font-weight:600}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.bad{background:var(--r-soft);color:var(--r);border-color:var(--r)}
+.tag.ok{background:var(--t-soft);color:var(--t);border-color:var(--t)}
+.inp{font:inherit;font-size:14px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);width:100%;max-width:220px}
+.inp:focus{outline:2px solid var(--p);outline-offset:1px}
+.field{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);flex:1 1 150px;min-width:0}
+
+/* 代码块 */
+.code{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--surface-2);border-radius:10px;padding:8px 0;margin:8px 0;overflow-x:auto;white-space:pre;color:var(--ink)}
+.code .ln{padding:0 12px;border-left:3px solid transparent;transition:background .25s,border-color .25s;min-width:max-content}
+.code .ln.cm{color:var(--muted)}
+.code .ln.hl{background:var(--p-soft);border-left-color:var(--p)}
+.code .ln.bad{background:var(--r-soft);border-left-color:var(--r)}
+.code .ln.okl{background:var(--t-soft);border-left-color:var(--t)}
+.code .ln.dim{opacity:.4}
+.code .ln.warn{color:var(--o)}
+
+/* 链表格子 */
+.ll{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:10px 0;min-height:64px}
+.ll .head{font-family:var(--mono);font-size:12px;color:var(--muted);padding:4px 8px;border:1px dashed var(--line);border-radius:8px}
+.ll .arr{color:var(--muted);font-family:var(--mono)}
+.cell{border:1.5px solid var(--line);background:var(--surface);border-radius:10px;padding:5px 10px;font-size:12.5px;min-width:96px;transition:box-shadow .25s,border-color .25s,background .25s,opacity .25s}
+.cell .k{font-family:var(--mono);font-size:11px;color:var(--muted);display:block}
+.cell .v{font-family:var(--mono);font-weight:600}
+.cell.state{border-color:var(--t)}
+.cell.effect{border-color:var(--o)}
+.cell.cur{box-shadow:0 0 0 3px var(--p-soft);border-color:var(--p)}
+.cell.badc{border-color:var(--r);background:var(--r-soft)}
+.cell.left{opacity:.55;border-style:dashed}
+.cell.new{animation:pop .45s ease}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.vars{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.vars span{font-family:var(--mono);font-size:12.5px;padding:3px 8px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.vars span.badv{background:var(--r-soft);border-color:var(--r);color:var(--r)}
+
+/* 表格 */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.tbl th,.tbl td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{font-weight:600;color:var(--muted);font-size:12px;white-space:nowrap}
+.tbl .tag{border-radius:6px;margin-top:3px}
+.tbl td.m{font-family:var(--mono);font-size:12.5px}
+.tbl tr.clash td{background:var(--r-soft)}
+
+/* 嵌套组件盒 */
+.nest{border:1.5px solid var(--line);border-radius:10px;padding:6px 10px 10px;margin-top:8px;background:var(--surface)}
+.nest .nl{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.nest.l0{border-color:var(--p)} .nest.l1{border-color:var(--t)} .nest.l2{border-color:var(--o)} .nest.l3{border-color:var(--y)} .nest.l4{border-color:var(--r)}
+.chip{display:inline-block;font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:999px;background:var(--t-soft);margin:6px 6px 0 0}
+.chip.bad{background:var(--r-soft);color:var(--r)}
+.meter{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted);margin-top:8px}
+.meter i{display:inline-block;width:14px;height:10px;border-radius:3px;background:var(--o)}
+
+/* SVG 通用 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+.tnode rect{fill:var(--surface);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.tnode text{font-family:var(--mono);font-size:13px;fill:var(--text);text-anchor:middle;dominant-baseline:central}
+.tnode text.s{font-size:11px;fill:var(--muted)}
+.tnode.root rect{stroke:var(--p)}
+.tnode.on rect{fill:var(--p-soft);stroke:var(--p)}
+.tnode.okn rect{fill:var(--t-soft);stroke:var(--t)}
+.tnode.okn text.s{fill:var(--t)}
+.tnode.badn rect{fill:var(--r-soft);stroke:var(--r)}
+.tnode.badn text.s{fill:var(--r)}
+.tedge{stroke:var(--muted);stroke-width:1.5;fill:none;opacity:.6}
+.tedge.badE{stroke:var(--r);opacity:1;stroke-width:2}
+
+/* 弹簧 */
+.spring-box{background:var(--surface-2);border-radius:10px;touch-action:pan-y;cursor:crosshair}
+.spring-box .d1{fill:var(--p)} .spring-box .d2{fill:var(--t)} .spring-box .d3{fill:var(--o)}
+.spring-box text{font-family:var(--mono);font-size:12px;fill:var(--muted)}
+
+/* 诊所列表 */
+.clinic{display:grid;gap:6px}
+.clinic .row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:pointer;font-size:14px;text-align:left;width:100%}
+.clinic .row:hover,.clinic .row:focus{border-color:var(--p);outline:none}
+.clinic .row.sel{border-color:var(--p);background:var(--p-soft)}
+.detail{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--surface-2);font-size:14px;min-height:4em}
+
+/* 本页补充 */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p);word-break:break-all}
+footer ol{padding-left:20px;margin:8px 0}
+
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Hooks 与调用顺序</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">软件 · React · API 设计</div>
+  <h1>为什么 React Hooks 依赖调用顺序？</h1>
+  <p class="sub">React 不知道你的 <code>useState</code> 叫 <code>name</code> 还是 <code>width</code>，它只认「这是第几次调用」。这条规则初看很别扭。这一页把常被提议的几种替代方案逐个跑一遍，看它们在哪里坏掉。</p>
+  <div class="thesis">Hooks 像「函数式 mixin」（functional mixins），用来创建、组合你自己的抽象。要让自定义 Hook 能被随意提取、重复调用、互相嵌套、互相传值，状态的身份最好交给<b>持久的调用索引</b>（persistent call index）：函数调用天然构成一棵树，而树没有钻石问题。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>D</i>Dan Abramov</span>
+  </div>
+  <p class="meta">原文：「Why Do React Hooks Rely on Call Order?」，Dan Abramov，overreacted.io（2018-12-13）。写作时 Hooks 还处于实验阶段的提案期。本页忠实于原文的叙述顺序（引子 → 调用索引 → 八个缺陷 → 结语），代码示例取自原文；页面里另有几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<!-- 01 引子 -->
+<section class="ch" id="intro" data-title="函数式 mixin">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>Hooks 真正的重点：自定义 Hook</h2>
+    <p class="lead">很多人一开始不喜欢 Hooks，又纠结于宣传里的某句话。那 Hooks 背后更大的图景是什么？</p>
+  </div>
+  <div class="prose">
+    <p>Dan 说，Hooks 像一张要多听几遍才会喜欢上的唱片（原文贴了同一个 Hacker News 用户四天前后态度反转的两条评论截图，本页略去）。读文档时别错过「构建你自己的 Hook」那一页：Hooks 就像<b>函数式 mixin</b>，让你创建和组合自己的抽象。</p>
+    <p>Hooks 受过一些前人工作的影响，但在 Sebastian（Sebastian Markbåge）把想法分享给团队之前，Dan 没见过真正类似的东西。这篇文章要解释的，是提案里最有争议的那一点：具体的 API 选择和它解锁的性质之间是什么关系。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>本页补充演示</b>：同样是「复用一段监听窗口宽度的逻辑」，在 Hooks 之前的几种写法各长什么样。切换看代码，以及它在组件树里的形状。</div>
+    <div data-demo="patterns"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文的副标题是「Lessons learned from mixins, render props, HOCs, and classes」。上面的对照依据 React 旧版文档《Introducing Hooks》的「Motivation」一节（类组件里相关逻辑被拆散到各个生命周期、render props 与高阶组件 HOC 造成的「包装地狱」wrapper hell）和 React 博客《Mixins Considered Harmful》（2016-07-13，mixin 导致隐式依赖与名称冲突）。示例代码为本页所写的示意。<sup class="c">[4][9]</sup></div>
+</section>
+
+<!-- 02 调用索引 -->
+<section class="ch" id="index" data-title="调用索引">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>React 只认「第几次调用」</h2>
+    <p class="lead">变量名 <code>name</code>、<code>surname</code> 根本没有传给 React，那重新渲染时，它怎么知道哪份状态归谁？</p>
+  </div>
+  <div class="prose">
+    <p>学 Hooks 时第一个、也许是最大的冲击：它们依赖<b>重新渲染之间持久的调用索引</b>。这个决定显然有争议，所以 React 团队一反常态，等到文档和演讲足够把它讲清楚之后才公布提案。</p>
+    <p>原文的例子是一个表单：三个 <code>useState</code> 加一个 <code>useEffect</code>。数组解构只是给你自己起名；React 把 <code>name</code> 看成「第一个状态变量」，<code>surname</code> 是「第二个」，依此类推。<b>调用索引</b>（call index）给了它们跨渲染的稳定身份。<sup class="c">[1][5]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「挂载」看首次渲染：每调用一次 Hook，就在组件的链表末尾新建一个格子。再点「setName(…) 后重渲染」：React 只是从头沿着链表一格一格往下读。然后打开「把第 2 个 Hook 放进 if」，再把 name 清空重渲染，看会发生什么。</div>
+    <div data-demo="order"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：在 React 的实现里，函数组件对应的 fiber 节点用 <code>memoizedState</code> 指向第一个 Hook 对象，每个 Hook 对象再用 <code>next</code> 指向下一个，构成单向链表；渲染时有一个游标沿链表前进（见 React 源码 <code>ReactFiberHooks</code>）。所以把 Hook 放进条件分支，一旦某次渲染跳过了它，后面所有 Hook 都会读到「上一个人的格子」。官方的《Hooks 规则》（Rules of Hooks）因此要求：只在顶层调用 Hook，不要放在条件、循环或嵌套函数里；配套的 <code>eslint-plugin-react-hooks</code> 会检查这一点。开发模式下 React 会警告 Hook 顺序发生变化，调用数变少时会抛出类似「Rendered fewer hooks than expected」的错误。<sup class="c">[3][6]</sup></div>
+  <div class="prose" style="margin-top:14px">
+    <p>表面上看，依赖调用索引就是<i>感觉不对</i>。直觉是有用的信号，但也可能误导人，尤其在我们还没完全吃透要解决的问题时。下面 Dan 挑出几种最常被提议的替代设计，展示它们在哪里坏掉。他强调这份清单不求穷尽（他们见过十几到上百种方案，过去五年也一直在思考别的组件 API），各种方案的缺陷往往重叠，所以按缺陷归类。这也不是说 Hooks 完美无缺。</p>
+  </div>
+</section>
+
+<!-- 03 缺陷一 -->
+<section class="ch" id="f1" data-title="缺陷一：无法提取">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>缺陷一：无法提取自定义 Hook</h2>
+    <p class="lead">如果一个组件只准调用一次 <code>useState</code>，把状态都放进一个对象里，像类组件那样，有什么不好？</p>
+  </div>
+  <div class="prose">
+    <p>令人意外的是，很多替代方案根本不支持<b>自定义 Hook</b>（custom Hooks），而自定义 Hook 恰恰是这个提案的主要目的。比如有个方案禁止组件多次调用 <code>useState()</code>。Hooks 本身<i>允许</i>把状态放进一个对象，你不必拆成一堆变量；但支持多次调用的意义在于：你可以把一部分有状态逻辑（状态 + effect）<b>提取</b>到自定义 Hook 里，而这个 Hook <i>也</i>能独立拥有自己的本地状态和 effect。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">两个开关：规则（只准一次 / 允许多次）× 写法（全写在组件里 / 提取出 <code>useWindowWidth()</code>）。四种组合里只有一种不成立。</div>
+    <div data-demo="single"></div>
+  </div>
+</section>
+
+<!-- 04 缺陷二 -->
+<section class="ch" id="f2" data-title="缺陷二：名称冲突">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>缺陷二：名称冲突</h2>
+    <p class="lead">给 <code>useState</code> 传一个字符串 key，显式地给每份状态起名，不就不用依赖顺序了？</p>
+  </div>
+  <div class="prose">
+    <p>常见建议是让 <code>useState()</code> 接受一个 key（比如字符串），在组件内唯一标识一个状态变量。你大概不会在同一个组件里手滑写两次 <code>useState('name')</code>；但在开发<b>自定义 Hook</b> 时，你很可能要增删状态变量。这样一来，每次给自定义 Hook 加一个状态，都可能弄坏（直接或间接）用到它的组件，因为<i>它们也许已经用了同一个名字</i>。</p>
+    <p>这是一个没有「为变化而优化」（optimized for change）的 API：现在的代码看着「优雅」，需求一变就很脆弱。React 的 mixin 当年就吃过这个亏。<sup class="c">[1][4][10]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap">组件 <code>Form</code> 有自己的 <code>'name'</code>，并用了一个库里的 <code>useCurrentUser()</code>。库作者发布 v2，在 Hook 里新增了一个也叫 <code>'name'</code> 的状态。切换版本和存储方式，在输入框里打字。<span class="tag">示意：⚠️ 这不是 React 的 API</span></div>
+    <div data-demo="strkey"></div>
+  </div>
+</section>
+
+<!-- 05 缺陷三 -->
+<section class="ch" id="f3" data-title="缺陷三：不能调两次">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>缺陷三：同一个 Hook 不能调用两次</h2>
+    <p class="lead">把字符串换成 Symbol 呢？Symbol 是唯一的，总不会撞了吧？</p>
+  </div>
+  <div class="prose">
+    <p>「带 key 的 useState」的另一个变体是用 Symbol 之类的东西做 key。提取 <code>useWindowWidth()</code> 时它好像能用：模块顶层放一个 <code>widthKey = Symbol()</code>。但如果要提取输入框处理逻辑 <code>useFormInput()</code>，然后在 <code>Form</code> 里为名和姓<b>各调用一次</b>，就坏了：两次调用都拿同一个 <code>valueKey</code> 去调 <code>useState</code>，等于写了 <code>useState(valueKey)</code> 两遍。（Dan 承认这个 Hook 本身没什么用，但可以想象它像 Formik 那样处理校验、脏标记。）</p>
+    <p>真正的 Hooks 没有这个问题，因为<b>每一次<i>调用</i> <code>useState()</code> 都得到自己隔离的状态</b>。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">在第一个框里打字，看第二个框；或点「填入示例」依次设置名和姓。切换存储方式对比。<span class="tag">示意：⚠️ 这不是 React 的 API</span></div>
+    <div data-demo="symkey"></div>
+  </div>
+</section>
+
+<!-- 06 缺陷四 -->
+<section class="ch" id="f4" data-title="缺陷四：钻石问题">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>缺陷四：钻石问题</h2>
+    <p class="lead">两个自定义 Hook 底层都用了同一个 <code>useSubscription()</code>，按名字存状态会怎样？</p>
+  </div>
+  <div class="prose">
+    <p>技术上它和缺陷三是同一个问题，但因为太有名，值得单独说：维基百科上有词条，有时被叫作「致命死亡钻石」（deadly diamond of death）。React 自己的 mixin 系统就受过它的害：有时两个 mixin 都正好做你要的事，却因为扩展了同一个「基础」mixin 而互不兼容。<sup class="c">[4][7]</sup></p>
+    <p><code>useWindowWidth()</code> 和 <code>useNetworkStatus()</code> 都想在底层用 <code>useSubscription()</code>，这完全合理。<b>自定义 Hook 的作者应该能放心地开始或停止使用另一个自定义 Hook，而不用担心它在调用链某处「已经被用过」</b>。事实上，除非每次改动都审计所有用到你这个 Hook 的组件，否则你<i>永远无法知道</i>整条链。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">「按名字合并」：状态像 mixin、像固定 key 那样按名字存，两条路汇到同一个 <code>useSubscription</code>，形成钻石，底下的 state 和 effect 撞在一起。「按调用顺序」：每次调用都是树上独立的一枝，切过去后点「走一遍」看 React 按什么顺序编号。</div>
+    <div data-demo="diamond"></div>
+  </div>
+  <div class="prose" style="margin-top:12px"><p>原文的结论只有一句：<b>函数调用没有「钻石」问题，因为它们构成一棵树。</b></p></div>
+</section>
+
+<!-- 07 缺陷五 -->
+<section class="ch" id="f5" data-title="缺陷五：复制粘贴">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>缺陷五：复制粘贴会弄坏东西</h2>
+    <p class="lead">用闭包给每个 Hook「实例化」出独立的 key，能不能挽救带 key 的方案？</p>
+  </div>
+  <div class="prose">
+    <p>可以引入某种命名空间，比如用闭包隔离 key：每个自定义 Hook 先通过工厂 <code>createUseFormInput()</code>「实例化」，再在组件里用。这相当笨重：Hooks 的设计目标之一，正是避开高阶组件和 render props 那种深层嵌套的函数式风格。现在<i>任何</i>自定义 Hook 用前都得实例化，而且实例在组件体里只能用<i>恰好一次</i>。每个 Hook 都要写两遍（顶层声明一次、调用处一次），改一点东西也得在两处之间跳；名字也永远有两层：工厂 <code>createUseFormInput</code> 和实例 <code>useNameFormInput</code>、<code>useSurnameFormInput</code>。</p>
+    <p>更要命的是：原文给出的示例代码里<b>就藏着一个错误</b>，你注意到了吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文的代码第二次调用写成了 <code>useNameFormInput()</code>。在两个框里打字，再切到修正版和真 Hooks 对比。<span class="tag">示意：⚠️ 这不是 React 的 API</span></div>
+    <div data-demo="factory"></div>
+  </div>
+  <div class="prose" style="margin-top:12px">
+    <p>这些问题不是克服不了，但 Dan 认为它们比遵守 Hooks 规则带来<i>更多</i>摩擦。重要的是，它们打破了「复制粘贴」的预期：不加闭包包装直接提取一个 Hook <i>仍然能用</i>，直到你第二次调用它的那一刻才冲突。一个 API 看起来能用，等你发现链条深处某个冲突后，又逼着你「把所有东西都包起来」，这很糟糕。</p>
+  </div>
+</section>
+
+<!-- 08 缺陷六 -->
+<section class="ch" id="f6" data-title="缺陷六：仍需 linter">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>缺陷六：我们仍然需要 linter</h2>
+    <p class="lead">每层自定义 Hook 都把 key 组合下去（<code>'useFormInput(' + key + ').value'</code>），冲突不就没了？那条件调用又意味着什么？</p>
+  </div>
+  <div class="prose">
+    <p>在各种替代方案里，Dan 最不讨厌这个，但他认为不值得。传了不唯一或拼错的 key 的代码会<i>碰巧能跑</i>，直到某个 Hook 被调用多次或与别的 Hook 撞车；如果它本来就是有条件调用的（我们不就是想「修掉」无条件调用这条要求吗？），冲突可能很久以后才暴露。记得逐层传 key 这件事脆弱到需要 lint 来检查；key 还要在运行时充当键，每个都给包体积添一道小口子。<b>可如果无论如何都要 lint，我们到底解决了什么问题？</b></p>
+    <p>而「有条件地<i>声明</i>状态和 effect」本身的语义就很怪。原文用一个计数器追问：</p>
+  </div>
+  <div class="fig">
+    <div class="cap">切换 <code>props.isActive</code>，在不同的语义假设下看 <code>count</code> 和定时器 effect 的命运。选中的语义下，状态栏会列出它引出的问题。点数字可以 +1。<span class="tag">示意：⚠️ 前两种不是 React 的 API</span></div>
+    <div data-demo="cond"></div>
+  </div>
+  <div class="prose" style="margin-top:12px">
+    <p>提取组件很可能会成为躲开这些困惑的「最佳实践」。所以无论怎么回答，条件声明的语义都怪到你多半想用 lint 禁掉它。既然反正要 lint，「正确组合 key」的要求就成了累赘，它没有换来任何我们<i>想做</i>的事。反过来，去掉这个要求、回到原提案，<i>确实</i>换来了东西：把组件代码复制进自定义 Hook 不需要加命名空间、少了 key 带来的体积小口子、实现还能更高效一点（不需要 Map 查找）。积少成多。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：后来 React 官方文档确实把「想重置状态就换一个组件，或者给组件换一个 <code>key</code>」写成了推荐做法（React 文档「Preserving and Resetting State」一节）。另外，React 19 新增的 <code>use</code> API 是一个例外：文档明确说它可以在条件和循环里调用，因为它读取的是传入的 Promise 或 Context，并不占用按顺序存放的状态格子。<sup class="c">[8]</sup></div>
+</section>
+
+<!-- 09 缺陷七 -->
+<section class="ch" id="f7" data-title="缺陷七：无法传值">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>缺陷七：Hooks 之间无法传值</h2>
+    <p class="lead">把 Hook 的初始化放进默认参数或装饰器里，看起来更「声明式」，丢掉的是什么？</p>
+  </div>
+  <div class="prose">
+    <p>Hooks 最好的特性之一，是可以在它们之间传值。原文的例子是一个聊天收件人选择器：<code>useState</code> 的返回值 <code>recipientID</code> 直接传给 <code>useFriendStatus()</code>；换收件人时，这个 Hook 会退订上一位朋友的在线状态、订阅下一位。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">换一个收件人，看值怎样从一个 Hook 流到下一个，以及 effect 发出的订阅 / 退订调用。下面的开关对比同一逻辑在 render props 写法下的「伪层级」。</div>
+    <div data-demo="friend"></div>
+  </div>
+  <div class="fig">
+    <div class="cap">原文的第二个例子：React Spring 用 <code>useSpring</code> 做「拖尾」动画，<code>pos2</code> 跟着 <code>pos1</code>，<code>pos3</code> 跟着 <code>pos2</code>。在框里移动鼠标或横向拖动手指（本页用简单的弹簧公式重做，不是 React Spring 本身）。</div>
+    <div data-demo="spring"></div>
+  </div>
+  <div class="prose" style="margin-top:12px">
+    <p>如果调用 Hook 不发生在函数体里，你就没法轻松地在它们之间传值、不加很多层组件就变换这些值、用 <code>useMemo()</code> 缓存中间计算，effect 也没法用闭包捕获它们。用约定绕开是可以的，但要你在脑子里「对上」输入和输出，违背了 React 一贯直接的风格。没有 Hooks 时，render props 是最接近的办法，但要拿到全部好处得借助 Component Component 之类，语法噪声大，因为那是一种<b>伪层级</b>（false hierarchy）。Hooks 把这种层级拍平成传值，而函数调用是最简单的传值方式。</p>
+  </div>
+</section>
+
+<!-- 10 缺陷八 -->
+<section class="ch" id="f8" data-title="缺陷八：仪式感过重">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>缺陷八：仪式感过重</h2>
+    <p class="lead">把内置 Hook 挂到 <code>this</code> 上、或者作为参数一路传下去，让代码不「隐式依赖」React，划算吗？</p>
+  </div>
+  <div class="prose">
+    <p>这一类方案大多想避开 Hooks 对 React 的「表面依赖」。Dan 推荐读 Sebastian 回复的第一节「注入模型」（Injection Model）<sup class="c">[2]</sup>，自己只说一句：程序员更愿意用 <code>try</code>/<code>catch</code> 处理错误，而不是在每个函数间传错误码；更愿意用 ES Modules 的 <code>import</code>（或 CommonJS 的 <code>require</code>），而不是 AMD 那种把 <code>require</code> 传给你的「显式」定义。<code>try</code>/<code>catch</code>、<code>require</code>、React Context 都是同一种务实：即使总体上重视显式，我们也希望有一个「环境式」（ambient）的处理者，而不是把它显式地穿过每一层。Hooks 也一样。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">上：切换几种写法，看「显式」要付出的样板。下：拖动滑块增加自定义 Hook 的嵌套层数，看需要手动穿过多少个参数。</div>
+    <div data-demo="ceremony"></div>
+  </div>
+  <div class="prose" style="margin-top:12px">
+    <p>就像定义组件时我们直接从 <code>React</code> 拿 <code>Component</code>，而不是为每个组件导出一个 <code>createModal(React)</code> 工厂；真要替换 React，在模块系统层面做就行。Sebastian 也提到，<i>技术上</i>可以把从 <code>react</code> 导出的 Hooks「重定向」到别的实现。另一类增加仪式的做法是把 Hooks 做成单子（monadic），或加一个 <code>React.createHook()</code> 之类的一等概念。抛开运行时开销，任何加包装的方案都丢掉了普通函数的一大好处：<b>它们好调试到了极点</b>。你可以用调试器步入步出，中间没有任何库代码，清楚看到值在组件体内怎样流动。类似高阶组件的「装饰器 Hook」、类似 render props 的方案（如 <code>adopt</code> 提案、从 generator 里 <code>yield</code>）都有同样的问题；间接层也让静态类型更复杂。</p>
+  </div>
+</section>
+
+<!-- 11 结语 -->
+<section class="ch" id="sum" data-title="结语">
+  <div class="ch-head">
+    <span class="num">11</span>
+    <h2>结语：为变化而优化</h2>
+    <p class="lead">把这些方案摆在一起，「依赖调用顺序」换来了什么，又付出了什么？</p>
+  </div>
+  <div class="prose">
+    <p>原文不求穷尽，还有些更晦涩的问题（比如与并发、高级编译技术相关）留待以后。Hooks 也不完美，有些事情还需要修，有些事用 Hooks 写比用类更别扭；但这是 React 团队能找到的解决这些问题的最好取舍。挑选 API 时考虑的标准，很多都和「为变化而优化」有关：确保复制粘贴、移动代码、增删依赖都按预期工作。<sup class="c">[1][10]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>替代方案诊所</b>（按原文归纳）：点一种方案，看它撞上哪个缺陷，再跳回对应章节。</div>
+    <div data-demo="clinic"></div>
+    <div class="final">调用顺序看起来像个怪规则，但它让每一次调用都有自己的格子：自定义 Hook 可以随手提取、调用两次、互相嵌套、互相传值，代价是「只在顶层调用」这一条规则，以及一个帮你守住它的 linter。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：本文写于 Hooks 的 RFC 讨论期（2018 年 12 月，当时 Hooks 在 React 16.7 alpha 里试用）。Hooks 随 React 16.8.0（2019-02-06）正式发布，API 与本文讨论的设计一致，调用顺序规则沿用至今。<sup class="c">[11]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Dan Abramov 在 overreacted.io 发表的《<a href="https://overreacted.io/why-do-hooks-rely-on-call-order/">Why Do React Hooks Rely on Call Order?</a>》（2018-12-13）制作，代码示例取自原文，标「示意」的演示为本页所写。原文中的插图（两张 Hacker News 评论截图）未重绘，钻石图已用内联 SVG 和 JS 重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>原文：Dan Abramov，《Why Do React Hooks Rely on Call Order?》，overreacted.io（2018-12-13）。<a href="https://overreacted.io/why-do-hooks-rely-on-call-order/">链接</a></li>
+    <li>Sebastian Markbåge，对 React Hooks RFC（reactjs/rfcs #68）的完整回复（2018-11）。<a href="https://github.com/reactjs/rfcs/pull/68#issuecomment-439314884">链接</a></li>
+    <li>React 文档：Rules of Hooks（只在顶层调用 Hook、只在 React 函数中调用 Hook）。<a href="https://react.dev/reference/rules/rules-of-hooks">链接</a></li>
+    <li>React 官方博客：Mixins Considered Harmful（2016-07-13），其中「Mixins cause name clashes」一节。<a href="https://legacy.reactjs.org/blog/2016/07/13/mixins-considered-harmful.html">链接</a></li>
+    <li>Rudi Yardley，React hooks: not magic, just arrays（Medium，2018），原文推荐的「Hooks 就是数组」心智模型。<a href="https://medium.com/@ryardley/react-hooks-not-magic-just-arrays-cd4f1857236e">链接</a></li>
+    <li>React 源码 packages/react-reconciler/src/ReactFiberHooks.js：Hook 对象以 memoizedState / next 组成链表。<a href="https://github.com/facebook/react/blob/main/packages/react-reconciler/src/ReactFiberHooks.js">链接</a></li>
+    <li>Wikipedia 条目 Multiple inheritance：The diamond problem。<a href="https://en.wikipedia.org/wiki/Multiple_inheritance#The_diamond_problem">链接</a></li>
+    <li>React 文档：Preserving and Resetting State；use（可在条件与循环中调用）。<a href="https://react.dev/learn/preserving-and-resetting-state">链接 1</a>，<a href="https://react.dev/reference/react/use">链接 2</a></li>
+    <li>React 旧版文档：Introducing Hooks，Motivation 一节。<a href="https://legacy.reactjs.org/docs/hooks-intro.html">链接</a></li>
+    <li>Dan Abramov，《Optimized for Change》，overreacted.io。<a href="https://overreacted.io/optimized-for-change/">链接</a></li>
+    <li>React 博客：React v16.8: The One With Hooks（2019-02-06）。<a href="https://legacy.reactjs.org/blog/2019/02/06/react-v16.8.0.html">链接</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；页面里的「迷你 Hooks 运行时」只为演示存储方式的差别，不是 React 的真实实现，技术细节以原文与 React 文档为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+/* ---------- 共用小件 ---------- */
+function codeView(lines) {
+  const pre = el('pre', { class: 'code' });
+  let rows = [];
+  const api = {
+    node: pre,
+    set(ls) {
+      pre.textContent = '';
+      rows = ls.map((t) => {
+        const d = el('div', { class: 'ln' + (/^\s*(\/\/|\/\*|\*)/.test(t) ? ' cm' : '') }, t === '' ? ' ' : t);
+        pre.append(d); return d;
+      });
+    },
+    mark(idx, cls = 'hl') { rows.forEach((r, j) => r.classList.toggle(cls, Array.isArray(idx) ? idx.includes(j) : j === idx)); },
+    clear() { rows.forEach((r) => r.classList.remove('hl', 'bad', 'okl', 'dim')); },
+    row(i) { return rows[i]; },
+  };
+  api.set(lines);
+  return api;
+}
+function seg(opts, init, onChange, label) {
+  const wrap = el('div', { class: 'seg', role: 'group', 'aria-label': label || '' });
+  const btns = opts.map(([v, t]) => {
+    const b = el('button', { type: 'button', 'aria-pressed': String(v === init) }, t);
+    b.addEventListener('click', () => {
+      btns.forEach((x) => { x.classList.toggle('on', x === b); x.setAttribute('aria-pressed', String(x === b)); });
+      onChange(v);
+    });
+    if (v === init) b.classList.add('on');
+    wrap.append(b); return b;
+  });
+  return wrap;
+}
+const ctrlRow = (...kids) => el('div', { class: 'ctrl' }, ...kids);
+const lab = (t) => el('span', { class: 'lab' }, t);
+
+/* 迷你运行时：按调用顺序（数组）或按 key（Map）存状态。只为演示存储方式的差别。 */
+function makeRT(mode) {
+  const rt = { mode, arr: [], map: new Map(), i: 0, trace: [], onset: null };
+  rt.begin = () => { rt.i = 0; rt.trace = []; };
+  rt.useState = (key, init, who) => {
+    let id, cell;
+    if (mode === 'order') {
+      const k = rt.i++;
+      id = '#' + (k + 1);
+      cell = rt.arr[k] || (rt.arr[k] = { v: init });
+    } else {
+      id = typeof key === 'symbol' ? 'Symbol(' + key.description + ')' : "'" + key + "'";
+      if (!rt.map.has(key)) rt.map.set(key, { v: init });
+      cell = rt.map.get(key);
+    }
+    rt.trace.push({ id, who, cell });
+    return [cell.v, (v) => { cell.v = v; if (rt.onset) rt.onset(); }];
+  };
+  rt.isClash = (t) => rt.trace.filter((x) => x.cell === t.cell).length > 1;
+  return rt;
+}
+function storageTable(rt) {
+  const tb = el('tbody');
+  rt.trace.forEach((t) => {
+    const clash = rt.isClash(t);
+    const others = rt.trace.filter((x) => x.cell === t.cell && x !== t).map((x) => x.who).join('、');
+    tb.append(el('tr', { class: clash ? 'clash' : '' },
+      el('td', {}, t.who, el('br'), clash ? el('span', { class: 'tag bad', title: '与 ' + others + ' 共用' }, '⚠ 冲突：与 ' + others + ' 共用') : el('span', { class: 'tag ok' }, '独立')),
+      el('td', { class: 'm' }, t.id),
+      el('td', { class: 'm' }, JSON.stringify(t.cell.v))));
+  });
+  return el('div', { class: 'scrollx' }, el('table', { class: 'tbl' },
+    el('thead', {}, el('tr', {}, el('th', {}, '谁在调用 useState'), el('th', {}, rt.mode === 'order' ? '格子（序号）' : '格子（key）'), el('th', {}, '值'))), tb));
+}
+
+/* ---------- 01 旧模式对照 ---------- */
+reg('patterns', (node) => {
+  const P = {
+    class: {
+      code: ['class Form extends React.Component {', '  state = { name: \'Mary\', width: window.innerWidth };', '  componentDidMount() {', '    window.addEventListener(\'resize\', this.onResize);', '  }', '  componentWillUnmount() {', '    window.removeEventListener(\'resize\', this.onResize);', '  }', '  onResize = () => this.setState({ width: window.innerWidth });', '}'],
+      tree: { label: '<Form>', chips: [['this.state.width'], ['componentDidMount'], ['componentWillUnmount']] },
+      depth: 1,
+      text: '「监听窗口宽度」这一件事被拆散在 state、两个生命周期方法和一个回调里。类本身没有复用它的办法，只能借助下面三种模式。',
+    },
+    mixin: {
+      code: ['var WindowWidthMixin = {', '  getInitialState() { return { width: window.innerWidth }; },', '  componentDidMount() { /* 订阅 resize */ },', '};', 'var Form = createReactClass({', '  mixins: [WindowWidthMixin, ResponsiveMixin],', '  render() { return <p>{this.state.width}</p>; },', '});'],
+      tree: { label: '<Form>（两个 mixin 混入同一个 this）', chips: [['WindowWidthMixin → this.state.width'], ['ResponsiveMixin → this.state.width', 'bad']] },
+      depth: 1,
+      text: 'mixin 把所有东西合并到同一个 this 上。两个 mixin 都用 state.width？互相覆盖，这就是缺陷二的「名称冲突」。两个 mixin 依赖同一个基础 mixin？互不兼容，这就是缺陷四的「钻石」。',
+    },
+    hoc: {
+      code: ['function withWindowWidth(Component) {', '  return class extends React.Component {', '    /* state + 订阅 resize … */', '    render() {', '      return <Component {...this.props} width={this.state.width} />;', '    }', '  };', '}', 'export default withWindowWidth(withNetworkStatus(Form));'],
+      tree: { label: 'withWindowWidth(…)', kids: [{ label: 'withNetworkStatus(…)', kids: [{ label: '<Form width isOnline>' }] }] },
+      depth: 3,
+      text: '每复用一段逻辑，组件树里就多一层包装。值以 props 从外面注入，看不出谁给的；两个 HOC 注入同名 prop 也会互相覆盖。原文缺陷五说，Hooks 的目标之一就是避开这种深层嵌套的函数式风格。',
+    },
+    rp: {
+      code: ['<WindowWidth>', '  {width => (', '    <NetworkStatus>', '      {isOnline => (', '        <p>{width} {isOnline ? \'online\' : \'offline\'}</p>', '      )}', '    </NetworkStatus>', '  )}', '</WindowWidth>'],
+      tree: { label: '<WindowWidth>', kids: [{ label: '{width => …}', kids: [{ label: '<NetworkStatus>', kids: [{ label: '{isOnline => …}', kids: [{ label: '<p>' }] }] }] }] },
+      depth: 5,
+      text: '原文缺陷七说，没有 Hooks 时 render props 是「在逻辑之间传值」最接近的办法，代价是层层嵌套的「伪层级」：这些层级并不是界面结构，只是为了把值递进去。',
+    },
+    hooks: {
+      code: ['function Form() {', '  const width = useWindowWidth();', '  const isOnline = useNetworkStatus();', '  return <p>{width} {isOnline ? \'online\' : \'offline\'}</p>;', '}'],
+      tree: { label: '<Form>', chips: [['useWindowWidth() → #1 state · #2 effect'], ['useNetworkStatus() → #3 state · #4 effect']] },
+      depth: 1,
+      text: '逻辑以普通函数调用组合：没有多余的组件层，值就是局部变量，可以直接传给下一个 Hook。代价是 React 只能靠调用顺序认出每个格子，这正是本文要辩护的设计。',
+    },
+  };
+  const cv = codeView([]);
+  const treeBox = el('div');
+  const meter = el('div', { class: 'meter' });
+  const status = el('div', { class: 'status' });
+  const build = (n, lv) => {
+    const box = el('div', { class: 'nest l' + Math.min(lv, 4) }, el('div', { class: 'nl' }, n.label));
+    (n.chips || []).forEach(([t, c]) => box.append(el('span', { class: 'chip' + (c ? ' ' + c : '') }, t)));
+    (n.kids || []).forEach((k) => box.append(build(k, lv + 1)));
+    return box;
+  };
+  const show = (k) => {
+    const p = P[k];
+    cv.set(p.code);
+    treeBox.textContent = ''; treeBox.append(build(p.tree, 0));
+    meter.textContent = '';
+    meter.append('组件树里的层数：');
+    for (let i = 0; i < p.depth; i++) meter.append(el('i'));
+    meter.append(' ' + p.depth);
+    status.textContent = p.text;
+  };
+  node.append(ctrlRow(seg([['class', '类组件'], ['mixin', 'mixin'], ['hoc', '高阶组件 HOC'], ['rp', 'render props'], ['hooks', 'Hooks']], 'class', show, '复用方式')),
+    el('div', { class: 'grid2' }, cv.node, el('div', {}, treeBox, meter)), status);
+  show('class');
+});
+
+/* ---------- 02 调用顺序与链表 ---------- */
+reg('order', (node) => {
+  const HOOKS = [
+    { type: 'state', v: 'name', init: "'Mary'", code: "const [name, setName] = useState('Mary');" },
+    { type: 'state', v: 'surname', init: "'Poppins'", code: "const [surname, setSurname] = useState('Poppins');", cond: true },
+    { type: 'state', v: 'width', init: '1280', code: 'const [width, setWidth] = useState(window.innerWidth);' },
+    { type: 'effect', v: 'effect', init: '订阅 resize', code: 'useEffect(() => { /* 订阅 resize */ });' },
+  ];
+  let wrapIf = false, cells = [], timer = null, crashed = false;
+  const cv = codeView([]);
+  let layout;
+  function relayout() {
+    const L = ['function Form() {'], map = [];
+    let ifLine = -1;
+    HOOKS.forEach((h, i) => {
+      if (h.cond && wrapIf) { ifLine = L.length; L.push("  if (name !== '') {"); map[i] = L.length; L.push('    ' + h.code); L.push('  }'); }
+      else { map[i] = L.length; L.push('  ' + h.code); }
+    });
+    L.push('  // …渲染 JSX'); L.push('}');
+    layout = { L, map, ifLine };
+    cv.set(L);
+  }
+  const ll = el('div', { class: 'll', 'aria-live': 'polite' });
+  const vars = el('div', { class: 'vars' });
+  const status = el('div', { class: 'status' }, '先点「挂载」。');
+  function drawCells(n, cur, badIdx, leftFrom, fresh) {
+    ll.textContent = '';
+    ll.append(el('span', { class: 'head' }, 'fiber.memoizedState'));
+    for (let i = 0; i < n; i++) {
+      const c = cells[i];
+      ll.append(el('span', { class: 'arr' }, '→'));
+      let cls = 'cell ' + c.type;
+      if (i === cur) cls += ' cur';
+      if (badIdx && badIdx.includes(i)) cls += ' badc';
+      if (leftFrom != null && i >= leftFrom) cls += ' left';
+      if (fresh === i) cls += ' new';
+      ll.append(el('span', { class: cls }, el('span', { class: 'k' }, '#' + (i + 1) + ' ' + (c.type === 'state' ? 'useState' : 'useEffect') + ' · 首次属于 ' + c.owner), el('span', { class: 'v' }, c.val)));
+    }
+    ll.append(el('span', { class: 'arr' }, '→ null'));
+  }
+  function drawVars(vs) {
+    vars.textContent = '';
+    if (!vs.length) return;
+    vars.append(el('span', { style: 'background:none;border:0;padding-left:0;font-family:var(--font);color:var(--muted)' }, '这次渲染拿到：'));
+    vs.forEach(([k, v, bad]) => vars.append(el('span', { class: bad ? 'badv' : '' }, k + ' = ' + v)));
+  }
+  function plan(kind, newName) {
+    const steps = [];
+    const vs = [];
+    if (kind === 'update') { cells[0].val = newName; steps.push({ line: -1, cur: null, msg: '先执行 setName(' + newName + ')：格子 #1 的值变成 ' + newName + '，React 安排一次重新渲染。' }); }
+    else { cells = []; }
+    let p = 0, nameNow = null;
+    const badList = [];
+    for (let i = 0; i < HOOKS.length; i++) {
+      const h = HOOKS[i], line = layout.map[i];
+      if (h.cond && wrapIf) {
+        const pass = nameNow !== "''";
+        steps.push({ line: layout.ifLine, cur: null, vs: vs.slice(), msg: 'if (name !== \'\')：此刻 name 是 ' + nameNow + '，条件' + (pass ? '成立，进入分支。' : '不成立，这一行 Hook 被跳过了！') });
+        if (!pass) continue;
+      }
+      if (kind === 'mount') {
+        cells.push({ type: h.type, owner: h.v, val: h.init });
+        vs.push([h.v, h.init, false]);
+        if (h.v === 'name') nameNow = h.init;
+        steps.push({ line, cur: p, fresh: p, n: p + 1, vs: vs.slice(), msg: '第 ' + (p + 1) + ' 次 Hook 调用：新建格子 #' + (p + 1) + '，存入 ' + h.init + '，接到链表末尾。React 并不知道它叫「' + h.v + '」。' });
+        p++;
+      } else {
+        const c = cells[p];
+        if (!c) { steps.push({ line, cur: null, err: true, vs: vs.slice(), msg: '第 ' + (p + 1) + ' 次调用找不到格子：渲染的 Hook 比上次多。' }); return steps; }
+        const ok = c.owner === h.v;
+        if (!ok) badList.push(p);
+        vs.push([h.v, h.type === 'effect' && c.type === 'state' ? '（拿到的是一个 state 格子）' : c.val, !ok]);
+        if (h.v === 'name') nameNow = c.val;
+        steps.push({ line, cur: p, bad: ok ? null : [p], vs: vs.slice(), msg: ok
+          ? '第 ' + (p + 1) + ' 次调用：游标走到格子 #' + (p + 1) + '，读出 ' + c.val + '，作为 ' + h.v + '。'
+          : '第 ' + (p + 1) + ' 次调用本该是「' + h.v + '」，可格子 #' + (p + 1) + ' 是当初「' + c.owner + '」的，存着 ' + c.val + '。' + (c.type !== h.type ? '连 Hook 类型都对不上！' : h.v + ' 拿到了错的值！') });
+        p++;
+      }
+    }
+    if (kind === 'update' && p < cells.length) {
+      steps.push({ line: layout.L.length - 1, cur: null, left: p, bad: badList.slice(), vs: vs.slice(), err: true, msg: '渲染结束，链表里还剩 ' + (cells.length - p) + ' 个格子没人读。所有值都错了一位。真实的 React 会在这里报错：Rendered fewer hooks than expected.' });
+    } else if (kind === 'update') {
+      steps.push({ line: -1, cur: null, vs: vs.slice(), msg: '渲染完成：调用顺序和上次一样，' + p + ' 个格子各归其主。名字从没传给 React，靠的只是「第几次调用」。', ok: true });
+    } else {
+      steps.push({ line: -1, cur: null, n: p, vs: vs.slice(), msg: '首次渲染完成：链表里有 ' + p + ' 个格子。', ok: true });
+    }
+    return steps;
+  }
+  function run(kind, newName) {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (kind === 'update' && (!cells.length || crashed)) {
+      status.innerHTML = crashed ? '<span class="bad">组件已经出错，先点「挂载」重新开始。</span>' : '还没挂载，先点「挂载」。';
+      return;
+    }
+    crashed = false;
+    const steps = plan(kind, newName);
+    let k = 0;
+    const total = cells.length;
+    const tick = () => {
+      const s = steps[k];
+      cv.clear();
+      if (s.line >= 0) cv.mark(s.line, s.err || (s.bad && s.bad.length) ? 'bad' : 'hl');
+      drawCells(kind === 'mount' ? (s.n != null ? s.n : (steps[k - 1] && steps[k - 1].n) || 0) : total, s.cur, s.bad, s.left, s.fresh);
+      drawVars(s.vs || []);
+      status.innerHTML = (s.err ? '<span class="bad">' : s.ok ? '<span class="ok">' : '<span>') + esc(s.msg) + '</span>';
+      if (s.err) crashed = true;
+      k++;
+      if (k >= steps.length && timer) { clearInterval(timer); timer = null; }
+    };
+    if (RM) { while (k < steps.length) tick(); return; }
+    tick();
+    timer = setInterval(tick, 900);
+  }
+  relayout();
+  drawCells(0);
+  node.append(
+    ctrlRow(lab('写法'), seg([['plain', '正常：都在顶层'], ['if', '第 2 个 Hook 放进 if']], 'plain', (v) => { wrapIf = v === 'if'; cells = []; crashed = false; if (timer) { clearInterval(timer); timer = null; } relayout(); drawCells(0); drawVars([]); status.textContent = '写法已切换，先点「挂载」。'; }, '写法')),
+    ctrlRow(
+      el('button', { class: 'btn primary', type: 'button', onclick: () => run('mount') }, '挂载（首次渲染）'),
+      el('button', { class: 'btn', type: 'button', onclick: () => run('update', "'Mary'") }, "setName('Mary') 后重渲染"),
+      el('button', { class: 'btn', type: 'button', onclick: () => run('update', "''") }, "setName('') 后重渲染")),
+    el('div', { class: 'grid2' }, cv.node, el('div', {}, ll, vars)),
+    status);
+  return { stop() { if (timer) { clearInterval(timer); timer = null; } } };
+});
+
+/* ---------- 03 缺陷一：只准一次 useState ---------- */
+reg('single', (node) => {
+  let rule = 'one', shape = 'extract';
+  const cv = codeView([]);
+  const out = el('div');
+  const status = el('div', { class: 'status' });
+  const CODE = {
+    'one-inline': ['function Form() {', '  const [state, setState] = useState({', "    name: 'Mary', surname: 'Poppins', width: window.innerWidth,", '  });', '  useEffect(() => { /* resize → setState({ ...state, width }) */ });', '}'],
+    'many-inline': ['function Form() {', "  const [name, setName] = useState('Mary');", "  const [surname, setSurname] = useState('Poppins');", '  const [width, setWidth] = useState(window.innerWidth);', '  useEffect(() => { /* 订阅 resize */ });', '}'],
+    'one-extract': ['function Form() {', "  const [state, setState] = useState({ name: 'Mary', surname: 'Poppins' });", '  const width = useWindowWidth();', '}', '', 'function useWindowWidth() {', '  const [width, setWidth] = useState(window.innerWidth);', '  useEffect(() => { /* 订阅 resize */ });', '  return width;', '}'],
+    'many-extract': ['function Form() {', "  const [name, setName] = useState('Mary');", "  const [surname, setSurname] = useState('Poppins');", '  const width = useWindowWidth();', '}', '', 'function useWindowWidth() {', '  const [width, setWidth] = useState(window.innerWidth);', '  useEffect(() => { /* 订阅 resize */ });', '  return width;', '}'],
+  };
+  const CALLS = {
+    'one-inline': [['Form', 'useState({name, surname, width})']],
+    'many-inline': [['Form', "useState('Mary')"], ['Form', "useState('Poppins')"], ['Form', 'useState(innerWidth)']],
+    'one-extract': [['Form', 'useState({name, surname})'], ['useWindowWidth', 'useState(innerWidth)', 6]],
+    'many-extract': [['Form', "useState('Mary')"], ['Form', "useState('Poppins')"], ['useWindowWidth', 'useState(innerWidth)']],
+  };
+  const upd = () => {
+    const k = rule + '-' + shape;
+    cv.set(CODE[k]);
+    out.textContent = '';
+    let n = 0, fail = null;
+    CALLS[k].forEach(([who, what, line]) => {
+      n++;
+      const bad = rule === 'one' && n > 1;
+      if (bad) { fail = who; if (line != null) cv.mark(line, 'bad'); }
+      out.append(el('div', { style: 'margin:4px 0;font-size:13px' },
+        el('span', { class: 'tag ' + (bad ? 'bad' : 'ok') }, bad ? '✗ 第 ' + n + ' 次' : '✓ 第 ' + n + ' 次'), ' ',
+        el('b', {}, who), el('span', { class: 'mono', style: 'font-size:12.5px' }, ' → ' + what)));
+    });
+    if (fail) status.innerHTML = '<span class="bad">不成立。</span>Form 已经用掉了唯一一次 useState，<b>useWindowWidth 没法拥有自己的状态</b>。它只能去改 Form 的 state 对象，那它就不再是能拿到任何组件里用的独立单元了。';
+    else if (rule === 'one') status.innerHTML = '成立。所有状态挤在一个对象里，类组件也是这么做的。Hooks <b>也允许</b>这种写法，只是这样就提取不出带状态的自定义 Hook。';
+    else status.innerHTML = shape === 'extract' ? '成立。自定义 Hook 用自己的 useState / useEffect，<b>这就是自定义 Hook 的意义</b>。' : '成立。三个独立的状态变量；下一步就可以把 width 那两行原样剪出去。';
+  };
+  node.append(
+    ctrlRow(lab('规则'), seg([['one', '每个组件只准一次 useState'], ['many', '允许多次调用']], rule, (v) => { rule = v; upd(); }, '规则')),
+    ctrlRow(lab('写法'), seg([['inline', '全写在组件里'], ['extract', '提取 useWindowWidth()']], shape, (v) => { shape = v; upd(); }, '写法')),
+    el('div', { class: 'grid2' }, cv.node, el('div', {}, el('div', { class: 'cap', style: 'margin:8px 0 2px' }, '本次渲染的 useState 调用：'), out)),
+    status);
+  upd();
+});
+
+/* ---------- 共用：两个输入框的小表单 ---------- */
+function twoFieldDemo(node, opts) {
+  // opts: { modes, init, code(mode), render(rt, mode) -> {a:[val,set], b:[val,set]}, labels, verdict(rt, mode, res) }
+  let mode = opts.init, rt;
+  const cv = codeView([]);
+  const ia = el('input', { class: 'inp', type: 'text', placeholder: opts.labels[0], 'aria-label': opts.labels[0] });
+  const ib = el('input', { class: 'inp', type: 'text', placeholder: opts.labels[1], 'aria-label': opts.labels[1] });
+  const hello = el('div', { class: 'mono', style: 'margin-top:8px;font-size:14px' });
+  const tbl = el('div');
+  const status = el('div', { class: 'status' });
+  let res;
+  const render = () => {
+    rt.begin();
+    res = opts.render(rt, mode);
+    if (document.activeElement !== ia) ia.value = res.a[0];
+    if (document.activeElement !== ib) ib.value = res.b[0];
+    hello.textContent = opts.hello(res);
+    tbl.textContent = ''; tbl.append(storageTable(rt));
+    status.innerHTML = opts.verdict(rt, mode, res);
+  };
+  const reset = () => { rt = makeRT(opts.rtMode(mode)); rt.onset = render; cv.set(opts.code(mode)); if (opts.mark) opts.mark(cv, mode); ia.value = ''; ib.value = ''; render(); };
+  ia.addEventListener('input', () => res.a[1](ia.value));
+  ib.addEventListener('input', () => res.b[1](ib.value));
+  const fill = el('button', { class: 'btn', type: 'button', onclick: () => { res.a[1]('Mary'); res.b[1]('Poppins'); ia.value = res.a[0]; ib.value = res.b[0]; render(); } }, '填入示例：Mary / Poppins');
+  const clr = el('button', { class: 'btn', type: 'button', onclick: reset }, '清空重来');
+  node.append(ctrlRow(lab('存储方式'), seg(opts.modes, mode, (v) => { mode = v; reset(); }, '存储方式')),
+    el('div', { class: 'grid2' }, cv.node, el('div', {},
+      el('div', { class: 'ctrl' }, el('label', { class: 'field' }, opts.labels[0], ia), el('label', { class: 'field' }, opts.labels[1], ib)),
+      ctrlRow(fill, clr), hello, tbl)),
+    status);
+  reset();
+}
+
+/* ---------- 04 缺陷二：字符串 key ---------- */
+reg('strkey', (node) => {
+  let ver = 'v1', mode = 'key', rt;
+  const cv = codeView([]);
+  const inp = el('input', { class: 'inp', type: 'text', 'aria-label': 'Form 的 name' });
+  const user = el('div', { class: 'mono', style: 'font-size:14px;margin-top:8px' });
+  const tbl = el('div');
+  const status = el('div', { class: 'status' });
+  let setName;
+  const code = () => {
+    const k = mode === 'key';
+    const L = ['// ⚠️ 带 key 的版本不是 React 的 API', 'function Form() {',
+      k ? "  const [name, setName] = useState('name', 'Mary');" : "  const [name, setName] = useState('Mary');",
+      k ? "  const [surname, setSurname] = useState('surname', 'Poppins');" : "  const [surname, setSurname] = useState('Poppins');",
+      '  const user = useCurrentUser();', '}', '', '// 某个库里的自定义 Hook（' + ver + '）', 'function useCurrentUser() {',
+      k ? "  const [id] = useState('userId', 42);" : '  const [id] = useState(42);'];
+    if (ver === 'v2') L.push(k ? "  const [name] = useState('name', 'Dan');   // v2 新增" : "  const [name] = useState('Dan');   // v2 新增");
+    L.push(ver === 'v2' ? '  return { id, name };' : '  return { id };', '}');
+    return L;
+  };
+  const render = () => {
+    rt.begin();
+    const [name, sn] = rt.useState('name', 'Mary', 'Form · name'); setName = sn;
+    rt.useState('surname', 'Poppins', 'Form · surname');
+    const [id] = rt.useState('userId', 42, 'useCurrentUser · userId');
+    let uname = null;
+    if (ver === 'v2') uname = rt.useState('name', 'Dan', 'useCurrentUser · name')[0];
+    if (document.activeElement !== inp) inp.value = name;
+    user.textContent = 'useCurrentUser() 返回 ' + JSON.stringify(ver === 'v2' ? { id, name: uname } : { id });
+    tbl.textContent = ''; tbl.append(storageTable(rt));
+    const clash = rt.trace.some((t) => rt.isClash(t));
+    if (clash) status.innerHTML = '<span class="bad">冲突！</span>库作者只是在自己的 Hook 里加了一个状态，Form 的作者什么都没改，「当前用户」却变成了表单里填的名字。在输入框里打字，两边一起变。';
+    else if (mode === 'order') status.innerHTML = '<span class="ok">没有冲突。</span>真正的 Hooks 里，两个 <code>name</code> 各占一个按调用顺序分配的格子（' + rt.trace.map((t) => t.id).join(' ') + '），互不相干。';
+    else status.innerHTML = 'v1 一切正常：key 在当前代码里恰好不重复。切到 v2 看看库升级之后。';
+  };
+  const reset = () => { rt = makeRT(mode); rt.onset = render; cv.set(code()); inp.value = ''; render(); };
+  inp.addEventListener('input', () => setName(inp.value));
+  node.append(
+    ctrlRow(lab('库版本'), seg([['v1', 'useCurrentUser v1'], ['v2', 'v2：新增 name 状态']], ver, (v) => { ver = v; reset(); }, '库版本')),
+    ctrlRow(lab('存储方式'), seg([['key', "字符串 key：useState('name')"], ['order', '调用顺序（真 Hooks）']], mode, (v) => { mode = v; reset(); }, '存储方式')),
+    el('div', { class: 'grid2' }, cv.node, el('div', {}, el('label', { class: 'field' }, 'Form 里的 name 输入框', inp), user, tbl)),
+    status);
+  reset();
+});
+
+/* ---------- 05 缺陷三：Symbol key ---------- */
+reg('symkey', (node) => {
+  const valueKey = Symbol('valueKey');
+  twoFieldDemo(node, {
+    modes: [['sym', 'Symbol key'], ['order', '调用顺序（真 Hooks）']],
+    init: 'sym',
+    rtMode: (m) => (m === 'order' ? 'order' : 'key'),
+    labels: ['name', 'surname'],
+    code: (m) => m === 'sym'
+      ? ['// ⚠️ 这不是 React 的 API', 'const valueKey = Symbol();   // useFormInput.js 顶层', '', 'function useFormInput() {', "  const [value, setValue] = useState(valueKey, '');", '  return { value, onChange(e) { setValue(e.target.value); } };', '}', '', 'function Form() {', '  const name = useFormInput();', '  const surname = useFormInput();', '  // 实际效果等于：', '  //   useState(valueKey) 被调用了两次', '}']
+      : ['function useFormInput() {', "  const [value, setValue] = useState('');", '  return { value, onChange(e) { setValue(e.target.value); } };', '}', '', 'function Form() {', '  const name = useFormInput();     // 第 1 次调用 → #1', '  const surname = useFormInput();  // 第 2 次调用 → #2', '}'],
+    mark: (cv, m) => { if (m === 'sym') cv.mark([9, 10], 'bad'); else cv.mark([6, 7], 'okl'); },
+    render: (rt) => ({ a: rt.useState(valueKey, '', 'useFormInput（第 1 次，name）'), b: rt.useState(valueKey, '', 'useFormInput（第 2 次，surname）') }),
+    hello: (r) => 'Hello, ' + r.a[0] + ' ' + r.b[0],
+    verdict: (rt, m) => m === 'sym'
+      ? '<span class="bad">Symbol 不会和别人撞，但会和自己撞。</span>两次调用 useFormInput() 用的是同一个 valueKey，名和姓共用一个格子。'
+      : '<span class="ok">每一次调用都有自己的格子。</span>依赖持久的调用索引，让我们不用再操心名称冲突。',
+  });
+});
+
+/* ---------- 06 缺陷四：钻石 ---------- */
+reg('diamond', (node) => {
+  let mode = 'key', timer = null;
+  const W = 560, H = 300;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '自定义 Hook 调用关系图：钻石与树' });
+  const status = el('div', { class: 'status' });
+  const BW = 150, BH = 40;
+  const nodes = {};
+  function box(id, x, y, t, s, cls) {
+    const g = svg('g', { class: 'tnode ' + (cls || ''), transform: `translate(${x - BW / 2},${y - BH / 2})` },
+      svg('rect', { width: BW, height: BH, rx: 9 }),
+      svg('text', { x: BW / 2, y: s ? 14 : BH / 2 }, t),
+      s ? svg('text', { class: 's', x: BW / 2, y: 30 }, s) : null);
+    nodes[id] = { g, x, y };
+    return g;
+  }
+  function edge(a, b, bad) {
+    const A = nodes[a], B = nodes[b];
+    return svg('path', { class: 'tedge' + (bad ? ' badE' : ''), d: `M${A.x},${A.y + BH / 2} C${A.x},${(A.y + B.y) / 2} ${B.x},${(A.y + B.y) / 2} ${B.x},${B.y - BH / 2}` });
+  }
+  let order = [];
+  function draw() {
+    root.textContent = '';
+    for (const k in nodes) delete nodes[k];
+    const es = svg('g'), ns = svg('g');
+    ns.append(box('S', 280, 30, 'StatusMessage', null, 'root'));
+    ns.append(box('W', 140, 100, 'useWindowWidth()'));
+    ns.append(box('N', 420, 100, 'useNetworkStatus()'));
+    if (mode === 'key') {
+      ns.append(box('U', 280, 175, 'useSubscription()', '同一份 key'));
+      ns.append(box('US', 190, 255, 'useState', "key 'state'", 'badn'));
+      ns.append(box('UE', 370, 255, 'useEffect', "key 'effect'", 'badn'));
+      es.append(edge('S', 'W'), edge('S', 'N'), edge('W', 'U', true), edge('N', 'U', true), edge('U', 'US', true), edge('U', 'UE', true));
+      order = [];
+    } else {
+      ns.append(box('U1', 140, 175, 'useSubscription()'));
+      ns.append(box('U2', 420, 175, 'useSubscription()'));
+      const lw = 84;
+      [['A', 75, 'useState', 'U1'], ['B', 205, 'useEffect', 'U1'], ['C', 355, 'useState', 'U2'], ['D', 485, 'useEffect', 'U2']].forEach(([id, x, t]) => {
+        const g = box(id, x, 255, t, '#?');
+        g.firstChild.setAttribute('width', 120); g.setAttribute('transform', `translate(${x - 60},${255 - BH / 2})`);
+        g.childNodes[1].setAttribute('x', 60); g.childNodes[2].setAttribute('x', 60);
+        nodes[id].w = lw;
+        ns.append(g);
+      });
+      es.append(edge('S', 'W'), edge('S', 'N'), edge('W', 'U1'), edge('N', 'U2'), edge('U1', 'A'), edge('U1', 'B'), edge('U2', 'C'), edge('U2', 'D'));
+      order = ['S', 'W', 'U1', 'A', 'B', 'N', 'U2', 'C', 'D'];
+    }
+    root.append(es, ns);
+    status.innerHTML = mode === 'key'
+      ? '<span class="bad">钻石。</span>两条路径汇到同一个 useSubscription，它内部的 state 和 effect 用的是固定 key，于是窗口宽度和在线状态<span class="bad">写进了同一个格子</span>，两个订阅也互相覆盖。'
+      : '每次调用都是树上独立的一枝。点「走一遍」看编号。';
+  }
+  function walk() {
+    if (mode !== 'order') return;
+    if (timer) { clearInterval(timer); timer = null; }
+    draw();
+    let k = 0, n = 0;
+    const labels = { A: 'State', B: 'Effect', C: 'State', D: 'Effect' };
+    const step = () => {
+      Object.values(nodes).forEach((o) => o.g.classList.remove('on'));
+      const id = order[k];
+      const o = nodes[id];
+      if (labels[id]) { n++; o.g.classList.add('okn'); o.g.childNodes[2].textContent = '✅ #' + n + ' ' + labels[id]; status.innerHTML = '深度优先走到 <b>' + (id === 'A' || id === 'C' ? 'useState' : 'useEffect') + '</b>：分到第 ' + n + ' 个格子。'; }
+      else { o.g.classList.add('on'); status.textContent = '调用 ' + o.g.childNodes[1].textContent; }
+      k++;
+      if (k >= order.length) {
+        if (timer) { clearInterval(timer); timer = null; }
+        Object.values(nodes).forEach((x) => x.g.classList.remove('on'));
+        status.innerHTML = '<span class="ok">四个格子各不相同：#1 State、#2 Effect、#3 State、#4 Effect。</span>两个 useSubscription 是两次调用，就是两份状态。函数调用构成一棵树，树没有钻石。';
+      }
+    };
+    if (RM) { while (k < order.length) step(); return; }
+    step(); timer = setInterval(step, 650);
+  }
+  const walkBtn = el('button', { class: 'btn primary', type: 'button', onclick: walk }, '走一遍');
+  const sync = () => { walkBtn.disabled = mode !== 'order'; };
+  node.append(ctrlRow(seg([['key', '按名字合并'], ['order', '按调用顺序（真 Hooks）']], mode, (v) => { mode = v; if (timer) { clearInterval(timer); timer = null; } draw(); sync(); }, '存储方式'), walkBtn),
+    el('div', { style: 'max-width:620px;margin:0 auto' }, root), status);
+  draw(); sync();
+  return { stop() { if (timer) { clearInterval(timer); timer = null; } } };
+});
+
+/* ---------- 07 缺陷五：闭包工厂 ---------- */
+reg('factory', (node) => {
+  const nameKey = Symbol('useNameFormInput 的 valueKey');
+  const surKey = Symbol('useSurnameFormInput 的 valueKey');
+  const head = ['// ⚠️ 这不是 React 的 API', 'function createUseFormInput() {', '  const valueKey = Symbol();   // 每次实例化一个', '  return function useFormInput() {', "    const [value, setValue] = useState(valueKey, '');", '    return { value, onChange(e) { setValue(e.target.value); } };', '  };', '}', '', 'const useNameFormInput = createUseFormInput();', 'const useSurnameFormInput = createUseFormInput();', '', 'function Form() {', '  const name = useNameFormInput();'];
+  twoFieldDemo(node, {
+    modes: [['bug', '原文代码（笔误）'], ['fix', '修正版'], ['order', '调用顺序（真 Hooks）']],
+    init: 'bug',
+    rtMode: (m) => (m === 'order' ? 'order' : 'key'),
+    labels: ['name', 'surname'],
+    code: (m) => m === 'order'
+      ? ['function useFormInput() {', "  const [value, setValue] = useState('');", '  return { value, onChange(e) { setValue(e.target.value); } };', '}', '', '// 不需要工厂，不需要实例名', 'function Form() {', '  const name = useFormInput();', '  const surname = useFormInput();', '}']
+      : head.concat([m === 'bug' ? '  const surname = useNameFormInput();     // ← 原文里就是这么写的' : '  const surname = useSurnameFormInput();  // 修正', '}']),
+    mark: (cv, m) => { if (m === 'bug') cv.mark(14, 'bad'); else if (m === 'fix') cv.mark([9, 10, 13, 14], 'okl'); else cv.mark([7, 8], 'okl'); },
+    render: (rt, m) => ({
+      a: rt.useState(nameKey, '', 'useNameFormInput()'),
+      b: rt.useState(m === 'bug' ? nameKey : surKey, '', m === 'bug' ? 'useNameFormInput()（第 2 次）' : 'useSurnameFormInput()'),
+    }),
+    hello: (r) => 'Hello, ' + r.a[0] + ' ' + r.b[0],
+    verdict: (rt, m) => m === 'bug'
+      ? '<span class="bad">同一个「实例」调用了两次，状态冲突。</span>两层名字（工厂 + 实例）里任何一处手滑都会出错，而且代码看起来完全正常。'
+      : m === 'fix'
+        ? '<span class="ok">能用了。</span>代价是：1 个工厂 + 2 个实例名，每个 Hook 在顶层声明一次、调用处再写一次，每个实例只能用恰好一次。'
+        : '<span class="ok">能用，且没有任何额外名字。</span>同一个 useFormInput 调两次，就是两个格子。',
+  });
+});
+
+/* ---------- 08 缺陷六：条件声明 ---------- */
+reg('cond', (node) => {
+  let model = 'keep', eff = 'run', active = true, count = 0, stored = true, running = true, timer = null, visible = false;
+  const cv = codeView([]);
+  const view = el('div', { class: 'mono', style: 'font-size:28px;font-weight:700;padding:8px 14px;border-radius:10px;background:var(--surface-2);display:inline-block;min-width:4em;text-align:center;cursor:pointer;user-select:none', role: 'button', tabindex: '0', 'aria-label': '计数，点击加一' });
+  const mem = el('div', { class: 'mono', style: 'font-size:13px;margin-top:8px' });
+  const iv = el('div', { style: 'font-size:13px;margin-top:4px' });
+  const status = el('div', { class: 'status' });
+  const toggle = el('button', { class: 'btn primary', type: 'button' });
+  const effSeg = seg([['run', 'effect 继续跑'], ['stop', 'effect 停掉']], eff, (v) => { eff = v; restart(); }, 'effect 语义');
+  const effRow = ctrlRow(lab('那 effect 呢？'), effSeg);
+  const CODE = {
+    keyed: ['// ⚠️ 这不是 React 的 API', 'function Counter(props) {', '  if (props.isActive) {', "    const [count, setCount] = useState('count', 0);", '    useEffect(() => {', '      const id = setInterval(() => setCount(c => c + 1), 1000);', '      return () => clearInterval(id);', '    }, []);', '    return <p onClick={() => setCount(count + 1)}>{count}</p>;', '  }', '  return null;', '}'],
+    extract: ['function Counter(props) {', '  if (props.isActive) {', '    // 显然拥有自己的状态', '    return <TickingCounter />;', '  }', '  return null;', '}', '', 'function TickingCounter() {', '  const [count, setCount] = useState(0);', '  useEffect(() => { /* setInterval … */ }, []);', '  return <p onClick={() => setCount(count + 1)}>{count}</p>;', '}'],
+  };
+  const Q = {
+    'keep-run': '<span class="bad">state 保留、effect 继续跑：</span>界面上什么都没有，可隐藏的 count 还在每秒增长。那 effect 外面的 <code>if</code> 其实并没有让 effect 变成「条件的」，我们不是说想要条件 effect 吗？',
+    'keep-stop': '<span class="bad">state 保留、effect 停掉：</span>count 留着，定时器却被清掉了。同一个 <code>if</code> 下的 state 和 effect 行为不一致，令人困惑。',
+    reset: '<span class="bad">没被调用就重置：</span>那如果多个 <code>if</code> 分支里都写了 <code>useState(\'count\')</code>、每次只走一个呢？组件提前 <code>return</code> 会不会把它后面所有状态都清空？我们的心智模型是「带 key 的 Map」，东西为什么会从里面「消失」？',
+    extract: '<span class="ok">提取组件：</span><code>isActive</code> 变 false 时 TickingCounter 被卸载，state 和 effect 一起清掉，变回 true 时从 0 开始。语义清楚，但这也意味着条件声明本身最好用 lint 禁掉。',
+  };
+  const key = () => (model === 'keep' ? 'keep-' + eff : model);
+  const draw = () => {
+    view.textContent = active ? String(count) : 'null';
+    view.style.opacity = active ? '1' : '.45';
+    if (model === 'extract') mem.textContent = active ? 'TickingCounter 已挂载：#1 = ' + count : 'TickingCounter 已卸载：没有任何状态';
+    else mem.textContent = stored ? "隐藏的 Map { 'count' → " + count + ' }' : '隐藏的 Map { }（空）';
+    iv.innerHTML = '定时器：' + (running ? '<span class="ok-t">运行中</span>' : '<span class="bad-t">已清除</span>');
+    toggle.textContent = 'props.isActive = ' + active + '（点击切换）';
+    effRow.style.display = model === 'keep' ? '' : 'none';
+    status.innerHTML = Q[key()];
+  };
+  const tickOn = () => { if (!timer && visible && running) timer = setInterval(() => { count++; draw(); }, 1000); };
+  const tickOff = () => { if (timer) { clearInterval(timer); timer = null; } };
+  const restart = () => { active = true; count = 0; stored = true; running = true; cv.set(model === 'extract' ? CODE.extract : CODE.keyed); tickOff(); tickOn(); draw(); };
+  toggle.addEventListener('click', () => {
+    active = !active;
+    if (!active) {
+      if (model === 'keep') { running = eff === 'run'; }
+      else { stored = false; running = false; count = 0; }
+    } else {
+      if (!stored) { stored = true; count = 0; }
+      running = true;
+    }
+    tickOff(); tickOn(); draw();
+  });
+  const inc = () => { if (active) { count++; draw(); } };
+  view.addEventListener('click', inc);
+  view.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inc(); } });
+  node.append(
+    ctrlRow(lab('语义假设'), seg([['keep', '键控：没调用时保留 state'], ['reset', '键控：没调用时重置'], ['extract', '提取 <TickingCounter />']], model, (v) => { model = v; restart(); }, '语义假设')),
+    effRow,
+    el('div', { class: 'grid2' }, cv.node, el('div', {}, ctrlRow(toggle), el('div', { class: 'cap', style: 'margin:8px 0 4px' }, '渲染结果（<p>{count}</p>）：'), view, mem, iv)),
+    status);
+  restart();
+  return { start() { visible = true; tickOn(); }, stop() { visible = false; tickOff(); } };
+});
+
+/* ---------- 09 缺陷七：传值 ---------- */
+reg('friend', (node) => {
+  const friends = [{ id: 1, name: 'Phoebe' }, { id: 2, name: 'Rachel' }, { id: 3, name: 'Ross' }];
+  const online = { 1: true, 2: false, 3: true };
+  let rid = 1, view = 'hooks';
+  const sel = el('select', { class: 'inp', 'aria-label': '选择收件人', style: 'max-width:180px' }, ...friends.map((f) => el('option', { value: f.id }, f.name)));
+  const dot = svg('circle', { cx: 12, cy: 12, r: 9 });
+  const dotSvg = svg('svg', { viewBox: '0 0 24 24', width: 24, height: 24, style: 'display:inline-block;vertical-align:middle' }, dot);
+  const flow = el('div', { class: 'vars', style: 'align-items:center' });
+  const log = el('div', { class: 'code', style: 'max-height:150px;overflow:auto' });
+  const cv = codeView([]);
+  const depth = el('div', { class: 'meter' });
+  const status = el('div', { class: 'status' });
+  const logLine = (t, cls) => { const d = el('div', { class: 'ln' + (cls ? ' ' + cls : '') }, t); log.append(d); log.scrollTop = log.scrollHeight; };
+  const name = (id) => friends.find((f) => f.id === id).name;
+  const draw = () => {
+    const on = online[rid];
+    dot.setAttribute('fill', on ? 'var(--t)' : 'var(--r)');
+    flow.textContent = '';
+    [['useState(1)', ''], ['recipientID = ' + rid, ''], ['useFriendStatus(' + rid + ')', ''], ['isRecipientOnline = ' + on, ''], ["<Circle color='" + (on ? 'green' : 'red') + "' />", '']].forEach(([t], i) => {
+      if (i) flow.append(el('b', { style: 'color:var(--muted)' }, '→'));
+      flow.append(el('span', {}, t));
+    });
+    status.innerHTML = name(rid) + ' 现在' + (on ? '<span class="ok">在线</span>' : '<span class="bad">离线</span>') + '。recipientID 只是一个局部变量，直接作为参数交给下一个 Hook。';
+  };
+  const CODE = {
+    hooks: ['function ChatRecipientPicker() {', '  const [recipientID, setRecipientID] = useState(1);', '  const isRecipientOnline = useFriendStatus(recipientID);', '  return (', '    <>', "      <Circle color={isRecipientOnline ? 'green' : 'red'} />", '      <select value={recipientID} onChange={…}>…</select>', '    </>', '  );', '}'],
+    rp: ['// 本页示意：同样的逻辑用 render props 写', 'function ChatRecipientPicker() {', '  return (', '    <State initial={1}>', '      {([recipientID, setRecipientID]) => (', '        <FriendStatus friendID={recipientID}>', '          {isRecipientOnline => (', '            <>', "              <Circle color={isRecipientOnline ? 'green' : 'red'} />", '              <select value={recipientID} onChange={…}>…</select>', '            </>', '          )}', '        </FriendStatus>', '      )}', '    </State>', '  );', '}'],
+  };
+  const setView = (v) => {
+    view = v; cv.set(CODE[v]);
+    if (v === 'hooks') cv.mark([1, 2], 'okl'); else cv.mark([3, 4, 5, 6], 'hl');
+    depth.textContent = '';
+    const d = v === 'hooks' ? 0 : 4;
+    depth.append('为了传两个值而多出的嵌套层：');
+    for (let i = 0; i < d; i++) depth.append(el('i'));
+    depth.append(' ' + d);
+  };
+  sel.addEventListener('change', () => {
+    const prev = rid; rid = Number(sel.value);
+    logLine('// recipientID: ' + prev + ' → ' + rid + '，effect 先清理再重跑', 'cm');
+    logLine('ChatAPI.unsubscribeFromFriendStatus(' + prev + ')  // ' + name(prev), 'warn');
+    logLine('ChatAPI.subscribeToFriendStatus(' + rid + ')    // ' + name(rid));
+    draw();
+  });
+  const flip = el('button', { class: 'btn', type: 'button', onclick: () => {
+    online[rid] = !online[rid];
+    logLine('handleStatusChange({ isOnline: ' + online[rid] + ' })  // ' + name(rid) + ' 状态变化');
+    draw();
+  } }, '模拟：当前好友上线 / 下线');
+  logLine('ChatAPI.subscribeToFriendStatus(1)    // Phoebe（首次渲染后的 effect）');
+  node.append(ctrlRow(el('label', { class: 'range' }, '收件人', sel), dotSvg, flip), flow, log,
+    ctrlRow(lab('写法'), seg([['hooks', 'Hooks：平铺传值'], ['rp', 'render props：伪层级']], 'hooks', setView, '写法')), cv.node, depth, status);
+  setView('hooks'); draw();
+});
+
+reg('spring', (node) => {
+  const W = 600, H = 170;
+  const box = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'spring-box', role: 'img', 'aria-label': '三个点依次跟随的拖尾动画' });
+  const mk = (c, r) => svg('circle', { class: c, r });
+  const d3 = mk('d3', 12), d2 = mk('d2', 14), d1 = mk('d1', 16);
+  const tgt = svg('circle', { r: 5, fill: 'none', stroke: 'var(--muted)', 'stroke-dasharray': '3 3' });
+  const t1 = svg('text', {}, 'pos1'), t2 = svg('text', {}, 'pos2'), t3 = svg('text', {}, 'pos3');
+  box.append(tgt, d3, d2, d1, t1, t2, t3);
+  const status = el('div', { class: 'status' }, 'pos1 用快弹簧追鼠标，pos2 用慢弹簧追 pos1，pos3 追 pos2。每个值都是上一个 Hook 的返回值。');
+  const P = [{ x: 380, y: 70, vx: 0, vy: 0 }, { x: 290, y: 95, vx: 0, vy: 0 }, { x: 200, y: 115, vx: 0, vy: 0 }];
+  const CFG = [[0.22, 0.62], [0.06, 0.72], [0.06, 0.72]];
+  let target = { x: 380, y: 70 }, raf = 0, lastMove = -1e9, t0 = performance.now();
+  const toLocal = (e) => { const r = box.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; };
+  box.addEventListener('pointermove', (e) => { target = toLocal(e); lastMove = performance.now(); if (RM) frame(); });
+  box.addEventListener('pointerdown', (e) => { target = toLocal(e); lastMove = performance.now(); if (RM) frame(); });
+  function frame() {
+    const now = performance.now();
+    if (!RM && now - lastMove > 2500) { const t = (now - t0) / 1000; target = { x: 300 + 220 * Math.sin(t * 0.9), y: 85 + 55 * Math.sin(t * 1.7) }; }
+    const goals = [target, P[0], P[1]];
+    P.forEach((p, i) => {
+      const g = goals[i];
+      if (RM) { p.x = g.x; p.y = g.y; return; }
+      const [k, d] = CFG[i];
+      p.vx = (p.vx + (g.x - p.x) * k) * d; p.vy = (p.vy + (g.y - p.y) * k) * d;
+      p.x += p.vx; p.y += p.vy;
+    });
+    tgt.setAttribute('cx', target.x); tgt.setAttribute('cy', target.y);
+    [[d1, t1, 0], [d2, t2, 1], [d3, t3, 2]].forEach(([c, t, i]) => { c.setAttribute('cx', P[i].x); c.setAttribute('cy', P[i].y); t.setAttribute('x', P[i].x + [20, -14, -50][i]); t.setAttribute('y', P[i].y + [-14, 34, -18][i]); });
+    if (!RM) raf = requestAnimationFrame(frame);
+  }
+  const code = codeView(['const [{ pos1 }, set] = useSpring({ pos1: [0, 0], config: fast });', 'const [{ pos2 }] = useSpring({ pos2: pos1, config: slow });', 'const [{ pos3 }] = useSpring({ pos3: pos2, config: slow });']);
+  node.append(box, code.node, status);
+  frame();
+  return { start() { if (!RM && !raf) raf = requestAnimationFrame(frame); }, stop() { cancelAnimationFrame(raf); raf = 0; } };
+});
+
+/* ---------- 10 缺陷八：仪式 ---------- */
+reg('ceremony', (node) => {
+  const V = {
+    ambient: ['import { useState } from \'react\';', '', 'function Form() {', '  const width = useWindowWidth();', '}', 'function useWindowWidth() {', '  const [width, setWidth] = useState(window.innerWidth);', '  return width;', '}'],
+    this: ['// ⚠️ 示意：把内置 Hook 挂在 this 上', 'function Form() {', '  const width = useWindowWidth.call(this);', '}', 'function useWindowWidth() {', '  const [width, setWidth] = this.useState(window.innerWidth);', '  return width;', '}'],
+    arg: ['// ⚠️ 示意：把 Hooks 作为额外参数一路传下去', 'function Form(props, hooks) {', '  const width = useWindowWidth(hooks);', '}', 'function useWindowWidth(hooks) {', '  const [width, setWidth] = hooks.useState(window.innerWidth);', '  useSubscription(hooks, /* … */);', '  return width;', '}'],
+    amd: ['// Anyone miss AMD?（原文）', "define(['require', 'dependency1', 'dependency2'], function (require) {", "  var dependency1 = require('dependency1');", "  var dependency2 = require('dependency2');", '  return function () {};', '});'],
+    factory: ['// 原文：为每个组件导出一个工厂，和 React「解耦」', 'function createModal(React) {', '  return class Modal extends React.Component {', '    // ...', '  };', '}'],
+  };
+  const T = {
+    ambient: '环境式：像 import / require / try-catch / Context，处理者「就在那儿」，不用穿过每一层。',
+    this: '依赖 this：每个自定义 Hook 都得用 .call(this) 转发，否则拿不到内置 Hook。',
+    arg: '显式参数：每一层自定义 Hook 的签名里都要多一个 hooks，像在每个函数间手动传错误码。',
+    amd: 'AMD 也许更「诚实」地承认了浏览器里模块不是同步加载的；可一旦明白这一点，写 define 三明治就成了机械劳动。',
+    factory: '真想把 React 换成别的东西，在模块系统层面替换就行；为每个组件导出工厂只是烦人的间接层。',
+  };
+  const cv = codeView([]);
+  const note = el('div', { class: 'status' });
+  const show = (k) => { cv.set(V[k]); note.textContent = T[k]; };
+  const out = el('output', {}, '3');
+  const input = el('input', { type: 'range', min: '1', max: '6', value: '3', step: '1', 'aria-label': '自定义 Hook 嵌套层数' });
+  const chainA = el('div', { class: 'code' }), chainB = el('div', { class: 'code' });
+  const cnt = el('div', { class: 'status' });
+  const names = ['useA', 'useB', 'useC', 'useD', 'useE', 'useF'];
+  const upd = () => {
+    const n = +input.value; out.textContent = n;
+    chainA.textContent = ''; chainB.textContent = '';
+    chainA.append(el('div', { class: 'ln cm' }, '// 环境式'), el('div', { class: 'ln' }, 'function Form(props)'));
+    chainB.append(el('div', { class: 'ln cm' }, '// 显式传参'), el('div', { class: 'ln bad' }, 'function Form(props, hooks)'));
+    for (let i = 0; i < n; i++) {
+      const pad = '  '.repeat(i + 1);
+      chainA.append(el('div', { class: 'ln' }, pad + '→ ' + names[i] + '()'));
+      chainB.append(el('div', { class: 'ln bad' }, pad + '→ ' + names[i] + '(hooks)'));
+    }
+    cnt.innerHTML = '嵌套 ' + n + ' 层：显式传参要改 <span class="bad">' + (n + 1) + '</span> 个函数签名和 ' + n + ' 处调用；环境式 <span class="ok">0</span> 处。再加一层自定义 Hook，左边不变，右边又多两处。';
+  };
+  input.addEventListener('input', upd);
+  node.append(ctrlRow(seg([['ambient', 'Hooks（环境式）'], ['this', 'this.useState'], ['arg', '额外参数'], ['amd', 'AMD define'], ['factory', 'createModal(React)']], 'ambient', show, '写法')),
+    cv.node, note,
+    ctrlRow(el('label', { class: 'range' }, '嵌套层数', input, out)),
+    el('div', { class: 'grid2' }, chainA, chainB), cnt);
+  show('ambient'); upd();
+});
+
+/* ---------- 11 诊所 ---------- */
+reg('clinic', (node) => {
+  const R = [
+    ['每个组件只准一次 useState', '缺陷一', 'f1', '状态都在一个对象里，自定义 Hook 就无法引入自己的本地状态，而这正是自定义 Hook 的意义。'],
+    ["字符串 key：useState('name')", '缺陷二', 'f2', '给自定义 Hook 加一个状态，就可能和某个使用它的组件（直接或间接）撞名。不是「为变化而优化」的 API。'],
+    ['Symbol key（模块级）', '缺陷三、四', 'f3', '不和别人撞，却和自己撞：同一个 Hook 调用两次就共用一个格子；两个 Hook 共用同一个底层 Hook 时形成钻石。'],
+    ['闭包工厂：createUseFormInput()', '缺陷五', 'f5', '每个 Hook 先实例化再用、每个实例只能用一次、两层命名；不包工厂的复制粘贴能用，直到调用第二次。'],
+    ["逐层组合 key：'useFormInput(' + key + ')'", '缺陷六', 'f6', 'Dan 最不讨厌的方案。但 key 组合错了也能「碰巧能跑」，迟早需要 lint；既然要 lint，组合 key 就只是累赘，条件声明的语义本身也说不清。'],
+    ['在默认参数 / 装饰器里初始化 Hook', '缺陷七', 'f7', '调用不在函数体里，就没法在 Hooks 之间传值、变换值、用 useMemo 缓存，effect 也捕获不到它们。'],
+    ['this.useState / 额外参数 / 单子 / React.createHook', '缺陷八', 'f8', '仪式感过重：要么把依赖穿过每一层，要么加包装层；丢掉了普通函数「好调试到极点」的好处，也让静态类型更复杂。'],
+    ['调用顺序（React Hooks 本身）', '代价：规则 + lint', 'index', '代价：只在顶层调用（不放进条件、循环），需要 linter 帮忙守住。换来：自定义 Hook 可随意提取、调用多次、嵌套、互相传值；复制粘贴无需命名空间；没有 key 的体积开销；实现不需要 Map 查找。'],
+  ];
+  const detail = el('div', { class: 'detail' }, '点上面任意一行。');
+  const list = el('div', { class: 'clinic' });
+  const rows = R.map(([name, flaw, id, txt], i) => {
+    const b = el('button', { class: 'row', type: 'button' }, el('span', {}, name), el('span', { class: 'tag ' + (i === R.length - 1 ? 'ok' : 'bad') }, flaw));
+    b.addEventListener('click', () => {
+      rows.forEach((x) => x.classList.toggle('sel', x === b));
+      detail.textContent = '';
+      detail.append(el('div', {}, txt), el('div', { style: 'margin-top:6px' }, el('a', { href: '#' + id }, '跳到相关章节 →')));
+    });
+    list.append(b); return b;
+  });
+  node.append(list, detail);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

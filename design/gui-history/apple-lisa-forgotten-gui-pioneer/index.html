@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Apple Lisa：被埋掉的 GUI 先驱</title>
+<meta name="description" content="Apple Lisa 四十周年回望：从施乐 PARC 到「Do It」改成「OK」，从模态到非模态、从「二十个问题」到图标与文件夹、以文档为中心的交互，再到 1989 年犹他州的那次埋葬。可交互对比 Lisa 与 Macintosh 的配置、价格与操作流程。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ================= 本页组件 ================= */
+/* 时间线年份胶囊 */
+.yrs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 12px}
+.yr{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 10px;font-family:var(--mono);font-size:12.5px;cursor:pointer;color:var(--muted)}
+.yr:hover{border-color:var(--p);color:var(--text)}
+.yr.on{background:var(--p);border-color:var(--p);color:#fff}
+.yr.add{border-style:dashed}
+.yr.add.on{border-style:solid}
+.ev{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);min-height:96px}
+.ev h3{font-size:17px;margin-bottom:4px}
+.ev p{font-size:14px;color:var(--muted)}
+.ev .tag{margin-left:6px;vertical-align:2px}
+.tag.orig{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.sup{background:var(--o-soft);color:var(--o);border-color:transparent}
+
+/* 可点选卡片 */
+.cards{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){ .cards{grid-template-columns:repeat(3,1fr)} }
+.card{border:1.5px solid var(--line);border-radius:12px;padding:10px;background:var(--surface-2);cursor:pointer;text-align:left;transition:border-color .2s,background .2s}
+.card:hover,.card:focus-visible{border-color:var(--p);outline:none}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card b{display:block;font-size:15px;margin:6px 0 2px}
+.card span{font-size:12.5px;color:var(--muted)}
+.detail{margin-top:12px;border-left:3px solid var(--p);padding:6px 12px;font-size:14px;background:var(--surface-2);border-radius:0 10px 10px 0}
+
+/* 线框屏幕 */
+.scr{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+.scr-bg{fill:var(--surface-2)}
+.ink{fill:var(--ink)}
+.ink-s{stroke:var(--ink);fill:none;stroke-width:1.2}
+.mute-f{fill:var(--muted)}
+.line-f{fill:var(--line)}
+.p-f{fill:var(--p)}
+.p-s{stroke:var(--p);fill:none;stroke-width:2}
+.t-f{fill:var(--t)}
+.o-f{fill:var(--o)}
+.r-f{fill:var(--r)}
+.soft-p{fill:var(--p-soft)}
+.soft-t{fill:var(--t-soft)}
+.soft-o{fill:var(--o-soft)}
+.term{fill:var(--t);font-family:var(--mono);font-size:9px}
+
+/* PARC 注意力 */
+.att{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:640px){ .att{grid-template-columns:repeat(3,1fr)} }
+.att button{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
+.att button.on{border-color:var(--o);background:var(--o-soft)}
+.att button i{display:block;height:6px;border-radius:3px;background:var(--line);margin-top:8px;overflow:hidden;font-style:normal}
+.att button i s{display:block;height:100%;background:var(--o);width:0;transition:width .5s ease;text-decoration:none}
+
+/* 配置对比 */
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.chk input{accent-color:var(--p)}
+
+/* 对话框 */
+.dlg-wrap{display:grid;grid-template-columns:1fr;gap:14px;align-items:center}
+@media (min-width:760px){ .dlg-wrap{grid-template-columns:1.1fr 1fr} }
+.dlg{border:2px solid var(--ink);background:var(--surface);border-radius:4px;padding:14px;box-shadow:4px 4px 0 var(--ink);max-width:360px}
+.dlg p{font-size:14px;margin-bottom:14px}
+.dlg .row{display:flex;justify-content:flex-end;gap:10px}
+.dlg .b{border:1.5px solid var(--ink);border-radius:8px;padding:5px 16px;background:var(--surface);font-family:Helvetica,Arial,sans-serif;font-size:15px;min-width:70px;text-align:center;color:var(--text)}
+.dlg .b.def{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--ink)}
+.zoom{font-family:Helvetica,Arial,sans-serif;font-size:clamp(40px,10vw,64px);line-height:1.1;text-align:center;background:var(--surface-2);border-radius:10px;padding:10px 8px;white-space:nowrap;overflow:hidden}
+.zoom small{display:block;font-family:var(--font);font-size:12px;color:var(--muted);letter-spacing:0}
+.glyphs{display:flex;justify-content:center;gap:18px;margin-top:10px;font-family:Helvetica,Arial,sans-serif;font-size:40px}
+.glyphs span{display:inline-flex;flex-direction:column;align-items:center;padding:4px 14px;border:1px dashed var(--line);border-radius:8px}
+.glyphs small{font-family:var(--font);font-size:11px;color:var(--muted)}
+
+/* 编辑器模拟 */
+.ed{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .ed{grid-template-columns:1fr 1fr} }
+.pane{border:1.5px solid var(--ink);border-radius:6px;background:var(--surface);overflow:hidden}
+.pane .bar{display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border-bottom:1.5px solid var(--ink);padding:4px 10px;font-size:12.5px;font-weight:600}
+.pane .mode{font-family:var(--mono);font-size:11.5px;padding:1px 8px;border-radius:999px;background:var(--t-soft);color:var(--t)}
+.pane .mode.cmd{background:var(--r-soft);color:var(--r)}
+.pane .txt{font-family:var(--mono);font-size:14px;padding:12px;min-height:84px;white-space:pre-wrap;word-break:break-all}
+.pane .txt mark{background:var(--p-soft);color:var(--p)}
+.pane .txt .cur{display:inline-block;width:2px;height:1.1em;background:var(--text);vertical-align:-2px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.pane .log{font-size:12px;color:var(--muted);padding:0 12px 10px;min-height:2.6em}
+.keys{display:flex;flex-wrap:wrap;gap:6px}
+.key{font-family:var(--mono);min-width:36px;border:1px solid var(--line);border-bottom-width:3px;background:var(--surface);border-radius:8px;padding:5px 10px;cursor:pointer;font-size:14px}
+.key:active{transform:translateY(1px)}
+
+/* 二十个问题 vs 拖拽 */
+.qa{border:1.5px solid var(--ink);border-radius:6px;background:var(--surface);padding:12px;min-height:170px;display:flex;flex-direction:column;gap:8px}
+.qa .q{font-family:var(--mono);font-size:13.5px}
+.qa .hist{font-size:12px;color:var(--muted);max-height:90px;overflow:auto}
+.qa .cnt{font-family:var(--mono);font-size:12px;color:var(--r)}
+.dragdoc{cursor:grab;touch-action:none}
+.dragdoc:focus{outline:none}
+.dragdoc:focus .doc-body{stroke:var(--p);stroke-width:2.5}
+.folder:focus{outline:none}
+.folder:focus .fold-body{stroke:var(--p);stroke-width:2.5}
+.fold-body{fill:var(--y-soft);stroke:var(--ink);stroke-width:1.5}
+.doc-body{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+
+/* 遗产清单 */
+.legacy{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:640px){ .legacy{grid-template-columns:1fr 1fr} }
+.legacy button{display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 10px;cursor:pointer}
+.legacy button i{flex:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--muted);margin-top:2px;font-style:normal;font-size:12px;line-height:15px;text-align:center;color:#fff}
+.legacy button.on{border-color:var(--t);background:var(--t-soft)}
+.legacy button.on i{background:var(--t);border-color:var(--t)}
+.legacy b{display:block;font-size:14px}
+.legacy span{font-size:12.5px;color:var(--muted)}
+.meter{height:10px;border-radius:5px;background:var(--surface-2);overflow:hidden;margin-top:10px}
+.meter s{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--t),var(--p));transition:width .4s;text-decoration:none}
+
+/* 解释卡片 */
+.why{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:640px){ .why{grid-template-columns:repeat(3,1fr)} }
+.why button{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;font-size:14px}
+.why button.on{border-color:var(--r);background:var(--r-soft)}
+.why small{display:block;color:var(--muted);font-size:12px}
+.burybox{transition:transform 1.1s cubic-bezier(.5,0,.75,0)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Apple Lisa</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Apple Lisa 四十周年</div>
+  <h1>乔布斯的「私货」，Apple 想让你忘掉的「垃圾」：Apple Lisa</h1>
+  <p class="sub">一台卖一万美元、几乎没人买、最后被推土机碾进犹他州垃圾填埋场的电脑，却把「OK」按钮、非模态编辑、图标与文件夹这些东西留给了今天的每一块屏幕。</p>
+  <div class="thesis">Lisa 是一次成功的创造、一款失败的产品：它奠定了桌面图形界面的大量基础规范，却因为过于超前、过于昂贵被历史抛弃，连同几千台机器一起被埋掉。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>Y</i>YellowColr</span>
+  </div>
+  <p class="meta">原文：《乔布斯的「私货」，Apple 希望你忘记的「垃圾」：Apple Lisa》，YellowColr，少数派（2025-04-28）。本页忠实于原文的叙述顺序，原文插图都改成了示意性线框；另加了几处标注为「本页补充」的核对与延伸，交互里的界面与对话均为示意，不是像素还原。</p>
+</header>
+
+<section class="ch" id="intro" data-title="被埋掉的电脑">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一台成了「字面意义上的垃圾」的电脑</h2>
+    <p class="lead">Apple 失败的产品不少，为什么偏偏 Lisa 被真的埋进了土里？</p>
+  </div>
+  <p style="margin-bottom:12px">原文从 1976 年 Apple 在车库里创办讲起：Apple III、Newton、G4 Cube、Xserve、12 寸 MacBook 和它的蝶式键盘都算失败，但只有 Lisa 成了字面意义上的「垃圾」：1989 年，最后一批约 2700 台 Lisa 被埋进犹他州洛根市郊的垃圾填埋场。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>可点击时间线</b>：点年份看那一年发生了什么。实线框是原文提到的事件，虚线框是本页补充的时间点。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>名字里的「私货」</b>：点一下，看乔布斯先后给出的两种解释。</div>
+    <div data-demo="name"></div>
+  </div>
+</section>
+
+<section class="ch" id="start" data-title="Lisa 项目的启动">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>Lisa 项目的启动：三条路线与一个「有钱邻居」</h2>
+    <p class="lead">Apple II 大卖之后，Apple 同时押了哪几条路？做 GUI 的灵感又是从哪里「偷」来的？</p>
+  </div>
+  <p style="margin-bottom:12px">Apple II 与 Commodore PET 2001、TRS-80 并称「1977 Trinity」，整个系列卖了约 650 万台。之后 Apple 内部同时推进三套新品方案。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>三条路线</b>：点一张卡片，看它的界面形态、定位和负责人。</div>
+    <div data-demo="paths"></div>
+  </div>
+  <p style="margin:16px 0 12px">GUI 的源头在施乐。1959 年的 Xerox 914 复印机让施乐近乎垄断，但管理层担心专利到期、担心日本同行的价格战（那家「小企业」叫佳能），也担心数字时代人们不再需要复印，于是给首席科学家 Jack Goldman 开了张空头支票，建立了帕洛阿尔托研究中心（Xerox PARC）。GUI、鼠标、以太网都诞生在那里，搭载在一台叫 Alto 的电脑上；管理层却对这些兴趣寥寥，1981 年上市的 Xerox Star 成了 Alto 的最后遗产。<sup class="c">[1]</sup></p>
+  <div class="quote">比尔 · 盖茨：「我觉得这更像是，我们都有个有钱的邻居，叫施乐，我闯进他们家准备偷电视机的时候，发现你已经把它盗走了。」</div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>1979 年底，乔布斯在 PARC 看到的三样东西</b>：依次点开，看他自己怎么说。</div>
+    <div data-demo="parc"></div>
+  </div>
+  <p style="margin-top:12px;font-size:14px;color:var(--muted)">最终乔布斯用一点投资和股份换来参观 PARC 的机会，「盗」走了创意，还「拐」走了许多 PARC 的科学家和工程师。他后来引用毕加索：「Good artists copy, great artists steal.（拙匠抄，巧匠盗。）」<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="spec" data-title="一万美元的配置">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>一万美元的配置：Lisa 和 Macintosh 差在哪</h2>
+    <p class="lead">Lisa 的 $9,995 到底贵在哪里？后来的 Macintosh 又是怎么变成「更便宜的 Lisa」的？</p>
+  </div>
+  <p style="margin-bottom:12px">原文给出的 Lisa 配置：16 位、5 MHz 的 Motorola 68000，12 寸 720×364 黑白屏，1 MB 内存，两个 5.25 寸 871 KB 软驱，支持 5/10 MB 硬盘；定价 $9,995，作者折合今天约 23 万元人民币。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>配置与价格对比</b>：切换指标看三台机器的差距；勾选「换算成 2024 年美元」看通胀后的价格。屏幕一项按像素等比画出。</div>
+    <div data-demo="spec"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Lisa 于 1983-01-19 发布、同年 6 月开始发货；1984 年 1 月推出改用一个 400K 3.5 寸软驱的 Lisa 2，价格 $3,495 到 $5,495；1985 年 1 月改名 Macintosh XL，随后停产（维基百科对停产日期有 1985 年 4 月与 1986 年 8 月两种说法）。Macintosh 128K 于 1984-01-24 发布，$2,495，68000 主频约 7.83 MHz，128 KB 内存，9 寸 512×342 屏，一个 400 KB 软驱。通胀换算用美国劳工统计局 CPI-U 年均值（1983 年 99.6、1984 年 103.9、2024 年 313.689），在页面里现场计算。<sup class="c">[2][3][7]</sup></div>
+</section>
+
+<section class="ch" id="ok" data-title="No Dolt, just OK">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>No Dolt, just OK</h2>
+    <p class="lead">你每天点无数次的「OK」，为什么原本叫「Do It」？</p>
+  </div>
+  <p style="margin-bottom:12px">Lisa 团队起初设计了一个「Do It」按钮，觉得简单直接、带专业气质，直到真实用户来试用：用户遇到对话框会愣住，然后点「Cancel」退出；有一位甚至很生气，因为按钮的字体和间距让它看起来像「Dolt」，机器居然管自己叫「傻瓜」。团队最后改成了「OK」，「Cancel - OK」的二选一也成了后来大多数软件默默遵循的设计。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>把字距收紧试试</b>：拖动字距滑块，看右边放大的按钮文字什么时候变成「Dolt」；再切到「OK」对比。</div>
+    <div data-demo="doit"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文写作「DO IT」。按 Andy Hertzfeld 在 Folklore.org 的记述，按钮原文是混合大小写的「Do It」，所用无衬线系统字体里大写 I 与小写 l 几乎一样，于是读成「Dolt」；团队起初嫌「OK」太口语化，改用后用户的困惑明显少了。本页演示用的是 Helvetica/Arial 一类无衬线字体，只为说明原理。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="modeless" data-title="六个月→六小时">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>六个月 → 六小时：非模态计算</h2>
+    <p class="lead">为什么在 Bravo 里打一个单词「edit」，就可能把整篇文档删光？</p>
+  </div>
+  <p style="margin-bottom:12px">Larry Tesler 从 PARC 跳槽到 Apple 设计 Lisa 的界面，理念是把复杂留给开发者、把简单留给用户：「为什么人们要花六个月时间才能成为用户？为什么不是我们花六个月，甚至六年，让它简单到人们能在六个小时内学会？」<sup class="c">[1]</sup></p>
+  <p style="margin-bottom:12px">1968 年 12 月 Douglas Engelbart 演示了 NLS，但他认为图形计算机要有不同的模态（Mode），代价是陡峭的学习曲线与极低的容错。Alto 上的 Bravo 就是模态编辑器：e 全选、d 删除、i 进入插入模式。Tesler 推崇非模态计算，与 Tim Mott 等人做了 Gypsy：在字符间单击就开始输入，拖动选择，双击选词，剪切/拷贝/粘贴，搜索。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一串按键，两种编辑器</b>：点下面的键（或「一口气输入 edit」），左右两边会同时收到。左边是模态的 Bravo 式规则，右边是非模态的 Gypsy 式规则。</div>
+    <div data-demo="modes"></div>
+  </div>
+  <p style="margin-top:12px;font-size:14px;color:var(--muted)">原文也提到，今天仍有不少开发者用 Vim、Emacs 这类模态编辑器换取效率；而非模态更贴近大多数普通用户，Microsoft Office、Apple iWork 都是它的产物。到 Apple 后，Tesler 让用户来试用 Lisa 并说出自己在做什么。Lisa 图标设计者 Annette Wagner 回忆：「在 Lisa 诞生之时，术语中还没有『人机界面』一词。当时还没有用户界面设计师。」<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="desk" data-title="办公桌与二十个问题">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>办公桌隐喻与「二十个问题」</h2>
+    <p class="lead">把一份文件放进某个地方，应该是回答一串问题，还是拖一下？</p>
+  </div>
+  <p style="margin-bottom:12px">Lisa 团队参考了 IBM 1980 年提出的 Pictureworld 概念：你不直接「发送 email」，而是把文字放进虚拟信封，再投进发件箱。Lisa 最初并没有文件与文件夹，而是一个基于文本的归档程序，向用户问越来越具体的问题，直到弄清要在哪里、怎样创建、保存、移动或删除文件。用户试用后觉得自己在玩「二十个问题」游戏。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一个任务：把「季度报表」归到「财务」</b>。左边按提问一步步回答，右边把文档图标拖进文件夹（键盘：Tab 选中文档按 Enter，再选中文件夹按 Enter）。</div>
+    <div data-demo="twenty"></div>
+  </div>
+  <p style="margin:14px 0 12px">Bill Atkinson 和界面团队参考 Dataland 与 Pictureworld 做了替代方案，交给工程主管 Wayne Rosing；但「二十个问题」已经写进程序，发货期限又近，团队怕乔布斯知道后推迟整个计划，于是连夜两周秘密做出原型。乔布斯发现后看了演示，立刻爱上了「图标与文件夹」。它对效率帮助有限，却更受用户喜爱：「在某种意义上，屏幕变得真实了。界面开始隐形。」<sup class="c">[1]</sup></p>
+  <p style="margin-bottom:12px">Lisa 把办公桌隐喻推到了极限：用户不需要先打开一个 app 再写表格，而是从一本装着不同类型文档的「本子」上撕下一张纸，直接开始工作。</p>
+  <div class="fig">
+    <div class="cap"><b>以文档为中心 vs 以程序为中心</b>：选一台机器，点「下一步」，看新建一份文档要经过哪些步骤。</div>
+    <div data-demo="docs"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Lisa 的 Office System 里，程序叫「工具」（tools），用户不能直接启动工具，只能打开与它关联的文档；新建文档是从「信纸本」（stationery pad）上执行 Tear Off Stationery，撕下一份名为 Untitled 的新文档，工具也没有「退出」和「新建」命令。随附的七个工具是 LisaWrite、LisaCalc、LisaDraw、LisaGraph、LisaProject、LisaList、LisaTerminal。Macintosh 128K 走的是更常见的「先启动程序，再新建、存储文档」的路线，一次只能运行一个程序。上面 Mac 一栏的步骤是按这一模式写的示意。<sup class="c">[2][5][6]</sup></div>
+  <p style="margin-top:12px;font-size:14px;color:var(--muted)">原文还指出，办公桌隐喻受技术限制：Apple 想让 Lisa 像在桌上一边翻书一边记笔记那样多任务处理，这在当时突破了工程极限，也大幅推高了价格。原文配图里还能看到 Lisa 菜单中的 Apple 键，也就是后来 Command 键的前身。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="fail" data-title="成功的创造，失败的产品">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>成功的创造，失败的产品</h2>
+    <p class="lead">Lisa 留下了这么多东西，为什么还是卖不出去？</p>
+  </div>
+  <div class="quote">计算机历史博物馆的 Hansen Hsu：图形界面真正的突破点不是让虚拟世界看起来更熟悉，而是让人更容易把东西传回现实世界。搭配 PageMaker、PostScript 和激光打印机，桌面出版（Desktop Publishing，DTP）成为可能，图形界面才真正有了命令行界面做不到的功能。<sup class="c">[1]</sup></div>
+  <p style="margin:12px 0">Lisa 的目标客户是秘书和文员，可哪家公司愿意为他们买一台一万美元的机器？纸笔和打字机才是那时的主流。乔布斯因与高层的矛盾被迫离开 Lisa 项目后，加入 Macintosh，把它做成了「更便宜的 Lisa」。1984 年 Mac 发布，有人到 Apple 展台体验 Lisa 时，乔布斯会跑过来把客户「推」到 Macintosh 面前。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>你今天用过多少 Lisa 的遗产？</b>点一下你今天用过的，看看这台「失败品」离你有多近。</div>
+    <div data-demo="legacy"></div>
+  </div>
+</section>
+
+<section class="ch" id="cook" data-title="另一个 Cook">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>插曲：Lisa Professional 与另一个 Cook</h2>
+    <p class="lead">Apple 甩掉的 Lisa，怎么在一个经销商手里又活了一回？</p>
+  </div>
+  <p style="margin-bottom:12px">这段内容来自 The Verge 的纪录片《Apple's Secret Burial》。Bob Cook 在犹他州立大学读书时，看到「成为 Apple 经销商只需填写表格并寄回」的广告，成了 Apple II 经销商：他得先买六台 Apple II 才能开卖，花了九个月才卖完。后来他的 Sun Remarketing 想到卖「旧」电脑：先把 Apple 处理掉的 Apple III 全收了，还提供维修和技术热线。于是有一天，Apple 市场副总裁 Bill Campbell 打来电话，把剩下的 7000 台 Lisa 也扔给了他。<sup class="c">[1]</sup></p>
+  <div class="quote">「我们是独一无二的，当大家都在卖最前沿（leading-edge）的设备时，我们却在卖技术边缘（trailing-edge）的产品。」</div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>改造一台 Lisa</b>：这批 Lisa 有的坏了、有的缺零件、系统也过时了。Bob 砍了价收下，又投了几十万美元改造。逐项勾上他做的改动。</div>
+    <div data-demo="pro"></div>
+  </div>
+</section>
+
+<section class="ch" id="burial" data-title="最后的埋葬">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>最后的埋葬，一段未解之谜</h2>
+    <p class="lead">刚被改好、正卖得火的 Lisa，Apple 为什么要收回来碾碎？</p>
+  </div>
+  <p style="margin-bottom:12px">1988 年是 Bob 的高光时刻：仓库爆满，订购电话不断，Macworld 展台吸引了大批媒体。一年后，Apple 的律师打来电话，要动用合同条款收回那批 Lisa。当地报社同时接到匿名电话：垃圾场正在销毁几百甚至几千台全新的电脑。卡车把一箱箱电脑倒进大坑，推土机来回碾压。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>按比例看这次埋葬</b>：每个方块约 100 台。上面是 Apple 交给 Bob 的约 7000 台，点按钮把约 2700 台倒进填埋坑。</div>
+    <div data-demo="bury"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>三种说法</b>：点开看各方怎么解释这件事。</div>
+    <div data-demo="why"></div>
+  </div>
+  <p style="margin-top:12px">原文的判断是：80 年代末的 Apple 内外交困，高管内斗、产品线混乱，又面临 IBM 兼容机的挑战；Newton、Copland、Mac OS 兼容机这些自救尝试都没起作用。高管们不想承认输得如此彻底，只能把 Lisa 偷偷埋掉。1997 年乔布斯回归之后，才是我们熟悉的 iMac G3、iPod、iPhone 的 Apple。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="end" data-title="结语">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>两个 Cook，一台被埋的电脑</h2>
+    <p class="lead">Lisa 失败了，它的东西却没有被埋掉。</p>
+  </div>
+  <p>Lisa 改变计算机行业的梦想失败了，但它的继任者 Macintosh 成功了；上一位 Cook 与 Apple 再无交集，下一位 Cook 接掌了这艘巨船。采访最后，Bob 说如果有台时光机，他不确定还愿不愿意再做旧电脑生意，「我应该早早买一大笔 Apple 股票」。可关掉上帝视角，Lisa 被销毁的那天，谁又敢买一家狼狈不堪的公司的股票呢？<sup class="c">[1]</sup></p>
+  <div class="final">Apple Lisa 价格高昂、运行缓慢、也很短命；但四十年过去，你每点一次「OK」、每拖一次文件、每次在字符间单击开始打字，都还在用它留下的东西。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 YellowColr 在少数派发表的《<a href="https://sspai.com/post/98007">乔布斯的「私货」，Apple 希望你忘记的「垃圾」：Apple Lisa</a>》（2025-04-28）制作。原文插图均已用内联 SVG 和 JS 重绘为示意性线框，未引用外链图片；交互中的界面与对话为示意。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>原文：YellowColr，《乔布斯的「私货」，Apple 希望你忘记的「垃圾」：Apple Lisa》，少数派（2025-04-28），及其引用的 The Verge &amp; Computer History Museum「The 'OK' Computer」、The Verge 纪录片《Apple's Secret Burial》、Tech Insider 1989 年关于 Lisa 埋葬的报道、维基百科 Apple Lisa 条目（命名）。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Apple_Lisa">Apple Lisa</a>：发布与发货日期、Lisa 2 与 Macintosh XL、硬件配置、Office System 七个应用、约 2700 台埋于洛根。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Macintosh_128K">Macintosh 128K</a>：发布日期、价格与硬件配置。</li>
+    <li>Andy Hertzfeld, Folklore.org 早期 Apple 用户测试的轶事（收入 <i>Revolution in the Valley</i>, 2004）：「Do It」被读成「Dolt」，改为「OK」。</li>
+    <li><a href="https://guidebookgallery.org/books/applelisaauserfriendlyhandbook/chapter3">Apple Lisa: A User-Friendly Handbook, 第 3 章</a>（GUIdebook 收录）：Tear Off Stationery 与信纸本。</li>
+    <li>Matthias Müller-Prove, <a href="https://mprove.de/visionreality/text/3.1.8_lisa.html">Vision and Reality of Hypertext and Graphical User Interfaces, 3.1.8 Lisa</a>：Lisa 的「工具」不能直接启动、没有退出与新建命令。</li>
+    <li>U.S. Bureau of Labor Statistics, CPI-U（1982–84 = 100）年均值：用于价格换算。</li>
+    <li>The Verge, <a href="https://www.theverge.com/c/23570610/apple-lisa-computer-legacy">The 'OK' Computer</a>（2023）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const fmt = (x) => Math.round(x).toLocaleString('en-US');
+const keyAct = (node, fn) => node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+
+/* ---------- 01 时间线 ---------- */
+reg('timeline', (node) => {
+  const E = [
+    ['1959', 'Xerox 914', '施乐推出第一台具有商业价值的复印机，彻底改变复印行业，也让施乐近乎垄断。', 1],
+    ['1968', 'Engelbart 的 NLS 演示', '12 月初，斯坦福研究员 Douglas Engelbart 在旧金山演示 NLS（oN-Line System），计算机图形界面不再只是想象。', 1],
+    ['1976', 'Apple 成立', '4 月 1 日，乔布斯与沃兹尼亚克在车库里创办 Apple。', 1],
+    ['1977', 'Apple II', '与 Commodore PET 2001、TRS-80 并称「1977 Trinity」，整个系列约卖出 650 万台。', 1],
+    ['1979', '参观 PARC', '年底乔布斯在同事劝说下到访施乐 PARC，被图形用户界面震撼。', 1],
+    ['1981', 'Xerox Star', '施乐砍掉 Alto 第三代的研究资金，Star 工作站成为 Alto 的最后遗产。', 1],
+    ['1983', 'Lisa 发布', '1 月 19 日发布，定价 $9,995，6 月开始发货。（具体日期为本页补充）', 0],
+    ['1984', 'Macintosh 与 Lisa 2', '1 月，Macintosh 随「1984」超级碗广告发布，售价 $2,495；同月 Lisa 2 降价推出。同年 Apple III 停产。（价格与 Lisa 2 为本页补充）', 1],
+    ['1985', 'Macintosh XL', 'Lisa 2 改名 Macintosh XL 继续卖，随后整条产品线停产。', 0],
+    ['1988', 'Lisa Professional', 'Bob Cook 的 Sun Remarketing 把 Apple 甩给他的 Lisa 改造成 Lisa Professional，生意火爆。', 1],
+    ['1989', '埋葬', 'Apple 收回那批 Lisa，约 2700 台被埋进犹他州洛根市郊的垃圾填埋场。', 1],
+    ['1997', '乔布斯回归', '之后才有 iMac G3、iPod、iPhone，也就是我们熟悉的那个 Apple。', 1],
+    ['2023', 'Lisa 四十周年', 'The Verge 与计算机历史博物馆发表「The ‘OK’ Computer」：Lisa 价格高昂、运行缓慢、也很短命，但四十年后计算机仍建立在它的基础上。', 1],
+  ];
+  const bar = el('div', { class: 'yrs', role: 'tablist', 'aria-label': '年份' });
+  const card = el('div', { class: 'ev', 'aria-live': 'polite' });
+  const btns = E.map(([y, , , o], i) => {
+    const b = el('button', { class: 'yr' + (o ? '' : ' add'), type: 'button', onclick: () => show(i) }, y);
+    bar.append(b); return b;
+  });
+  let k = 0;
+  function show(i) {
+    k = i; btns.forEach((b, j) => b.classList.toggle('on', j === i));
+    const [y, t, d, o] = E[i];
+    card.innerHTML = '';
+    card.append(el('h3', {}, `${y} · ${t}`, el('span', { class: 'tag ' + (o ? 'orig' : 'sup') }, o ? '原文' : '本页补充')), el('p', {}, d));
+  }
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => show((k + E.length - 1) % E.length) }, '← 上一个');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => show((k + 1) % E.length) }, '下一个 →');
+  node.append(bar, card, el('div', { class: 'ctrl' }, prev, next));
+  show(10);
+});
+
+/* ---------- 01 名字 ---------- */
+reg('name', (node) => {
+  const big = el('div', { class: 'zoom', style: 'font-family:var(--font);font-size:clamp(28px,7vw,44px);letter-spacing:.2em' }, 'L · I · S · A');
+  const st = el('div', { class: 'status' });
+  let m = 0;
+  const S = [
+    ['L · I · S · A', '对外说法：<b>Local Integrated Software Architecture</b>（本地集成软件架构）的缩写，以撇清与他女儿 Lisa 的关系。'],
+    ['Lisa', '多年后对传记作者艾萨克森承认：「<b>很明显，它是用我女儿的名字命名的。</b>」'],
+  ];
+  const seg = el('div', { class: 'seg' });
+  const bs = ['当年的说法', '多年后的说法'].map((t, i) => { const b = el('button', { type: 'button', onclick: () => set(i) }, t); seg.append(b); return b; });
+  function set(i) { m = i; bs.forEach((b, j) => b.classList.toggle('on', j === i)); big.textContent = S[i][0]; big.style.letterSpacing = i ? '0' : '.2em'; st.innerHTML = S[i][1]; }
+  node.append(el('div', { class: 'ctrl' }, seg), big, st);
+  set(0);
+});
+
+/* ---------- 02 三条路线 ---------- */
+function miniScreen(kind) {
+  const r = svg('svg', { viewBox: '0 0 160 100', 'aria-hidden': 'true' });
+  r.append(svg('rect', { x: 4, y: 4, width: 152, height: 92, rx: 6, class: 'scr' }));
+  if (kind === 'cui') {
+    r.append(svg('rect', { x: 10, y: 10, width: 140, height: 80, rx: 2, fill: '#10161a' }));
+    ['SOS 1.1', ']CATALOG', ']RUN PAYROLL', ']_'].forEach((t, i) => r.append(svg('text', { x: 16, y: 26 + i * 14, class: 'term' }, t)));
+  } else {
+    const big = kind === 'lisa';
+    r.append(svg('rect', { x: 10, y: 10, width: 140, height: 9, class: 'scr-bg' }));
+    r.append(svg('rect', { x: 10, y: 10, width: 140, height: 80, class: 'ink-s' }));
+    for (let i = 0; i < (big ? 5 : 4); i++) r.append(svg('rect', { x: 16 + i * 22, y: 12.5, width: 14, height: 4, rx: 1, class: 'line-f' }));
+    r.append(svg('rect', { x: 18, y: 26, width: big ? 78 : 66, height: 50, class: 'scr' }));
+    r.append(svg('rect', { x: 18, y: 26, width: big ? 78 : 66, height: 7, class: 'soft-p' }));
+    for (let i = 0; i < 4; i++) r.append(svg('rect', { x: 23, y: 39 + i * 8, width: (big ? 60 : 48) - i * 7, height: 3, class: 'line-f' }));
+    if (big) { r.append(svg('rect', { x: 60, y: 44, width: 70, height: 40, class: 'scr' })); r.append(svg('rect', { x: 60, y: 44, width: 70, height: 7, class: 'soft-t' })); }
+    for (let i = 0; i < 3; i++) { r.append(svg('rect', { x: 134, y: 26 + i * 18, width: 10, height: 10, class: 'ink-s' })); }
+  }
+  return r;
+}
+reg('paths', (node) => {
+  const P = [
+    ['cui', 'Apple III', 'CUI · 新系统 SOS', '沿用命令行用户界面（CUI），搭载新的自研系统 SOS（Apple Sophisticated Operating System）。后来也成了失败品，1984 年停产，Apple 办公桌上剩下的那批被 Bob Cook 整批收走。'],
+    ['lisa', 'Apple Lisa', 'GUI · 高端 · 乔布斯主导', '采用图形用户界面（GUI），定位高端，由乔布斯主导研发。后来乔布斯因与高层的矛盾被迫离开这个项目。'],
+    ['mac', 'Macintosh', 'GUI · 相对低价 · 拉斯金发起', '同样采用 GUI，但定位相对较低，由杰夫 · 拉斯金（Jef Raskin）主导。他起初把它叫 Mackintosh，是他最爱吃的一种苹果，后因名称冲突改为 Macintosh。乔布斯离开 Lisa 后加入了这个项目。'],
+  ];
+  const wrap = el('div', { class: 'cards' });
+  const det = el('div', { class: 'detail', 'aria-live': 'polite' });
+  const cs = P.map(([k, n, s, d], i) => {
+    const c = el('button', { class: 'card', type: 'button', onclick: () => pick(i) }, miniScreen(k), el('b', {}, n), el('span', {}, s));
+    wrap.append(c); return c;
+  });
+  function pick(i) { cs.forEach((c, j) => c.classList.toggle('on', j === i)); det.innerHTML = `<b>${P[i][1]}</b>：${P[i][3]}`; }
+  node.append(wrap, det);
+  pick(1);
+});
+
+/* ---------- 02 PARC 三样东西 ---------- */
+reg('parc', (node) => {
+  const T = [
+    ['面向对象编程', 10, '「他们的确有给我演示这个，但我当时根本没看进去。」'],
+    ['网络计算机系统', 10, '「他们有一百多台 Alto，全部联网，可以使用电子邮件等等。但我也完全没注意到这个。」'],
+    ['图形用户界面', 100, '「我当时完全被他们展示的第一样东西震撼住了……我觉得那是我这辈子见过最棒的东西。」'],
+  ];
+  const box = el('div', { class: 'att' });
+  const st = el('div', { class: 'status' }, '点一样东西，看它占了乔布斯多少注意力（示意）。');
+  T.forEach(([n, a, q]) => {
+    const s = el('s');
+    const b = el('button', { type: 'button', onclick: () => { b.classList.add('on'); s.style.width = a + '%'; st.innerHTML = `<b>${n}</b>：${q}`; } }, el('b', {}, n), el('i', {}, s));
+    box.append(b);
+  });
+  node.append(box, st);
+});
+
+/* ---------- 03 配置对比 ---------- */
+reg('spec', (node) => {
+  const CPI = { 1983: 99.6, 1984: 103.9, 2024: 313.689 };
+  const M = [
+    { n: 'Lisa', y: 1983, price: 9995, ram: 1024, mhz: 5, w: 720, h: 364, inch: 12, fd: '2 × 871 KB（5.25 寸）', fdk: 1742, c: 'var(--p)' },
+    { n: 'Lisa 2', y: 1984, price: 3495, ram: 512, mhz: 5, w: 720, h: 364, inch: 12, fd: '1 × 400 KB（3.5 寸）', fdk: 400, c: 'var(--t)' },
+    { n: 'Macintosh 128K', y: 1984, price: 2495, ram: 128, mhz: 7.8336, w: 512, h: 342, inch: 9, fd: '1 × 400 KB（3.5 寸）', fdk: 400, c: 'var(--o)' },
+  ];
+  const KS = [['price', '价格'], ['ram', '内存'], ['mhz', '主频'], ['scr', '屏幕'], ['fd', '软盘']];
+  const seg = el('div', { class: 'seg', role: 'tablist' });
+  const chk = el('input', { type: 'checkbox' });
+  const chkL = el('label', { class: 'chk' }, chk, '换算成 2024 年美元');
+  const root = svg('svg', { viewBox: '0 0 600 230', role: 'img', 'aria-label': '三台机器的配置对比图', style: 'max-width:640px' });
+  const st = el('div', { class: 'status' });
+  let key = 'price';
+  const bs = KS.map(([k, t]) => { const b = el('button', { type: 'button', onclick: () => { key = k; draw(); } }, t); seg.append(b); return b; });
+  chk.addEventListener('change', draw);
+  function draw() {
+    bs.forEach((b, i) => b.classList.toggle('on', KS[i][0] === key));
+    chkL.style.visibility = key === 'price' ? 'visible' : 'hidden';
+    root.innerHTML = '';
+    root.setAttribute('viewBox', key === 'scr' ? '0 0 600 330' : '0 0 600 230');
+    if (key === 'scr') {
+      const s = 0.8, ox = 4, oy = 30;
+      const Ls = M[0], Mc = M[2];
+      root.append(svg('rect', { x: ox, y: oy, width: Ls.w * s, height: Ls.h * s, fill: 'none', style: 'stroke:' + Ls.c, 'stroke-width': 3 }));
+      root.append(svg('rect', { x: ox, y: oy, width: Mc.w * s, height: Mc.h * s, style: 'fill:var(--o-soft);stroke:' + Mc.c, 'stroke-width': 3, 'stroke-dasharray': '8 5' }));
+      root.append(svg('text', { x: ox + 14, y: oy + 34, class: 'lbl', style: 'font-size:22px;font-weight:700;fill:' + Mc.c }, 'Macintosh'));
+      root.append(svg('text', { x: ox + 14, y: oy + 62, class: 'lbl', style: 'font-size:18px' }, '512×342 · 9 寸'));
+      root.append(svg('text', { x: ox + Mc.w * s + 14, y: oy + 34, class: 'lbl', style: 'font-size:22px;font-weight:700;fill:' + Ls.c }, 'Lisa'));
+      root.append(svg('text', { x: ox + Mc.w * s + 14, y: oy + 62, class: 'lbl', style: 'font-size:18px' }, '720×364'));
+      root.append(svg('text', { x: ox + Mc.w * s + 14, y: oy + 86, class: 'lbl', style: 'font-size:18px' }, '12 寸'));
+      root.append(svg('text', { x: ox, y: oy - 10, class: 'lbl', style: 'font-size:17px' }, '按像素等比叠放，左上角对齐（Lisa 2 与 Lisa 同屏）'));
+      const a = 720 * 364, b = 512 * 342;
+      st.innerHTML = `Lisa 的像素数 ${fmt(a)}，Macintosh 128K ${fmt(b)}：Lisa 多出 <b>${((a / b - 1) * 100).toFixed(0)}%</b>，屏幕也大 3 寸。`;
+      return;
+    }
+    const real = key === 'price' && chk.checked;
+    const val = (m) => key === 'price' ? (real ? m.price * CPI[2024] / CPI[m.y] : m.price) : key === 'fd' ? m.fdk : m[key];
+    const lab = (m) => key === 'price' ? '$' + fmt(val(m)) : key === 'ram' ? (m.ram >= 1024 ? '1 MB' : m.ram + ' KB') : key === 'mhz' ? m.mhz.toFixed(m.mhz % 1 ? 2 : 0) + ' MHz' : m.fd;
+    const mx = Math.max(...M.map(val));
+    M.forEach((m, i) => {
+      const y = 22 + i * 66, w = Math.max(4, val(m) / mx * 420);
+      root.append(svg('text', { x: 0, y: y + 12, class: 'lbl big' }, `${m.n}（${m.y}）`));
+      root.append(svg('rect', { x: 0, y: y + 20, width: 580, height: 24, rx: 6, class: 'scr-bg' }));
+      const bar = svg('rect', { x: 0, y: y + 20, width: w, height: 24, rx: 6, style: 'fill:' + m.c });
+      root.append(bar);
+      const tx = w + 8 > 440 ? w - 8 : w + 8;
+      root.append(svg('text', { x: tx, y: y + 37, class: 'lbl', 'text-anchor': w + 8 > 440 ? 'end' : 'start', style: w + 8 > 440 ? 'fill:#fff;font-weight:600' : 'fill:var(--text)' }, lab(m)));
+    });
+    const L = M[0], C = M[2];
+    const msg = {
+      price: real ? `按 CPI 换算，Lisa 约合 2024 年的 <b>$${fmt(val(L))}</b>，Macintosh 约 $${fmt(val(C))}。Lisa 2 写的是入门价（$3,495 到 $5,495）。` : `Lisa 的价格是 Macintosh 的 <b>${(L.price / C.price).toFixed(1)} 倍</b>。Lisa 2 写的是入门价（$3,495 到 $5,495）。`,
+      ram: `Lisa 标配 1 MB，是 Macintosh 128K 的 <b>${1024 / 128} 倍</b>；Lisa 2 的低配降到 512 KB。多任务需要内存，这正是 Lisa 贵的一大原因。`,
+      mhz: `同一颗 Motorola 68000：Lisa 跑 5 MHz，Macintosh 约 7.83 MHz（访问显存时有效约 6 MHz）。贵的那台反而更慢。`,
+      fd: `Lisa 1 的两个 5.25 寸「Twiggy」软驱共约 1.7 MB，但以不可靠出名；Lisa 2 与 Macintosh 都换成一个 400 KB 的 3.5 寸软驱。`,
+    };
+    st.innerHTML = msg[key];
+  }
+  node.append(el('div', { class: 'ctrl' }, seg, chkL), root, st);
+  draw();
+});
+
+/* ---------- 04 Do It → OK ---------- */
+reg('doit', (node) => {
+  let label = 'Do It';
+  const okB = el('span', { class: 'b def' }, 'Do It');
+  const dlg = el('div', { class: 'dlg', role: 'img', 'aria-label': 'Lisa 风格的确认对话框（示意）' },
+    el('p', {}, '要把文档「季度报表」放进废纸篓吗？'),
+    el('div', { class: 'row' }, el('span', { class: 'b' }, 'Cancel'), okB));
+  const zoom = el('div', { class: 'zoom' });
+  const zt = el('span', {}, 'Do It');
+  zoom.append(zt, el('small', {}, '按钮文字放大'));
+  const glyph = el('div', { class: 'glyphs' }, el('span', {}, 'I', el('small', {}, '大写 i')), el('span', {}, 'l', el('small', {}, '小写 L')));
+  const rng = el('input', { type: 'range', min: '-8', max: '20', value: '12', step: '1', 'aria-label': '字距' });
+  const out = el('output', {}, '');
+  const seg = el('div', { class: 'seg' });
+  const L = ['Do It', 'Dolt', 'OK'];
+  const bs = L.map((t) => { const b = el('button', { type: 'button', onclick: () => { label = t; upd(); } }, t === 'Dolt' ? '对照：Dolt' : t); seg.append(b); return b; });
+  const st = el('div', { class: 'status' });
+  function upd() {
+    const ls = +rng.value / 100;
+    out.textContent = (ls >= 0 ? '+' : '') + ls.toFixed(2) + 'em';
+    bs.forEach((b, i) => b.classList.toggle('on', L[i] === label));
+    zt.textContent = label; okB.textContent = label === 'Dolt' ? 'Dolt' : label;
+    zt.style.letterSpacing = ls + 'em';
+    okB.style.letterSpacing = ls + 'em';
+    if (label === 'OK') st.innerHTML = '<b>OK</b>：两个字母，没有大写 I 和小写 l 的歧义。团队起初嫌它太口语，但用户不会再被「骂」。';
+    else if (label === 'Dolt') st.innerHTML = '这是「Dolt」（傻瓜）的拼写。把它和「Do It」在同样字距下来回切换对比，几乎分不出来。';
+    else if (ls <= 0.02) st.innerHTML = '字距收紧后，「Do」和「It」之间的空格几乎消失，大写 I 又和小写 l 长得一样：<b>读起来就是「Dolt」</b>。';
+    else st.innerHTML = '字距宽松时还能看出是「Do It」。继续往左拖，把字距收紧。';
+  }
+  rng.addEventListener('input', upd);
+  node.append(el('div', { class: 'dlg-wrap' }, dlg, el('div', {}, zoom, glyph)),
+    el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '字距', rng, out), seg), st);
+  upd();
+});
+
+/* ---------- 05 模态 vs 非模态 ---------- */
+reg('modes', (node) => {
+  const INIT = 'Lisa 项目周报：进度良好。';
+  let A, B;
+  const reset = () => {
+    A = { text: INIT, cur: INIT.length, sel: false, mode: 'cmd', log: '命令模式：e 全选，d 删除选中，i 进入插入，Esc 回命令模式。' };
+    B = { text: INIT, cur: INIT.length, log: '没有模式：按什么键，就在光标处插入什么字。' };
+  };
+  reset();
+  const mk = (title) => {
+    const mode = el('span', { class: 'mode' });
+    const txt = el('div', { class: 'txt' });
+    const log = el('div', { class: 'log' });
+    return { root: el('div', { class: 'pane' }, el('div', { class: 'bar' }, el('span', {}, title), mode), txt, log), mode, txt, log };
+  };
+  const pa = mk('Bravo 式（模态）'), pb = mk('Gypsy 式（非模态）');
+  const st = el('div', { class: 'status' });
+  const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  function render() {
+    pa.mode.textContent = A.mode === 'cmd' ? '命令模式' : '插入模式';
+    pa.mode.className = 'mode' + (A.mode === 'cmd' ? ' cmd' : '');
+    pa.txt.innerHTML = A.sel ? `<mark>${esc(A.text)}</mark>` : esc(A.text.slice(0, A.cur)) + '<span class="cur"></span>' + esc(A.text.slice(A.cur));
+    pa.log.textContent = A.log;
+    pb.mode.textContent = '始终可输入';
+    pb.mode.className = 'mode';
+    pb.txt.innerHTML = esc(B.text.slice(0, B.cur)) + '<span class="cur"></span>' + esc(B.text.slice(B.cur));
+    pb.log.textContent = B.log;
+    if (A.text.length <= 2 && B.text.length > INIT.length) st.innerHTML = '同样敲了「edit」：右边只是多了一个词，<b>左边的整篇周报没了</b>，只剩下插入模式里打出的最后一个字母。';
+    else st.textContent = '';
+  }
+  function press(k) {
+    if (k === 'Esc') { A.mode = 'cmd'; A.sel = false; A.log = 'Esc：回到命令模式。'; B.log = 'Esc：非模态编辑器里什么也不发生。'; render(); return; }
+    // 模态
+    if (A.mode === 'cmd') {
+      if (k === 'e') { A.sel = true; A.log = 'e → 全选（Everything）。'; }
+      else if (k === 'd') { if (A.sel) { A.text = ''; A.cur = 0; A.sel = false; A.log = 'd → 删除选中内容：整篇文档被删掉了！'; } else A.log = 'd → 没有选中内容，什么也不删。'; }
+      else if (k === 'i') { A.mode = 'ins'; A.sel = false; A.log = 'i → 进入插入模式。'; }
+      else A.log = `「${k}」在命令模式下不是命令，被忽略。`;
+    } else {
+      A.text = A.text.slice(0, A.cur) + k + A.text.slice(A.cur); A.cur++; A.log = `插入模式：输入「${k}」。`;
+    }
+    // 非模态
+    B.text = B.text.slice(0, B.cur) + k + B.text.slice(B.cur); B.cur++; B.log = `在光标处输入「${k}」。`;
+    render();
+  }
+  const keys = el('div', { class: 'keys' });
+  ['e', 'd', 'i', 't', 'x', 'Esc'].forEach((k) => keys.append(el('button', { class: 'key', type: 'button', onclick: () => press(k) }, k)));
+  const all = el('button', { class: 'btn primary', type: 'button', onclick: () => { ['e', 'd', 'i', 't'].forEach(press); } }, '一口气输入 edit');
+  const rs = el('button', { class: 'btn', type: 'button', onclick: () => { reset(); render(); } }, '重置');
+  node.append(el('div', { class: 'ed' }, pa.root, pb.root), el('div', { class: 'ctrl' }, keys), el('div', { class: 'ctrl' }, all, rs), st);
+  render();
+});
+
+/* ---------- 06 二十个问题 vs 拖拽 ---------- */
+reg('twenty', (node) => {
+  // 示意性的提问序列（原文只说「越来越具体的问题」，具体措辞为本页虚构）
+  const Q = [
+    ['你要处理一份已有的文档吗？', true],
+    ['是要移动它，而不是复制或删除它吗？', true],
+    ['这份文档的名字是「季度报表」吗？', true],
+    ['目标位置在磁盘 1 上吗？', true],
+    ['目标是某个分类，而不是废纸篓吗？', true],
+    ['分类是「人事」吗？', false],
+    ['分类是「行政」吗？', false],
+    ['分类是「财务」吗？', true],
+    ['移动后要保留原位置的副本吗？', false],
+    ['确定要执行吗？', true],
+  ];
+  let qi = 0, asked = 0, wrong = 0;
+  const qa = el('div', { class: 'qa' });
+  const q = el('div', { class: 'q' });
+  const hist = el('div', { class: 'hist' });
+  const cnt = el('div', { class: 'cnt' });
+  const yes = el('button', { class: 'btn', type: 'button', onclick: () => ans(true) }, '是');
+  const no = el('button', { class: 'btn', type: 'button', onclick: () => ans(false) }, '否');
+  qa.append(el('b', { style: 'font-size:13px' }, '文本式归档程序（示意）'), q, el('div', { class: 'ctrl', style: 'margin:0' }, yes, no), cnt, hist);
+  function ans(v) {
+    if (qi >= Q.length) return;
+    asked++;
+    const [t, right] = Q[qi];
+    hist.prepend(el('div', {}, `${asked}. ${t} → ${v ? '是' : '否'}`));
+    if (v === right) qi++; else { wrong++; qi = 0; hist.prepend(el('div', { style: 'color:var(--r)' }, '答得和你的意图不符，程序回到第一个问题重新问。')); }
+    drawQ();
+  }
+  function drawQ() {
+    if (qi >= Q.length) { q.textContent = '✓ 已归档到「财务」。'; yes.disabled = no.disabled = true; }
+    else q.textContent = `问题 ${qi + 1}：${Q[qi][0]}`;
+    cnt.textContent = `已回答 ${asked} 个问题` + (wrong ? `，其中 ${wrong} 次走错重来` : '');
+    sum();
+  }
+  // 右侧：拖拽
+  const S = svg('svg', { viewBox: '0 0 300 190', role: 'img', 'aria-label': '桌面：一个文档图标和三个文件夹', style: 'border:1.5px solid var(--ink);border-radius:6px;background:var(--surface);touch-action:none;user-select:none;-webkit-user-select:none' });
+  S.append(svg('rect', { x: 0, y: 0, width: 300, height: 14, class: 'scr-bg' }));
+  S.append(svg('text', { x: 8, y: 11, class: 'lbl', style: 'font-size:9px' }, '桌面（图标与文件夹）'));
+  const folders = [['人事', 150, 40], ['财务', 220, 40], ['行政', 185, 115]].map(([n, x, y]) => {
+    const g = svg('g', { class: 'folder', tabindex: '0', role: 'button', 'aria-label': '文件夹 ' + n, transform: `translate(${x},${y})` },
+      svg('path', { d: 'M0 8 h16 l5 -6 h23 v6 h12 v38 h-56 z', class: 'fold-body' }),
+      svg('text', { x: 28, y: 60, class: 'lbl mid', style: 'font-size:11px' }, n));
+    S.append(g); return { n, x, y, g };
+  });
+  const doc = svg('g', { class: 'dragdoc', tabindex: '0', role: 'button', 'aria-label': '文档 季度报表，可拖动' },
+    svg('path', { d: 'M0 0 h28 l10 10 v38 h-38 z', class: 'doc-body' }),
+    svg('path', { d: 'M28 0 v10 h10', class: 'ink-s' }),
+    svg('rect', { x: 6, y: 18, width: 24, height: 2.5, class: 'line-f' }), svg('rect', { x: 6, y: 25, width: 20, height: 2.5, class: 'line-f' }), svg('rect', { x: 6, y: 32, width: 24, height: 2.5, class: 'line-f' }),
+    svg('text', { x: 19, y: 62, class: 'lbl mid', style: 'font-size:11px' }, '季度报表'));
+  S.append(doc);
+  const home = { x: 40, y: 60 };
+  let pos = { ...home }, moves = 0, done = false, picked = false;
+  const place = () => doc.setAttribute('transform', `translate(${pos.x},${pos.y})`);
+  place();
+  const toSvg = (e) => { const p = S.createSVGPoint(); p.x = e.clientX; p.y = e.clientY; return p.matrixTransform(S.getScreenCTM().inverse()); };
+  let drag = null;
+  doc.addEventListener('pointerdown', (e) => { if (done) return; const p = toSvg(e); drag = { dx: p.x - pos.x, dy: p.y - pos.y }; doc.setPointerCapture(e.pointerId); e.preventDefault(); });
+  doc.addEventListener('pointermove', (e) => { if (!drag) return; const p = toSvg(e); pos = { x: Math.max(0, Math.min(262, p.x - drag.dx)), y: Math.max(16, Math.min(128, p.y - drag.dy)) }; place(); });
+  const drop = () => {
+    const cx = pos.x + 19, cy = pos.y + 24;
+    const f = folders.find((f) => cx > f.x - 6 && cx < f.x + 62 && cy > f.y - 6 && cy < f.y + 52);
+    moves++;
+    if (f && f.n === '财务') { done = true; pos = { x: f.x + 9, y: f.y + 2 }; place(); doc.style.opacity = '.35'; dstat.innerHTML = `✓ 拖了 <b>${moves}</b> 下，已放进「财务」。`; }
+    else if (f) { pos = { ...home }; place(); dstat.textContent = `放进了「${f.n}」，不对。拖回原处再试一次（已拖 ${moves} 下）。`; }
+    else dstat.textContent = `已拖 ${moves} 下。把它拖到「财务」文件夹上。`;
+    sum();
+  };
+  doc.addEventListener('pointerup', () => { if (!drag) return; drag = null; drop(); });
+  keyAct(doc, () => { if (done) return; picked = true; dstat.textContent = '已选中文档。用 Tab 移到目标文件夹，按 Enter 放下。'; });
+  folders.forEach((f) => keyAct(f.g, () => { if (!picked || done) return; pos = { x: f.x + 9, y: f.y + 2 }; drop(); }));
+  const dstat = el('div', { class: 'status', style: 'font-size:13px' }, '把「季度报表」拖到「财务」文件夹上。');
+  const st = el('div', { class: 'status' });
+  function sum() {
+    if (qi >= Q.length && done) st.innerHTML = `同一件事：回答了 <b>${asked}</b> 个问题，对比拖了 <b>${moves}</b> 下。效率差距未必大，但哪种更像在「办公桌」上做事，一眼可见。`;
+    else st.textContent = '两边都完成后，这里比较两种方式。';
+  }
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => {
+    qi = asked = wrong = 0; hist.innerHTML = ''; yes.disabled = no.disabled = false; drawQ();
+    pos = { ...home }; moves = 0; done = picked = false; doc.style.opacity = ''; place(); dstat.textContent = '把「季度报表」拖到「财务」文件夹上。'; sum();
+  } }, '重置两边');
+  node.append(el('div', { class: 'grid2' }, qa, el('div', {}, S, dstat)), el('div', { class: 'ctrl' }, reset), st);
+  drawQ();
+});
+
+/* ---------- 06 文档中心 vs 程序中心 ---------- */
+reg('docs', (node) => {
+  const FLOW = {
+    lisa: {
+      name: 'Lisa（以文档为中心）',
+      steps: [
+        ['在桌面上找到 LisaCalc 的「信纸本」', '桌面上放的是一本本不同类型的空白文档本，而不是程序。', 'pad'],
+        ['双击信纸本，撕下一张', 'Tear Off Stationery：得到一份名为 Untitled 的新表格，LisaCalc 在幕后自动启动。', 'tear'],
+        ['直接填数', '窗口里就是这张纸；系统持续保存，不必另存为，也没有「退出程序」这回事。', 'work'],
+        ['放到一边，去翻另一张', '把它搁在桌上（Set Aside），再打开另一份文档；多份文档可以同时摊在桌面上。', 'multi'],
+      ],
+    },
+    mac: {
+      name: 'Macintosh 128K（以程序为中心）',
+      steps: [
+        ['打开磁盘，找到应用程序图标', '先要知道「用哪个程序」来做这件事。', 'app'],
+        ['双击启动程序', '程序启动后，才有一份空白的 Untitled 文档。', 'launch'],
+        ['编辑文档', '在程序的窗口里工作。', 'work'],
+        ['文件 → 存储，在对话框里起名', '不存储就关掉，内容会丢。', 'save'],
+        ['退出程序，再去开另一个', '一次只运行一个程序；要换任务得先退出。', 'quit'],
+      ],
+    },
+  };
+  let mode = 'lisa', k = 0;
+  const seg = el('div', { class: 'seg' });
+  const bs = Object.keys(FLOW).map((m) => { const b = el('button', { type: 'button', onclick: () => { mode = m; k = 0; draw(); } }, m === 'lisa' ? 'Lisa' : 'Macintosh'); seg.append(b); return b; });
+  const S = svg('svg', { viewBox: '0 0 320 170', role: 'img', 'aria-label': '桌面线框示意' });
+  const list = el('div', { class: 'steps' });
+  const st = el('div', { class: 'status' });
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (k < FLOW[mode].steps.length) k++; draw(); } }, '下一步');
+  const rs = el('button', { class: 'btn', type: 'button', onclick: () => { k = 0; draw(); } }, '重置');
+  function scene(tag) {
+    S.innerHTML = '';
+    S.append(svg('rect', { x: 2, y: 2, width: 316, height: 166, rx: 4, class: 'scr' }));
+    S.append(svg('rect', { x: 2, y: 2, width: 316, height: 14, class: 'scr-bg' }));
+    S.append(svg('rect', { x: 2, y: 16, width: 316, height: 0.8, class: 'ink' }));
+    const lisa = mode === 'lisa';
+    S.append(svg('text', { x: 10, y: 12.5, class: 'lbl', style: 'font-size:9px' }, lisa ? '文件/打印   编辑   排版' : '文件   编辑   查看   特殊'));
+    const icon = (x, y, label, kind, hi) => {
+      const g = svg('g', { transform: `translate(${x},${y})` });
+      if (kind === 'pad') { for (let i = 2; i >= 0; i--) g.append(svg('rect', { x: i * 3, y: -i * 3, width: 26, height: 30, class: 'doc-body' })); g.append(svg('rect', { x: 0, y: 0, width: 26, height: 5, class: 'soft-t' })); }
+      else if (kind === 'app') { g.append(svg('path', { d: 'M13 0 L26 15 L13 30 L0 15 Z', class: 'doc-body' })); g.append(svg('circle', { cx: 13, cy: 15, r: 4, class: 'o-f' })); }
+      else { g.append(svg('path', { d: 'M0 0 h18 l8 8 v22 h-26 z', class: 'doc-body' })); }
+      if (hi) g.append(svg('rect', { x: -4, y: -9, width: 36, height: 43, rx: 4, class: 'p-s' }));
+      g.append(svg('text', { x: 13, y: 44, class: 'lbl mid', style: 'font-size:9px' }, label));
+      S.append(g);
+    };
+    const win = (x, y, w, h, title, soft) => {
+      S.append(svg('rect', { x, y, width: w, height: h, class: 'scr' }));
+      S.append(svg('rect', { x, y, width: w, height: 11, class: soft }));
+      S.append(svg('text', { x: x + w / 2, y: y + 8.5, class: 'lbl mid', style: 'font-size:8px' }, title));
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) S.append(svg('rect', { x: x + 6 + c * (w - 12) / 4, y: y + 16 + r * 11, width: (w - 12) / 4 - 2, height: 8, class: tag === 'work' || tag === 'multi' || tag === 'save' ? (r + c) % 3 ? 'line-f' : 'soft-p' : 'line-f' }));
+    };
+    if (lisa) {
+      icon(260, 30, 'LisaCalc 信纸本', 'pad', tag === 'pad');
+      icon(260, 95, 'LisaWrite 信纸本', 'pad', false);
+      if (tag !== 'pad') win(30, 30, 180, 80, 'Untitled（LisaCalc）', 'soft-t');
+      if (tag === 'tear') S.append(svg('path', { d: 'M255 45 C 230 50, 220 60, 212 70', class: 'p-s' }));
+      if (tag === 'multi') { win(120, 80, 150, 76, '会议纪要（LisaWrite）', 'soft-p'); }
+    } else {
+      icon(20, 32, 'MacWrite', 'app', tag === 'app' || tag === 'launch');
+      icon(70, 32, 'MacPaint', 'app', false);
+      if (tag !== 'app') win(60, 40, 200, 90, 'Untitled（MacWrite）', 'soft-o');
+      if (tag === 'save') { S.append(svg('rect', { x: 100, y: 70, width: 130, height: 50, class: 'scr', 'stroke-width': 2 })); S.append(svg('text', { x: 165, y: 88, class: 'lbl mid', style: 'font-size:9px' }, '存储文档为：')); S.append(svg('rect', { x: 115, y: 95, width: 100, height: 12, class: 'ink-s' })); }
+      if (tag === 'quit') { S.append(svg('rect', { x: 60, y: 40, width: 200, height: 90, class: 'scr-bg', opacity: '.85' })); S.append(svg('text', { x: 160, y: 90, class: 'lbl mid' }, '退出 MacWrite…')); }
+    }
+  }
+  function draw() {
+    bs.forEach((b, i) => b.classList.toggle('on', Object.keys(FLOW)[i] === mode));
+    const F = FLOW[mode];
+    list.innerHTML = '';
+    F.steps.forEach(([t, p], i) => list.append(el('div', { class: 'tl-step' + (i < k ? ' on' : '') }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, t), el('p', {}, p)))));
+    scene(k ? F.steps[k - 1][2] : (mode === 'lisa' ? 'pad' : 'app'));
+    next.disabled = k >= F.steps.length;
+    st.innerHTML = k >= F.steps.length
+      ? (mode === 'lisa' ? '共 <b>4</b> 步，从头到尾面对的都是「文档」，程序藏在幕后。' : '共 <b>5</b> 步，你得先想「用哪个程序」，再想文档；存储和退出都要自己记着。')
+      : `${F.name}：第 ${k} / ${F.steps.length} 步`;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg), el('div', { class: 'grid2' }, S, list), el('div', { class: 'ctrl' }, next, rs), st);
+  draw();
+});
+
+/* ---------- 07 遗产清单 ---------- */
+reg('legacy', (node) => {
+  const L = [
+    ['点了「OK」或「取消」', '「Cancel - OK」二选一，源自 Lisa 把 Do It 改成 OK。'],
+    ['在两个字之间单击后开始打字', 'Gypsy 的非模态编辑，Tesler 带到了 Lisa。'],
+    ['双击选中一个词', '同上，Gypsy 的特性之一。'],
+    ['剪切、拷贝、粘贴', '同上。'],
+    ['在文档里搜索一个词', '同上。'],
+    ['把文件拖进文件夹', 'Lisa 团队秘密做出的「图标与文件夹」方案。'],
+    ['按了 Command（⌘）快捷键', 'Lisa 菜单里的 Apple 键是它的前身。'],
+    ['所见即所得地排版、打印', 'Tesler 的「所见即所得」，以及后来的桌面出版。'],
+  ];
+  const box = el('div', { class: 'legacy' });
+  const meter = el('div', { class: 'meter' }, el('s'));
+  const st = el('div', { class: 'status' }, '一个都没点。');
+  let n = 0;
+  L.forEach(([t, d]) => {
+    const b = el('button', { type: 'button', 'aria-pressed': 'false', onclick: () => {
+      const on = b.classList.toggle('on'); b.setAttribute('aria-pressed', on); b.firstChild.textContent = on ? '✓' : ''; n += on ? 1 : -1;
+      meter.firstChild.style.width = (n / L.length * 100) + '%';
+      st.innerHTML = n ? `今天你已经用过 <b>${n} / ${L.length}</b> 项源自 Lisa 时代的设计。` : '一个都没点。';
+    } }, el('i', {}, ''), el('div', {}, el('b', {}, t), el('span', {}, d)));
+    box.append(b);
+  });
+  node.append(box, meter, st);
+});
+
+/* ---------- 08 Lisa Professional ---------- */
+reg('pro', (node) => {
+  const U = [
+    ['os', '模拟 Macintosh Plus 的新操作系统', '让这台 Lisa 能跑 Mac 的软件。'],
+    ['hd', '接口卡，可接更大容量的硬盘', '突破原来 5/10 MB 硬盘的限制。'],
+    ['fd', '升级到 800K 软驱', '和当时的 Mac 用同样的磁盘。'],
+    ['rom', '更换显示 ROM', '画面看起来更像 Mac。'],
+  ];
+  const on = {};
+  const S = svg('svg', { viewBox: '0 0 300 170', role: 'img', 'aria-label': 'Lisa 主机线框示意', style: 'max-width:420px' });
+  const list = el('div', { style: 'display:grid;gap:8px' });
+  const st = el('div', { class: 'status' });
+  U.forEach(([k, t, d]) => {
+    const c = el('input', { type: 'checkbox' });
+    c.addEventListener('change', () => { on[k] = c.checked; draw(); });
+    list.append(el('label', { class: 'chk', style: 'align-items:flex-start' }, c, el('span', {}, el('b', { style: 'color:var(--text)' }, t), el('br'), d)));
+  });
+  function draw() {
+    S.innerHTML = '';
+    // 主机外壳：左屏右软驱
+    S.append(svg('rect', { x: 20, y: 10, width: 260, height: 130, rx: 10, class: 'scr' }));
+    S.append(svg('rect', { x: 34, y: 22, width: 150, height: 96, rx: 4, class: 'scr-bg' }));
+    S.append(svg('rect', { x: 34, y: 22, width: 150, height: 96, rx: 4, class: 'ink-s' }));
+    // 屏幕内容
+    if (on.rom || on.os) {
+      S.append(svg('rect', { x: 38, y: 26, width: 142, height: 8, class: 'line-f' }));
+      S.append(svg('text', { x: 109, y: 33, class: 'lbl mid', style: 'font-size:7px' }, 'File  Edit  View  Special'));
+      S.append(svg('rect', { x: 60, y: 46, width: 90, height: 56, class: 'scr' }));
+      S.append(svg('text', { x: 105, y: 78, class: 'lbl mid', style: 'font-size:9px' }, on.os ? 'Mac 软件运行中' : '像 Mac 的画面'));
+    } else {
+      S.append(svg('text', { x: 109, y: 72, class: 'lbl mid', style: 'font-size:10px' }, '过时的 Lisa 系统'));
+    }
+    // 软驱
+    const fdLabel = on.fd ? '800K 3.5″' : '旧软驱';
+    S.append(svg('rect', { x: 200, y: 40, width: 66, height: 16, rx: 3, class: on.fd ? 'soft-t' : 'scr-bg', stroke: 'var(--ink)' }));
+    S.append(svg('text', { x: 233, y: 51.5, class: 'lbl mid', style: 'font-size:8.5px' }, fdLabel));
+    // 键盘
+    S.append(svg('rect', { x: 40, y: 146, width: 220, height: 18, rx: 4, class: 'scr' }));
+    // 外接硬盘
+    if (on.hd) {
+      S.append(svg('rect', { x: 200, y: 70, width: 66, height: 40, rx: 4, class: 'soft-o', stroke: 'var(--ink)' }));
+      S.append(svg('text', { x: 233, y: 88, class: 'lbl mid', style: 'font-size:8.5px' }, '接口卡'));
+      S.append(svg('text', { x: 233, y: 100, class: 'lbl mid', style: 'font-size:8.5px' }, '+ 大硬盘'));
+    }
+    const n = Object.values(on).filter(Boolean).length;
+    S.append(svg('text', { x: 150, y: 132, class: 'lbl mid big', style: n === 4 ? 'fill:var(--t)' : '' }, n === 4 ? 'Lisa Professional' : 'Apple Lisa（库存）'));
+    st.innerHTML = n === 4
+      ? '四项都做完：「你这不就是在做自己的产品线了吗？」「确实是，我们叫它 <b>Lisa Professional</b>。」1988 年，它让 Bob 的仓库爆满、订单不断。'
+      : `已完成 ${n} / 4 项改造。`;
+  }
+  node.append(el('div', { class: 'grid2' }, S, list), st);
+  draw();
+});
+
+/* ---------- 09 埋葬 ---------- */
+reg('bury', (node) => {
+  const COLS = 14, TOTAL = 70, BURY = 27, sz = 18, gap = 4;
+  const S = svg('svg', { viewBox: '0 0 330 300', role: 'img', 'aria-label': '7000 台 Lisa 中约 2700 台被埋的比例图', style: 'max-width:480px;margin:0 auto' });
+  // 坑
+  S.append(svg('path', { d: 'M10 200 L40 290 L290 290 L320 200 Z', class: 'soft-o', stroke: 'var(--o)', 'stroke-dasharray': '5 4' }));
+  S.append(svg('text', { x: 165, y: 214, class: 'lbl mid' }, '犹他州洛根市郊的填埋场'));
+  const boxes = [];
+  for (let i = 0; i < TOTAL; i++) {
+    const c = i % COLS, r = Math.floor(i / COLS);
+    const x = 10 + c * (sz + gap) + 3, y = 10 + r * (sz + gap);
+    const g = svg('g', { class: 'burybox' });
+    g.append(svg('rect', { x, y, width: sz, height: sz, rx: 3, class: i < BURY ? 'scr' : 'scr-bg', stroke: 'var(--ink)' }));
+    g.append(svg('rect', { x: x + 3, y: y + 3, width: sz - 9, height: sz - 9, rx: 1, class: i < BURY ? 'soft-p' : 'line-f' }));
+    S.append(g); boxes.push({ g, x, y });
+  }
+  const st = el('div', { class: 'status' }, '上面 70 格 ≈ 7000 台；深色描边的 27 格 ≈ 2700 台。');
+  let buried = false;
+  const btn = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    buried = !buried;
+    boxes.slice(0, BURY).forEach((b, i) => {
+      const tc = i % 11, tr = Math.floor(i / 11);
+      const tx = 50 + tc * 21 + (tr % 2) * 6, ty = 228 + tr * 18;
+      b.g.style.transitionDelay = RM ? '0s' : (i * 0.025) + 's';
+      b.g.style.transform = buried ? `translate(${tx - b.x}px,${ty - b.y}px) rotate(${(i * 37 % 20) - 10}deg)` : '';
+      b.g.style.transformBox = 'fill-box'; b.g.style.transformOrigin = 'center';
+    });
+    btn.textContent = buried ? '撤回' : '倒进填埋坑';
+    st.innerHTML = buried
+      ? `约 2700 台被碾碎埋掉，占 Apple 交给 Bob 那 7000 台的 <b>${Math.round(2700 / 7000 * 100)}%</b>。原文没有交代其余机器的去向。`
+      : '上面 70 格 ≈ 7000 台；深色描边的 27 格 ≈ 2700 台。';
+  } }, '倒进填埋坑');
+  node.append(S, el('div', { class: 'ctrl' }, btn), st);
+});
+
+reg('why', (node) => {
+  const W = [
+    ['Apple（1989 年，对《先驱日报》）', '「销毁 Lisa 对公司业务更有利」：不必再为这些电脑提供维修零件，也许还能申请税务减免。原文认为这显然只是应付媒体。'],
+    ['Bob Cook', '「我认为他们只是想彻底抹去这一段失败的历史，不想再让人想起这台失败的电脑。」'],
+    ['Apple（多年后，对 The Verge）', '拍《Apple’s Secret Burial》时 The Verge 去问原因，Apple 的回应只有一句：不予置评。'],
+  ];
+  const box = el('div', { class: 'why' });
+  const det = el('div', { class: 'detail', style: 'border-color:var(--r)' }, '点一种说法。');
+  const bs = W.map(([t, d], i) => { const b = el('button', { type: 'button', onclick: () => { bs.forEach((x, j) => x.classList.toggle('on', j === i)); det.innerHTML = `<b>${t}</b>：${d}`; } }, el('b', {}, t), el('small', {}, ['官方口径', '当事人', '至今'][i])); box.append(b); return b; });
+  node.append(box, det);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

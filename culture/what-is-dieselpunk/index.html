@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>什么是柴油朋克？</title>
+<meta name="description" content="柴油朋克是什么：一战前后的技术情绪曲线、蒸汽朋克/柴油朋克/赛博朋克对比、从真实历史到架空世界、故事骨架拼装、同一艘飞艇三种风格、六种美术风格示意海报与代表作品卡片。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选（本页未用） */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页追加语义色（三处成对） ===== */
+:root{--rust:#9a4a2a;--rust-soft:#f3dcd0;--steel:#5b6470;--steel-soft:#dfe2e6;--brass:#a67c1e;--brass-soft:#f2e4bf;--neon:#c42a9a;--neon-soft:#f6d6ee;--noir-bg:#1c1c1e;--noir-fg:#f2efe6;--noir-mid:#5a5852}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--rust:#d98060;--rust-soft:#45231a;--steel:#9aa4b0;--steel-soft:#262b33;--brass:#dcb45c;--brass-soft:#3e3214;--neon:#ff5fd2;--neon-soft:#45163a;--noir-bg:#08090b;--noir-fg:#e8e4d8;--noir-mid:#6e6b63}}
+:root[data-theme="dark"]{--rust:#d98060;--rust-soft:#45231a;--steel:#9aa4b0;--steel-soft:#262b33;--brass:#dcb45c;--brass-soft:#3e3214;--neon:#ff5fd2;--neon-soft:#45163a;--noir-bg:#08090b;--noir-fg:#e8e4d8;--noir-mid:#6e6b63}
+
+.hero-art{margin-top:22px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.hero-art svg{width:100%}
+.ship-drift{animation:drift 9s ease-in-out infinite alternate}
+@keyframes drift{from{transform:translateX(-14px)}to{transform:translateX(14px)}}
+.quote cite{display:block;font-style:normal;color:var(--muted);font-size:12.5px;margin-top:4px}
+ul.plain{margin:6px 0 0;padding-left:20px;font-size:14.5px}
+ul.plain li{margin:3px 0}
+
+/* 时代对比表 */
+table.cmp{border-collapse:collapse;width:100%;min-width:560px;font-size:13.5px}
+table.cmp th,table.cmp td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+table.cmp th[scope=row]{color:var(--muted);font-weight:600;white-space:nowrap;width:84px}
+table.cmp thead th{cursor:pointer;font-size:14px}
+table.cmp .on{background:var(--p-soft)}
+table.cmp thead th.on{color:var(--p)}
+
+/* 压力表 / 步骤 */
+.hist{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+@media (min-width:760px){.hist{grid-template-columns:220px 1fr}}
+.pair{display:grid;grid-template-columns:1fr;gap:6px}
+@media (min-width:560px){.pair{grid-template-columns:1fr 1fr}}
+.pair .box{border-radius:10px;padding:10px 12px;font-size:13.5px}
+.pair .real{background:var(--surface-2)}
+.pair .fic{background:var(--rust-soft)}
+.pair .box small{display:block;color:var(--muted);font-size:11.5px;margin-bottom:2px}
+
+/* 选择器网格 */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer;color:var(--text)}
+.chip.on{background:var(--rust);border-color:var(--rust);color:#fff}
+.gl{font-size:12px;color:var(--muted);margin-top:8px}
+.premise{margin-top:12px;padding:14px 16px;border-radius:10px;border-left:4px solid var(--rust);background:var(--surface-2);font-size:15px;min-height:3em}
+.premise b{color:var(--rust)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.tile{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:8px 6px 6px;cursor:pointer;text-align:center;font-size:12.5px;color:var(--text)}
+.tile svg{width:56px;height:56px;margin:0 auto 4px}
+.tile.on{border-color:var(--rust);background:var(--rust-soft)}
+.icon *{fill:none;stroke:var(--steel);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.icon .f{fill:var(--steel-soft)}
+.icon .a{stroke:var(--rust)}
+.icon .d{fill:var(--brass);stroke:none}
+
+.poster-wrap{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+@media (min-width:700px){.poster-wrap{grid-template-columns:280px 1fr}}
+.poster-wrap svg{max-width:280px;margin:0 auto;border-radius:6px;box-shadow:var(--shadow)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.card{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left;color:var(--text);font-size:14px}
+.card .y{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.card .k{display:inline-block;font-size:11px;border-radius:999px;padding:0 7px;margin-top:4px;background:var(--steel-soft);color:var(--steel)}
+.card.on{border-color:var(--rust);box-shadow:0 0 0 2px var(--rust-soft)}
+.card[hidden]{display:none}
+.detail{margin-top:12px;padding:12px 14px;border-radius:10px;background:var(--surface-2);font-size:14px;min-height:4em}
+.detail h3{font-size:16px;margin-bottom:4px}
+.focusable:focus-visible,.chip:focus-visible,.tile:focus-visible,.card:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){.ship-drift{animation:none}}
+@media (min-width:1024px){.toc-sheet,.toc-mask{display:none}}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">什么是柴油朋克</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">文化 · 亚文化 · 架空美学</div>
+  <h1>什么是柴油朋克？</h1>
+  <p class="sub">蒸汽朋克的飞艇是黄铜做的，柴油朋克的飞艇是铆钉钢板做的。差别不只在材质：一战之后，人们对机器的感情从憧憬变成了恐惧。这一页把一份原画师的设定笔记，拆成可以拖、可以点、可以拼的几块。</p>
+  <div class="thesis">柴油朋克是以约 1910–1950 年（两次世界大战与大萧条）为科技背景的架空题材：机器成为武器，基调悲观、冰冷、铁锈与血腥，设计上「功能大于形式，力量多于装饰」。<sup class="c">[1]</sup></div>
+  <div class="hero-art"><div data-demo="hero"></div></div>
+  <div class="authors"><span class="au"><i>攀</i>攀刀（原画设计师），知乎专栏《APAN呼叫地面》</span></div>
+  <p class="meta">原文：「什么是柴油朋克?」，攀刀，知乎专栏《APAN呼叫地面》（2020-11-26，版本号 V0.8.5）。原文是一份条目式设定笔记，本页按它的条目顺序展开，并加了几处标注为「本页补充」的核对、对比与作品说明。原文封面图来自 Jakub Rozalski，本页所有插图均为内联 SVG 示意重绘。</p>
+</header>
+
+<section class="ch" id="divide" data-title="一战：分水岭">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一战：「现代技术」从乐观走向悲观</h2>
+    <p class="lead">为什么蒸汽朋克明亮、柴油朋克灰暗？原文开篇引言给出的答案是：第一次世界大战。</p>
+  </div>
+  <div class="quote">一战是「现代技术」从乐观走向悲观的分水岭。因为工业的出现，「机器」和「武器」的结合使战争彻底脱离了「冒险」和「骑士」精神，也不再是各国比较、试探各自文明程度和传播先进技术的方式。走进工业化以后的战争变得更为恐怖，乐观的「蒸汽朋克」和悲观的「柴油朋克」一定程度上也是由纳粹主义和与反纳粹抗争的出现所引导的。<cite>—— 原文引作斯科特·维斯特费尔德（Scott Westerfeld）</cite></div>
+  <div class="fig">
+    <div class="cap"><b>技术情绪曲线（示意）</b>：拖动年份滑块或点曲线上的事件点，看一个时代对「机器」的感情。曲线高低是本页按史实走向画的<b>示意</b>，不是统计数据。背景色带标出蒸汽朋克与柴油朋克各自取材的年代。</div>
+    <div data-demo="mood"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：维斯特费尔德是小说《利维坦》（<i>Leviathan</i>，2009）的作者。英文维基「Dieselpunk」条目记录了他的原话：「对我来说，第一次世界大战是现代性从乐观转向悲观的分界点」（World War I is the dividing point where modernity goes from being optimistic to being pessimistic），他借此区分蒸汽朋克与柴油朋克；原文引言的后半段（关于纳粹主义的部分）本页未找到原始出处。曲线上 1851、1889、1903、1925 几个事件点为本页补充。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="what" data-title="是什么 · 从哪来">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>柴油朋克是什么，从哪来</h2>
+    <p class="lead">它和蒸汽朋克、赛博朋克是什么关系？原文给了两句话：一种架空科幻题材、一种次文化；这个词是 1980 年代赛博朋克的衍生。</p>
+  </div>
+  <ul class="plain">
+    <li>柴油朋克（dieselpunk）是一种架空科幻题材，一种次文化。</li>
+    <li>这个词来源于 1980 年代赛博朋克的衍生。</li>
+    <li>它在约 1910–1950 年的科技背景中衍生发展出架空世界。</li>
+  </ul>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>三种「朋克」的时代轴与特征对比</b>：点按钮或表头切换。上方时间轴标出每种题材取材的年代，下表并排对比。柴油朋克一列取自原文；蒸汽朋克、赛博朋克两列为本页补充。</div>
+    <div data-demo="eras"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「-punk」后缀确实来自赛博朋克：Bruce Bethke 1980 年写成、1983 年发表短篇《Cyberpunk》；K. W. Jeter 1987 年仿照它造出「steampunk」。「dieselpunk」一词据英文维基由游戏设计师 Lewis Pollak 于 2001 年提出，用来描述他的桌面角色扮演游戏《Children of the Sun》。所以准确地说，柴油朋克的<b>构词</b>沿袭 1980 年代的赛博朋克，而这个词本身晚至 2001 年才出现。维基同条目把它覆盖的年代写作「一战到 1950 年代」，核心是两次大战之间（1918–1939），与原文的 1910–1950 基本一致。<sup class="c">[2][4]</sup></div>
+</section>
+
+<section class="ch" id="history" data-title="真实历史 → 架空世界">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>特点：从真实历史长出来的架空世界</h2>
+    <p class="lead">柴油朋克的「悲观」从哪来？原文的回答是一段真实历史：繁荣、崩盘、失业、独裁、战争。作家和艺术家在这个基础上架空衍生。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「下一步」逐段走过原文列出的真实历史。左边的压力表是时代情绪；每一步右侧并排给出它在柴油朋克世界里对应的特点（特点条目都取自原文，两者的对应关系是本页的梳理）。</div>
+    <div data-demo="history"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>原文归纳的四个特点</b></div>
+    <ul class="plain">
+      <li>战争、硝烟，大量涉及战争和武器，背景多是资源消耗殆尽 / 混乱的世界。</li>
+      <li>狂热宗教。</li>
+      <li>功能大于形式，力量多于装饰。</li>
+      <li>强调控制。</li>
+    </ul>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文写的是「纳粹上台」由大萧条「间接导致」。时间上，纽约股市崩盘在 1929 年 10 月，希特勒于 1933 年 1 月出任德国总理。</div>
+</section>
+
+<section class="ch" id="tone" data-title="基调与故事元素">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>基调与故事元素：拼一个柴油朋克故事</h2>
+    <p class="lead">一个故事怎样才「像」柴油朋克？原文给了基调、三类角色和四组矛盾，组合起来就是一个故事的骨架。</p>
+  </div>
+  <div class="grid2">
+    <div class="fig">
+      <div class="cap"><b>基调</b>（原文）</div>
+      <ul class="plain">
+        <li>脏乱无序。</li>
+        <li>悲观，混乱，冰冷，肮脏，灰暗，铁锈和血腥，痛苦和折磨。</li>
+        <li>科技的发展，对自然的破坏，战争对民众的创伤。</li>
+      </ul>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>角色</b>（原文）</div>
+      <ul class="plain">
+        <li>极端独裁组织，依靠军事力量、信仰、能源等维持。</li>
+        <li>神秘宗教组织。</li>
+        <li>反抗极端组织的边缘人物。</li>
+      </ul>
+    </div>
+  </div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>故事骨架拼装台</b>：各选一个角色、一组矛盾、一个设计元素（都来自原文清单），下方生成一句故事前提，并用天平显示这组矛盾的两极。也可以点「随机」。生成的句子只是练习用的组合示例。</div>
+    <div data-demo="story"></div>
+  </div>
+</section>
+
+<section class="ch" id="design" data-title="设计元素">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>设计元素：同一艘飞艇，三种朋克</h2>
+    <p class="lead">「功能大于形式，力量多于装饰」画出来是什么样？把同一艘飞艇分别画成蒸汽、柴油、赛博朋克，差别一眼可见。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>风格切换</b>：轮廓不变，只换材质、装饰和附加物。柴油朋克版本按原文的设计元素来画：铆钉金属、管道、内燃机排烟、军用涂装。</div>
+    <div data-demo="airship"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>原文的七个设计元素</b>：点一个图标看它在柴油朋克里的作用，以及它呼应原文的哪条特点或矛盾。图标为本页示意。</div>
+    <div data-demo="elements"></div>
+  </div>
+</section>
+
+<section class="ch" id="art" data-title="美术风格">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>美术风格：六种画面语言</h2>
+    <p class="lead">柴油朋克的画面为什么一看就是「那个年代」？因为它借用的正是 1920–1940 年代的视觉媒介。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文列出六种美术风格。点一个，海报区用同一组城市与飞艇素材画出该风格的示意海报（本页重绘，非任何真实作品）。</div>
+    <div data-demo="poster"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「装饰艺术」（Art Deco）这一名称来自 1925 年巴黎「国际现代装饰与工业艺术博览会」，以对称、阶梯式轮廓、放射线和流线型为特征，正好与柴油朋克所取材的两次大战之间重叠。黑色电影（film noir）则主要指 1940–1950 年代好莱坞的犯罪片，高反差布光、百叶窗阴影是它的标志。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="works" data-title="代表作品">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>代表作品：影视、游戏与画家</h2>
+    <p class="lead">想看看柴油朋克长什么样，从哪里入手？原文列了六部电影、两款游戏、两位画家。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">按类别筛选，点卡片或上方时间轴的点查看说明。卡片标题与年份取自原文；每张卡片里的作品介绍、以及它对应原文哪条特点，为本页补充。</div>
+    <div data-demo="works"></div>
+  </div>
+  <div class="final">柴油朋克 = 两次大战之间的真实历史 + 架空：机器不再是冒险的玩具，而是武器和控制的工具；画面上铆钉、管道、钢板取代了黄铜与齿轮，装饰让位于力量。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据攀刀在知乎专栏《APAN呼叫地面》发表的<a href="https://zhuanlan.zhihu.com/p/312993411">《什么是柴油朋克?》</a>（2020-11-26）制作。原文中的插图均已用内联 SVG 和 JS 重绘，未引用外链图片。原文推荐的画家主页：<a href="https://www.artstation.com/burda">Alejandro Burdisio（Burda）</a>、<a href="https://www.artstation.com/jakubrozalski">Jakub Rozalski</a>。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>攀刀，《什么是柴油朋克?》，知乎专栏《APAN呼叫地面》（2020-11-26，V0.8.5）。</li>
+    <li>Wikipedia 条目 Dieselpunk：Lewis Pollak 2001 年为《Children of the Sun》造词；覆盖一战至 1950 年代；Scott Westerfeld 关于一战是乐观与悲观分界点的说法；作品列表（含 Iron Harvest）。</li>
+    <li>Wikipedia 条目 Iron Harvest、Scythe (board game)：KING Art Games 开发、2020 年发行，基于 Jakub Różalski 的「1920+」世界观。</li>
+    <li>Wikipedia 条目 Cyberpunk、Steampunk：Bruce Bethke 的短篇《Cyberpunk》（1980 年写成，1983 年发表）；K. W. Jeter 1987 年造词 steampunk。</li>
+    <li>Wikipedia 条目 Art Deco、Film noir：1925 年巴黎博览会与装饰艺术之名；黑色电影的年代与视觉特征。</li>
+    <li>Wikipedia 各片条目：Waterworld、Dark City、Sky Captain and the World of Tomorrow、The Book of Eli、Iron Sky、Mad Max: Fury Road、Wolfenstein（系列）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；技术情绪曲线、海报与图标均为示意，史实与作品细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const S = (vb, inner, attrs = {}) => { const r = svg('svg', Object.assign({ viewBox: vb, role: 'img' }, attrs)); r.innerHTML = inner; return r; };
+const f1 = (v) => v.toFixed(1);
+const gearD = (cx, cy, r, n, d) => {
+  let p = '';
+  for (let i = 0; i < n * 2; i++) {
+    const a0 = (i / (n * 2)) * Math.PI * 2, a1 = ((i + 1) / (n * 2)) * Math.PI * 2, rr = i % 2 ? r : r + d;
+    p += (i ? 'L' : 'M') + f1(cx + rr * Math.cos(a0)) + ' ' + f1(cy + rr * Math.sin(a0)) + 'L' + f1(cx + rr * Math.cos(a1)) + ' ' + f1(cy + rr * Math.sin(a1));
+  }
+  return p + 'Z';
+};
+const keyAct = (n, fn) => { n.addEventListener('click', fn); n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } }); };
+const segOf = (labels, on, cb) => {
+  const bs = labels.map((t, i) => el('button', { type: 'button', class: i === on ? 'on' : '' }, t));
+  bs.forEach((b, i) => b.addEventListener('click', () => { bs.forEach((x) => x.classList.remove('on')); b.classList.add('on'); cb(i); }));
+  return { node: el('div', { class: 'seg', role: 'group' }, ...bs), set(i) { bs.forEach((x, j) => x.classList.toggle('on', j === i)); } };
+};
+/* 天际线（阶梯式装饰艺术楼群） */
+const skyline = (y, fill, op = 1) => {
+  const bs = [[0, 60, 70], [55, 40, 110], [90, 50, 80], [135, 36, 150], [165, 46, 95], [205, 40, 125], [240, 60, 75]];
+  return bs.map(([x, w, h]) => `<path d="M${x} ${y}V${y - h + 14}H${x + 6}V${y - h + 6}H${x + 12}V${y - h}H${x + w - 12}V${y - h + 6}H${x + w - 6}V${y - h + 14}H${x + w}V${y}Z" fill="${fill}" opacity="${op}"/>`).join('');
+};
+/* 飞艇轮廓 */
+const shipShape = (fill, stroke, extra = '') => `<path d="M-128 -18L-150 -46L-118 -40L-100 -24Z M-128 18L-150 46L-118 40L-100 24Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+<ellipse cx="0" cy="0" rx="130" ry="36" fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
+<path d="M-30 34H40L32 52H-22Z" fill="${fill}" stroke="${stroke}" stroke-width="2"/>${extra}`;
+
+/* ---------- 标题插图 ---------- */
+reg('hero', (node) => {
+  let rays = '';
+  for (let i = 0; i <= 24; i++) { const a = Math.PI + (i / 24) * Math.PI; rays += `<line x1="400" y1="290" x2="${f1(400 + 520 * Math.cos(a))}" y2="${f1(290 + 520 * Math.sin(a))}"/>`; }
+  let seams = '';
+  for (let x = -100; x <= 100; x += 25) { const h = 36 * Math.sqrt(1 - (x / 130) ** 2); seams += `<line x1="${x}" y1="${f1(-h)}" x2="${x}" y2="${f1(h)}"/>`; for (let yy = -h + 8; yy < h - 4; yy += 10) seams += `<circle cx="${x + 3}" cy="${f1(yy)}" r="1.4" fill="var(--brass)" stroke="none"/>`; }
+  node.append(S('0 0 800 290', `
+  <rect width="800" height="290" fill="var(--brass-soft)" opacity=".55"/>
+  <g stroke="var(--brass)" stroke-width="1.4" opacity=".45">${rays}</g>
+  <g fill="none" stroke="var(--brass)" stroke-width="2" opacity=".7"><circle cx="400" cy="290" r="70"/><circle cx="400" cy="290" r="100"/></g>
+  <g transform="translate(240 0)">${skyline(290, 'var(--steel)', .9)}</g>
+  <path d="M380 290V110H388V90H396V40H404V90H412V110H420V290Z" fill="var(--ink)" opacity=".85"/>
+  <g transform="translate(-10 0)">${skyline(290, 'var(--steel)', .55)}</g>
+  <g transform="translate(560 0)">${skyline(290, 'var(--steel)', .55)}</g>
+  <g fill="none" stroke="var(--rust)" stroke-width="3"><path d="${gearD(90, 248, 46, 12, 9)}"/><circle cx="90" cy="248" r="16"/><path d="${gearD(160, 200, 26, 9, 7)}"/><circle cx="160" cy="200" r="8"/></g>
+  <g class="ship-drift"><g transform="translate(560 92)">
+    <g fill="var(--noir-bg)" opacity=".35"><circle cx="-150" cy="40" r="9"/><circle cx="-172" cy="34" r="12"/><circle cx="-198" cy="26" r="15"/></g>
+    ${shipShape('var(--steel)', 'var(--ink)')}
+    <g stroke="var(--ink)" stroke-width="1" opacity=".55">${seams}</g>
+    <path d="M70 -14H118M76 0H126M70 14H118" stroke="var(--rust)" stroke-width="4"/>
+    <line x1="-40" y1="44" x2="-60" y2="44" stroke="var(--ink)" stroke-width="3"/>
+  </g></g>`, { 'aria-label': '装饰艺术放射线背景前的阶梯式楼群、齿轮与一艘铆钉钢板飞艇' }));
+});
+
+/* ---------- 01 技术情绪曲线 ---------- */
+reg('mood', (node) => {
+  const Y0 = 1840, Y1 = 1960, L = 46, R = 664, T = 24, B = 222;
+  const X = (y) => L + (y - Y0) / (Y1 - Y0) * (R - L), Yv = (v) => B - v / 100 * (B - T);
+  const pts = [[1840, 55], [1851, 70], [1870, 72], [1889, 82], [1900, 86], [1910, 84], [1914, 40], [1916, 18], [1918, 14], [1922, 40], [1925, 58], [1928, 62], [1929, 30], [1932, 14], [1936, 18], [1939, 10], [1942, 6], [1945, 8], [1950, 30], [1960, 48]];
+  const val = (y) => { for (let i = 1; i < pts.length; i++) if (y <= pts[i][0]) { const [a, va] = pts[i - 1], [b, vb] = pts[i]; return va + (vb - va) * (y - a) / (b - a); } return pts.at(-1)[1]; };
+  const ev = [
+    [1851, '伦敦万国博览会「水晶宫」', '工业成就被当作文明的展品向全世界展示。', '补充'],
+    [1889, '巴黎世博会，埃菲尔铁塔落成', '钢铁结构成为进步的象征。', '补充'],
+    [1903, '莱特兄弟首次动力飞行', '机器让人飞上天，冒险精神的顶点。', '补充'],
+    [1914, '第一次世界大战爆发', '原文：「机器」和「武器」的结合使战争脱离了「冒险」和「骑士」精神。', '原文'],
+    [1918, '一战结束', '战后短暂复苏，进入「咆哮的二十年代」。', '补充'],
+    [1925, '巴黎装饰艺术博览会', '装饰艺术（Art Deco）得名，柴油朋克美术风格的来源之一。', '补充'],
+    [1929, '股市崩盘，大萧条开始', '原文：股市崩盘、经济崩溃，美国发生大萧条（1929–1933）。', '原文'],
+    [1933, '纳粹上台', '原文：世界范围内大量失业，间接导致纳粹上台。', '原文'],
+    [1939, '第二次世界大战爆发', '原文：科技大量投入战场而非改善民生，机器成为武器。', '原文'],
+    [1945, '二战结束', '原文所说柴油朋克取材时期（一战到二战结束）的终点。', '原文'],
+  ];
+  let d = `M${f1(X(pts[0][0]))} ${f1(Yv(pts[0][1]))}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1x = X(p1[0]) + (X(p2[0]) - X(p0[0])) / 6, c1y = Yv(p1[1]) + (Yv(p2[1]) - Yv(p0[1])) / 6;
+    const c2x = X(p2[0]) - (X(p3[0]) - X(p1[0])) / 6, c2y = Yv(p2[1]) - (Yv(p3[1]) - Yv(p1[1])) / 6;
+    d += `C${f1(c1x)} ${f1(c1y)} ${f1(c2x)} ${f1(c2y)} ${f1(X(p2[0]))} ${f1(Yv(p2[1]))}`;
+  }
+  let ticks = '';
+  for (let y = 1840; y <= 1960; y += 20) ticks += `<line x1="${f1(X(y))}" y1="${B}" x2="${f1(X(y))}" y2="${B + 5}" stroke="var(--muted)"/><text class="lbl mid" x="${f1(X(y))}" y="${B + 19}">${y}</text>`;
+  const root = S('0 0 680 250', `
+    <rect x="${f1(X(1840))}" y="${T}" width="${f1(X(1914) - X(1840))}" height="${B - T}" fill="var(--brass-soft)"/>
+    <rect x="${f1(X(1914))}" y="${T}" width="${f1(X(1950) - X(1914))}" height="${B - T}" fill="var(--rust-soft)"/>
+    <text class="lbl" x="${f1(X(1842))}" y="${T + 16}" fill="var(--brass)" style="fill:var(--brass);font-weight:600">蒸汽朋克取材</text>
+    <text class="lbl" x="${f1(X(1916))}" y="${T + 16}" style="fill:var(--rust);font-weight:600">柴油朋克取材</text>
+    <line x1="${L}" y1="${B}" x2="${R}" y2="${B}" stroke="var(--line)"/>
+    ${ticks}
+    <text class="lbl" x="4" y="${T + 34}">乐观</text><text class="lbl" x="4" y="${B - 4}">悲观</text>
+    <path d="${d}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>
+    <line id="mk" y1="${T}" y2="${B}" stroke="var(--p)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <circle id="md" r="6" fill="var(--p)" stroke="var(--surface)" stroke-width="2"/>
+    <g id="evs"></g>`, { 'aria-label': '1840 到 1960 年的技术情绪示意曲线，1914 年骤降', style: 'min-width:560px' });
+  const g = root.querySelector('#evs');
+  const dots = ev.map(([y, t], i) => {
+    const c = svg('g', { class: 'focusable', tabindex: '0', role: 'button', 'aria-label': y + ' ' + t, style: 'cursor:pointer' },
+      svg('circle', { cx: f1(X(y)), cy: f1(Yv(val(y))), r: 9, fill: 'transparent' }),
+      svg('circle', { cx: f1(X(y)), cy: f1(Yv(val(y))), r: 4.5, fill: ev[i][3] === '原文' ? 'var(--rust)' : 'var(--surface)', stroke: 'var(--rust)', 'stroke-width': 2 }));
+    keyAct(c, () => { input.value = y; upd(); });
+    g.append(c); return c;
+  });
+  const out = el('output', {}, '1900');
+  const input = el('input', { type: 'range', min: Y0, max: Y1, value: 1900, step: 1, 'aria-label': '年份' });
+  const status = el('div', { class: 'status' });
+  const level = (v) => v > 75 ? '高涨的技术乐观' : v > 55 ? '乐观' : v > 30 ? '动摇' : v > 15 ? '悲观' : '绝望';
+  const upd = () => {
+    const y = +input.value, v = val(y); out.textContent = y;
+    root.querySelector('#mk').setAttribute('x1', f1(X(y))); root.querySelector('#mk').setAttribute('x2', f1(X(y)));
+    root.querySelector('#md').setAttribute('cx', f1(X(y))); root.querySelector('#md').setAttribute('cy', f1(Yv(v)));
+    const band = y < 1914 ? '蒸汽朋克取材的年代' : y <= 1950 ? '柴油朋克取材的年代' : '战后';
+    const near = ev.reduce((a, e) => Math.abs(e[0] - y) < Math.abs(a[0] - y) ? e : a);
+    let s = `<b>${y} 年</b> · ${band} · 情绪：<b>${level(v)}</b>`;
+    if (Math.abs(near[0] - y) <= 3) s += `<br>${near[0]} ${near[1]}：${near[2]} <span class="tag">${near[3]}</span>`;
+    status.innerHTML = s;
+  };
+  input.addEventListener('input', upd); upd();
+  node.append(el('div', { class: 'scrollx' }, root), el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '年份', input, out)), status,
+    el('div', { class: 'gl' }, '实心点 = 原文提到的事件；空心点 = 本页补充的事件。'));
+});
+
+/* ---------- 02 三种朋克对比 ---------- */
+reg('eras', (node) => {
+  const names = ['蒸汽朋克', '柴油朋克', '赛博朋克'];
+  const cols = ['var(--brass)', 'var(--rust)', 'var(--neon)'];
+  const rows = [
+    ['取材年代', '19 世纪维多利亚时代、工业革命', '约 1910–1950：两次世界大战与大萧条', '1980 年代想象中的近未来'],
+    ['核心技术', '蒸汽机、发条、齿轮', '柴油内燃机、粗糙钢铁造物（机甲、武器）', '计算机网络、义体、人工智能'],
+    ['材质', '黄铜、木头、皮革', '铆钉金属、管道、粗糙钢铁', '霓虹、塑料、芯片、玻璃幕墙'],
+    ['基调', '乐观、冒险、浪漫', '悲观、混乱、冰冷、肮脏、铁锈和血腥', '高科技、低生活，反乌托邦'],
+    ['权力', '帝国、发明家、探险家', '极端独裁组织、神秘宗教组织', '跨国巨型企业'],
+    ['典型意象', '飞艇、怀表、护目镜', '浮空艇、一二战军装、倒塌的建筑', '雨夜霓虹、黑客、电子人'],
+    ['美术参照', '维多利亚插画、铜版画', '通俗杂志封面、黑色电影、装饰艺术、招贴画', '霓虹都市夜景'],
+    ['命名（补充）', '1987，K. W. Jeter', '2001，Lewis Pollak', '1980 写成 / 1983 发表，Bruce Bethke'],
+  ];
+  const bands = [[1830, 1914], [1910, 1950], [2020, 2080]];
+  const X = (y) => 20 + (y - 1800) / 300 * 640;
+  let ticks = '';
+  for (let y = 1800; y <= 2100; y += 50) ticks += `<line x1="${f1(X(y))}" y1="60" x2="${f1(X(y))}" y2="65" stroke="var(--muted)"/><text class="lbl mid" x="${f1(X(y))}" y="80">${y}</text>`;
+  const tl = S('0 0 680 92', `<line x1="20" y1="60" x2="660" y2="60" stroke="var(--line)" stroke-width="2"/>${ticks}
+    ${bands.map(([a, b], i) => `<g data-b="${i}"><rect x="${f1(X(a))}" y="${30 - i * 0}" width="${f1(X(b) - X(a))}" height="24" rx="6" fill="${cols[i]}"/><text class="lbl mid" x="${f1((X(a) + X(b)) / 2)}" y="${22}" style="fill:${cols[i]};font-weight:600">${names[i]}</text></g>`).join('')}
+    <g data-b="2"><line x1="${f1(X(1983))}" y1="42" x2="${f1(X(2020))}" y2="42" stroke="var(--neon)" stroke-dasharray="3 3"/><circle cx="${f1(X(1983))}" cy="42" r="4" fill="var(--neon)"/></g>`,
+    { 'aria-label': '1800 到 2100 年的时间轴，标出三种朋克取材的年代', style: 'min-width:520px' });
+  const table = el('table', { class: 'cmp' });
+  const head = el('tr', {}, el('th', {}, ''), ...names.map((n, i) => el('th', { scope: 'col', tabindex: '0' }, n)));
+  table.append(el('thead', {}, head), el('tbody', {}, ...rows.map((r) => el('tr', {}, el('th', { scope: 'row' }, r[0]), ...r.slice(1).map((c) => el('td', {}, c))))));
+  const descs = [
+    '蒸汽朋克回望 19 世纪：机器还是冒险和炫技的玩具，黄铜齿轮代表对进步的信心。',
+    '柴油朋克落在一战到二战之间：原文强调机器成为武器、世界充斥着疯狂和死亡，所以基调转向悲观、冰冷和控制。',
+    '赛博朋克想象的是未来：计算机与巨型企业取代了国家机器，「高科技、低生活」。柴油朋克这个词的「-punk」就是沿用它。',
+  ];
+  const status = el('div', { class: 'status' });
+  const pick = (i) => {
+    seg.set(i);
+    table.querySelectorAll('tr').forEach((tr) => [...tr.children].forEach((c, j) => c.classList.toggle('on', j === i + 1)));
+    tl.querySelectorAll('[data-b]').forEach((g) => { g.style.opacity = +g.dataset.b === i ? 1 : .3; });
+    status.innerHTML = `<b>${names[i]}</b>：${descs[i]}`;
+  };
+  const seg = segOf(names, 1, pick);
+  [...head.children].slice(1).forEach((th, i) => keyAct(th, () => pick(i)));
+  node.append(el('div', { class: 'ctrl' }, seg.node), el('div', { class: 'scrollx' }, tl), el('div', { class: 'scrollx', style: 'margin-top:8px' }, table), status);
+  pick(1);
+});
+
+/* ---------- 03 历史步进 + 压力表 ---------- */
+reg('history', (node) => {
+  const steps = [
+    ['工业革命后的繁荣', '经历了工业革命，享受了科技带来的便利，民众生活水平提高，这个时间氛围乐观积极。', '起点：仍是蒸汽朋克式的乐观。柴油朋克的故事往往从这份乐观破灭之后讲起。', 10],
+    ['1929 股市崩盘', '股市崩盘，经济崩溃，美国发生大萧条（1929–1933）。', '脏乱无序、灰暗：衰败的城市与匮乏的资源成为底色。', 42],
+    ['失业与独裁', '世界范围内大量失业，改变了社会状况，间接导致纳粹上台。', '极端独裁组织（依靠军事力量、信仰、能源维持）、狂热宗教、强调控制。', 66],
+    ['机器成为武器', '第一次世界大战到二战结束期间，科技大量投入战场而非改善民生的制造业，机器成为武器。', '战争、硝烟、大量涉及武器；功能大于形式，力量多于装饰。', 84],
+    ['疯狂与死亡', '连年的战争让普通民众生活在危险和贫困中，社会规则遭到遗弃，世界充斥着疯狂和死亡。', '资源消耗殆尽 / 混乱的世界；战争对民众的创伤；脆弱肉体与坚硬机械的冲突。', 97],
+  ];
+  const arcs = [['var(--t)', 0, 25], ['var(--y)', 25, 50], ['var(--o)', 50, 75], ['var(--r)', 75, 100]].map(([c, a, b]) => {
+    const p = (v) => { const ang = Math.PI + v / 100 * Math.PI; return [110 + 80 * Math.cos(ang), 120 + 80 * Math.sin(ang)]; };
+    const [x0, y0] = p(a), [x1, y1] = p(b);
+    return `<path d="M${f1(x0)} ${f1(y0)}A80 80 0 0 1 ${f1(x1)} ${f1(y1)}" fill="none" stroke="${c}" stroke-width="14"/>`;
+  }).join('');
+  let rivets = '';
+  for (let i = 0; i <= 8; i++) { const a = Math.PI + i / 8 * Math.PI; rivets += `<circle cx="${f1(110 + 100 * Math.cos(a))}" cy="${f1(120 + 100 * Math.sin(a))}" r="2.2" fill="var(--steel)"/>`; }
+  const gauge = S('0 0 220 160', `<path d="M2 120A108 108 0 0 1 218 120V154H2Z" fill="var(--steel-soft)" stroke="var(--steel)" stroke-width="2"/>${rivets}
+    ${arcs}<text class="lbl" x="22" y="140">乐观</text><text class="lbl" x="168" y="140">悲观</text>
+    <g id="nd" style="transition:transform .7s cubic-bezier(.3,1.6,.5,1);transform-origin:110px 120px"><line x1="110" y1="120" x2="110" y2="52" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/></g>
+    <circle cx="110" cy="120" r="9" fill="var(--rust)"/>`, { 'aria-label': '时代情绪压力表', style: 'max-width:220px;margin:0 auto' });
+  const items = steps.map(([t], i) => el('div', { class: 'tl-step' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, t))));
+  const real = el('div', { class: 'box real' }), fic = el('div', { class: 'box fic' });
+  const status = el('div', { class: 'status' });
+  let k = 0;
+  const show = () => {
+    const [t, r, f, v] = steps[k];
+    items.forEach((x, i) => x.classList.toggle('on', i <= k));
+    gauge.querySelector('#nd').style.transform = `rotate(${-90 + v / 100 * 180}deg)`;
+    real.innerHTML = `<small>真实历史（原文）</small>${r}`;
+    fic.innerHTML = `<small>对应的柴油朋克特点（原文条目，本页对照）</small>${f}`;
+    status.innerHTML = `第 <b>${k + 1}</b> / ${steps.length} 段：${t}`;
+    prev.disabled = k === 0; next.disabled = k === steps.length - 1;
+  };
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => { if (k > 0) { k--; show(); } } }, '上一步');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (k < steps.length - 1) { k++; show(); } } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { k = 0; show(); } }, '重置');
+  node.append(el('div', { class: 'hist' }, gauge, el('div', {}, el('div', { class: 'steps' }, ...items))),
+    el('div', { class: 'pair', style: 'margin-top:12px' }, real, fic), el('div', { class: 'ctrl' }, prev, next, reset), status);
+  show();
+});
+
+/* ---------- 04 故事骨架拼装台 ---------- */
+reg('story', (node) => {
+  const roles = [['极端独裁组织', '一个靠军队、信仰和燃料配给维持统治的极端独裁组织正在扩张', 14], ['神秘宗教组织', '一个神秘宗教组织在暗处操纵着信徒和工厂', 9], ['反抗的边缘人物', '一个被体制抛弃的边缘人决定反抗极端组织', -6]];
+  const cons = [['反战', '战争 / 暴力'], ['自由意志', '极端独裁'], ['脆弱肉体', '坚硬机械'], ['理性', '迷信']];
+  const els = [['柴油内燃机', '轰鸣着喷出黑烟的柴油内燃机'], ['一二战军装', '整齐列队的一二战式军装'], ['各种管道', '纵横交错、滴着油的管道'], ['铆钉金属', '布满铆钉的钢板墙'], ['粗糙钢铁造物', '笨重的钢铁机甲'], ['浮空艇', '遮天蔽日的浮空艇'], ['倒塌的建筑', '炮火后倒塌的建筑']];
+  const sets = ['燃料即将耗尽的工业城', '战火未熄的边境要塞', '被浮空艇封锁的首都'];
+  const st = { r: 0, c: 1, e: 5 };
+  const mk = (arr, key, lab) => {
+    const cs = arr.map((a, i) => { const b = el('button', { type: 'button', class: 'chip' }, lab(a)); b.addEventListener('click', () => { st[key] = i; render(); }); return b; });
+    return { cs, node: el('div', { class: 'chips' }, ...cs) };
+  };
+  const R = mk(roles, 'r', (a) => a[0]), C = mk(cons, 'c', (a) => a[0] + ' × ' + a[1]), E = mk(els, 'e', (a) => a[0]);
+  const bal = S('0 0 320 152', `<path d="M160 44L140 132H180Z" fill="var(--steel)"/><rect x="110" y="128" width="100" height="8" rx="3" fill="var(--steel)"/>
+    <g id="beam" style="transition:transform .6s ease;transform-origin:160px 44px">
+      <line x1="40" y1="44" x2="280" y2="44" stroke="var(--ink)" stroke-width="5" stroke-linecap="round"/>
+      <line x1="50" y1="44" x2="50" y2="80" stroke="var(--muted)"/><line x1="270" y1="44" x2="270" y2="80" stroke="var(--muted)"/>
+      <path d="M14 80H86L76 96H24Z" fill="var(--t-soft)" stroke="var(--t)" stroke-width="2"/>
+      <path d="M234 80H306L296 96H244Z" fill="var(--rust-soft)" stroke="var(--rust)" stroke-width="2"/>
+      <text id="la" class="lbl mid" x="50" y="114" style="fill:var(--t);font-weight:600"></text>
+      <text id="lb" class="lbl mid" x="270" y="114" style="fill:var(--rust);font-weight:600"></text>
+    </g><circle cx="160" cy="44" r="6" fill="var(--rust)"/>`, { 'aria-label': '矛盾天平', style: 'max-width:340px;margin:8px auto 0' });
+  const out = el('div', { class: 'premise', 'aria-live': 'polite' });
+  const tilt = el('div', { class: 'gl', style: 'text-align:center' });
+  function render() {
+    [[R, 'r'], [C, 'c'], [E, 'e']].forEach(([g, k]) => g.cs.forEach((b, i) => b.classList.toggle('on', i === st[k])));
+    const [rn, rp, deg] = roles[st.r], [a, b] = cons[st.c], [, ep] = els[st.e];
+    bal.querySelector('#la').textContent = a; bal.querySelector('#lb').textContent = b;
+    bal.querySelector('#beam').style.transform = `rotate(${deg}deg)`;
+    tilt.textContent = deg > 0 ? `天平倒向「${b}」：${rn}是这股力量的化身。` : `天平被拉回「${a}」一侧：${rn}是故事里反抗的支点。`;
+    out.innerHTML = `在${sets[(st.r + st.c + st.e) % 3]}，${rp}。故事的核心张力是<b>${a}</b>与<b>${b}</b>的冲突；标志性画面：${ep}。`;
+  }
+  const rnd = el('button', { class: 'btn', type: 'button', onclick: () => { st.r = Math.floor(Math.random() * 3); st.c = Math.floor(Math.random() * 4); st.e = Math.floor(Math.random() * 7); render(); } }, '随机');
+  node.append(el('div', { class: 'gl' }, '角色'), R.node, el('div', { class: 'gl' }, '矛盾点'), C.node, el('div', { class: 'gl' }, '设计元素'), E.node,
+    bal, tilt, out, el('div', { class: 'ctrl' }, rnd));
+  render();
+});
+
+/* ---------- 05 同一艘飞艇三种朋克 ---------- */
+reg('airship', (node) => {
+  const seams = (col, rivet) => { let s = ''; for (let x = -100; x <= 100; x += 20) { const h = 36 * Math.sqrt(1 - (x / 130) ** 2); s += `<line x1="${x}" y1="${f1(-h)}" x2="${x}" y2="${f1(h)}" stroke="${col}" stroke-width="1"/>`; if (rivet) for (let y = -h + 6; y < h - 3; y += 7) s += `<circle cx="${x + 3}" cy="${f1(y)}" r="1.3" fill="${rivet}"/>`; } return s; };
+  const draw = {
+    steam: () => `
+      <g fill="var(--noir-fg)" opacity=".85" stroke="var(--line)" stroke-width="1.5"><circle cx="-160" cy="-10" r="14"/><circle cx="-182" cy="-22" r="18"/><circle cx="-210" cy="-36" r="22"/></g>
+      ${shipShape('var(--brass-soft)', 'var(--brass)')}
+      <g fill="none" stroke="var(--brass)" stroke-width="1.6"><path d="M-120 -10Q0 -30 120 -10M-120 10Q0 30 120 10"/>
+      <path d="M-60 0c0-10 14-10 14 0s-10 8-10 2M60 0c0-10-14-10-14 0s10 8 10 2"/><circle cx="0" cy="0" r="12"/><path d="M-12 0H12M0 -12V12"/></g>
+      <path d="M-30 34H40Q36 60 5 60Q-26 60 -30 34Z" fill="var(--rust-soft)" stroke="var(--rust)" stroke-width="2"/>
+      <path d="${gearD(5, 47, 7, 8, 3)}" fill="var(--brass)"/>
+      <g transform="translate(-138 0)"><ellipse cx="0" cy="0" rx="4" ry="22" fill="var(--rust)"/><ellipse cx="0" cy="0" rx="22" ry="4" fill="var(--rust)" opacity=".8"/></g>
+      <path d="M128 -4L150 -14V0Z" fill="var(--r)"/><line x1="128" y1="-4" x2="128" y2="-30" stroke="var(--brass)" stroke-width="2"/><path d="M128 -30L148 -24L128 -18Z" fill="var(--r)"/>`,
+    diesel: () => `
+      <g fill="var(--noir-bg)" opacity=".45"><circle cx="-60" cy="72" r="8"/><circle cx="-84" cy="66" r="11"/><circle cx="-112" cy="58" r="14"/><circle cx="-146" cy="48" r="17"/></g>
+      ${shipShape('var(--steel)', 'var(--ink)')}
+      ${seams('var(--ink)', 'var(--brass)')}
+      <path d="M72 -16H120M78 -4H128M78 8H128M72 20H120" stroke="var(--rust)" stroke-width="4"/>
+      <circle cx="-60" cy="-2" r="13" fill="var(--rust)" stroke="var(--ink)" stroke-width="2"/><path d="M-80 -2H-40" stroke="var(--ink)" stroke-width="3"/>
+      <path d="M-30 34H40L32 52H-22Z" fill="var(--ink)" opacity=".75"/>
+      <g stroke="var(--ink)" stroke-width="4" stroke-linecap="round"><line x1="34" y1="48" x2="60" y2="56"/><line x1="34" y1="44" x2="62" y2="48"/></g>
+      <path d="M-90 30V40H-40V44" fill="none" stroke="var(--ink)" stroke-width="3"/><path d="M-70 36V64" stroke="var(--ink)" stroke-width="5"/>
+      <rect x="-80" y="26" width="22" height="12" fill="var(--steel)" stroke="var(--ink)" stroke-width="2"/>
+      <g transform="translate(-138 0)"><rect x="-3" y="-24" width="6" height="48" fill="var(--ink)"/></g>`,
+    cyber: () => `
+      <path d="M40 60L-40 210H120Z" fill="var(--t)" opacity=".14"/>
+      ${shipShape('var(--noir-bg)', 'var(--neon)')}
+      <g stroke="var(--t)" stroke-width="1.5" fill="none"><path d="M-120 0H120"/><path d="M-110 -16Q0 -26 110 -16"/></g>
+      <rect x="-60" y="-20" width="110" height="34" rx="3" fill="var(--neon-soft)" stroke="var(--neon)" stroke-width="2"/>
+      <text x="-5" y="3" text-anchor="middle" style="font-size:15px;font-weight:700;fill:var(--neon);font-family:var(--mono)">24H · 广告位</text>
+      <g fill="var(--t)"><circle cx="-100" cy="-26" r="2.5"/><circle cx="100" cy="-26" r="2.5"/><circle cx="5" cy="54" r="3"/></g>
+      <g transform="translate(170 -40)" stroke="var(--neon)" stroke-width="2" fill="none"><rect x="-10" y="-4" width="20" height="8"/><path d="M-18 -8H-4M4 -8H18"/></g>`,
+  };
+  const texts = [
+    '<b>蒸汽朋克</b>：黄铜、木头、手工纹饰，白色蒸汽，旗帜飘扬。机器是冒险和炫技的玩具，装饰本身就是重点。',
+    '<b>柴油朋克</b>：铆钉钢板、裸露的管道和排气管、黑色烟尘、炮管与军用涂装，装饰艺术的速度线只剩几道。原文：「功能大于形式，力量多于装饰」。',
+    '<b>赛博朋克</b>：外形可以照旧，重点变成屏幕、霓虹、广告和监控光束；控制的手段从武力换成了信息。',
+  ];
+  const keys = ['steam', 'diesel', 'cyber'];
+  const root = S('0 0 640 300', '', { 'aria-label': '同一艘飞艇的三种风格' });
+  const status = el('div', { class: 'status' });
+  const pick = (i) => {
+    const bg = i === 2 ? 'var(--noir-bg)' : i === 1 ? 'var(--steel-soft)' : 'var(--brass-soft)';
+    const ground = i === 2 ? skyline(300, 'var(--noir-mid)', .9) : skyline(300, i === 1 ? 'var(--steel)' : 'var(--brass)', .35);
+    root.innerHTML = `<rect width="640" height="300" fill="${bg}"/><g transform="translate(0 0)">${ground}</g><g transform="translate(360 0)">${ground}</g><g transform="translate(340 120)">${draw[keys[i]]()}</g>`;
+    status.innerHTML = texts[i];
+  };
+  const seg = segOf(['蒸汽朋克', '柴油朋克', '赛博朋克'], 1, pick);
+  node.append(el('div', { class: 'ctrl' }, seg.node), root, status);
+  pick(1);
+});
+
+/* ---------- 05b 七个设计元素 ---------- */
+reg('elements', (node) => {
+  const icons = [
+    ['柴油内燃机', '<rect class="f" x="10" y="26" width="40" height="26" rx="2"/><rect x="14" y="14" width="8" height="12"/><rect x="26" y="14" width="8" height="12"/><rect x="38" y="14" width="8" height="12"/><path class="a" d="M50 32H58V12"/><circle class="d" cx="58" cy="7" r="4"/><circle class="d" cx="20" cy="39" r="2"/><circle class="d" cx="30" cy="39" r="2"/><circle class="d" cx="40" cy="39" r="2"/>',
+      '柴油朋克名字的来源。原文说独裁组织靠「军事力量、信仰、能源」维持，能源本身就是权力。'],
+    ['一二战军装', '<path class="f" d="M10 34Q32 14 54 34Z"/><path d="M6 36Q32 42 58 36"/><path class="a" d="M16 34H48"/><circle class="d" cx="32" cy="26" r="4"/><path d="M22 44V56M42 44V56M22 56H42"/>',
+      '军服、大檐帽、整齐的列队：战争和「强调控制」最直接的视觉符号。'],
+    ['各种管道', '<path class="f" d="M6 18H34Q44 18 44 28V58H34V30Q34 28 32 28H6Z"/><path class="a" d="M14 14V32M30 58H48M40 14V20"/><path d="M52 10V40"/><circle class="d" cx="52" cy="44" r="3"/>',
+      '管道不包起来，直接露在外面：「功能大于形式」最直观的画法。'],
+    ['铆钉的金属', '<rect class="f" x="8" y="10" width="48" height="44" rx="2"/><path d="M32 10V54M8 32H56"/>' + [14, 26, 38, 50].map((x) => [16, 26, 38, 48].map((y) => `<circle class="d" cx="${x}" cy="${y}" r="2.2"/>`).join('')).join(''),
+      '厚、粗、可以大量制造。铆钉是「力量多于装饰」的纹理。'],
+    ['粗糙钢铁造物', '<rect class="f" x="18" y="12" width="28" height="22" rx="3"/><path d="M24 34L16 56M40 34L48 56M12 56H22M42 56H52"/><path class="a" d="M46 20H60"/><rect x="26" y="18" width="10" height="5"/>',
+      '机甲、武器、机器人：机器成为武器。对应原文的矛盾「脆弱肉体与坚硬机械」。'],
+    ['浮空艇', '<ellipse class="f" cx="34" cy="26" rx="24" ry="10"/><path d="M10 26L4 16M10 26L4 36"/><path d="M28 36H42L40 42H30Z"/><path class="a" d="M46 22H54M46 28H54"/>',
+      '蒸汽朋克也有飞艇，但到这里多半是装甲化、军用的。空中的控制与压迫。'],
+    ['倒塌的建筑', '<path class="f" d="M8 56V20H20V12H30V30L36 24V56Z"/><path d="M40 56L48 40L56 56"/><path class="a" d="M22 20L18 32L26 38L22 48"/><circle class="d" cx="46" cy="52" r="2"/><circle class="d" cx="52" cy="50" r="2"/>',
+      '「战争对民众的创伤」与「资源消耗殆尽的混乱世界」，用废墟一张图说完。'],
+  ];
+  const status = el('div', { class: 'status' }, '点一个图标。');
+  const tiles = icons.map(([n, ic, t], i) => {
+    const b = el('button', { type: 'button', class: 'tile' }, S('0 0 64 64', ic, { class: 'icon', 'aria-hidden': 'true' }), n);
+    b.addEventListener('click', () => { tiles.forEach((x) => x.classList.remove('on')); b.classList.add('on'); status.innerHTML = `<b>${n}</b>：${t} <span class="tag">关联为本页梳理</span>`; });
+    return b;
+  });
+  node.append(el('div', { class: 'tiles' }, ...tiles), status);
+});
+
+/* ---------- 06 美术风格海报 ---------- */
+reg('poster', (node) => {
+  const W = 280, H = 380;
+  const ship = (x, y, s, fill, stroke, r = 0) => `<g transform="translate(${x} ${y}) rotate(${r}) scale(${s})">${shipShape(fill, stroke)}</g>`;
+  const styles = [
+    ['欧美通俗杂志封面', () => {
+      let rays = ''; for (let i = 0; i < 14; i++) { const a = -Math.PI + i / 14 * Math.PI; rays += `<path d="M230 300L${f1(230 + 500 * Math.cos(a))} ${f1(300 + 500 * Math.sin(a))}L${f1(230 + 500 * Math.cos(a + .1))} ${f1(300 + 500 * Math.sin(a + .1))}Z"/>`; }
+      return `<rect width="${W}" height="${H}" fill="var(--y-soft)"/><g fill="var(--o)" opacity=".35">${rays}</g>
+      <g transform="translate(0 70)">${skyline(310, 'var(--p)', .7)}</g>${ship(150, 190, .9, 'var(--steel)', 'var(--ink)', -14)}
+      <rect width="${W}" height="64" fill="var(--r)"/><text x="${W / 2}" y="44" text-anchor="middle" style="font-size:32px;font-weight:900;fill:#fff;letter-spacing:4px">惊奇故事</text>
+      <circle cx="40" cy="340" r="24" fill="var(--y)"/><text x="40" y="346" text-anchor="middle" style="font-size:16px;font-weight:800;fill:var(--ink)">10¢</text>`;
+    }, '1920–1940 年代美国的廉价纸浆杂志（pulp）封面：饱和的色块、夸张的透视、俯冲的飞行器和醒目的大标题，追求一眼抓住人。'],
+    ['黑色电影', () => {
+      let blinds = ''; for (let i = 0; i < 8; i++) blinds += `<path d="M${-40 + i * 34} 0L${-10 + i * 34} 0L${150 + i * 34} ${H}L${120 + i * 34} ${H}Z"/>`;
+      return `<rect width="${W}" height="${H}" fill="var(--noir-bg)"/><g fill="var(--noir-fg)" opacity=".16">${blinds}</g>
+      <g transform="translate(0 30)">${skyline(350, 'var(--noir-mid)', .8)}</g>${ship(160, 80, .55, 'var(--noir-mid)', 'var(--noir-mid)')}
+      <g fill="var(--noir-bg)" stroke="var(--noir-fg)" stroke-width="1" stroke-opacity=".45"><path d="M78 380L90 306Q128 286 166 306L178 380Z"/><path d="M118 272V292H138V272Z"/><circle cx="128" cy="264" r="15"/><rect x="113" y="230" width="30" height="22" rx="3"/><ellipse cx="128" cy="252" rx="30" ry="5"/></g>
+      <text x="22" y="40" style="font-size:26px;font-weight:700;fill:var(--noir-fg);letter-spacing:8px">夜 城</text>`;
+    }, '高反差的黑白布光、百叶窗投下的条状阴影、戴礼帽的剪影。柴油朋克借它表达原文所说的冰冷、灰暗与不安。'],
+    ['装饰艺术', () => {
+      let rays = ''; for (let i = 0; i <= 18; i++) { const a = Math.PI + i / 18 * Math.PI; rays += `<line x1="140" y1="300" x2="${f1(140 + 300 * Math.cos(a))}" y2="${f1(300 + 300 * Math.sin(a))}"/>`; }
+      return `<rect width="${W}" height="${H}" fill="var(--brass-soft)"/><g stroke="var(--brass)" stroke-width="1.5" opacity=".7">${rays}</g>
+      <path d="M110 380V170H120V140H130V90H136V60H144V90H150V140H160V170H170V380Z" fill="var(--steel)"/>
+      <path d="M128 380V100M140 380V70M152 380V100" stroke="var(--brass)" stroke-width="1.5"/>
+      <path d="M50 380V230H62V210H80V380ZM200 380V210H218V230H230V380Z" fill="var(--steel)" opacity=".75"/>
+      ${ship(140, 52, .38, 'var(--steel)', 'var(--brass)')}
+      <rect x="8" y="8" width="${W - 16}" height="${H - 16}" fill="none" stroke="var(--brass)" stroke-width="2"/><rect x="14" y="14" width="${W - 28}" height="${H - 28}" fill="none" stroke="var(--brass)" stroke-width="1"/>
+      <rect x="20" y="326" width="${W - 40}" height="34" fill="var(--brass-soft)" stroke="var(--brass)" stroke-width="1.5"/><text x="${W / 2}" y="349" text-anchor="middle" style="font-size:16px;font-weight:700;fill:var(--ink);letter-spacing:6px">明日之城 · 1925</text>`;
+    }, '对称构图、阶梯式摩天楼、放射线与金色细线。它是两次大战之间对「机器时代」的礼赞，柴油朋克用它画城市与建筑。'],
+    ['招贴画', () => {
+      return `<rect width="${W}" height="${H}" fill="var(--rust-soft)"/><path d="M0 250L${W} 90V${H}H0Z" fill="var(--r)"/>
+      <path d="${gearD(190, 200, 70, 14, 14)}" fill="var(--ink)" opacity=".85"/><circle cx="190" cy="200" r="30" fill="var(--r)"/>
+      ${ship(90, 120, .42, 'var(--ink)', 'var(--ink)', -12)}${ship(150, 80, .3, 'var(--ink)', 'var(--ink)', -12)}${ship(210, 56, .22, 'var(--ink)', 'var(--ink)', -12)}
+      <text x="20" y="330" style="font-size:30px;font-weight:900;fill:#fff;letter-spacing:2px">钢铁·秩序</text><text x="20" y="362" style="font-size:18px;font-weight:700;fill:#fff;letter-spacing:6px">力 量 属 于 机 器</text>`;
+    }, '大面积平涂、斜向构图、粗体口号、成队的机器。战时宣传招贴的语言，正好服务于原文的「强调控制」和「极端独裁组织」。'],
+    ['广告画', () => {
+      let speed = ''; for (let i = 0; i < 5; i++) speed += `<line x1="10" y1="${150 + i * 14}" x2="${90 - i * 10}" y2="${150 + i * 14}"/>`;
+      return `<rect width="${W}" height="${H}" fill="var(--t-soft)"/><circle cx="210" cy="90" r="50" fill="var(--y)" opacity=".7"/>
+      <g stroke="var(--t)" stroke-width="4" stroke-linecap="round">${speed}</g>
+      <path d="M90 140H230Q262 140 262 172Q262 204 230 204H90Z" fill="var(--steel)" stroke="var(--ink)" stroke-width="2"/>
+      <path d="M100 160H240M100 172H246M100 184H240" stroke="var(--rust)" stroke-width="3"/><circle cx="120" cy="212" r="10" fill="var(--ink)"/><circle cx="220" cy="212" r="10" fill="var(--ink)"/>
+      <rect x="0" y="244" width="${W}" height="4" fill="var(--t)"/>
+      <text x="${W / 2}" y="292" text-anchor="middle" style="font-size:26px;font-weight:900;fill:var(--ink)">新型柴油引擎</text>
+      <text x="${W / 2}" y="324" text-anchor="middle" style="font-size:16px;fill:var(--t);font-weight:700;letter-spacing:4px">更快 · 更远 · 更有力</text>`;
+    }, '流线型的车头、速度线、明亮的太阳和乐观的口号。这是商品广告的笑脸，放进柴油朋克的世界里，常被用作反讽：广告越光鲜，现实越破败。'],
+    ['写实粗犷', () => {
+      let hatch = ''; for (let i = 0; i < 26; i++) hatch += `<line x1="${i * 12 - 30}" y1="${H}" x2="${i * 12}" y2="290"/>`;
+      return `<rect width="${W}" height="${H}" fill="var(--surface-2)"/><rect y="0" width="${W}" height="260" fill="var(--steel-soft)"/>
+      <g opacity=".55"><rect x="150" y="120" width="70" height="56" rx="6" fill="var(--steel)"/><path d="M160 176L130 290M210 176L246 290M170 176L176 290" stroke="var(--steel)" stroke-width="8"/><path d="M220 140H262" stroke="var(--steel)" stroke-width="6"/></g>
+      <rect y="255" width="${W}" height="${H - 255}" fill="var(--y-soft)"/><g stroke="var(--muted)" stroke-width="1" opacity=".6">${hatch}</g>
+      <path d="M40 300V284M40 286L34 300M40 286L46 300M36 288H44" stroke="var(--ink)" stroke-width="2"/><circle cx="40" cy="280" r="3" fill="var(--ink)"/>
+      <path d="M60 296H86V288H62Z" fill="var(--ink)"/><path d="M64 296V306M82 296V306" stroke="var(--ink)" stroke-width="2"/>
+      <g fill="none" stroke="var(--ink)" stroke-width="1.5"><path d="M60 60q5-5 10 0q5-5 10 0"/><path d="M96 46q4-4 8 0q4-4 8 0"/></g>`;
+    }, '接近油画的写实笔触，田野、雾气、农人，远处是巨大的机器。写实的人间与庞大的钢铁并置，正是原文「脆弱肉体与坚硬机械」的画面。'],
+  ];
+  const root = S(`0 0 ${W} ${H}`, '', { 'aria-label': '示意海报' });
+  const status = el('div', { class: 'status' });
+  const chips = styles.map(([n], i) => { const b = el('button', { type: 'button', class: 'chip' }, n); b.addEventListener('click', () => pick(i)); return b; });
+  function pick(i) { chips.forEach((c, j) => c.classList.toggle('on', i === j)); root.innerHTML = styles[i][1](); root.setAttribute('aria-label', styles[i][0] + '风格的示意海报'); status.innerHTML = `<b>${styles[i][0]}</b>：${styles[i][2]}`; }
+  node.append(el('div', { class: 'chips' }, ...chips), el('div', { class: 'poster-wrap' }, root, el('div', {}, status, el('div', { class: 'gl' }, '风格名称取自原文；说明文字与海报为本页补充示意。'))));
+  pick(2);
+});
+
+/* ---------- 07 代表作品 ---------- */
+reg('works', (node) => {
+  const W = [
+    ['未来水世界', 'Waterworld', 1995, '影视', '导演 Kevin Reynolds，凯文·科斯特纳主演。极地冰盖融化后陆地几乎消失，人们靠拼凑的船只、油料和机械在海上求生，海盗团伙驾驶冒黑烟的改装机械争夺资源。', '资源消耗殆尽 / 混乱的世界'],
+    ['移魂都市', 'Dark City', 1998, '影视', 'Alex Proyas 执导。一座永远是黑夜的城市，街景、服装与布光带着 1940 年代黑色电影的味道；神秘的「陌生人」让全城定时停摆，改写居民的记忆。', '黑色电影美术、强调控制'],
+    ['天空上尉和明日世界', 'Sky Captain and the World of Tomorrow', 2004, '影视', 'Kerry Conran 执导，演员几乎全部在蓝幕前表演、背景后期合成。故事设在 1939 年的纽约，巨型机器人袭城，飞艇与螺旋桨战机充满复古未来主义的画面。', '浮空艇、粗糙钢铁造物、通俗杂志封面式画风'],
+    ['艾利之书', 'The Book of Eli', 2010, '影视', 'Hughes 兄弟执导，丹泽尔·华盛顿主演。浩劫后的荒原上，一个人徒步守护一本书，小镇的独裁者想得到它来控制人心。', '狂热宗教、理性与迷信的冲突、极端独裁'],
+    ['钢铁苍穹', 'Iron Sky', 2012, '影视', '芬兰导演 Timo Vuorensola 执导的科幻喜剧：1945 年逃到月球背面的纳粹残部，多年后驾驶飞碟和巨型战舰返回地球。', '原文引言提到的纳粹主义与反抗；柴油时代的武器美学'],
+    ['疯狂麦克斯4：狂暴之路', 'Mad Max: Fury Road', 2015, '影视', 'George Miller 执导。沙漠里，独裁者「不死老乔」垄断水源和汽油，用狂热信仰驱使「战争男孩」，改装的柴油战车在荒原上追逐。', '极端独裁依靠能源维持、狂热宗教、柴油内燃机'],
+    ['钢铁收割 1920+', 'Iron Harvest', 2020, '游戏', 'KING Art Games 开发的即时战略游戏，2020 年发行。世界观来自 Jakub Różalski 的「1920+」系列画作：一战后的架空东欧，柴油机甲与步兵、骑兵并存。', '粗糙钢铁造物（机甲）、一二战军装'],
+    ['德军总部 系列', 'Wolfenstein', 1981, '游戏', '系列始于 1981 年的《Castle Wolfenstein》，1992 年 id Software 的《德军总部 3D》奠定了第一人称射击游戏的形态；2014 年的《新秩序》起，设定为纳粹赢得二战的架空历史，到处是巨型机器与机械化士兵。时间轴上取系列起点 1981 年。', '自由意志与极端独裁的冲突、反抗极端组织的边缘人物'],
+    ['Alejandro Burdisio（Burda）', 'Artstation：burda；Instagram：alejandroburdisio', null, '画家', '原文推荐的画家之一。本页未核对其作品细节，主页链接见页脚。', '原文列为相关画家'],
+    ['Jakub Rozalski', 'Artstation：jakubrozalski', null, '画家', '原文封面即出自他，原文注明他是「钢铁雄心」的概念设计师（本页未核对）。他的「1920+」系列把 1920 年代东欧田野与巨型机甲画在一起，衍生出桌游《镰刀战争》（Scythe，2016）和游戏《钢铁收割》。', '写实粗犷的美术风格、粗糙钢铁造物'],
+  ];
+  const X = (y) => 30 + (y - 1978) / (2024 - 1978) * 620;
+  let ticks = ''; for (let y = 1980; y <= 2020; y += 10) ticks += `<text class="lbl mid" x="${f1(X(y))}" y="62">${y}</text><line x1="${f1(X(y))}" y1="38" x2="${f1(X(y))}" y2="44" stroke="var(--muted)"/>`;
+  const tl = S('0 0 680 70', `<line x1="20" y1="38" x2="660" y2="38" stroke="var(--line)" stroke-width="2"/>${ticks}<g id="wd"></g>`, { 'aria-label': '作品年代时间轴', style: 'min-width:520px' });
+  const dots = [];
+  const cards = W.map((w, i) => {
+    const b = el('button', { type: 'button', class: 'card' }, el('div', { class: 'y' }, w[2] ? String(w[2]) + (w[0].includes('系列') ? ' 起' : '') : '画家'), el('div', { style: 'font-weight:600' }, w[0]), el('span', { class: 'k' }, w[3]));
+    b.addEventListener('click', () => pick(i));
+    return b;
+  });
+  const wl = svg('text', { class: 'lbl mid', x: 0, y: 20, style: 'font-weight:600;fill:var(--rust)' });
+  tl.append(wl);
+  W.forEach((w, i) => {
+    if (!w[2]) return;
+    const g = svg('g', { class: 'focusable', tabindex: '0', role: 'button', 'aria-label': w[2] + ' ' + w[0], style: 'cursor:pointer' },
+      svg('circle', { cx: f1(X(w[2])), cy: 38, r: 12, fill: 'transparent' }),
+      svg('circle', { cx: f1(X(w[2])), cy: 38, r: 7, fill: w[3] === '游戏' ? 'var(--p)' : 'var(--rust)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    keyAct(g, () => pick(i)); dots[i] = g; tl.querySelector('#wd').append(g);
+  });
+  const detail = el('div', { class: 'detail', 'aria-live': 'polite' });
+  function pick(i) {
+    const w = W[i];
+    cards.forEach((c, j) => c.classList.toggle('on', i === j));
+    dots.forEach((d, j) => d && d.lastChild.setAttribute('r', i === j ? 10 : 7));
+    if (w[2]) { const x = Math.min(600, Math.max(80, X(w[2]))); wl.setAttribute('x', f1(x)); wl.textContent = w[0] + ' · ' + w[2]; } else wl.textContent = '';
+    detail.innerHTML = `<h3>${w[0]}</h3><div class="gl" style="margin:0 0 6px">${w[1]}${w[2] ? ' · ' + w[2] : ''} · ${w[3]}</div><p>${w[4]}</p><p class="gl">对应原文：<b style="color:var(--rust)">${w[5]}</b> <span class="tag">介绍为本页补充</span></p>`;
+  }
+  const filt = segOf(['全部', '影视', '游戏', '画家'], 0, (k) => { const t = ['', '影视', '游戏', '画家'][k]; cards.forEach((c, j) => { c.hidden = !!t && W[j][3] !== t; }); });
+  node.append(el('div', { class: 'ctrl' }, filt.node), el('div', { class: 'scrollx' }, tl), el('div', { class: 'cards' }, ...cards), detail);
+  pick(5);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1040 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>10 年过去了，我依然很想念你：palm webOS 的人和事</title>
+<meta name="description" content="陈子木写给 palm webOS 的一封信的可视化讲解：可点时间线、手势区模拟器、卡片切换与甩出关闭、圆角与 squircle、底部通知与拇指区、点金石与 Touch2Share、人物图谱。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --on:#ffffff; --dev:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --on:#0f1115; --dev:#2e323d; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --on:#0f1115; --dev:#2e323d; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn,.toc-sheet,.toc-mask{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页专用 ===== */
+.letter{margin-top:22px;padding:18px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px);border-left:4px solid var(--o)}
+.letter .sal{font-weight:700;color:var(--o)}
+.hero-art{margin-top:18px;display:flex;justify-content:center}
+.prose{font-size:15.5px;margin:0 0 14px}
+.prose + .prose{margin-top:-4px}
+/* 时间线 */
+.tline{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tl-dot{cursor:pointer}
+.tl-dot circle{fill:var(--surface);stroke:var(--muted);stroke-width:2;transition:fill .2s,stroke .2s,r .2s}
+.tl-dot.add circle{stroke-dasharray:3 2}
+.tl-dot:hover circle,.tl-dot:focus circle{stroke:var(--o);outline:none}
+.tl-dot:focus{outline:none}
+.tl-dot.sel circle{fill:var(--o);stroke:var(--o)}
+.tl-card{margin-top:10px;padding:12px 14px;border-radius:12px;background:var(--surface-2);font-size:14px;min-height:5.2em}
+.tl-card .d{font-family:var(--mono);font-size:12px;color:var(--o)}
+/* 手机线框 */
+.phone{position:relative;width:240px;max-width:100%;margin:0 auto;background:var(--dev);border-radius:34px;padding:14px 10px 0;box-shadow:var(--shadow)}
+.phone .scr{position:relative;height:340px;border-radius:12px;overflow:hidden;background:var(--bg)}
+.phone .gest{position:relative;height:52px;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.phone .gest .dot{width:34px;height:8px;border-radius:6px;background:var(--surface-2);opacity:.5;transition:all .2s}
+.phone .gest.on .dot{background:var(--o);opacity:1;box-shadow:0 0 12px var(--o);width:150px}
+.phone .gest .hint{position:absolute;bottom:4px;font-size:10px;color:#fff;opacity:.5}
+.view{position:absolute;inset:0;transition:transform .35s ease,opacity .35s ease}
+.appv .bar{height:34px;display:flex;align-items:center;gap:8px;padding:0 10px;font-size:13px;font-weight:700;color:#fff}
+.appv .row{margin:8px 10px;height:30px;border-radius:8px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);padding:0 8px;display:flex;align-items:center}
+.cardsv{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--surface-2)}
+.mini{width:92px;height:150px;border-radius:12px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;flex:none;font-size:10px}
+.mini .bar{height:20px;color:#fff;font-weight:700;padding:3px 6px}
+.wave{position:absolute;left:0;right:0;bottom:8px;height:76px;display:flex;justify-content:space-around;align-items:flex-end;padding:0 6px;opacity:0;transform:translateY(30px);transition:opacity .2s,transform .2s;pointer-events:none}
+.wave.show{opacity:1;transform:none}
+.wave i{width:34px;height:34px;border-radius:10px;font-style:normal;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;transition:transform .15s;box-shadow:var(--shadow)}
+.wave i.hi{transform:translateY(-22px) scale(1.25)}
+/* 卡片堆 */
+.deck{position:relative;height:300px;overflow:hidden;border-radius:12px;background:var(--surface-2);user-select:none;-webkit-user-select:none}
+.card{position:absolute;left:0;top:0;width:140px;height:220px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);overflow:hidden;touch-action:none;cursor:grab;transition:transform .35s ease,opacity .35s ease,width .35s,height .35s}
+.card.drag{transition:none}
+.card .bar{height:30px;color:#fff;font-weight:700;font-size:13px;padding:6px 10px}
+.card .ln{margin:8px 10px;height:9px;border-radius:5px;background:var(--surface-2)}
+.card:focus-visible{outline:2px solid var(--o);outline-offset:2px}
+.deck .full{position:absolute;inset:10px;border-radius:16px;background:var(--surface);border:2px solid var(--o);display:none;flex-direction:column;z-index:50;overflow:hidden}
+.deck .full.show{display:flex}
+.deck .full .bar{height:38px;color:#fff;font-weight:700;padding:8px 12px}
+.deck .full p{padding:12px;font-size:13px;color:var(--muted)}
+/* 圆角 */
+.rc-wrap{display:grid;grid-template-columns:1fr;gap:12px;align-items:center}
+@media (min-width:640px){ .rc-wrap{grid-template-columns:1fr 1fr} }
+/* 拇指区 */
+.thumbz{position:absolute;inset:0;pointer-events:none}
+.notif{position:absolute;left:8px;right:8px;border-radius:10px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);font-size:11px;padding:6px 8px;display:flex;gap:6px;align-items:center;transition:transform .35s ease,opacity .35s;cursor:pointer;z-index:3}
+.notif b{color:var(--o)}
+.addr{position:absolute;left:8px;right:8px;height:30px;border-radius:10px;background:var(--surface);border:1px solid var(--line);font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:center;z-index:3}
+/* 桌面拖拽 */
+.desk{position:relative;height:280px;border-radius:12px;background:var(--surface-2);overflow:hidden;user-select:none;-webkit-user-select:none}
+.tpad{position:absolute;left:4%;top:24px;width:56%;height:170px;border-radius:14px;background:var(--dev);padding:8px}
+.tpad .s,.pre .s{width:100%;height:100%;border-radius:8px;background:var(--bg);overflow:hidden;font-size:11px}
+.tpad .s .bar,.pre .s .bar{background:var(--o);color:#fff;font-weight:700;padding:3px 6px;font-size:10px}
+.puck{position:absolute;right:8%;bottom:22px;width:84px;height:84px;border-radius:50%;background:radial-gradient(circle at 40% 35%,var(--surface),var(--line));border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center}
+.pre{position:absolute;width:62px;height:112px;border-radius:16px;background:var(--dev);padding:6px 5px 14px;touch-action:none;cursor:grab;z-index:5;transition:left .4s,top .4s;box-shadow:var(--shadow)}
+.pre.drag{transition:none}
+.pre:focus-visible{outline:2px solid var(--o);outline-offset:2px}
+.desk .lbl2{position:absolute;font-size:11px;color:var(--muted)}
+/* Synergy */
+.syn{display:grid;gap:6px;margin-top:8px}
+.syn .ct{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-2);font-size:13px}
+.syn .ct small{color:var(--muted)}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted)}
+.chk input{accent-color:var(--o)}
+/* 人物图谱 */
+.pnode{cursor:pointer}
+.pnode circle{fill:var(--surface);stroke:var(--line);stroke-width:2;transition:all .2s}
+.pnode:hover circle,.pnode:focus circle{stroke:var(--o)}
+.pnode:focus{outline:none}
+.pnode.sel circle{fill:var(--o-soft);stroke:var(--o)}
+.pnode text{font-size:12px;text-anchor:middle;fill:var(--text);pointer-events:none}
+.trail{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.trail .st{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 10px;font-size:13px;opacity:0;transform:translateY(6px);transition:opacity .35s,transform .35s}
+.trail .st.on{opacity:1;transform:none}
+.trail .st small{display:block;color:var(--muted);font-size:11px}
+.trail .ar{color:var(--muted)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+/* 那时 / 这时 */
+.leg{display:grid;gap:8px}
+.leg .r{display:grid;grid-template-columns:1fr;gap:4px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);cursor:pointer;transition:border-color .2s,background .2s}
+@media (min-width:640px){ .leg .r{grid-template-columns:150px 1fr} }
+.leg .r:focus-visible{outline:2px solid var(--o)}
+.leg .r .k{font-weight:700;font-size:14px}
+.leg .r .v{font-size:13.5px;color:var(--muted)}
+.leg .r.now{border-color:var(--t);background:var(--t-soft)}
+.leg .r.now .v{color:var(--text)}
+.leg .r .v .y{font-family:var(--mono);font-size:11px;margin-right:6px;padding:1px 6px;border-radius:6px;background:var(--surface);color:var(--o)}
+.leg .r.now .v .y{color:var(--t)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">致 palm webOS</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">GUI 设计史 · Palm webOS</div>
+  <h1>10 年过去了，我依然很想念你</h1>
+  <p class="sub">一封写给 palm webOS 的信：它的手势区、卡片多任务、底部通知、无线充电与 Touch2Share，后来都去了哪里；当年做它的人，后来又去了哪里。</p>
+  <div class="letter"><span class="sal">亲爱的 palm webOS：</span>虽然少有人能够提及你的名字，有一些东西成为了绝唱，但是满世界都是你的影子，满世界都是。<sup class="c">[1]</sup></div>
+  <div class="hero-art"><div data-demo="hero"></div></div>
+  <div class="authors">
+    <span class="au"><i>陈</i>陈子木</span>
+    <span class="au"><i style="background:var(--o)">派</i>少数派（2021-08-19）</span>
+  </div>
+  <p class="meta">原文：《10 年过去了，我依然很想念你》，陈子木，少数派（2021-08-19）。作者是少数派前身「煮机社区」的版主，煮机是当时国内最大的 webOS 用户社区。本页忠实于原文书信的叙述顺序，原文的截图与照片全部改画成示意线框，并加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="when" data-title="那个被记错的日子">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一、那个被记错的日子</h2>
+    <p class="lead">信的开头，作者承认自己把「惠普宣布放弃 webOS」的日子记错了。webOS 从亮相到被放弃，究竟走了多久？</p>
+  </div>
+  <p class="prose">「人的记忆果然是非常不可靠的东西，比如我把惠普宣布放弃你的时间错记为 2011 年 8 月 11 日。」如今还留有它痕迹的地方不多了：HP webOS 的网站早已关停，LG 电视上的 webOS 在作者看来「连苟延残喘都算不上」，TCL 买下 Palm 品牌后推出的 palm phone 最多算「借尸还魂」，继承下来的只是一个致敬 Veer 的娇小躯壳。作者还是买了一台，然后不小心丢了。</p>
+  <div class="fig">
+    <div class="cap"><b>可点时间线</b>：点圆点（或用 Tab 选中后按 Enter）看每个节点。实线圆点是原文提到的事，虚线圆点是本页补充的背景节点。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：HP 是在 2011 年 8 月 18 日的财报发布中宣布停止 webOS 设备（TouchPad 与 webOS 手机）业务的，距 TouchPad 7 月 1 日上市不到 7 周；距 2009 年 1 月 Palm Pre 与 webOS 首次亮相约两年半。webOS 随后在 2011 年 12 月宣布开源，2013 年 2 月卖给 LG 用于电视。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="gesture" data-title="手势区与波浪启动器">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>二、手势：从「不够显著」到「深入人心」</h2>
+    <p class="lead">webOS 当年被吐槽手势不够显著，如今手势已成普遍认知。可那个「用手势呼出快捷方式」的风骚操作，到底是怎么做的？</p>
+  </div>
+  <p class="prose">「你所探索的手势交互，如今已经是深入人心、形成习惯的普遍认知了。」只是从屏幕边缘上划调出常用功能的操作，大概受限于交互设计专利，成了江湖绝唱。</p>
+  <div class="fig">
+    <div class="cap"><b>手势区模拟器</b>：在手机屏幕下方的黑色「手势区」里用手指或鼠标操作。<b>短上划</b>：应用缩成卡片；<b>上划后停住不放</b>：弹出快捷启动栏，左右移动选中图标，松手打开；<b>向左划</b>：返回上一层。也可以用下面的按钮。</div>
+    <div data-demo="gesture"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Palm Pre 屏幕下方有一条独立于屏幕的触控「手势区（gesture area）」，中间的指示灯会随手指亮起；从手势区向屏幕慢慢上拖并停住会出现快捷启动栏（常被称作 Wave Launcher，图标随手指高低起伏）。本模拟器的触发阈值是示意值，不是原机参数。<sup class="c">[2][3]</sup></div>
+</section>
+
+<section class="ch" id="cards" data-title="卡片：扑克一样散开">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>三、卡片：从 webOS 到 Material Design</h2>
+    <p class="lead">卡片如今是 UI 的基础元件，iOS 与 Android 的多任务界面都是一张张卡片。webOS 的卡片和今天「规整排列的卡片」差在哪里？</p>
+  </div>
+  <p class="prose">「你的卡片式设计，借 Matias 之手，通过 Material Design 发扬光大，如今卡片的概念也已成为 UI 基础元件，甚至开始从移动端反哺桌面端设计。」原文并排放了 webOS 主界面、Android 12、iOS 15 与传说中的下一代 webOS 概念设计的截图。「只是，看着规整排列的卡片们，总不由得想起它们在你的界面下，如同扑克一样自然散开富有灵性的样子。」</p>
+  <div class="fig">
+    <div class="cap"><b>卡片多任务</b>：左右拖动切换卡片；<b>把卡片往上甩出</b>就关闭了这个应用；点中间的卡片放大回到应用。切换「横排 / 扑克散开 / 规整网格」三种排法对比。键盘：Tab 选中卡片，Enter 放大，↑ 甩出。</div>
+    <div data-demo="cards"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>大圆角与 Squirclemorphism</b>：拖动圆角半径；勾选「连续曲率」后，角改用超椭圆曲线（squircle）画，虚线是同半径的普通圆弧，看两者在拐角处的差别。</div>
+    <div data-demo="radius"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">「当初被频繁吐槽的大圆角卡片的视觉设计概念，在 10 年后的今天是最新的设计趋势，甚至还有一个名字，Squirclemorphism。」（原文配图来自 prototypr。）</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：webOS 2.0 起，多任务卡片还能叠成「卡片堆（stacks）」，把相关的卡片收拢在一起。「squircle」指介于正方形与圆之间的超椭圆（superellipse，|x|ⁿ+|y|ⁿ=1，n 约为 4 到 5）；与「直线接四分之一圆弧」的普通圆角相比，它的曲率从直边到拐角是连续变化的，看起来更「软」。<sup class="c">[2][5]</sup></div>
+</section>
+
+<section class="ch" id="bottom" data-title="底部通知与拇指区">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>四、底部通知：底部交互区域优先</h2>
+    <p class="lead">webOS 把通知放在屏幕底部，这个设计后来成了绝唱；为什么作者说在 iOS 15 的 Safari 里又「隐约窥见」了它？</p>
+  </div>
+  <p class="prose">「大概同样因为交互专利的原因，你的底部通知推送的设计已经成为绝唱了吧。」「倒是在 iOS 15 的 Safari 设计上，隐约得以窥见这种底部交互区域优先的巧妙灵思。」</p>
+  <div class="fig">
+    <div class="cap"><b>通知放哪儿，拇指够不够得着</b>：切换三种布局，点「来一条通知」，再点通知展开。叠在屏幕上的色带是单手握持时拇指的大致可达范围，状态栏实时计算目标离拇指根部的距离。</div>
+    <div data-demo="notify"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「拇指区（thumb zone）」的说法来自对单手握持手机的观察研究（如 Steven Hoober 2013 年的调查），本图的三档色带只是按屏幕高度比例画的示意，不是实测数据。iOS 15 的 Safari 默认把地址栏移到了屏幕底部，正是为了让单手更容易够到。<sup class="c">[6]</sup></div>
+</section>
+
+<section class="ch" id="hardware" data-title="点金石与 Touch2Share">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>五、全键盘、无线充电与 Touch2Share</h2>
+    <p class="lead">webOS 手机的硬件也走在前面：无线充电如今是行业标配，Touch2Share 至今「依然是新东西」。它们当年是怎么用的？</p>
+  </div>
+  <p class="prose">黑莓比 webOS 坚持得久一点，但它倒下之后，全键盘手机只能去众筹网站上寻找踪迹；而 webOS 在临别之际，差点让传说中的全屏 webOS 手机（代号 WinsorNot）问世。当年尝试的无线充电，随着 Qi 标准推行已成行业标杆，Apple 最近也靠 MagSafe 外接电池刷了一波存在感；只是「出师未捷身先死」的 2 代点金石（Touchstone），带音频输出接口，没能上市。「你的 Touch2Share 今天看来依然是新东西，也许 Apple 会重新跟进这样的设计吧？」</p>
+  <div class="fig">
+    <div class="cap"><b>把 Pre 3 拖到哪儿</b>：拖动右上角的手机（键盘用户可以用下面的按钮）。放到圆形的<b>点金石</b>上，不插线就开始充电；放到 <b>TouchPad</b> 上，平板正在看的网页「碰一下」就传到了手机上。</div>
+    <div data-demo="desk"></div>
+  </div>
+  <p class="prose" style="margin-top:14px">「当年的好设计太多了，只是我一时半会无法想起全部，抱歉，见谅。」</p>
+  <div class="fig">
+    <div class="cap"><b>本页补充：Synergy 联系人合并</b>。原文没有展开，但 Synergy 是 webOS 常被提起的另一个好设计：同一个人在多个账户里的资料自动合成一张联系人卡。勾选账户、开关合并，看列表怎么变。</div>
+    <div data-demo="synergy"></div>
+    <div class="note-add"><b>本页补充（非原文）</b>：Synergy 是 Palm 对「把多个邮箱、日历、通讯录账户汇总成统一列表」这一功能的叫法。示例里的人名与字段是虚构的。<sup class="c">[2]</sup></div>
+  </div>
+</section>
+
+<section class="ch" id="people" data-title="老朋友们">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>六、老朋友们现在大都还挺好的</h2>
+    <p class="lead">做 webOS 的那群人四散之后去了哪里？他们是不是还在各自的轨迹上？</p>
+  </div>
+  <p class="prose">原文放了一张「webOS 团队四人组」的合影，然后一个个讲起老朋友们的近况。</p>
+  <div class="fig">
+    <div class="cap"><b>人物图谱</b>：点外圈的人（或 Tab + Enter），看他离开 webOS 之后走过的路；点中心回到全图。</div>
+    <div data-demo="people"></div>
+  </div>
+  <div class="quote">「仔细看看，大家虽然四散，但是还是在各自一直以来的轨迹上，坚定地前进着。我还是一个编辑，可是依然热爱着好设计。煮机落幕，但是少数派风生水起，老麦开始玩车了。」</div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Matias Duarte 2010 年加入 Google，先后负责 Android 的用户体验，2014 年 Google I/O 发布 Material Design，2021 年 Google I/O 发布 Material You。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="then-now" data-title="那时错，这时对">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>七、那时错，这时对</h2>
+    <p class="lead">如果要用一句足够短的话总结 webOS，作者选了洪尚秀一部电影的片名。它说的是哪些设计？</p>
+  </div>
+  <p class="prose">「10 年之后我应该还会想起你。希望那时候再来审视你的时候，你已经是一个过时的产品吧？」</p>
+  <div class="fig">
+    <div class="cap"><b>那时 / 这时</b>：点任意一行翻面，或用上方按钮一次翻全部。左边是原文点名的设计，右边是它在 webOS 年代与 2021 年的境遇（都取自原文）。</div>
+    <div data-demo="legacy"></div>
+    <div class="final">「那时错，这时对」。写到这里，就不说再见了，相信我们还会以其他的方式再见的。</div>
+  </div>
+  <div class="fig">
+    <div class="cap">原文最后附了一张作者多年前做的老图，这里用线框重绘其意。</div>
+    <div data-demo="poster"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：《那时错，这时对》（지금은맞고그때는틀리다，英文名 Right Now, Wrong Then）是洪尚秀 2015 年的电影，获当年洛迦诺电影节金豹奖。<sup class="c">[7]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据陈子木在少数派发表的《<a href="https://sspai.com/post/68372">10 年过去了，我依然很想念你</a>》（2021-08-19）制作。原文中的截图、产品照片与人物照片均已用内联 SVG、HTML 线框和 JS 重绘为示意图，未引用外链图片；人物部分只保留文字叙述，不重绘肖像。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>原文：陈子木，《10 年过去了，我依然很想念你》，少数派（2021-08-19），<a href="https://sspai.com/post/68372">sspai.com/post/68372</a>。</li>
+    <li>Wikipedia 条目 webOS：2009 年 1 月发布、HP 2010 年收购 Palm、TouchPad 2011-07-01 上市、2011 年 8 月停止设备业务、2011 年 12 月宣布开源、2013 年 2 月售予 LG、卡片多任务与 webOS 2.0 卡片堆、Synergy、Touch to Share。<a href="https://en.wikipedia.org/wiki/WebOS">链接</a></li>
+    <li>Wikipedia 条目 Palm Pre：手势区、Touchstone 无线充电座。<a href="https://en.wikipedia.org/wiki/Palm_Pre">链接</a></li>
+    <li>Wikipedia 条目 Matias Duarte、Material Design：2010 年加入 Google、2014 年 Material Design、2021 年 Material You。<a href="https://en.wikipedia.org/wiki/Matias_Duarte">链接</a></li>
+    <li>Wikipedia 条目 Squircle、Superellipse：超椭圆方程与连续曲率圆角。<a href="https://en.wikipedia.org/wiki/Squircle">链接</a></li>
+    <li>Hoober, S. (2013). How Do Users Really Hold Mobile Devices? <i>UXmatters</i>.</li>
+    <li>Wikipedia 条目 Right Now, Wrong Then：洪尚秀 2015 年电影，洛迦诺金豹奖。<a href="https://en.wikipedia.org/wiki/Right_Now,_Wrong_Then">链接</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面均为示意线框，交互阈值与配色不是原机参数，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const APPS = [
+  { n: '邮件', c: 'var(--p)' }, { n: '日历', c: 'var(--t)' }, { n: '浏览器', c: 'var(--o)' },
+  { n: '信息', c: 'var(--r)' }, { n: '照片', c: 'var(--y)' },
+];
+const keyAct = (n, fn) => n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* ---------- 标题插画：三张散开的卡片 ---------- */
+reg('hero', (node) => {
+  const root = svg('svg', { viewBox: '0 0 320 150', role: 'img', 'aria-label': '三张像扑克一样散开的卡片', style: 'width:320px' });
+  [-14, 0, 14].forEach((a, i) => {
+    const c = ['var(--p)', 'var(--o)', 'var(--t)'][i];
+    const g = svg('g', { transform: `rotate(${a} 160 230)` },
+      svg('rect', { x: 122, y: 14, width: 76, height: 118, rx: 12, style: 'fill:var(--surface);stroke:var(--line)' }),
+      svg('rect', { x: 122, y: 14, width: 76, height: 20, rx: 10, style: `fill:${c}` }),
+      svg('rect', { x: 132, y: 48, width: 56, height: 6, rx: 3, style: 'fill:var(--surface-2)' }),
+      svg('rect', { x: 132, y: 62, width: 40, height: 6, rx: 3, style: 'fill:var(--surface-2)' }),
+      svg('rect', { x: 132, y: 76, width: 50, height: 6, rx: 3, style: 'fill:var(--surface-2)' }));
+    root.append(g);
+  });
+  root.append(svg('rect', { x: 120, y: 140, width: 80, height: 5, rx: 2.5, style: 'fill:var(--o);opacity:.8' }));
+  node.append(root);
+});
+
+/* ---------- 01 时间线 ---------- */
+reg('timeline', (node) => {
+  const E = [
+    [2009.02, '2009-01', 'Palm Pre 与 webOS 亮相', '在 CES 上首次展示。原文第六节提到：Matias Duarte 把 webOS 展示给全世界时，特意挑了一件和它同色的橙色衬衫。', 0],
+    [2009.45, '2009-06', 'Palm Pre 上市', '随机推出的还有 Touchstone「点金石」无线充电座，把手机放上去就充电。', 1],
+    [2010.3, '2010-04', 'HP 宣布收购 Palm', '约 12 亿美元，同年完成。webOS 从此改称 HP webOS。', 1],
+    [2011.1, '2011-02', 'Veer、Pre 3、TouchPad 发布', 'HP 一次发布三款 webOS 设备。Veer 是一台极小的滑盖手机，2018 年的 palm phone 就是在致敬它。', 1],
+    [2011.5, '2011-07-01', 'TouchPad 上市', 'webOS 唯一一台量产平板。', 1],
+    [2011.63, '2011-08-18', 'HP 宣布停止 webOS 设备业务', '作者把这一天错记成了 2011 年 8 月 11 日，翻出当年的新闻才对上。距 TouchPad 上市不到 7 周。', 0],
+    [2011.94, '2011-12', '宣布开源 webOS', 'HP 宣布把 webOS 开源，后来有了 Open webOS。', 1],
+    [2013.15, '2013-02', 'LG 买下 webOS', '从此 webOS「活在电视里」。作者的评价是：连苟延残喘都算不上。', 0],
+    [2014.48, '2014-06', 'Material Design 发布', 'Matias Duarte 在 Google 主导，卡片概念借此发扬光大（年份为本页补充）。', 0],
+    [2015.05, '2015', 'Teehan + Lax 加入 Facebook', '当年手工给 webOS 做 UI kit 的第三方设计团队，被 Facebook 收购。', 0],
+    [2018.12, '2018-02', 'Michael Abbott 加入 Apple', '当年负责 webOS 软件开发的 Michael，以「想当回工程师」为由离开 Kleiner Perkins，去了 Apple。', 0],
+    [2018.8, '2018', 'palm phone 发布', 'TCL 买下 Palm 品牌后推出的小手机，「最多算是借尸还魂」，继承下来的只是一个致敬 Veer 的娇小躯壳。作者买了，又丢了。（发布年份为本页补充）', 0],
+    [2021.38, '2021-05', 'Material You 发布', 'Google I/O 2021，Matias 又穿着与系统配色一致的衬衫出镜。', 0],
+    [2021.63, '2021-08-19', '这封信发表在少数派', '「10 年过去了，我依然很想念你。」', 0],
+  ].sort((a, b) => a[0] - b[0]);
+  const W = 760, x0 = 30, x1 = 730, Y0 = 2009, Y1 = 2022;
+  const X = (y) => x0 + (y - Y0) / (Y1 - Y0) * (x1 - x0);
+  const root = svg('svg', { viewBox: `0 0 ${W} 150`, role: 'img', 'aria-label': 'webOS 2009 到 2021 年时间线', style: `min-width:640px;width:100%` });
+  root.append(svg('line', { x1: x0, x2: x1, y1: 110, y2: 110, style: 'stroke:var(--line);stroke-width:2' }));
+  root.append(svg('rect', { x: X(2009.02), y: 106, width: X(2011.63) - X(2009.02), height: 8, rx: 4, style: 'fill:var(--o-soft)' }));
+  for (let y = Y0; y <= 2021; y++) {
+    root.append(svg('line', { x1: X(y), x2: X(y), y1: 105, y2: 115, style: 'stroke:var(--muted)' }));
+    root.append(svg('text', { x: X(y), y: 134, class: 'lbl mid' }, String(y)));
+  }
+  const lanes = [];
+  const card = el('div', { class: 'tl-card' });
+  const dots = [];
+  const pick = (i) => {
+    dots.forEach((d, j) => d.classList.toggle('sel', j === i));
+    const e = E[i];
+    card.innerHTML = '';
+    card.append(el('div', { class: 'd' }, e[1] + '  ', el('span', { class: 'tag' }, e[4] ? '本页补充（非原文）' : '原文提到')), el('b', {}, e[2]), el('p', { style: 'margin-top:4px;color:var(--muted)' }, e[3]));
+    if (i === E.findIndex((x) => x[1] === '2011-08-18')) card.append(el('p', { style: 'margin-top:6px' }, '从亮相到被放弃：', el('b', { style: 'color:var(--o)' }, String(Math.round((Date.UTC(2011, 7, 18) - Date.UTC(2009, 0, 8)) / 864e5)) + ' 天'), '（以 2009-01-08 CES 亮相起算，现场计算）。'));
+  };
+  E.forEach((e, i) => {
+    const x = X(e[0]);
+    let lane = 0;
+    while (lanes[lane] != null && x - lanes[lane] < 26) lane++;
+    lanes[lane] = x;
+    const y = 92 - lane * 24;
+    root.append(svg('line', { x1: x, x2: x, y1: y, y2: 110, style: 'stroke:var(--line)' }));
+    const g = svg('g', { class: 'tl-dot' + (e[4] ? ' add' : ''), tabindex: '0', role: 'button', 'aria-label': e[1] + ' ' + e[2] },
+      svg('circle', { cx: x, cy: y, r: 8 }));
+    g.addEventListener('click', () => pick(i)); keyAct(g, () => pick(i));
+    dots.push(g); root.append(g);
+  });
+  root.append(svg('text', { x: X(2010.3), y: 146, class: 'lbl mid', style: 'fill:var(--o)' }, 'Palm / HP 设备时代'));
+  node.append(el('div', { class: 'tline' }, root), card);
+  pick(E.findIndex((x) => x[1] === '2011-08-18'));
+});
+
+/* ---------- 02 手势区 ---------- */
+reg('gesture', (node) => {
+  const pages = ['首页', '收件箱', '一封邮件'];
+  let cur = 0, depth = 2, view = 'app', sel = 2;
+  const scr = el('div', { class: 'scr' });
+  const appv = el('div', { class: 'view appv' });
+  const cardsv = el('div', { class: 'view cardsv' });
+  const wave = el('div', { class: 'wave', 'aria-hidden': 'true' });
+  const icons = APPS.map((a) => el('i', { style: `background:${a.c};color:var(--on)` }, a.n.slice(0, 2)));
+  wave.append(...icons);
+  scr.append(appv, cardsv, wave);
+  const gest = el('div', { class: 'gest', 'aria-label': '手势区，可上划、左划' }, el('span', { class: 'dot' }), el('span', { class: 'hint' }, '手势区'));
+  const phone = el('div', { class: 'phone' }, scr, gest);
+  const status = el('div', { class: 'status' });
+  const say = (h) => { status.innerHTML = h; };
+  const render = () => {
+    const a = APPS[cur];
+    appv.innerHTML = '';
+    appv.append(el('div', { class: 'bar', style: `background:${a.c};color:var(--on)` }, a.n + ' · ' + pages[depth]));
+    for (let k = 0; k < 6 - depth; k++) appv.append(el('div', { class: 'row' }, depth === 2 ? '正文第 ' + (k + 1) + ' 段……' : pages[Math.min(depth + 1, 2)] + ' ' + (k + 1)));
+    appv.style.transform = view === 'app' ? 'none' : 'scale(.42)';
+    appv.style.opacity = view === 'app' ? '1' : '0';
+    cardsv.innerHTML = '';
+    [cur - 1, cur, cur + 1].filter((i) => i >= 0 && i < APPS.length).forEach((i) => {
+      const m = el('div', { class: 'mini', style: i === cur ? 'outline:2px solid var(--o)' : 'opacity:.75' },
+        el('div', { class: 'bar', style: `background:${APPS[i].c};color:var(--on)` }, APPS[i].n));
+      m.addEventListener('click', () => { cur = i; depth = 0; view = 'app'; render(); say(`点卡片：回到 <b>${APPS[i].n}</b>。`); });
+      cardsv.append(m);
+    });
+    cardsv.style.opacity = view === 'cards' ? '1' : '0';
+    cardsv.style.pointerEvents = view === 'cards' ? 'auto' : 'none';
+    cardsv.style.transform = view === 'cards' ? 'none' : 'scale(1.3)';
+  };
+  const hi = (i) => icons.forEach((ic, j) => ic.classList.toggle('hi', j === i));
+  const shortUp = () => {
+    view = view === 'app' ? 'cards' : 'app';
+    say(view === 'cards' ? '<b>短上划</b>：应用缩成一张卡片，旁边是其他正在运行的应用。可以点别的卡片切过去，或再上划回来。' : '<b>短上划</b>：从卡片视图回到当前应用。');
+    render();
+  };
+  const back = () => {
+    if (view !== 'app') { say('卡片视图里没有「上一层」，左划不起作用。'); return; }
+    if (depth > 0) { depth--; say(`<b>左划返回</b>：回到「${pages[depth]}」。整机不需要一个返回键。`); }
+    else say('已在应用首页，没有更上一层了。');
+    render();
+  };
+  const launch = (i) => { cur = i; depth = 0; view = 'app'; render(); say(`<b>上划停住 → 左右挑选 → 松手</b>：直接打开了「${APPS[i].n}」，全程手指没离开屏幕。这就是原文说的「使用手势呼出快捷方式的风骚操作」。`); };
+  let st = null;
+  gest.addEventListener('pointerdown', (e) => { st = { x: e.clientX, y: e.clientY, wave: false }; try { gest.setPointerCapture(e.pointerId); } catch (_) {} gest.classList.add('on'); });
+  gest.addEventListener('pointermove', (e) => {
+    if (!st) return;
+    const dy = st.y - e.clientY;
+    if (dy > 70 || st.wave) {
+      st.wave = true; wave.classList.add('show');
+      const r = scr.getBoundingClientRect();
+      sel = clamp(Math.floor((e.clientX - r.left) / r.width * APPS.length), 0, APPS.length - 1); hi(sel);
+      say(`快捷启动栏已弹出，当前指着「${APPS[sel].n}」，松手打开。`);
+    }
+  });
+  const end = (e, cancel) => {
+    if (!st) return;
+    const dy = st.y - e.clientY, dx = e.clientX - st.x, w = st.wave;
+    st = null; gest.classList.remove('on'); wave.classList.remove('show'); hi(-1);
+    if (cancel) return;
+    if (w) launch(sel);
+    else if (dy > 20) shortUp();
+    else if (dx < -40) back();
+    else if (dx > 40) say('向右划：在部分应用里是「前进」。');
+    else say('轻点手势区：中间的指示灯亮了一下。试试上划或左划。');
+  };
+  gest.addEventListener('pointerup', (e) => end(e, false));
+  gest.addEventListener('pointercancel', (e) => end(e, true));
+  let tm = [];
+  const demoLong = () => {
+    tm.forEach(clearTimeout); tm = [];
+    wave.classList.add('show'); gest.classList.add('on');
+    [0, 1, 2].forEach((i, k) => tm.push(setTimeout(() => { hi(i); say(`快捷启动栏弹出，手指移到「${APPS[i].n}」……`); }, 350 * k)));
+    tm.push(setTimeout(() => { wave.classList.remove('show'); gest.classList.remove('on'); hi(-1); launch(2); }, 1200));
+  };
+  node.append(phone, el('div', { class: 'ctrl', style: 'justify-content:center' },
+    el('button', { class: 'btn primary', type: 'button', onclick: shortUp }, '短上划'),
+    el('button', { class: 'btn', type: 'button', onclick: demoLong }, '上划停住 → 选「浏览器」'),
+    el('button', { class: 'btn', type: 'button', onclick: back }, '左划返回'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { cur = 0; depth = 2; view = 'app'; render(); say('已重置：在「邮件」里读一封邮件。'); } }, '重置')), status);
+  render(); say('现在在「邮件」里读一封邮件。试试在下方手势区左划两次，再上划。');
+  return { stop() { tm.forEach(clearTimeout); tm = []; } };
+});
+
+/* ---------- 03 卡片多任务 ---------- */
+reg('cards', (node) => {
+  let mode = 'row', cur = 1, list = APPS.map((a, i) => ({ ...a, id: i })), drag = null;
+  const deck = el('div', { class: 'deck' });
+  const full = el('div', { class: 'full' });
+  deck.append(full);
+  const els = new Map();
+  const status = el('div', { class: 'status' });
+  const say = (h) => { status.innerHTML = h; };
+  const layout = () => {
+    const W = deck.clientWidth || 320, H = deck.clientHeight || 300, n = list.length;
+    const cols = W >= 520 ? 5 : 3, gap = 12;
+    list.forEach((c, i) => {
+      const d = els.get(c.id);
+      let w = 140, h = 220, x, y, r = 0, s = 1, z = 10 + i;
+      if (mode === 'row') {
+        x = W / 2 - w / 2 + (i - cur) * 155 + (drag && drag.h ? drag.dx : 0); y = (H - h) / 2;
+        s = i === cur ? 1 : 0.86; z = 20 - Math.abs(i - cur);
+      } else if (mode === 'fan') {
+        r = (i - (n - 1) / 2) * 11; x = W / 2 - w / 2 + (i - (n - 1) / 2) * 16; y = (H - h) / 2 + 14;
+      } else {
+        w = Math.min(110, (W - gap * (cols + 1)) / cols); h = w * 1.4;
+        const rows = Math.ceil(n / cols), row = Math.floor(i / cols), col = i % cols;
+        const inRow = Math.min(cols, n - row * cols);
+        x = (W - (inRow * w + (inRow - 1) * gap)) / 2 + col * (w + gap);
+        y = (H - (rows * h + (rows - 1) * gap)) / 2 + row * (h + gap);
+      }
+      if (drag && drag.id === c.id && drag.v) y += drag.dy;
+      d.style.width = w + 'px'; d.style.height = h + 'px';
+      d.style.transformOrigin = mode === 'fan' ? '50% 140%' : '50% 50%';
+      d.style.transform = `translate(${x}px,${y}px) rotate(${r}deg) scale(${s})`;
+      d.style.zIndex = z;
+      d.style.opacity = '1';
+    });
+  };
+  const close = (id) => {
+    const i = list.findIndex((c) => c.id === id); if (i < 0) return;
+    const c = list[i], d = els.get(id);
+    list.splice(i, 1); els.delete(id);
+    const m = /translate\(([-\d.]+)px/.exec(d.style.transform);
+    d.style.transform = `translate(${m ? m[1] : 0}px,-360px) scale(.9)`; d.style.opacity = '0';
+    setTimeout(() => d.remove(), 380);
+    cur = clamp(cur, 0, Math.max(0, list.length - 1));
+    layout();
+    say(list.length ? `<b>甩出关闭</b>了「${c.n}」，还剩 ${list.length} 张卡片。在 webOS 里，关闭应用就是把它的卡片往上一扔。` : '所有卡片都被甩掉了。点「重置」再来。');
+  };
+  const maximize = (c) => {
+    full.innerHTML = '';
+    full.append(el('div', { class: 'bar', style: `background:${c.c};color:var(--on)` }, c.n),
+      el('p', {}, '点卡片 = 回到这个应用，全屏运行。在真机上，从手势区上划又会把它缩回卡片。'),
+      el('div', { style: 'padding:0 12px' }, el('button', { class: 'btn', type: 'button', onclick: () => { full.classList.remove('show'); say('回到卡片视图。'); } }, '缩回卡片')));
+    full.classList.add('show');
+    say(`点了「${c.n}」的卡片，应用放大回全屏。`);
+  };
+  const tap = (id) => {
+    const i = list.findIndex((c) => c.id === id);
+    if (mode === 'row' && i !== cur) { cur = i; layout(); say(`切到「${list[i].n}」。`); }
+    else maximize(list[i]);
+  };
+  const mk = (c) => {
+    const d = el('div', { class: 'card', tabindex: '0', role: 'button', 'aria-label': c.n + ' 卡片，Enter 打开，上箭头关闭' },
+      el('div', { class: 'bar', style: `background:${c.c};color:var(--on)` }, c.n),
+      el('div', { class: 'ln' }), el('div', { class: 'ln', style: 'width:60%' }), el('div', { class: 'ln', style: 'width:75%' }), el('div', { class: 'ln', style: 'width:50%' }));
+    d.addEventListener('pointerdown', (e) => {
+      drag = { id: c.id, x: e.clientX, y: e.clientY, dx: 0, dy: 0, h: false, v: false };
+      try { d.setPointerCapture(e.pointerId); } catch (_) {}
+      els.forEach((x) => x.classList.add('drag'));
+    });
+    d.addEventListener('pointermove', (e) => {
+      if (!drag || drag.id !== c.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.h && !drag.v && Math.hypot(dx, dy) > 6) {
+        if (Math.abs(dy) > Math.abs(dx) && dy < 0) drag.v = true; else if (mode === 'row') drag.h = true;
+      }
+      drag.dx = dx; drag.dy = Math.min(0, dy);
+      if (drag.h || drag.v) layout();
+    });
+    const up = (cancel) => {
+      if (!drag || drag.id !== c.id) return;
+      const D = drag; drag = null;
+      els.forEach((x) => x.classList.remove('drag'));
+      if (cancel) { layout(); return; }
+      if (D.v && D.dy < -80) { close(c.id); return; }
+      if (D.h) { if (D.dx < -50) cur = Math.min(list.length - 1, cur + 1); else if (D.dx > 50) cur = Math.max(0, cur - 1); say(`切到「${list[cur].n}」。`); }
+      else if (!D.v) { tap(c.id); }
+      else say('甩得不够远，卡片弹回来了。往上拖超过 80 像素再松手。');
+      layout();
+    };
+    d.addEventListener('pointerup', () => up(false));
+    d.addEventListener('pointercancel', () => up(true));
+    d.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tap(c.id); }
+      else if (e.key === 'ArrowUp' || e.key === 'Delete') { e.preventDefault(); close(c.id); }
+      else if (e.key === 'ArrowLeft' && mode === 'row') { cur = Math.max(0, cur - 1); layout(); }
+      else if (e.key === 'ArrowRight' && mode === 'row') { cur = Math.min(list.length - 1, cur + 1); layout(); }
+    });
+    deck.append(d); els.set(c.id, d);
+  };
+  const reset = () => { els.forEach((d) => d.remove()); els.clear(); list = APPS.map((a, i) => ({ ...a, id: i })); list.forEach(mk); cur = 1; full.classList.remove('show'); layout(); say('5 个应用正在运行。左右拖切换，往上甩关闭。'); };
+  const MODES = [['row', '横排（webOS）'], ['fan', '扑克散开'], ['grid', '规整网格']];
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '卡片排法' });
+  const desc = { row: '横排：一次只看一张大卡片，左右滑动切换，这是 webOS 卡片视图的基本形态。', fan: '扑克散开：原文怀念的样子，卡片「如同扑克一样自然散开」。（本示意把散开做成扇形）', grid: '规整网格：今天常见的「规整排列的卡片」，信息密度高，但少了点灵性。' };
+  MODES.forEach(([k, t]) => {
+    const b = el('button', { type: 'button', class: k === mode ? 'on' : '', onclick: () => { mode = k; seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); layout(); say(desc[k]); } }, t);
+    seg.append(b);
+  });
+  node.append(el('div', { class: 'ctrl' }, seg,
+    el('button', { class: 'btn', type: 'button', 'aria-label': '上一张', onclick: () => { if (mode === 'row') { cur = Math.max(0, cur - 1); layout(); } } }, '◀'),
+    el('button', { class: 'btn', type: 'button', 'aria-label': '下一张', onclick: () => { if (mode === 'row') { cur = Math.min(list.length - 1, cur + 1); layout(); } } }, '▶'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { if (list.length) close(list[mode === 'row' ? cur : list.length - 1].id); } }, '甩掉一张'),
+    el('button', { class: 'btn', type: 'button', onclick: reset }, '重置')), deck, status);
+  reset();
+  if ('ResizeObserver' in window) new ResizeObserver(() => layout()).observe(deck);
+  return { start() { layout(); } };
+});
+
+/* ---------- 03b 圆角与 squircle ---------- */
+reg('radius', (node) => {
+  const X = 30, Y = 20, W = 200, H = 260, N = 5;
+  const arcPath = (r) => {
+    r = Math.min(r, W / 2, H / 2);
+    return `M${X + r},${Y}H${X + W - r}A${r},${r} 0 0 1 ${X + W},${Y + r}V${Y + H - r}A${r},${r} 0 0 1 ${X + W - r},${Y + H}H${X + r}A${r},${r} 0 0 1 ${X},${Y + H - r}V${Y + r}A${r},${r} 0 0 1 ${X + r},${Y}Z`;
+  };
+  const sqPath = (r) => {
+    const k = Math.min(r * 1.6, W / 2, H / 2);
+    if (k <= 0) return arcPath(0);
+    const pts = [];
+    const corner = (cx, cy, sx, sy, rev) => {
+      const seg = [];
+      for (let j = 0; j <= 24; j++) {
+        const t = j / 24 * Math.PI / 2;
+        const ox = k * (1 - Math.pow(Math.cos(t), 2 / N)), oy = k * (1 - Math.pow(Math.sin(t), 2 / N));
+        seg.push([cx + sx * ox, cy + sy * oy]);
+      }
+      if (rev) seg.reverse();
+      pts.push(...seg);
+    };
+    // 顺时针：左上 → 右上 → 右下 → 左下
+    corner(X, Y, 1, 1, false);
+    corner(X + W, Y, -1, 1, true);
+    corner(X + W, Y + H, -1, -1, false);
+    corner(X, Y + H, 1, -1, true);
+    return 'M' + pts.map((p) => p[0].toFixed(2) + ',' + p[1].toFixed(2)).join('L') + 'Z';
+  };
+  const big = svg('svg', { viewBox: '0 0 260 300', role: 'img', 'aria-label': '卡片圆角示意', style: 'max-width:260px;margin:0 auto' });
+  const zoom = svg('svg', { viewBox: '24 14 80 80', role: 'img', 'aria-label': '左上角放大', style: 'max-width:240px;margin:0 auto;border:1px solid var(--line);border-radius:10px;background:var(--surface-2)' });
+  const mkSet = (host, sw) => {
+    const fill = svg('path', { style: `fill:var(--o-soft);stroke:var(--o);stroke-width:${sw}`, 'vector-effect': 'non-scaling-stroke' });
+    const ghost = svg('path', { style: `fill:none;stroke:var(--muted);stroke-width:${sw};stroke-dasharray:4 3`, 'vector-effect': 'non-scaling-stroke' });
+    host.append(fill, ghost);
+    return { fill, ghost };
+  };
+  const A = mkSet(big, 2), B = mkSet(zoom, 2);
+  big.append(svg('rect', { x: X + 18, y: Y + 30, width: 120, height: 10, rx: 5, style: 'fill:var(--o)' }),
+    svg('rect', { x: X + 18, y: Y + 54, width: 160, height: 8, rx: 4, style: 'fill:var(--surface-2)' }),
+    svg('rect', { x: X + 18, y: Y + 72, width: 110, height: 8, rx: 4, style: 'fill:var(--surface-2)' }));
+  zoom.append(svg('text', { x: 64, y: 90, class: 'lbl mid', style: 'font-size:5px' }, '左上角放大'));
+  const input = el('input', { type: 'range', min: '0', max: '60', value: '24', step: '1', 'aria-label': '圆角半径' });
+  const out = el('output', {});
+  const cb = el('input', { type: 'checkbox', 'aria-label': '用连续曲率画角' });
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    const r = +input.value, sq = cb.checked;
+    out.textContent = r + 'px';
+    const main = sq ? sqPath(r) : arcPath(r);
+    [A, B].forEach((S) => { S.fill.setAttribute('d', main); S.ghost.setAttribute('d', sq ? arcPath(r) : ''); });
+    const label = r === 0 ? '直角' : r <= 8 ? '小圆角' : r <= 30 ? '大圆角' : '超大圆角';
+    status.innerHTML = `半径 <b>${r}px</b>，约占卡片宽度的 <b>${(r / W * 100).toFixed(1)}%</b>（${label}）。` + (sq && r > 0 ? '超椭圆的角从更远处就开始弯，但最弯处比圆弧更「收」，直边与弯角之间没有曲率突变。' : r > 0 ? '普通圆角：直线在切点处突然接上圆弧，曲率从 0 一下跳到 1/r。' : '');
+  };
+  input.addEventListener('input', upd); cb.addEventListener('change', upd);
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '预设' });
+  [['直角', 0], ['小圆角', 6], ['大圆角', 24], ['超大圆角', 48]].forEach(([t, v]) => seg.append(el('button', { type: 'button', onclick: () => { input.value = v; upd(); } }, t)));
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '半径', input, out), el('label', { class: 'chk' }, cb, '连续曲率（squircle）'), seg),
+    el('div', { class: 'rc-wrap' }, big, zoom), status);
+  upd();
+});
+
+/* ---------- 04 底部通知与拇指区 ---------- */
+reg('notify', (node) => {
+  const SW = 220, SH = 340, R1 = 200, R2 = 290;
+  let mode = 'bottom', hand = 'R', shown = false, open = false;
+  const scr = el('div', { class: 'scr' });
+  const zs = svg('svg', { class: 'thumbz', viewBox: `0 0 ${SW} ${SH}`, preserveAspectRatio: 'none', 'aria-hidden': 'true' });
+  const c2 = svg('circle', { r: R2, style: 'fill:var(--y-soft);opacity:.7' });
+  const c1 = svg('circle', { r: R1, style: 'fill:var(--t-soft);opacity:.85' });
+  zs.append(svg('rect', { width: SW, height: SH, style: 'fill:var(--r-soft);opacity:.55' }), c2, c1);
+  const page = el('div', { style: 'position:absolute;inset:0;padding:44px 12px 0' },
+    ...[90, 70, 85, 60, 75].map((w) => el('div', { style: `height:10px;border-radius:5px;background:var(--line);opacity:.6;margin:12px 0;width:${w}%` })));
+  const notif = el('div', { class: 'notif', tabindex: '0', role: 'button' });
+  const addr = el('div', { class: 'addr' }, 'sspai.com');
+  scr.append(zs, page, notif, addr);
+  const phone = el('div', { class: 'phone', style: 'padding-bottom:22px' }, scr);
+  const status = el('div', { class: 'status' });
+  const pivot = () => (hand === 'R' ? [SW + 10, SH + 20] : [-10, SH + 20]);
+  const target = () => {
+    if (mode === 'safari') return [SW / 2, SH - 23];
+    const h = open ? 110 : 34;
+    return mode === 'bottom' ? [SW / 2, SH - 8 - h / 2] : [SW / 2, 8 + h / 2];
+  };
+  const render = () => {
+    const [px, py] = pivot();
+    [c1, c2].forEach((c) => { c.setAttribute('cx', px); c.setAttribute('cy', py); });
+    addr.style.display = mode === 'safari' ? 'flex' : 'none';
+    addr.style.bottom = '8px';
+    const h = open ? 110 : 34;
+    notif.style.display = mode === 'safari' ? 'none' : 'flex';
+    notif.style.height = h + 'px';
+    notif.style.flexDirection = open ? 'column' : 'row';
+    notif.style.alignItems = open ? 'stretch' : 'center';
+    notif.innerHTML = open ? '<b>通知（3）</b><span>邮件：本周设计评审</span><span>信息：晚上吃什么？</span><span>日历：15:00 煮机聚会</span>' : '<b>●</b><span>邮件：本周设计评审</span>';
+    if (mode === 'bottom') { notif.style.top = ''; notif.style.bottom = '8px'; notif.style.transform = shown ? 'none' : `translateY(${h + 20}px)`; }
+    else { notif.style.bottom = ''; notif.style.top = '8px'; notif.style.transform = shown ? 'none' : `translateY(-${h + 20}px)`; }
+    if (mode !== 'safari' && !shown) { status.innerHTML = '点「来一条通知」。'; return; }
+    const [tx, ty] = target();
+    const d = Math.hypot(tx - px, ty - py);
+    const zone = d < R1 ? '<b>拇指轻松可达</b>' : d < R2 ? '<b style="color:var(--y)">要伸长拇指</b>' : '<b style="color:var(--r)">单手够不着，得换手或用另一只手</b>';
+    const what = mode === 'safari' ? '底部地址栏' : (open ? '展开后的通知面板' : '通知条');
+    status.innerHTML = `${what}中心离${hand === 'R' ? '右' : '左'}手拇指根部约 ${Math.round(d)} 单位（屏高 ${SH}）：${zone}。` + (mode === 'bottom' ? '通知从底部冒出、在底部展开，看完顺手就能划掉。' : mode === 'top' ? '顶部通知要伸手去够，这是今天的主流做法。' : 'iOS 15 Safari 把地址栏放到底部，也是「底部交互区域优先」。');
+  };
+  notif.addEventListener('click', () => { open = !open; render(); });
+  keyAct(notif, () => { open = !open; render(); });
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '布局' });
+  [['bottom', 'webOS 底部通知'], ['top', '顶部通知'], ['safari', 'iOS 15 Safari']].forEach(([k, t]) => {
+    const b = el('button', { type: 'button', class: k === mode ? 'on' : '', onclick: () => { mode = k; open = false; seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); render(); } }, t);
+    seg.append(b);
+  });
+  node.append(el('div', { class: 'ctrl' }, seg,
+    el('button', { class: 'btn primary', type: 'button', onclick: () => { shown = true; open = false; render(); } }, '来一条通知'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { shown = false; open = false; render(); } }, '清除'),
+    el('button', { class: 'btn', type: 'button', onclick: (e) => { hand = hand === 'R' ? 'L' : 'R'; e.target.textContent = hand === 'R' ? '换成左手' : '换成右手'; render(); } }, '换成左手')), phone, status);
+  render();
+});
+
+/* ---------- 05 点金石与 Touch2Share ---------- */
+reg('desk', (node) => {
+  const desk = el('div', { class: 'desk' });
+  const tpadS = el('div', { class: 's' }, el('div', { class: 'bar' }, '浏览器 · sspai.com'), el('div', { style: 'padding:6px;color:var(--muted)' }, '《10 年过去了，我依然很想念你》'), ...[80, 60, 70].map((w) => el('div', { style: `height:7px;border-radius:4px;background:var(--line);margin:6px;width:${w}%` })));
+  const tpad = el('div', { class: 'tpad' }, tpadS);
+  const puck = el('div', { class: 'puck' }, '点金石', el('br'), 'Touchstone');
+  const preS = el('div', { class: 's' });
+  const pre = el('div', { class: 'pre', tabindex: '0', role: 'button', 'aria-label': 'Pre 3，可拖动' }, preS);
+  desk.append(el('span', { class: 'lbl2', style: 'left:4%;top:4px' }, 'HP TouchPad'), el('span', { class: 'lbl2', style: 'right:4%;top:4px' }, 'Pre 3（拖我）'), tpad, puck, pre);
+  const status = el('div', { class: 'status' });
+  let state = 'idle', batt = 35, timer = null, shared = false;
+  const home = () => { const W = desk.clientWidth || 330; return [W - 80, 26]; };
+  const place = (x, y) => { pre.style.left = x + 'px'; pre.style.top = y + 'px'; };
+  const screen = () => {
+    preS.innerHTML = '';
+    if (shared) preS.append(el('div', { class: 'bar' }, 'sspai.com'), el('div', { style: 'padding:3px;font-size:8px;color:var(--muted)' }, '已从 TouchPad 收到'));
+    else preS.append(el('div', { style: 'padding:4px;font-size:8px;color:var(--muted)' }, '主屏'));
+    preS.append(el('div', { style: 'padding:3px;font-size:9px;font-family:var(--mono);color:' + (state === 'charge' ? 'var(--t)' : 'var(--muted)') }, (state === 'charge' ? '⚡' : '') + batt + '%'));
+  };
+  const stopCharge = () => { clearInterval(timer); timer = null; };
+  const charge = () => {
+    stopCharge();
+    timer = setInterval(() => { batt = Math.min(100, batt + 1); screen(); if (batt >= 100) { stopCharge(); status.innerHTML = '充满了。全程没插线：这就是当年 Pre 配的点金石，靠电磁感应供电。'; } }, 120);
+  };
+  const settle = () => {
+    const d = desk.getBoundingClientRect(), p = pre.getBoundingClientRect();
+    const cx = p.left + p.width / 2, cy = p.top + p.height / 2;
+    const t = tpad.getBoundingClientRect(), k = puck.getBoundingClientRect();
+    const kr = k.width / 2, kcx = k.left + kr, kcy = k.top + kr;
+    if (Math.hypot(cx - kcx, cy - kcy) < kr + 20) {
+      state = 'charge'; place(kcx - d.left - 31, kcy - d.top - 62);
+      status.innerHTML = '放上<b>点金石</b>：吸住、开始充电，不用找线插口。今天的 Qi 标准与 MagSafe 做的是同一件事。'; charge();
+    } else if (cx > t.left && cx < t.right && cy > t.top && cy < t.bottom) {
+      state = 'share'; stopCharge(); shared = true;
+      place(t.right - d.left - 46, t.top - d.top + 30);
+      status.innerHTML = '<b>Touch2Share</b>：手机碰一下 TouchPad，平板上正在看的网页就到了手机上。原文说它「今天看来依然是新东西」，功能上类似 AirDrop。';
+    } else { state = 'idle'; stopCharge(); status.innerHTML = '手机放在桌上，什么也没发生。拖到点金石或 TouchPad 上试试。'; }
+    screen();
+  };
+  let st = null;
+  pre.addEventListener('pointerdown', (e) => { const d = desk.getBoundingClientRect(); st = { ox: e.clientX - pre.offsetLeft - d.left, oy: e.clientY - pre.offsetTop - d.top }; try { pre.setPointerCapture(e.pointerId); } catch (_) {} pre.classList.add('drag'); });
+  pre.addEventListener('pointermove', (e) => { if (!st) return; const d = desk.getBoundingClientRect(); place(clamp(e.clientX - d.left - st.ox, 0, d.width - 62), clamp(e.clientY - d.top - st.oy, 0, d.height - 112)); });
+  const up = () => { if (!st) return; st = null; pre.classList.remove('drag'); settle(); };
+  pre.addEventListener('pointerup', up); pre.addEventListener('pointercancel', up);
+  const toPuck = () => { const d = desk.getBoundingClientRect(), k = puck.getBoundingClientRect(); place(k.left - d.left + k.width / 2 - 31, k.top - d.top + k.height / 2 - 56); setTimeout(settle, 420); };
+  const toPad = () => { const d = desk.getBoundingClientRect(), t = tpad.getBoundingClientRect(); place(t.right - d.left - 60, t.top - d.top + 20); setTimeout(settle, 420); };
+  const reset = () => { stopCharge(); state = 'idle'; shared = false; batt = 35; place(...home()); screen(); status.innerHTML = '拖动 Pre 3 到点金石或 TouchPad 上。'; };
+  keyAct(pre, toPuck);
+  node.append(desk, el('div', { class: 'ctrl' },
+    el('button', { class: 'btn primary', type: 'button', onclick: toPuck }, '放上点金石'),
+    el('button', { class: 'btn', type: 'button', onclick: toPad }, '碰一下 TouchPad'),
+    el('button', { class: 'btn', type: 'button', onclick: reset }, '复位')), status);
+  reset();
+  return { start() { if (state === 'charge' && !timer && batt < 100) charge(); }, stop: stopCharge };
+});
+
+/* ---------- 05b Synergy（本页补充） ---------- */
+reg('synergy', (node) => {
+  const ACC = [
+    { k: 'Google', f: '邮箱 linxz@example.com', c: 'var(--p)' },
+    { k: 'Facebook', f: '头像、生日 3 月 2 日', c: 'var(--t)' },
+    { k: 'Exchange', f: '工作电话 8888-0000', c: 'var(--o)' },
+  ];
+  const on = ACC.map(() => true);
+  let syn = true;
+  const box = el('div', { class: 'syn' });
+  const status = el('div', { class: 'status' });
+  const render = () => {
+    box.innerHTML = '';
+    const act = ACC.filter((_, i) => on[i]);
+    if (!act.length) { status.textContent = '没有任何账户，通讯录是空的。'; return; }
+    if (syn) {
+      box.append(el('div', { class: 'ct' }, el('b', {}, '林小舟 '), ...act.map((a) => el('span', { class: 'tag', style: `color:${a.c};margin-right:4px` }, a.k)), el('br'), el('small', {}, act.map((a) => a.f).join(' · '))));
+      status.innerHTML = `Synergy 开：${act.length} 个账户里的同一个人，合成 <b>1</b> 张联系人卡。`;
+    } else {
+      act.forEach((a) => box.append(el('div', { class: 'ct' }, el('b', {}, '林小舟 '), el('span', { class: 'tag', style: `color:${a.c}` }, a.k), el('br'), el('small', {}, a.f))));
+      status.innerHTML = `Synergy 关：同一个人出现 <b>${act.length}</b> 次，每张卡只有一部分信息。`;
+    }
+  };
+  const ctrl = el('div', { class: 'ctrl' });
+  ACC.forEach((a, i) => { const cb = el('input', { type: 'checkbox' }); cb.checked = true; cb.addEventListener('change', () => { on[i] = cb.checked; render(); }); ctrl.append(el('label', { class: 'chk' }, cb, a.k)); });
+  const sb = el('button', { class: 'btn primary', type: 'button', onclick: () => { syn = !syn; sb.textContent = syn ? '关闭 Synergy' : '打开 Synergy'; render(); } }, '关闭 Synergy');
+  ctrl.append(sb);
+  node.append(ctrl, box, status);
+  render();
+});
+
+/* ---------- 06 人物图谱 ---------- */
+reg('people', (node) => {
+  const P = [
+    ['Matias', 'Matias Duarte', '当年把 webOS 展示给全世界的设计师。', [
+      ['Palm Pre 发布会', '特意穿了一件与 webOS 同色的橙色衬衫', 'var(--o)'],
+      ['Google · Material Design', '借 Matias 之手，卡片概念发扬光大'],
+      ['Google I/O 2021 · Material You', '衬衫配色与当时发布的系统视觉配色一致'],
+      ['一直在做的事', '借用商业的力量，把 webOS 的种子种成森林']]],
+    ['Skillman', 'Peter Skillman', '当年统管 webOS 设计的老伙计。', [
+      ['Palm', '统管 webOS 设计'], ['Nokia', '造了另一个绝唱：Nokia N9'], ['微软', '随团队并入，为新的 Outlook 打磨产品细节'],
+      ['亚马逊', '供职于云服务团队'], ['2021 年 5 月离职', '正在等候下一阵风来']]],
+    ['Abbott', 'Michael Abbott', '当年负责 webOS 软件开发。', [
+      ['Palm', '负责软件开发'], ['Twitter', '研发副总裁'], ['Kleiner Perkins', '以合伙人身份负责数字产品'],
+      ['Apple（2018 年 2 月）', '以「想当回工程师」为由离开 KP；如今是高管，做 AI 与机器学习']]],
+    ['Bell', 'Mike Bell', '「相当能折腾了」。', [
+      ['Palm', 'webOS 时期'], ['英特尔', '离开后先去了这里'], ['十年创业', '做过 CEO、CTO、COO、合伙人'], ['Lucid Motors', '造电动车']]],
+    ['T+L', 'Teehan + Lax', '在少有 UI kit 的年代，手工给 webOS 做了 UI kit 的第三方设计团队。', [
+      ['webOS UI kit', '手工制作的设计素材'], ['公平的合伙人制度', '平等地吸纳才华横溢的设计师'], ['Facebook（2015）', '团队被收购，继续输出优秀的设计']]],
+    ['作者', '陈子木（作者）', '写这封信的人。', [
+      ['煮机社区', '活跃版主；煮机是当时国内最大的 webOS 用户社区'], ['少数派', '建立初期的编辑部成员'], ['2021', '还是一个编辑，依然热爱着好设计']]],
+  ];
+  const C = 180, CY = 150, R = 112;
+  const root = svg('svg', { viewBox: '0 0 360 300', role: 'img', 'aria-label': 'webOS 人物图谱', style: 'max-width:420px;margin:0 auto' });
+  const lines = [], nodes = [];
+  const trail = el('div', { class: 'trail' });
+  const head = el('div', { class: 'status' });
+  let tm = [];
+  const clear = () => { tm.forEach(clearTimeout); tm = []; };
+  const show = (i) => {
+    clear();
+    nodes.forEach((n, j) => n.classList.toggle('sel', j === i));
+    lines.forEach((l, j) => { l.style.stroke = j === i ? 'var(--o)' : 'var(--line)'; l.style.strokeWidth = j === i ? 3 : 1.5; });
+    trail.innerHTML = '';
+    if (i < 0) { head.innerHTML = '六条从 webOS 出发的路。点外圈任意一个人。'; return; }
+    const p = P[i];
+    head.innerHTML = `<b>${p[1]}</b>：${p[2]}`;
+    const sts = [];
+    p[3].forEach((s, k) => {
+      if (k) trail.append(el('span', { class: 'ar' }, '→'));
+      const st = el('div', { class: 'st' }, s[2] ? el('span', { class: 'sw', style: `background:${s[2]}` }) : null, s[0], el('small', {}, s[1]));
+      trail.append(st); sts.push(st);
+    });
+    sts.forEach((st, k) => { if (RM) st.classList.add('on'); else tm.push(setTimeout(() => st.classList.add('on'), 140 * k)); });
+  };
+  P.forEach((p, i) => {
+    const a = (i / P.length) * Math.PI * 2 - Math.PI / 2;
+    const x = C + R * Math.cos(a), y = CY + R * Math.sin(a);
+    const l = svg('line', { x1: C, y1: CY, x2: x, y2: y, style: 'stroke:var(--line);stroke-width:1.5' });
+    lines.push(l); root.append(l);
+  });
+  const center = svg('g', { class: 'pnode', tabindex: '0', role: 'button', 'aria-label': '回到全图' },
+    svg('circle', { cx: C, cy: CY, r: 38, style: 'fill:var(--o);stroke:var(--o)' }),
+    svg('text', { x: C, y: CY - 4, style: 'fill:var(--on);font-weight:700;font-size:13px' }, 'palm'),
+    svg('text', { x: C, y: CY + 12, style: 'fill:var(--on);font-weight:700;font-size:13px' }, 'webOS'));
+  center.addEventListener('click', () => show(-1)); keyAct(center, () => show(-1));
+  root.append(center);
+  P.forEach((p, i) => {
+    const a = (i / P.length) * Math.PI * 2 - Math.PI / 2;
+    const x = C + R * Math.cos(a), y = CY + R * Math.sin(a);
+    const g = svg('g', { class: 'pnode', tabindex: '0', role: 'button', 'aria-label': p[1] },
+      svg('circle', { cx: x, cy: y, r: 30 }), svg('text', { x, y: y + 4 }, p[0]));
+    g.addEventListener('click', () => show(i)); keyAct(g, () => show(i));
+    nodes.push(g); root.append(g);
+  });
+  node.append(root, head, trail);
+  show(0);
+  return { stop: clear };
+});
+
+/* ---------- 07 那时 / 这时 ---------- */
+reg('legacy', (node) => {
+  const L = [
+    ['手势交互', '被吐槽不够显著，不好发现', '深入人心、形成习惯的普遍认知，少有人再吐槽'],
+    ['手势呼出快捷方式', '从屏幕边缘上划调出常用功能的风骚操作', '大概受限于交互设计专利，成了江湖绝唱'],
+    ['卡片多任务', '卡片像扑克一样自然散开，富有灵性', '经 Matias 与 Material Design 成为 UI 基础元件，甚至反哺桌面端'],
+    ['大圆角卡片', '视觉上被频繁吐槽', '成为最新设计趋势，还有了名字：Squirclemorphism'],
+    ['底部通知', '通知从屏幕底部冒出', '已成绝唱；只在 iOS 15 Safari 的底部交互区里隐约可见'],
+    ['全键盘 / 全屏机', '临别之际差点让全屏 webOS 手机 WinsorNot 问世', '黑莓倒下后，全键盘手机只能去众筹网站上找'],
+    ['无线充电', '点金石；2 代点金石带音频输出，未能上市', 'Qi 成为行业标杆，Apple 靠 MagSafe 外接电池刷存在感'],
+    ['Touch2Share', '碰一下就在手机和平板间传网页', '今天看来依然是新东西，功能类似 AirDrop'],
+  ];
+  const rows = L.map(([k, a, b]) => {
+    const v = el('div', { class: 'v' });
+    const r = el('div', { class: 'r', tabindex: '0', role: 'button', 'aria-pressed': 'false' }, el('div', { class: 'k' }, k), v);
+    r._set = (now) => { r.classList.toggle('now', now); r.setAttribute('aria-pressed', String(now)); v.innerHTML = ''; v.append(el('span', { class: 'y' }, now ? '这时 · 2021' : '那时'), now ? b : a); };
+    r._now = false; r._set(false);
+    const flip = () => { r._now = !r._now; r._set(r._now); count(); };
+    r.addEventListener('click', flip); keyAct(r, flip);
+    return r;
+  });
+  const status = el('div', { class: 'status' });
+  const count = () => { const n = rows.filter((r) => r._now).length; status.innerHTML = n ? `已翻到「这时」的有 <b>${n}</b> / ${rows.length} 项。其中被今天的系统接住的，正是当年「错」的那些。` : '全部停在「那时」：Palm 与 HP 的 webOS 年代。'; };
+  const all = (v) => { rows.forEach((r) => { r._now = v; r._set(v); }); count(); };
+  node.append(el('div', { class: 'ctrl' }, el('button', { class: 'btn', type: 'button', onclick: () => all(false) }, '全部翻到「那时」'), el('button', { class: 'btn primary', type: 'button', onclick: () => all(true) }, '全部翻到「这时」')), el('div', { class: 'leg' }, ...rows), status);
+  count();
+});
+
+/* ---------- 07b 结尾老图（意绘） ---------- */
+reg('poster', (node) => {
+  const root = svg('svg', { viewBox: '0 0 360 170', role: 'img', 'aria-label': '「少数派」已经不在，但它终究改变了未来', style: 'max-width:520px;margin:0 auto' });
+  root.append(svg('rect', { x: 0, y: 0, width: 360, height: 170, rx: 14, style: 'fill:var(--o-soft)' }),
+    svg('rect', { x: 34, y: 22, width: 70, height: 126, rx: 32, style: 'fill:var(--dev)' }),
+    svg('rect', { x: 42, y: 36, width: 54, height: 72, rx: 6, style: 'fill:var(--surface)' }),
+    svg('rect', { x: 50, y: 120, width: 38, height: 4, rx: 2, style: 'fill:var(--o)' }),
+    svg('text', { x: 128, y: 74, style: 'fill:var(--text);font-size:17px;font-weight:700' }, '「少数派」已经不在，'),
+    svg('text', { x: 128, y: 104, style: 'fill:var(--o);font-size:17px;font-weight:700' }, '但它终究改变了未来'));
+  node.append(root);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

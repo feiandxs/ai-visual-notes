@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Mac 视觉史（三）：浴「水」重生的 Aqua</title>
+<meta name="description" content="从 90 年代灰色斜切界面、Rhapsody、iMac G3 到 Mac OS X 的 Aqua：六种系统窗口线框对比、控件面积计算、1996–2001 时间线、分栏浏览、2×2 产品矩阵、可调参数的 Aqua 水滴按钮与 DP2/DP3 卷帘对比。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页专用 ===== */
+.shot{background:var(--surface-2);border-radius:10px;padding:8px}
+.shot svg{margin:0 auto;max-width:480px;width:100%}
+.seg button{white-space:nowrap;flex:0 0 auto}
+.scrollx>.seg{max-width:none}
+.hero-art{margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hero-art .shot{padding:6px}
+.hero-art .pc{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
+.chrome-bar{height:16px;border-radius:999px;background:var(--surface-2);overflow:hidden;display:flex;margin-top:6px;border:1px solid var(--line)}
+.chrome-bar i{display:block;height:100%;transition:width .3s}
+.chrome-bar .c1{background:var(--r)}
+.chrome-bar .c2{background:var(--t)}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px;background:var(--surface-2);cursor:pointer;user-select:none}
+.chk input{accent-color:var(--p);margin:0}
+/* 时间线 */
+.tl{display:flex;gap:0;min-width:760px;padding:14px 4px 6px;position:relative}
+.tl::before{content:"";position:absolute;left:10px;right:10px;top:33px;height:2px;background:var(--line)}
+.tl button{flex:1;border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 2px;position:relative;font-size:12px;color:var(--muted)}
+.tl button .dot{width:16px;height:16px;border-radius:50%;background:var(--surface);border:2px solid var(--line);margin-top:11px;transition:all .2s}
+.tl button[data-k="next"] .dot{border-color:var(--ink)}
+.tl button[data-k="platinum"] .dot{border-color:var(--muted)}
+.tl button[data-k="aqua"] .dot{border-color:var(--p)}
+.tl button.on .dot{background:var(--p);border-color:var(--p);transform:scale(1.3)}
+.tl button.on{color:var(--text);font-weight:600}
+.tl button .yr{font-family:var(--mono);font-size:11px}
+.tl-card{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+@media (min-width:760px){.tl-card{grid-template-columns:1.1fr 1fr}}
+.tl-card h3{font-size:17px;margin-bottom:6px}
+.tl-card p{font-size:14px}
+/* 分栏浏览 */
+.cols{display:flex;min-height:200px;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.cols .col{flex:0 0 150px;border-right:1px solid var(--line);padding:4px 0}
+.cols .it,.cw .it{display:flex;justify-content:space-between;gap:6px;width:100%;border:0;background:transparent;text-align:left;padding:4px 10px;font-size:13px;cursor:pointer;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cols .it:hover,.cw .it:hover{background:var(--surface-2)}
+.cols .it.sel{background:var(--p);color:#fff}
+.cols .it .ar{opacity:.6}
+.cw-stage{position:relative;height:290px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);overflow:hidden}
+.cw{position:absolute;width:min(190px,58%);background:var(--surface);border:1px solid var(--muted);border-radius:4px;box-shadow:var(--shadow);transition:left .3s,top .3s}
+.cw .tb{font-size:12px;text-align:center;padding:2px 6px;background:repeating-linear-gradient(180deg,var(--surface-2) 0 2px,var(--line) 2px 3px);border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cw .it.sel{background:var(--p-soft);color:var(--p)}
+/* 产品矩阵 */
+.board{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:12px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chips span{display:inline-flex;align-items:center;justify-content:center;height:22px;min-width:22px;padding:0 6px;border-radius:6px;font-size:11px;font-family:var(--mono);color:#fff;opacity:.85}
+.chips span.s0{background:var(--p)} .chips span.s1{background:var(--t)} .chips span.s2{background:var(--o)} .chips span.s3{background:var(--r)}
+.chips span.q{outline:2px solid var(--text);outline-offset:1px;opacity:1}
+.mx{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;font-size:13px}
+.mx .h{color:var(--muted);text-align:center;align-self:end;padding:4px}
+.mx .rh{color:var(--muted);writing-mode:vertical-rl;text-align:center;align-self:center}
+.mx button{border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:14px 8px;cursor:pointer;min-height:70px;font-weight:600}
+.mx button small{display:block;font-weight:400;color:var(--muted);font-size:11px;margin-top:2px}
+.mx button.on{border-color:var(--p);background:var(--p-soft);color:var(--p)}
+/* Aqua 实验台 */
+.lab{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:860px){.lab{grid-template-columns:1.2fr 1fr}}
+.stage{position:relative;border-radius:12px;min-height:250px;padding:22px 16px;overflow:hidden;
+  background:repeating-linear-gradient(180deg,#f4f4f4 0 2px,#e4e4e4 2px 4px);border:1px solid #c8c8c8;color:#222}
+.stage .bgword{position:absolute;left:24px;top:58px;font-size:60px;line-height:1;font-weight:800;letter-spacing:.04em;color:#e2541c;opacity:.75;pointer-events:none;font-family:var(--font)}
+.stage .row{position:relative;display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+.gel{position:relative;display:inline-flex;align-items:center;justify-content:center;border:0;cursor:pointer;font:600 14px var(--font);color:#fff;overflow:hidden;transition:transform .08s}
+.gel:active{transform:scale(.97)}
+.gel>.hl{position:absolute;top:1px;height:48%;pointer-events:none}
+.gel>.gl{position:absolute;inset:0;pointer-events:none}
+.gel>.tx{position:relative;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.gel.pulse>.gl{animation:aquapulse 1.6s ease-in-out infinite}
+@keyframes aquapulse{0%,100%{opacity:.15}50%{opacity:1}}
+.track{position:relative;width:min(260px,100%);height:16px;border-radius:8px;background:repeating-linear-gradient(90deg,#e8e8e8 0 2px,#dadada 2px 4px);box-shadow:inset 0 1px 3px rgba(0,0,0,.25)}
+.track .gel{position:absolute;top:0;left:30%;height:16px;width:90px}
+.sliders{display:grid;grid-template-columns:1fr;gap:6px}
+.sliders .range{display:grid;grid-template-columns:7.5em 1fr 3.5em;gap:8px}
+.sliders .range input{width:100%;max-width:none}
+/* 对比卷帘 */
+.wipe{position:relative;max-width:560px;margin:0 auto}
+.wipe .top{position:absolute;inset:0}
+.wipe .bar{position:absolute;top:0;bottom:0;width:2px;background:var(--p);pointer-events:none}
+.labels2{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);max-width:560px;margin:4px auto 0}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Mac 视觉史（三）：Aqua</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Mac OS X</div>
+  <h1>Mac 视觉史（三）：浴「水」重生的 Mac 视觉美学</h1>
+  <p class="sub">从灰扑扑的 90 年代界面，到 NeXTSTEP 与 Mac OS 8 的混血 Rhapsody，再到被 iMac G3 的半透明外壳点醒、用「水滴」重做一切的 Aqua。这一页把那段 1996～2001 年的转折画成可以点、可以拖、可以调参数的线框图。</p>
+  <div class="thesis">Mac OS X 的视觉美学不是凭空出现的：乔布斯回归带来的「非同凡想」、iMac G3 半透明的邦迪蓝外壳，和 Cordell Ratzlaff 早在 Copland 时代就试过的果冻质感，在 1999 年前后汇合，才让 Mac OS X 在 DP2 与 DP3 之间脱胎换骨。<sup class="c">[1]</sup></div>
+  <div class="hero-art" aria-hidden="true">
+    <div><div class="shot" data-demo="heroA"></div><div class="pc">Mac OS 8 · Platinum（示意）</div></div>
+    <div><div class="shot" data-demo="heroB"></div><div class="pc">Mac OS X · Aqua（示意）</div></div>
+  </div>
+  <div class="authors"><span class="au"><i>陈</i>陈子木</span></div>
+  <p class="meta">原文：《Mac 视觉史（三）：浴「水」重生的 Mac 视觉美学》，陈子木，少数派（2020-06-10；首发于优设网，原标题《Mac 视觉史 vol.3》）。本页忠实于原文的叙述顺序；原文的界面截图全部改用示意性线框重绘，不追求像素还原；另加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="nineties" data-title="90 年代的视觉美学">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>90 年代的视觉美学：灰、厚、斜切</h2>
+    <p class="lead">为什么 Windows 95、OS/2、Motif、Mac OS 8，甚至 NeXTSTEP，看上去都是「一股子同样的粘腻沉重的味道」？</p>
+  </div>
+  <p>原文的概括是：第一眼是灰色的窗口；定睛看细节，全是棱角分明的按钮，边缘横平竖直，厚厚的边框和斜切式的边缘让眼睛读出「突出」的效果。这是 90 年代 GUI 的最佳实践，大家都这样，遵循就行。例外只有两个：BeOS 用了更明快的配色与统一有趣的图标，NeXTSTEP 用了更「抄现实」的视觉元素，但 NeXTSTEP 的窗口本身也逃不出这套范式。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一个窗口，六种系统。</b>切换看标题栏、关闭按钮、滚动条和「确定」按钮怎么画。前五个都靠「左上亮、右下暗」的斜切线制造立体感；最后一个是 2000 年的 Aqua，作为对照。线框为示意重绘，不是截图。</div>
+    <div data-demo="era"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>控件盖过了内容？</b>原文引 Cordell Ratzlaff 的吐槽：「似乎这些元素和控制器的重要性，已经盖过了计算机真要做的事情，比如浏览内容，撰写邮件。」打开或关掉窗口里的各种「装备」、拖动边框厚度，看一个 320×220 的窗口里，真正留给内容的面积还剩多少。</div>
+    <div data-demo="chrome"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：上面的面积占比是本页按示意尺寸现场计算的，用来把 Ratzlaff 那句话量化成一个直观的感受，不是对任何真实系统的测量。另外，Mac 一直把菜单栏放在屏幕顶端而不是每个窗口里，所以「Aqua 式」预设里没有窗口菜单栏。</div>
+</section>
+
+<section class="ch" id="ratzlaff" data-title="缔造者 Ratzlaff">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>缔造者 Cordell Ratzlaff：从 Copland 到 Mac OS X</h2>
+    <p class="lead">一个在 Copland 里没有话语权的设计师，怎么成了 Mac OS X 视觉美学的塑造者？</p>
+  </div>
+  <p>1990 年前后的苹果仍处于全盛，研发团队在「Pink」项目下充分地挥霍经费，光做图形界面的团队就有七八个。Ratzlaff 加入苹果后参与的第一个项目是原计划中的 Mac OS 8，也就是 Copland。最终发布的 Mac OS 8 本质上只是 Mac OS 7.7，Copland 折戟沉沙，只有它的界面主题工具 Appearance Manager 衍生出的 Platinum 主题，作为正式版 Mac OS 8 的主要视觉风格延续了下来。<sup class="c">[1]</sup></p>
+  <div class="quote">「我发现一个糟糕的趋势，就是项目在完成 95% 之后就罢手停滞了……当时的苹果是非常的工程技术导向的，多数的产品都是以技术为导向，至于易用和体验的愉悦感则是不必考虑的事情。」——Ratzlaff</div>
+  <p style="margin-top:10px">原文认为，Platinum 是「向世代主流视觉审美靠拢」的产物，尽管 Appearance Manager 已经探索出很多不同风格。1997 年之前，Ratzlaff 没有话语权；乔布斯回归后公司架构精简，他加入了研发下一代操作系统的行列，代号 Rhapsody，「狂想曲」。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>1996～2001 时间线。</b>点任意节点，右边（手机上是下方）的线框会换成那一时期的界面面貌。圆点边框颜色：黑 = NeXT 血统，灰 = Platinum，蓝 = Aqua。手机上可以左右滑动时间线。</div>
+    <div data-demo="timeline"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：时间线里的具体日期来自维基百科：苹果 1996 年 12 月收购 NeXT；Rhapsody 1997 年 5 月在 WWDC 首次演示；iMac G3 1998 年 5 月 6 日发布、8 月 15 日开售，预装 Mac OS 8.1；Mac OS X Server 1.0 于 1999 年 3 月 16 日发布；Aqua 于 2000 年 1 月的旧金山 Macworld Expo 亮相。<sup class="c">[2][3][4]</sup> Mac OS 8 的发布时间（1997 年夏）与 Mac OS X 10.0 的发布时间（2001 年 3 月）为通行说法，本页未逐一核对原始出处。</div>
+</section>
+
+<section class="ch" id="rhapsody" data-title="Rhapsody 与 Server 1.0">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Rhapsody 与 Mac OS X Server 1.0：混血的过渡</h2>
+    <p class="lead">NeXTSTEP 的内核穿上 Mac OS 8 的外衣，长什么样？Ratzlaff 的分栏浏览又解决了什么问题？</p>
+  </div>
+  <p>Rhapsody 早期也在 x86 平台上开发，后期全部集中到 Power Macintosh，非苹果平台的版本都被砍掉。这个深度融合 NeXTSTEP 的系统被赋予了更接近 Mac OS 8 的界面：大体外观已经和 Mac OS 8 非常接近，Platinum 主题被用到各个角落；但在图标和按钮（比如文本编辑器、系统设置）上，仍带着强烈的 NeXTSTEP 特征。Mac 独占的应用，比如 QuickTime，也被移植了过来。<sup class="c">[1]</sup></p>
+  <p style="margin-top:10px">苹果没有直接推出 Mac OS X，而是先发布了 Mac OS X Server 1.0。它包含能运行老版 Mac OS 的「BlueBox」兼容层、大量继承自 NeXTSTEP 的功能，以及对当时各种网络服务的支持。它的文件浏览器加入了出自 Ratzlaff 设计的<b>分栏式浏览视图</b>：不用反复跳转，就能快速浏览多层级的文件夹和文件。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>分栏浏览 vs 一层一个窗口。</b>在两种模式下都一路点进「Macintosh HD → 用户 → ratzlaff → 文稿 → Aqua 草图」，比一比屏幕上要摞几个窗口。</div>
+    <div data-demo="columns"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「一层一个窗口」对应经典 Mac OS 的空间式 Finder 习惯（双击文件夹就在原位置打开一个新窗口）。分栏视图的思路可追溯到 NeXTSTEP 的 File Viewer 浏览器，Mac OS X 的 Finder 延续至今（「分栏」显示方式）。本页演示中的目录与文件名均为虚构。</div>
+</section>
+
+<section class="ch" id="thinkdiff" data-title="DP2 与 Think Different">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>Mac OS X DP2 与「非同凡想」</h2>
+    <p class="lead">到 DP2 为止，Mac OS X 还长着老 Mac OS 的脸。分水岭为什么出现在 DP2 与 DP3 之间？</p>
+  </div>
+  <p>对外公开的测试版统称 Mac OS X Developer Preview（DP），一共发布了 4 个版本。直到 DP2，系统仍带有典型的老 Mac OS 视觉特征和交互；变化只是 QuickTime 的标志明显改了，原本冷硬沉重的图标和 UI 元素开始加入更活泼的色彩。原文说，DP2 与 DP3 之间的分水岭，是苹果整体变化带来的必然结果。<sup class="c">[1]</sup></p>
+  <p style="margin-top:10px">变化的种子之一是广告。重回苹果的乔布斯挑选新的广告代理商，其中有当年《1984》广告的缔造者 Lee Clow。他和团队带来了「非同凡想」（Think Different）。</p>
+  <div class="quote">「……那种纯粹我永远都不会忘记。他坐在我的办公室里给我看那些创意，我就忍不住哭了。」——《史蒂夫·乔布斯传》</div>
+  <div class="quote">「在此之前，苹果并不屑于做出和人不一样的东西，直到 Think Different 清晰地指明了此刻苹果的诉求。……与众不同是好的！……即使你的产品再好也不可能满足所有人，你是在为世界上最聪明的人做设计。」——Ratzlaff</div>
+  <p style="margin-top:10px">原文的判断是：在今天看来 Think Different 只是一则传奇广告，但回看 20 多年前的苹果，它是改变一切的那颗种子。1997 到 2001 年间，变化是从各个不同的地方同时发生的，所以接下来必须先谈 iMac G3。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文写作「Chia/Day 广告公司」，通行写法是 Chiat/Day（Lee Clow 所在的广告公司，1984 年的《1984》广告即出自这里；1990 年代后期已并入 TBWA，称 TBWA\Chiat\Day）。</div>
+</section>
+
+<section class="ch" id="imac" data-title="iMac G3">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>iMac G3：先把白板擦干净</h2>
+    <p class="lead">一台电脑的外壳，怎么会成为一个操作系统视觉美学的触发点？</p>
+  </div>
+  <div class="quote">「我刚到这里的时候，眼前只有一大堆产品……为什么现在我要向用户推荐 3400，凭什么说它比 4400 好呢？什么时候一个人应该入手 6500，而不是 7300 呢？……如果我都弄不清楚，用户又如何能弄清楚呢？」——乔布斯</div>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>40 多款 → 4 款。</b>原文：乔布斯回到苹果后做的第一件事，是把 4 个系列 40 多款产品精简成 4 款。他擦干净白板，画了一个 2×2 的表格：上面两格写「普通用户」「专业人员」，下面两格写「便携式电脑」「台式电脑」。点按钮擦白板，再点表格里的格子。</div>
+    <div data-demo="matrix"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：左侧色块只是「4 个系列、40 多款」的示意数量，除了乔布斯原话里的 3400、4400、6500、7300 四个型号外，不对应具体机型。2×2 各格最终填入的产品（iMac、Power Macintosh G3、iBook、PowerBook G3）为通行说法，其中 iBook 要到 1999 年才推出，本页未逐一核对发布日期。</div>
+  <p style="margin-top:14px">精简之后，原 Newton 产品线、Copland 项目和 NeXTSTEP 团队的设计师与开发者重新整合到一起：工业设计向乔纳森（Jony Ive）提交原型，Mac OS X 的设计研发由原 NeXT 团队的鲁宾斯坦（Jon Rubinstein）管理，统一向乔布斯汇报。乔纳森团队反复考虑的不是芯片速度或市场份额，而是「我们想给使用者什么样的用户体验」。第一个月就做了 10 个实体原型，「鸡蛋」型最吸引人；实色塑料看起来廉价，于是有人提议半透明材质。<sup class="c">[1]</sup></p>
+  <div class="quote">「我们喜欢半透明的材质，它会给人一种张扬的感觉……你知道洗澡的时候，玻璃上的水滴是怎么形成的吗？」——乔纳森</div>
+  <p style="margin-top:10px">一位设计师带来一小片蓝绿色、表面轻微磨砂的沙滩玻璃，这种颜色最终成了 iMac G3 的「邦迪蓝」（Bondi Blue）。发布会上乔布斯说它「看起来好像来自另外一个星球……一个拥有更好设计师的星球」。此时 iMac G3 内置的系统仅是 Mac OS 8.1：外壳已经是新世纪，屏幕里还是 90 年代。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：1999 年 1 月，iMac G3 推出五色款：蓝莓（Blueberry）、草莓（Strawberry）、橘子（Tangerine）、葡萄（Grape）、青柠（Lime）。下一章的实验台里可以把这些颜色套到 Aqua 按钮上。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="aqua" data-title="Aqua 的美学">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>从 iMac 的启示到 Aqua 的美学</h2>
+    <p class="lead">「水滴」质感到底由哪些光学要素组成？少一个会怎样？</p>
+  </div>
+  <p>原文说，早在 Copland 时期，Ratzlaff 在设计 Appearance Manager 时就试过类似果冻质感的界面元素，乔布斯刚回苹果时他在项目说明会上演示过，但当时没有引起重视。iMac G3 发布后，他发现了两者通透明快的质感之间的共通，开始沿着这个方向挖掘：明亮、有趣、多彩，用「水滴」质感重新设计 UI 元素。他的思路与乔纳森不谋而合：「什么东西和计算机界面毫无关联？」他想到了糖果，想到了酒。团队搜集杂志上的酒类广告，从酒液里的冰块和玻璃瓶上流转的光影中撷取细节。<sup class="c">[1]</sup></p>
+  <p style="margin-top:10px">2000 年旧金山 Macworld 上，乔布斯演示了这套美学，以拉丁语的「水」命名：Aqua。从窗口开关按钮到滚动条，仿佛都是用晶莹的水滴做的，被头顶的光源充分照耀，「反映出令人忍不住想舔一口的强烈质感」。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>Aqua 参数实验台。</b>把水滴拆成六个参数：斜切（90 年代的立体手法）、顶部高光（头顶光源的反射）、底部回光（光穿过液体在底部聚起的亮带）、透明度、圆角、投影。先点预设看 Platinum → DP2 → DP3 的演变，再自己拖。颜色可以换成 iMac G3 的外壳色。</div>
+    <div data-demo="aqualab"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「底部回光」「顶部高光」是本页为了拆解而起的名字，参数也是示意值，不是 Apple 的设计规范。默认按钮的「呼吸」脉动、红黄绿三色窗口按钮、条纹（pinstripe）背景都是 Aqua 的标志特征，据维基百科，蓝色默认按钮的脉动一直保留到 Yosemite 之前。<sup class="c">[2]</sup>「扁平化」预设对应的是 2014 年 OS X Yosemite 之后的样子，放在这里只作对照。</div>
+</section>
+
+<section class="ch" id="dp3" data-title="Mac OS X DP3">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>Mac OS X DP3：「原教旨主义」的 Aqua</h2>
+    <p class="lead">从 DP2 到 DP3，像是「从 720P 一键升级为 4K 画质」。具体变了什么？</p>
+  </div>
+  <p>原文称 DP3 大概是最「原教旨主义 Aqua 美学」的系统：水滴元素近乎不要钱地铺满界面的每个角落。经典桌面背景像在模拟水的流体感；计算器完全由水滴按钮组成，让人忍不住想戳；控制面板的标签页也是水滴式；即便是实色元素也用光影营造光滑质感。但它也没让一切都「水」：播放器仍延续早期 Platinum 时代的金属拉丝质感。直到此时，装着 DP3 的 iMac G3 才算「完全体」，从内到外遵循一致的美学。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>卷帘对比。</b>拖动滑块，在同一个窗口布局上把 DP2 时代的 Platinum 面貌刷成 DP3 的 Aqua 面貌。注意标题栏按钮、滚动条、默认按钮、窗口圆角与投影。</div>
+    <div data-demo="wipe"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>水滴计算器。</b>原文说 DP3 的计算器「让人忍不住想去戳一下」。这是一个按那种风格画的可用计算器（示意，按键布局不对应原版）。</div>
+    <div data-demo="calc"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：据维基百科，金属拉丝（brushed metal）质感最早出现在 1999 年的 QuickTime Player 4.0，后来在 Panther 中用得更多；Aqua 的首次正式发布是 2000 年 7 月随 iMovie 2。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="x" data-title="进入 X 时代">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>进入 X 时代</h2>
+    <p class="lead">苹果更看重的「另外的东西」是什么？</p>
+  </div>
+  <p>Mac OS X 和 iMac G3 在当时对硬件和性能都有要求，但相比整个行业把参数奉为圭臬，苹果似乎更看重别的。原文引《乔纳森传》：「苹果公司在基本的追求之外，还有其他的渴望。」超出常规认知的疯狂尝试、彻底打破规则的创造，是 iMac G3 成为里程碑、Mac OS X 成为独角兽的核心要义。<sup class="c">[1]</sup></p>
+  <div class="final">世间所有的相遇都是久别重逢：苹果与乔布斯，NeXTSTEP 与 Macintosh，iMac G3 与 Mac OS X。进入新世纪，苹果的视觉美学重生了，苹果也重生了。不过，这仅仅是另一次长征的开始。</div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Aqua 之后的走向（据维基百科）：Jaguar（10.2）减少透明与条纹，Panther（10.3）让按钮更平，Leopard（10.5）去掉条纹、菜单栏变灰，Lion（10.7）把果冻感换成更平的光泽，Yosemite（10.10）跟随 iOS 7 全面扁平化；2025 年苹果又在各平台推出了名为 Liquid Glass 的新设计语言，「水」的意象以另一种方式回来了。<sup class="c">[2]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据陈子木在少数派发表的<a href="https://sspai.com/post/60888">《Mac 视觉史（三）：浴「水」重生的 Mac 视觉美学》</a>（2020-06-10；首发于优设网，原标题《Mac 视觉史 vol.3：浴「水」重生的 Mac 视觉美学》，少数派经授权转载）制作。原文中的界面截图与照片均已用内联 SVG / CSS 示意性重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>陈子木，《Mac 视觉史（三）：浴「水」重生的 Mac 视觉美学》，少数派（2020-06-10），及其引用来源：Cult of Mac「Apple history: iMac G3 arrives」、toastytech GUI Timeline、维基百科 Aqua / Mac OS X Server 1.0 / Rhapsody / Classic Mac OS 条目，《关键设计报告》《史蒂夫·乔布斯传》《乔纳森传》。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Aqua_(user_interface)">Aqua (user interface)</a>：2000 年 1 月 Macworld 亮相、2000 年 7 月随 iMovie 2 首发、条纹与金属拉丝、红黄绿按钮、默认按钮脉动、Jaguar 至 Yosemite 的演变、2025 年 Liquid Glass。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Rhapsody_(operating_system)">Rhapsody (operating system)</a>：1996 年 12 月收购 NeXT、1997 年 5 月 WWDC 演示、DR1（1997-10-13）、DR2（1998-05-14）、Mac OS X Server 1.0（1999-03-16）、Blue Box、Platinum 与 OPENSTEP 的混合界面。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/IMac_G3">iMac G3</a>：1998-05-06 发布、1998-08-15 开售、预装 Mac OS 8.1、邦迪蓝来自一片沙滩玻璃、1999 年 1 月五色款。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面线框均为示意，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { box.set(i); onPick(i, o); } }, o));
+  box.append(...bs);
+  box.set = (i) => bs.forEach((b, j) => b.classList.toggle('on', j === i));
+  return box;
+};
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step, 'aria-label': label });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp;
+  w.set = (v) => { inp.value = v; out.textContent = show(v); };
+  return w;
+};
+let UID = 0;
+
+/* ======== 示意界面渲染器 ========
+   这些颜色是对历史界面的「示意性重绘」，相当于截图里的像素，因此不随深浅色主题变化。 */
+const GUI = {
+  win95:   { name: 'Windows 95', desk: '#008080', face: '#c0c0c0', lt: '#ffffff', dk: '#808080', bk: '#000000', title: '#000080', ttx: '#ffffff', align: 'left' },
+  os2:     { name: 'OS/2 Warp 4', desk: '#5f7f8f', face: '#cccccc', lt: '#ffffff', dk: '#808080', bk: '#404040', title: '#2f4f8f', ttx: '#ffffff', align: 'center' },
+  motif:   { name: 'Motif', desk: '#6a7389', face: '#a6aec0', lt: '#dde2ec', dk: '#59607a', bk: '#3a3f52', title: '#a6aec0', ttx: '#1b1e28', align: 'center', thick: 3 },
+  next:    { name: 'NeXTSTEP', desk: '#55556a', face: '#aaaaaa', lt: '#ffffff', dk: '#555555', bk: '#000000', title: '#000000', ttx: '#ffffff', align: 'center' },
+  platinum:{ name: 'Mac OS 8 Platinum', desk: '#5a68a3', face: '#dddddd', lt: '#ffffff', dk: '#888888', bk: '#333333', title: '#dddddd', ttx: '#111111', align: 'center' },
+  aqua:    { name: 'Mac OS X Aqua', desk: '#3a6fd0', face: '#ececec', lt: '#ffffff', dk: '#b0b0b0', bk: '#555555', title: '#e8e8e8', ttx: '#222222', align: 'center' },
+};
+const ERA_NOTE = {
+  win95: '藏青色标题栏、灰色窗体、右上角三个斜切小方块；每个按钮、滚动条箭头都是「左上白、右下黑」的凸起方块。',
+  os2: '同样的灰色窗体与斜切边框，标题栏居中；整体比 Windows 95 更沉，按钮更多。',
+  motif: '来自 X Window 世界：整片蓝灰、边框特别厚（这里画了 3 像素斜切），标题栏本身也是凸起的。原文提到 Motif 也曾是苹果的备选收购方案。',
+  next: '黑色标题栏、白字居中，滚动条放在左边；按钮依旧是斜切的灰色块。原文说它用了更「抄现实」的视觉元素，但窗口本身也在这套范式里。',
+  platinum: 'Copland 的 Appearance Manager 留下的 Platinum：浅灰、标题栏两侧细横纹、左上关闭框、淡紫色滚动块。原文认为它是「向世代主流视觉审美靠拢」的产物。',
+  aqua: '对照组（2000 年）：条纹底、红黄绿三颗水滴按钮在左、蓝色胶囊默认按钮、果冻滚动块、圆角与柔和投影。斜切线全部消失，立体感改由高光与透明来表达。',
+};
+const S = (tag, a, ...k) => svg(tag, a, ...k);
+function bevel(g, x, y, w, h, c, t = 1, inset = false) {
+  const A = inset ? c.dk : c.lt, B = inset ? c.lt : c.dk;
+  g.append(S('rect', { x, y, width: w, height: h, fill: c.face }));
+  for (let i = 0; i < t; i++) {
+    g.append(S('polyline', { points: `${x + i + .5},${y + h - i - .5} ${x + i + .5},${y + i + .5} ${x + w - i - .5},${y + i + .5}`, fill: 'none', stroke: A }));
+    g.append(S('polyline', { points: `${x + i + .5},${y + h - i - .5} ${x + w - i - .5},${y + h - i - .5} ${x + w - i - .5},${y + i + .5}`, fill: 'none', stroke: i === 0 && !inset ? c.bk : B }));
+  }
+}
+function gelDefs(defs, id, h, s, l) {
+  defs.append(
+    S('linearGradient', { id: id + 'b', x1: 0, y1: 0, x2: 0, y2: 1 },
+      S('stop', { offset: '0', 'stop-color': `hsl(${h},${s}%,${Math.max(l - 12, 5)}%)` }),
+      S('stop', { offset: '.5', 'stop-color': `hsl(${h},${s}%,${l}%)` }),
+      S('stop', { offset: '1', 'stop-color': `hsl(${h},${s}%,${Math.min(l + 30, 94)}%)` })),
+    S('linearGradient', { id: id + 'h', x1: 0, y1: 0, x2: 0, y2: 1 },
+      S('stop', { offset: '0', 'stop-color': '#fff', 'stop-opacity': '.95' }),
+      S('stop', { offset: '1', 'stop-color': '#fff', 'stop-opacity': '.12' })));
+}
+function gel(defs, x, y, w, h, r, hsl, label) {
+  const id = 'g' + (++UID);
+  gelDefs(defs, id, ...hsl);
+  const g = S('g', {},
+    S('rect', { x, y, width: w, height: h, rx: r, fill: `url(#${id}b)`, stroke: `hsl(${hsl[0]},${hsl[1]}%,${Math.max(hsl[2] - 25, 5)}%)`, 'stroke-width': .7 }),
+    S('rect', { x: x + Math.min(r * .5, w * .2), y: y + 1, width: w - 2 * Math.min(r * .5, w * .2), height: h * .46, rx: Math.min(r, h * .23), fill: `url(#${id}h)` }));
+  if (label) g.append(S('text', { x: x + w / 2, y: y + h / 2 + 3.5, 'text-anchor': 'middle', 'font-size': 10, fill: hsl[2] > 70 ? '#222' : '#fff', 'font-family': '-apple-system,"PingFang SC",sans-serif' }, label));
+  return g;
+}
+const txt = (x, y, s, fill, size = 9, anchor = 'start', weight = 400) => S('text', { x, y, fill, 'font-size': size, 'text-anchor': anchor, 'font-weight': weight, 'font-family': '-apple-system,"PingFang SC",sans-serif' }, s);
+function lines(g, x, y, w, n, col) { for (let i = 0; i < n; i++) g.append(S('rect', { x, y: y + i * 11, width: w * (i % 3 === 2 ? .6 : (i % 2 ? .85 : .95)), height: 4, rx: 2, fill: col })); }
+
+function drawWin(key, title = '文稿') {
+  const c = GUI[key];
+  const root = S('svg', { viewBox: '0 0 320 210', role: 'img', 'aria-label': c.name + ' 窗口示意线框' });
+  const defs = S('defs'); root.append(defs);
+  const g = S('g'); root.append(g);
+  if (key === 'aqua') {
+    const id = 'd' + (++UID);
+    defs.append(S('linearGradient', { id, x1: 0, y1: 0, x2: 1, y2: 1 }, S('stop', { offset: 0, 'stop-color': '#2a5cc4' }), S('stop', { offset: 1, 'stop-color': '#8fc0f5' })));
+    defs.append(S('pattern', { id: id + 'p', width: 4, height: 4, patternUnits: 'userSpaceOnUse' }, S('rect', { width: 4, height: 4, fill: '#f2f2f2' }), S('rect', { y: 2, width: 4, height: 2, fill: '#e3e3e3' })));
+    defs.append(S('linearGradient', { id: id + 't', x1: 0, y1: 0, x2: 0, y2: 1 }, S('stop', { offset: 0, 'stop-color': '#fafafa' }), S('stop', { offset: 1, 'stop-color': '#c8c8c8' })));
+    defs.append(S('filter', { id: id + 's', x: '-20%', y: '-20%', width: '140%', height: '150%' }, S('feDropShadow', { dx: 0, dy: 5, stdDeviation: 6, 'flood-color': '#000', 'flood-opacity': .45 })));
+    g.append(S('rect', { width: 320, height: 210, fill: `url(#${id})` }));
+    g.append(S('path', { d: 'M0 150 C80 110 160 190 320 120 L320 210 L0 210Z', fill: '#ffffff', opacity: .12 }));
+    const x = 22, y = 16, w = 276, h = 178;
+    g.append(S('rect', { x, y, width: w, height: h, rx: 7, fill: `url(#${id}p)`, filter: `url(#${id}s)` }));
+    g.append(S('path', { d: `M${x} ${y + 22} V${y + 7} Q${x} ${y} ${x + 7} ${y} H${x + w - 7} Q${x + w} ${y} ${x + w} ${y + 7} V${y + 22}Z`, fill: `url(#${id}t)` }));
+    [[0, 85, 55], [45, 95, 55], [120, 70, 45]].forEach(([hh, ss, ll], i) => g.append(gel(defs, x + 8 + i * 15, y + 5, 11, 11, 5.5, [hh, ss, ll])));
+    g.append(txt(x + w / 2, y + 15, title, c.ttx, 10, 'middle', 600));
+    g.append(S('rect', { x: x + 10, y: y + 30, width: w - 38, height: h - 70, fill: '#fff', stroke: '#b8b8b8', 'stroke-width': .7 }));
+    lines(g, x + 18, y + 40, w - 60, 8, '#d0d4dc');
+    g.append(S('rect', { x: x + w - 24, y: y + 30, width: 13, height: h - 70, rx: 6.5, fill: `url(#${id}p)`, stroke: '#c0c0c0', 'stroke-width': .6 }));
+    g.append(gel(defs, x + w - 23, y + 40, 11, 44, 5.5, [212, 85, 50]));
+    g.append(gel(defs, x + w - 132, y + h - 30, 56, 20, 10, [0, 0, 92], '取消'));
+    g.append(gel(defs, x + w - 70, y + h - 30, 58, 20, 10, [212, 90, 50], '确定'));
+    return root;
+  }
+  const t = c.thick || 2;
+  const x = 22, y = 16, w = 276, h = 178;
+  g.append(S('rect', { width: 320, height: 210, fill: c.desk }));
+  bevel(g, x, y, w, h, c, t);
+  const tb = 16, ty = y + t + 1, tx0 = x + t + 1, tw = w - 2 * t - 2;
+  if (key === 'platinum') {
+    g.append(S('rect', { x: tx0, y: ty, width: tw, height: tb, fill: c.face }));
+    for (let i = 0; i < 6; i++) g.append(S('line', { x1: tx0 + 20, x2: tx0 + tw - 38, y1: ty + 3 + i * 2 + .5, y2: ty + 3 + i * 2 + .5, stroke: i % 2 ? c.lt : '#9a9a9a' }));
+    g.append(S('rect', { x: tx0 + tw / 2 - 26, y: ty, width: 52, height: tb, fill: c.face }));
+    g.append(txt(tx0 + tw / 2, ty + 12, title, c.ttx, 10, 'middle', 600));
+    bevel(g, tx0 + 5, ty + 3, 10, 10, c, 1, true);
+    bevel(g, tx0 + tw - 32, ty + 3, 10, 10, c, 1, true);
+    bevel(g, tx0 + tw - 16, ty + 3, 10, 10, c, 1, true);
+  } else if (key === 'next') {
+    g.append(S('rect', { x: tx0, y: ty, width: tw, height: tb, fill: c.title }));
+    g.append(txt(tx0 + tw / 2, ty + 12, title, c.ttx, 10, 'middle', 600));
+    bevel(g, tx0 + 3, ty + 3, 11, 11, c, 1);
+    bevel(g, tx0 + tw - 14, ty + 3, 11, 11, c, 1);
+    g.append(S('path', { d: `M${tx0 + tw - 11} ${ty + 6} l5 5 M${tx0 + tw - 6} ${ty + 6} l-5 5`, stroke: '#000', 'stroke-width': 1.2 }));
+  } else if (key === 'motif') {
+    bevel(g, tx0 + 18, ty, tw - 54, tb + 2, c, 2);
+    g.append(txt(tx0 + tw / 2 - 18, ty + 13, title, c.ttx, 10, 'middle', 600));
+    bevel(g, tx0, ty, 16, tb + 2, c, 2); g.append(S('rect', { x: tx0 + 4, y: ty + 8, width: 8, height: 3, fill: c.bk }));
+    bevel(g, tx0 + tw - 34, ty, 16, tb + 2, c, 2); g.append(S('rect', { x: tx0 + tw - 28, y: ty + 7, width: 4, height: 4, fill: c.bk }));
+    bevel(g, tx0 + tw - 17, ty, 17, tb + 2, c, 2); g.append(S('rect', { x: tx0 + tw - 13, y: ty + 4, width: 9, height: 9, fill: 'none', stroke: c.bk }));
+  } else {
+    g.append(S('rect', { x: tx0, y: ty, width: tw, height: tb, fill: c.title }));
+    g.append(txt(c.align === 'left' ? tx0 + 6 : tx0 + tw / 2, ty + 12, title, c.ttx, 10, c.align === 'left' ? 'start' : 'middle', 700));
+    [44, 30, 15].forEach((o, i) => { bevel(g, tx0 + tw - o, ty + 2, 13, 12, c, 1); });
+    g.append(S('path', { d: `M${tx0 + tw - 12} ${ty + 5} l6 6 M${tx0 + tw - 6} ${ty + 5} l-6 6`, stroke: '#000', 'stroke-width': 1.2 }));
+    g.append(S('rect', { x: tx0 + tw - 41, y: ty + 10, width: 6, height: 2, fill: '#000' }));
+    g.append(S('rect', { x: tx0 + tw - 27, y: ty + 4, width: 7, height: 7, fill: 'none', stroke: '#000' }));
+  }
+  // 菜单行（Mac 的菜单在屏幕顶端，不在窗口里）
+  let cy = ty + tb + 4;
+  if (key === 'win95' || key === 'os2' || key === 'motif') {
+    ['文件', '编辑', '查看', '帮助'].forEach((m, i) => g.append(txt(tx0 + 6 + i * 30, cy + 9, m, '#000', 9)));
+    cy += 14;
+  }
+  const sbLeft = key === 'next';
+  const cx = tx0 + 4 + (sbLeft ? 16 : 0), cw = tw - 8 - 16, ch = y + h - t - 34 - cy;
+  bevel(g, cx - 1, cy - 1, cw + 2, ch + 2, c, t, true);
+  g.append(S('rect', { x: cx + t - 1, y: cy + t - 1, width: cw - 2 * t + 2, height: ch - 2 * t + 2, fill: '#fff' }));
+  lines(g, cx + 8, cy + 9, cw - 22, Math.floor((ch - 12) / 11), key === 'platinum' ? '#cfcfcf' : '#bdbdbd');
+  // 滚动条
+  const sx = sbLeft ? tx0 + 3 : cx + cw + 2, sw = 14;
+  g.append(S('rect', { x: sx, y: cy - 1, width: sw, height: ch + 2, fill: key === 'platinum' ? '#bbbbbb' : (key === 'win95' ? '#e0e0e0' : c.dk) }));
+  if (key !== 'next') { bevel(g, sx, cy - 1, sw, 13, c, 1); bevel(g, sx, cy + ch - 12, sw, 13, c, 1);
+    g.append(S('path', { d: `M${sx + 4} ${cy + 8} l3 -4 l3 4z M${sx + 4} ${cy + ch - 7} l3 4 l3 -4z`, fill: '#000' })); }
+  const thumbC = key === 'platinum' ? { ...c, face: '#c8c8f0' } : c;
+  bevel(g, sx + 1, cy + (key === 'next' ? 6 : 18), sw - 2, 30, thumbC, 1);
+  if (key === 'next') { bevel(g, sx, cy + ch - 26, sw, 13, c, 1); bevel(g, sx, cy + ch - 12, sw, 13, c, 1); }
+  // 按钮
+  const by = y + h - t - 27, bw = 58, bh = 20;
+  if (key === 'platinum') {
+    g.append(S('rect', { x: tx0 + tw - bw - 12, y: by - 2, width: bw + 6, height: bh + 4, rx: 6, fill: 'none', stroke: '#000', 'stroke-width': 2 }));
+    g.append(S('rect', { x: tx0 + tw - bw - 9, y: by + 1, width: bw, height: bh - 2, rx: 4, fill: c.face, stroke: '#333' }));
+    g.append(S('path', { d: `M${tx0 + tw - bw - 8} ${by + bh - 3} V${by + 4} Q${tx0 + tw - bw - 8} ${by + 2} ${tx0 + tw - bw - 5} ${by + 2} H${tx0 + tw - 14}`, stroke: '#fff', fill: 'none' }));
+    g.append(txt(tx0 + tw - bw / 2 - 9, by + 14, '确定', '#000', 10, 'middle'));
+    g.append(S('rect', { x: tx0 + tw - 2 * bw - 22, y: by + 1, width: bw, height: bh - 2, rx: 4, fill: c.face, stroke: '#333' }));
+    g.append(txt(tx0 + tw - 1.5 * bw - 22, by + 14, '取消', '#000', 10, 'middle'));
+  } else {
+    bevel(g, tx0 + tw - bw - 8, by, bw, bh, c, key === 'motif' ? 2 : 1);
+    if (key === 'win95') g.append(S('rect', { x: tx0 + tw - bw - 9.5, y: by - 1.5, width: bw + 3, height: bh + 3, fill: 'none', stroke: '#000' }));
+    g.append(txt(tx0 + tw - bw / 2 - 8, by + 14, key === 'next' ? '确定 ↵' : '确定', '#000', 10, 'middle'));
+    bevel(g, tx0 + tw - 2 * bw - 16, by, bw, bh, c, key === 'motif' ? 2 : 1);
+    g.append(txt(tx0 + tw - 1.5 * bw - 16, by + 14, '取消', '#000', 10, 'middle'));
+  }
+  return root;
+}
+
+reg('heroA', (n) => { n.append(drawWin('platinum', 'Macintosh HD')); });
+reg('heroB', (n) => { n.append(drawWin('aqua', 'Macintosh HD')); });
+
+/* ---------- 1. 六种系统 ---------- */
+reg('era', (node) => {
+  const keys = ['win95', 'os2', 'motif', 'next', 'platinum', 'aqua'];
+  const shot = el('div', { class: 'shot' });
+  const status = el('div', { class: 'status' });
+  const show = (i) => {
+    shot.replaceChildren(drawWin(keys[i]));
+    status.innerHTML = `<b>${GUI[keys[i]].name}</b>：${ERA_NOTE[keys[i]]}`;
+  };
+  node.append(el('div', { class: 'scrollx' }, seg(keys.map((k) => GUI[k].name), (i) => show(i), 0)), shot, status);
+  show(0);
+});
+
+/* ---------- 2. 控件占比 ---------- */
+reg('chrome', (node) => {
+  const W = 320, H = 220;
+  const opt = { menu: true, tool: true, status: true, scroll: true, inset: true, b: 4 };
+  const parts = [['menu', '窗口菜单栏'], ['tool', '工具栏'], ['status', '状态栏'], ['scroll', '双向滚动条'], ['inset', '内凹边框']];
+  const shot = el('div', { class: 'shot' });
+  const bar = el('div', { class: 'chrome-bar' }, el('i', { class: 'c1' }), el('i', { class: 'c2' }));
+  const status = el('div', { class: 'status' });
+  const checks = parts.map(([k, lab]) => {
+    const inp = el('input', { type: 'checkbox' }); inp.checked = opt[k];
+    inp.addEventListener('change', () => { opt[k] = inp.checked; draw(); });
+    const l = el('label', { class: 'chk' }, inp, lab); l.inp = inp; return l;
+  });
+  const bw = range('边框厚度', 0, 8, 4, 1, (v) => { opt.b = v; draw(); }, (v) => v + ' px');
+  const preset = (o) => { Object.assign(opt, o); checks.forEach((c, i) => { c.inp.checked = opt[parts[i][0]]; }); bw.set(opt.b); draw(); };
+  const ps = seg(['90 年代全家桶', 'Aqua 式'], (i) => preset(i === 0 ? { menu: true, tool: true, status: true, scroll: true, inset: true, b: 4 } : { menu: false, tool: false, status: false, scroll: true, inset: false, b: 0 }));
+  function draw() {
+    const c = GUI.win95, b = opt.b, title = 18, menu = opt.menu ? 16 : 0, tool = opt.tool ? 26 : 0, st = opt.status ? 16 : 0, sb = opt.scroll ? 14 : 0, ins = opt.inset ? 2 : 0;
+    const cx = b + ins, cy = b + title + menu + tool + ins, cw = W - 2 * b - sb - 2 * ins, ch = H - 2 * b - title - menu - tool - st - sb - 2 * ins;
+    const root = S('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '窗口控件面积示意' });
+    root.append(S('rect', { width: W, height: H, fill: c.face }));
+    for (let i = 0; i < b; i++) root.append(S('rect', { x: i + .5, y: i + .5, width: W - 2 * i - 1, height: H - 2 * i - 1, fill: 'none', stroke: i < b / 2 ? (i ? c.lt : '#dfdfdf') : (i === b - 1 ? c.dk : '#a0a0a0') }));
+    root.append(S('rect', { x: b, y: b, width: W - 2 * b, height: title, fill: c.title }));
+    root.append(txt(b + 6, b + 13, '无标题 - 写字板', '#fff', 10, 'start', 700));
+    let yy = b + title;
+    if (menu) { ['文件', '编辑', '查看', '插入', '格式', '帮助'].forEach((m, i) => root.append(txt(b + 6 + i * 30, yy + 12, m, '#000', 9))); yy += menu; }
+    if (tool) { for (let i = 0; i < 9; i++) bevel(root, b + 4 + i * 22, yy + 3, 20, 20, c, 1); yy += tool; }
+    if (ins) bevel(root, b, yy, W - 2 * b - sb, H - 2 * b - yy + b - st - sb, c, 2, true);
+    root.append(S('rect', { x: cx, y: cy, width: Math.max(cw, 0), height: Math.max(ch, 0), fill: '#fff' }));
+    root.append(S('rect', { x: cx, y: cy, width: Math.max(cw, 0), height: Math.max(ch, 0), style: 'fill:var(--t)', opacity: .18 }));
+    lines(root, cx + 8, cy + 10, cw - 20, Math.max(0, Math.floor((ch - 14) / 11)), '#c4c4c4');
+    if (sb) {
+      root.append(S('rect', { x: W - b - sb, y: b + title + menu + tool, width: sb, height: H - 2 * b - title - menu - tool - st - sb, fill: '#e0e0e0' }));
+      root.append(S('rect', { x: b, y: H - b - st - sb, width: W - 2 * b - sb, height: sb, fill: '#e0e0e0' }));
+      bevel(root, W - b - sb, b + title + menu + tool + 20, sb, 28, c, 1);
+      bevel(root, b + 40, H - b - st - sb, 40, sb, c, 1);
+    }
+    if (st) { bevel(root, b + 2, H - b - st + 1, W - 2 * b - 4, st - 2, c, 1, true); root.append(txt(b + 8, H - b - 4, '就绪', '#000', 9)); }
+    shot.replaceChildren(root);
+    const pct = Math.max(0, cw * ch) / (W * H) * 100;
+    bar.children[0].style.width = (100 - pct) + '%'; bar.children[1].style.width = pct + '%';
+    status.innerHTML = `内容区（绿色）占窗口的 <b>${pct.toFixed(0)}%</b>，标题栏、边框、菜单与各种条占 <b style="color:var(--r)">${(100 - pct).toFixed(0)}%</b>。${pct < 55 ? '「控件盖过了内容」正是这个意思。' : '控件退到边缘，内容成为主角。'}`;
+  }
+  node.append(el('div', { class: 'ctrl' }, ps), el('div', { class: 'ctrl' }, ...checks, bw), shot, bar, status);
+  draw();
+});
+
+/* ---------- 3. 时间线 ---------- */
+reg('timeline', (node) => {
+  const EV = [
+    ['1996', 'Copland 折戟', 'platinum', '原计划中的 Mac OS 8（Copland）膨胀成「庞大的缝合怪」，连顶级工程师都无法把它封装成可用系统。Ratzlaff 在其中参与 Appearance Manager，试过很多风格，包括果冻质感的元素，但没有话语权。'],
+    ['1996-12', '收购 NeXT', 'next', '苹果收购 NeXT，乔布斯回归。NeXTSTEP 比 Mac OS 8 更契合乔布斯对未来操作系统的认知。（日期为本页补充）'],
+    ['1997', 'Mac OS 8 / Platinum', 'platinum', '正式版 Mac OS 8 本质上只是 Mac OS 7.7；Copland 唯一留下的是 Platinum 主题，成为它的主要视觉风格。'],
+    ['1997-05', 'Rhapsody 演示', 'platinum', '「狂想曲」：NeXTSTEP 内核 + 接近 Mac OS 8 的界面，Platinum 铺满各处，图标与按钮仍带强烈的 NeXTSTEP 特征。（WWDC 演示日期为本页补充）'],
+    ['1998-05', 'iMac G3', 'platinum', '邦迪蓝半透明外壳的 iMac G3 发布，原文称它是 Mac OS X 视觉美学的重要触发点。但它预装的还只是 Mac OS 8.1。'],
+    ['1999-03', 'Mac OS X Server 1.0', 'next', '先于 Mac OS X 发布：BlueBox 兼容层、NeXTSTEP 的大量功能、网络服务，以及 Ratzlaff 设计的分栏浏览视图。（日期为本页补充）'],
+    ['1999', 'DP2', 'platinum', 'Developer Preview 2：仍是老 Mac OS 的视觉与交互，只是 QuickTime 标志变了，图标开始加入更活泼的色彩。'],
+    ['2000-01', 'Aqua 亮相', 'aqua', '旧金山 Macworld，乔布斯演示以拉丁语「水」命名的 Aqua，从窗口按钮到滚动条都像晶莹的水滴。'],
+    ['2000', 'DP3', 'aqua', '最「原教旨主义」的 Aqua：水滴近乎不要钱地铺满每个角落，只有播放器还留着金属拉丝。'],
+    ['2001', 'Mac OS X 10.0', 'aqua', '「进入 X 时代」。原文：Mac OS X 再惊艳，也仅仅是另一次长征的开始。（2001 年 3 月发布为通行说法，本页补充）'],
+  ];
+  const btns = EV.map(([y, t, k], i) => el('button', { type: 'button', 'data-k': k, onclick: () => pick(i), 'aria-label': y + ' ' + t }, el('span', { class: 'yr' }, y), el('span', { class: 'dot' }), el('span', {}, t)));
+  const shot = el('div', { class: 'shot' });
+  const info = el('div');
+  const card = el('div', { class: 'tl-card' }, info, shot);
+  let cur = -1;
+  function pick(i) {
+    if (i === cur) return; cur = i;
+    btns.forEach((b, j) => b.classList.toggle('on', j === i));
+    const [y, t, k, d] = EV[i];
+    info.replaceChildren(el('span', { class: 'tag' }, y + ' · ' + (k === 'aqua' ? 'Aqua' : k === 'next' ? 'NeXT 血统' : 'Platinum')), el('h3', { style: 'margin-top:8px' }, t), el('p', {}, d));
+    shot.replaceChildren(drawWin(k, t));
+  }
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => pick(Math.max(0, cur - 1)) }, '← 上一个');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => pick(Math.min(EV.length - 1, cur + 1)) }, '下一个 →');
+  node.append(el('div', { class: 'scrollx' }, el('div', { class: 'tl' }, ...btns)), el('div', { class: 'ctrl' }, prev, next), card);
+  pick(0);
+});
+
+/* ---------- 4. 分栏浏览 ---------- */
+reg('columns', (node) => {
+  const F = (name, kids) => ({ name, kids });
+  const FS = F('Macintosh HD', [
+    F('应用程序', [F('QuickTime Player'), F('TextEdit'), F('系统偏好设置'), F('邮件')]),
+    F('用户', [F('ratzlaff', [
+      F('文稿', [F('Aqua 草图', [F('按钮.tiff'), F('滚动条.tiff'), F('红绿灯.tiff')]), F('会议纪要.rtf')]),
+      F('图片', [F('酒瓶广告.jpg'), F('冰块.jpg')]),
+      F('音乐', [])])]),
+    F('系统', [F('资源库', [F('Fonts', [])])]),
+  ]);
+  let path = [], mode = 0;
+  const view = el('div');
+  const status = el('div', { class: 'status' });
+  const nodeAt = (p) => p.reduce((n, i) => n.kids[i], FS);
+  const goto = (level, i) => { path = path.slice(0, level).concat(i); render(); };
+  const item = (n, sel, level, i) => el('button', { type: 'button', class: 'it' + (sel ? ' sel' : ''), onclick: () => goto(level, i) }, el('span', {}, (n.kids ? '📁 ' : '📄 ') + n.name), n.kids ? el('span', { class: 'ar' }, '▸') : null);
+  function render() {
+    const folders = [FS];
+    for (let k = 0; k < path.length; k++) { const n = nodeAt(path.slice(0, k + 1)); if (n.kids) folders.push(n); }
+    if (mode === 0) {
+      const cols = el('div', { class: 'cols' });
+      folders.forEach((f, level) => cols.append(el('div', { class: 'col' }, ...f.kids.map((n, i) => item(n, path[level] === i, level, i)), f.kids.length ? null : el('div', { style: 'padding:6px 10px;font-size:12px;color:var(--muted)' }, '（空）'))));
+      const leaf = nodeAt(path);
+      if (path.length && !leaf.kids) cols.append(el('div', { class: 'col', style: 'padding:14px;font-size:12px;color:var(--muted)' }, '预览：' + leaf.name));
+      view.replaceChildren(cols);
+      requestAnimationFrame(() => { cols.scrollLeft = cols.scrollWidth; });
+    } else {
+      const stage = el('div', { class: 'cw-stage' });
+      folders.forEach((f, level) => {
+        const off = Math.min(level * 26, 150);
+        stage.append(el('div', { class: 'cw', style: `left:${8 + off * 1.1}px;top:${8 + off}px;z-index:${level + 1}` },
+          el('div', { class: 'tb' }, f.name), ...f.kids.map((n, i) => item(n, path[level] === i, level, i)), f.kids.length ? null : el('div', { style: 'padding:6px 10px;font-size:12px;color:var(--muted)' }, '（空）')));
+      });
+      view.replaceChildren(stage);
+    }
+    const depth = folders.length;
+    const where = ['Macintosh HD'].concat(path.map((_, k) => nodeAt(path.slice(0, k + 1)).name)).join(' → ');
+    status.innerHTML = `当前位置：${where}<br>${mode === 0 ? `分栏视图：始终只有 <b>1</b> 个窗口，${depth} 列一字排开，上级目录随时可点回去。` : `一层一个窗口：屏幕上已经摞了 <b>${depth}</b> 个窗口，后面的被前面的挡住；想回上级得先找到被盖住的那一个。`}`;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['分栏视图（Server 1.0）', '一层一个窗口（经典 Finder）'], (i) => { mode = i; render(); }),
+    el('button', { class: 'btn', type: 'button', onclick: () => { path = [1, 0, 0, 0]; render(); } }, '直接跳到 Aqua 草图'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { path = []; render(); } }, '回到根目录')), view, status);
+  render();
+});
+
+/* ---------- 5. 2×2 产品矩阵 ---------- */
+reg('matrix', (node) => {
+  const board = el('div', { class: 'board' });
+  const status = el('div', { class: 'status' });
+  const CELL = [
+    ['普通用户 · 台式', 'iMac', '1998 年，邦迪蓝半透明外壳'],
+    ['专业人员 · 台式', 'Power Macintosh G3', '面向专业用户的塔式机'],
+    ['普通用户 · 便携', 'iBook', '1999 年推出，同样走半透明多彩路线'],
+    ['专业人员 · 便携', 'PowerBook G3', '专业笔记本'],
+  ];
+  let wiped = false;
+  const QN = { 3: '3400', 9: '4400', 17: '6500', 25: '7300' };
+  function draw() {
+    if (!wiped) {
+      const chips = el('div', { class: 'chips' });
+      for (let i = 0; i < 44; i++) chips.append(el('span', { class: 's' + (i % 4) + (QN[i] ? ' q' : '') }, QN[i] || ''));
+      board.replaceChildren(el('div', { style: 'font-size:13px;color:var(--muted);margin-bottom:8px' }, '1997 年：4 个系列、40 多款（色块为示意，四色代表四个系列）'), chips);
+      status.innerHTML = '「为什么要推荐 3400 而不是 4400？」连乔布斯三周都没弄明白，销售人员要花大量时间才能给用户讲清楚自家产品。';
+      btn.textContent = '把白板擦干净';
+    } else {
+      const bs = CELL.map(([k, p, d], i) => el('button', { type: 'button', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); status.innerHTML = `<b>${k}</b> → ${p}：${d}。用户只需回答两个问题（我是谁？要不要带着走？）就能找到唯一答案。`; } }, p, el('small', {}, k)));
+      board.replaceChildren(el('div', { class: 'mx' }, el('span'), el('span', { class: 'h' }, '普通用户'), el('span', { class: 'h' }, '专业人员'),
+        el('span', { class: 'rh' }, '台式'), bs[0], bs[1], el('span', { class: 'rh' }, '便携'), bs[2], bs[3]));
+      status.innerHTML = '2 × 2 = 4 款。点一个格子。';
+      btn.textContent = '还原成 40 多款';
+    }
+  }
+  const btn = el('button', { class: 'btn primary', type: 'button', onclick: () => { wiped = !wiped; draw(); } });
+  node.append(el('div', { class: 'ctrl' }, btn), board, status);
+  draw();
+});
+
+/* ---------- 6. Aqua 实验台 ---------- */
+reg('aqualab', (node) => {
+  const COL = { 'Aqua 蓝': [212, 90, 50], '邦迪蓝': [183, 62, 40], '蓝莓': [218, 78, 46], '草莓': [350, 72, 50], '橘子': [28, 95, 52], '葡萄': [275, 48, 45], '青柠': [92, 62, 42], '石墨灰': [210, 6, 55], 'Platinum 灰': [0, 0, 84] };
+  const P = { color: 'Aqua 蓝', bevel: 0, gloss: 1, glow: 1, trans: .3, round: 1, shadow: .7 };
+  const PRESET = [
+    ['Platinum（Mac OS 8）', { color: 'Platinum 灰', bevel: 1, gloss: 0, glow: 0, trans: 0, round: .15, shadow: 0 }],
+    ['DP2 过渡', { color: '石墨灰', bevel: .5, gloss: .35, glow: .2, trans: 0, round: .4, shadow: .2 }],
+    ['DP3 原教旨', { color: 'Aqua 蓝', bevel: 0, gloss: 1, glow: 1, trans: .4, round: 1, shadow: .9 }],
+    ['10.0 正式版', { color: 'Aqua 蓝', bevel: 0, gloss: .9, glow: .75, trans: .2, round: 1, shadow: .55 }],
+    ['扁平化（对照）', { color: 'Aqua 蓝', bevel: 0, gloss: 0, glow: 0, trans: 0, round: .3, shadow: 0 }],
+  ];
+  const mkGel = (label, w, h) => {
+    const b = el('button', { type: 'button', class: 'gel', style: `width:${w}px;height:${h}px` }, el('span', { class: 'gl' }), el('span', { class: 'hl' }), el('span', { class: 'tx' }, label));
+    b.dim = [w, h]; return b;
+  };
+  const ok = mkGel('确定', 96, 30), cancel = mkGel('取消', 86, 30), drop = mkGel('', 56, 56);
+  const lights = [mkGel('', 18, 18), mkGel('', 18, 18), mkGel('', 18, 18)];
+  const thumb = mkGel('', 90, 16);
+  const track = el('div', { class: 'track' }, thumb);
+  ok.classList.add('pulse');
+  const stage = el('div', { class: 'stage' }, el('div', { class: 'bgword', 'aria-hidden': 'true' }, 'Aqua'),
+    el('div', { class: 'row' }, ...lights, el('span', { style: 'font-size:13px;color:#555;margin-left:6px' }, '窗口按钮')),
+    el('div', { class: 'row' }, cancel, ok),
+    el('div', { class: 'row' }, track),
+    el('div', { class: 'row' }, drop, el('span', { style: 'font-size:13px;color:#555' }, '一滴「水」')));
+  function paint(b, [h, s, l]) {
+    const [w, ht] = b.dim, r = 2 + P.round * (Math.min(w, ht) / 2 - 2), a = 1 - P.trans * .75;
+    const top = l - 10 * P.gloss, bot = Math.min(94, l + 32 * P.glow);
+    b.style.borderRadius = r + 'px';
+    b.style.background = `linear-gradient(180deg, hsla(${h},${s}%,${top}%,${a}) 0%, hsla(${h},${s}%,${l}%,${a}) 50%, hsla(${h},${s}%,${bot}%,${a}) 100%)`;
+    const bev = P.bevel ? `inset ${P.bevel * 2}px ${P.bevel * 2}px 0 rgba(255,255,255,${.9 * P.bevel}), inset -${P.bevel * 2}px -${P.bevel * 2}px 0 rgba(0,0,0,${.45 * P.bevel}),` : '';
+    b.style.boxShadow = `${bev} inset 0 0 0 1px hsla(${h},${s}%,${Math.max(5, l - 25)}%,${.5 + .5 * a}), 0 ${1 + 4 * P.shadow}px ${1 + 8 * P.shadow}px rgba(0,0,0,${.45 * P.shadow})`;
+    const hl = b.querySelector('.hl');
+    hl.style.left = hl.style.right = Math.max(2, r * .45) + 'px';
+    hl.style.borderRadius = `${r}px ${r}px ${r * .6}px ${r * .6}px`;
+    hl.style.background = `linear-gradient(180deg, rgba(255,255,255,${.95 * P.gloss}), rgba(255,255,255,${.12 * P.gloss}))`;
+    b.querySelector('.gl').style.background = `radial-gradient(ellipse at 50% 100%, hsla(${h},${Math.min(100, s + 10)}%,${Math.min(96, l + 40)}%,${.6 * P.glow}), transparent 65%)`;
+    b.querySelector('.tx').style.color = l > 70 ? '#222' : '#fff';
+  }
+  const status = el('div', { class: 'status' });
+  function draw() {
+    const c = COL[P.color];
+    [ok, drop, thumb].forEach((b) => paint(b, c));
+    paint(cancel, [c[0], 0, 92]);
+    const lc = P.color === 'Platinum 灰' || P.color === '石墨灰' ? [c, c, c] : [[0, 85, 55], [42, 95, 52], [118, 62, 42]];
+    lights.forEach((b, i) => paint(b, lc[i]));
+    const bits = [];
+    if (P.bevel > .3) bits.push('斜切仍在，像 90 年代的凸起方块');
+    if (P.gloss > .5) bits.push('顶部高光读出「头顶的光源」');
+    if (P.glow > .5) bits.push('底部回光让它像装着液体');
+    if (P.trans > .2) bits.push('半透明，透出背后的字，像 iMac 的外壳');
+    if (P.round > .7) bits.push('胶囊形圆角');
+    if (P.shadow > .4) bits.push('投影把它从条纹底上托起');
+    status.innerHTML = bits.length ? '现在：' + bits.join('；') + '。' : '所有光学效果都关掉了：只剩一块平涂的色块，这就是十几年后的扁平化。';
+    if (P.gloss > .7 && P.glow > .6 && P.trans > .2 && P.round > .8) status.innerHTML += ' <b>「令人忍不住想舔一口」达成。</b>';
+  }
+  const sl = {};
+  const mk = (k, lab) => { sl[k] = range(lab, 0, 1, P[k], .05, (v) => { P[k] = v; draw(); }, (v) => Math.round(v * 100) + '%'); return sl[k]; };
+  const colorSeg = seg(Object.keys(COL), (i, name) => { P.color = name; draw(); }, 0);
+  const presetSeg = seg(PRESET.map((p) => p[0]), (i) => { Object.assign(P, PRESET[i][1]); Object.keys(sl).forEach((k) => sl[k].set(P[k])); colorSeg.set(Object.keys(COL).indexOf(P.color)); draw(); }, 2);
+  const pulse = el('input', { type: 'checkbox' }); pulse.checked = !RM;
+  pulse.addEventListener('change', () => ok.classList.toggle('pulse', pulse.checked));
+  ok.classList.toggle('pulse', pulse.checked);
+  [ok, cancel, drop].forEach((b) => b.addEventListener('click', () => { status.innerHTML = '「戳」了一下。' + status.innerHTML.replace(/^「戳」了一下。/, ''); }));
+  const panel = el('div', {},
+    el('div', { class: 'sliders' }, mk('bevel', '斜切（90 年代）'), mk('gloss', '顶部高光'), mk('glow', '底部回光'), mk('trans', '透明度'), mk('round', '圆角'), mk('shadow', '投影')),
+    el('div', { class: 'ctrl' }, el('label', { class: 'chk' }, pulse, '默认按钮「呼吸」')));
+  node.append(el('div', { class: 'scrollx' }, presetSeg), el('div', { class: 'scrollx', style: 'margin-top:8px' }, colorSeg), el('div', { class: 'lab', style: 'margin-top:12px' }, stage, panel), status);
+  Object.assign(P, PRESET[2][1]); Object.keys(sl).forEach((k) => sl[k].set(P[k]));
+  draw();
+});
+
+/* ---------- 7. DP2 → DP3 卷帘 ---------- */
+reg('wipe', (node) => {
+  const base = el('div', {}, drawWin('platinum', '偏好设置'));
+  const top = el('div', { class: 'top' }, drawWin('aqua', '偏好设置'));
+  const barEl = el('div', { class: 'bar' });
+  const box = el('div', { class: 'wipe' }, base, top, barEl);
+  const status = el('div', { class: 'status' });
+  const set = (v) => {
+    top.style.clipPath = `inset(0 ${100 - v}% 0 0)`; barEl.style.left = `calc(${v}% - 1px)`;
+    status.innerHTML = v < 10 ? 'DP2：仍是 Platinum 的灰、斜切与横纹。' : v > 90 ? 'DP3：条纹底、红黄绿水滴、蓝色胶囊按钮、果冻滚动块、圆角加投影。' : `左边 <b>${v}%</b> 已是 Aqua，右边还是 Platinum。对比同一位置的按钮最直观。`;
+  };
+  const r = range('DP2 ⟷ DP3', 0, 100, 50, 1, set, (v) => v + '%');
+  node.append(el('div', { class: 'shot' }, box, el('div', { class: 'labels2' }, el('span', {}, '← Aqua（DP3）'), el('span', {}, 'Platinum（DP2）→'))), el('div', { class: 'ctrl' }, r), status);
+  set(50);
+});
+
+/* ---------- 8. 水滴计算器 ---------- */
+reg('calc', (node) => {
+  let disp = '0', acc = null, op = null, fresh = true;
+  const screen = el('div', { style: 'font-family:var(--mono);font-size:24px;text-align:right;background:#dfe9d6;color:#1d2a14;border-radius:8px;padding:6px 12px;box-shadow:inset 0 2px 4px rgba(0,0,0,.3);margin-bottom:10px;overflow:hidden' }, '0');
+  const calc = (a, b, o) => o === '+' ? a + b : o === '−' ? a - b : o === '×' ? a * b : b === 0 ? NaN : a / b;
+  const fmt = (x) => Number.isFinite(x) ? String(+x.toPrecision(10)) : '错误';
+  const press = (k) => {
+    if (/\d/.test(k)) { disp = fresh || disp === '0' ? k : (disp.length < 12 ? disp + k : disp); fresh = false; }
+    else if (k === '.') { if (fresh) { disp = '0.'; fresh = false; } else if (!disp.includes('.')) disp += '.'; }
+    else if (k === 'C') { disp = '0'; acc = null; op = null; fresh = true; }
+    else if (k === '=') { if (op != null) { disp = fmt(calc(acc, +disp, op)); acc = null; op = null; fresh = true; } }
+    else { if (op != null && !fresh) disp = fmt(calc(acc, +disp, op)); acc = +disp; op = k; fresh = true; }
+    screen.textContent = disp;
+  };
+  const keys = ['C', '÷', '×', '−', '7', '8', '9', '+', '4', '5', '6', '=', '1', '2', '3', '.', '0'];
+  const grid = el('div', { style: 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px' });
+  keys.forEach((k) => {
+    const hue = /\d|\./.test(k) ? [0, 0, 90] : k === '=' ? [212, 90, 50] : k === 'C' ? [0, 80, 55] : [212, 30, 70];
+    const b = el('button', { type: 'button', class: 'gel', style: `height:38px;border-radius:19px;${k === '0' ? 'grid-column:span 4;' : ''}` }, el('span', { class: 'gl' }), el('span', { class: 'hl', style: 'left:8px;right:8px;border-radius:19px 19px 10px 10px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.12))' }), el('span', { class: 'tx' }, k));
+    const [h, s, l] = hue;
+    b.style.background = `linear-gradient(180deg,hsl(${h},${s}%,${l - 10}%),hsl(${h},${s}%,${l}%) 50%,hsl(${h},${s}%,${Math.min(96, l + 30)}%))`;
+    b.style.boxShadow = `inset 0 0 0 1px hsl(${h},${s}%,${l - 28}%),0 2px 4px rgba(0,0,0,.3)`;
+    b.querySelector('.gl').style.background = `radial-gradient(ellipse at 50% 100%,hsla(${h},${s}%,${Math.min(97, l + 40)}%,.6),transparent 65%)`;
+    b.querySelector('.tx').style.color = l >= 68 ? '#222' : '#fff';
+    b.addEventListener('click', () => press(k));
+    grid.append(b);
+  });
+  node.append(el('div', { class: 'stage', style: 'max-width:300px;margin:0 auto;min-height:0;padding:16px' }, screen, grid));
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1479 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Windows 设计史 01：从青涩到成熟（Windows 1.0 – 95）</title>
+<meta name="description" content="Windows 1.0 到 95 的界面设计史：平铺窗口与重叠窗口、Susan Kare 的图标、3D 按钮、TrueType、纸牌与扫雷、可用性测试与开始菜单、任务栏的诞生。带版本滑块、窗口管理器、找程序计时赛、像素级按钮放大镜等可操作演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ===== 本页追加：复古界面用色（浅色 / 深色成对） ===== */
+:root{
+  --w-face:#c0c0c0; --w-hi:#ffffff; --w-lt:#dfdfdf; --w-sh:#808080; --w-dk:#0a0a0a; --w-title:#000080; --w-title-ink:#ffffff;
+  --w-win:#ffffff; --w-ink:#0a0a0a; --w-desk1:#d5dbe6; --w-desk3:#008080; --w-tip:#ffffe1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --w-face:#9e9e9e; --w-hi:#d8d8d8; --w-lt:#bababa; --w-sh:#5c5c5c; --w-dk:#050505; --w-title:#25258f; --w-title-ink:#f2f2f2;
+    --w-win:#d6d6d6; --w-ink:#0a0a0a; --w-desk1:#56607a; --w-desk3:#0b5d5d; --w-tip:#d9d9b8;
+  }
+}
+:root[data-theme="dark"]{
+  --w-face:#9e9e9e; --w-hi:#d8d8d8; --w-lt:#bababa; --w-sh:#5c5c5c; --w-dk:#050505; --w-title:#25258f; --w-title-ink:#f2f2f2;
+  --w-win:#d6d6d6; --w-ink:#0a0a0a; --w-desk1:#56607a; --w-desk3:#0b5d5d; --w-tip:#d9d9b8;
+}
+
+/* 正文 */
+.prose p{margin:10px 0;font-size:15.5px}
+.prose p:first-child{margin-top:0}
+.prose ul,.prose ol{margin:8px 0;padding-left:22px;font-size:15px}
+.prose li{margin:4px 0}
+.ch .prose{margin:14px 0}
+.hl{background:var(--y-soft);padding:0 3px;border-radius:3px}
+.stat{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}
+.stat div{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:24px;color:var(--p);font-family:var(--mono);line-height:1.2}
+.stat span{font-size:12.5px;color:var(--muted)}
+.hot{cursor:pointer}
+.hot:focus{outline:none}
+.hot:focus .hl-r,.hot:hover .hl-r{stroke:var(--o);stroke-width:2}
+.hot.sel .hl-r{stroke:var(--o);stroke-width:2.5;fill:var(--o-soft);fill-opacity:.35}
+.spot{fill:var(--o);fill-opacity:.16;stroke:var(--o);stroke-width:2.5;stroke-dasharray:6 4}
+.spotlbl{fill:var(--o);font-size:12px;font-weight:700;paint-order:stroke;stroke:var(--surface);stroke-width:3px}
+.feat{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.cards4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media (min-width:640px){ .cards4{grid-template-columns:repeat(4,1fr)} }
+.cards4 figure{margin:0;text-align:center;font-size:12.5px;color:var(--muted)}
+.cards4 figure svg{background:var(--surface-2);border-radius:10px;margin-bottom:6px}
+.codebox{font-family:var(--mono);font-size:13px;background:var(--surface-2);border-radius:10px;padding:10px 14px;white-space:pre;overflow-x:auto;margin:10px 0}
+.codebox .on{background:var(--y-soft);color:var(--text);border-radius:4px;padding:0 4px}
+
+/* 时间线 */
+.tl-dot{cursor:pointer}
+.tl-dot circle{stroke:var(--surface);stroke-width:2;transition:r .2s}
+.tl-dot.sel circle{stroke:var(--o);stroke-width:3}
+.tl-dot:focus{outline:none}
+.tl-dot:focus circle{stroke:var(--o)}
+.tl-card{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:12px 14px;margin-top:10px;font-size:14.5px;min-height:96px}
+.tl-card .d{font-family:var(--mono);color:var(--p);font-size:13px}
+.tl-card h3{font-size:16px;margin:2px 0 6px}
+
+/* 模拟桌面（HTML 版） */
+.wm{position:relative;width:100%;aspect-ratio:16/10;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:var(--w-desk1);user-select:none;-webkit-user-select:none;font-size:11px;color:var(--w-ink);font-family:var(--font)}
+.wm.teal{background:var(--w-desk3)}
+.wm-win{position:absolute;display:flex;flex-direction:column;overflow:hidden;background:var(--w-win);border:1px solid var(--w-dk);transition:left .35s ease,top .35s ease,width .35s ease,height .35s ease}
+@media (prefers-reduced-motion: reduce){ .wm-win{transition:none} }
+.wm-t{flex:none;height:18px;display:flex;align-items:center;justify-content:center;background:var(--w-title);color:var(--w-title-ink);font-weight:600;font-size:11px;white-space:nowrap;overflow:hidden;position:relative;padding:0 30px;cursor:default}
+.wm-win.inact .wm-t{background:var(--w-win);color:var(--w-ink);border-bottom:1px solid var(--w-dk)}
+.wm-sys,.wm-min{position:absolute;top:3px;width:12px;height:12px;border:1px solid var(--w-dk);background:var(--w-win);padding:0;cursor:pointer;color:var(--w-ink);font-size:8px;line-height:10px}
+.wm-sys{left:3px}.wm-min{right:3px}
+.wm-c{flex:1;padding:6px 8px;min-height:0;overflow:hidden;font-size:10.5px;line-height:1.5}
+.wm-c i{display:block;height:4px;border-radius:2px;background:var(--w-sh);opacity:.45;margin:5px 0}
+.wm-strip{position:absolute;left:0;right:0;bottom:0;height:17%;display:flex;gap:4px;align-items:center;padding:0 6px;border-top:1px dashed var(--w-sh)}
+.wm-ico{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-size:10px;background:none;border:0;color:var(--w-ink);padding:2px 4px;font-family:inherit}
+.wm-ico .g{width:22px;height:16px;border:1px solid var(--w-dk);background:var(--w-win);display:block}
+.teal .wm-ico{color:var(--w-title-ink)}
+.teal .wm-ico .g{background:var(--w-face)}
+.wm-ico.sel span{background:var(--w-title);color:var(--w-title-ink)}
+/* 3.x 窗口 */
+.w3{border:1px solid var(--w-dk);background:var(--w-face);padding:3px}
+.w3 > .inner{flex:1;display:flex;flex-direction:column;border:1px solid var(--w-dk);background:var(--w-win);min-height:0}
+.w3 .wm-t{padding:0 44px 0 24px}
+.w3 .b3{position:absolute;top:0;width:18px;height:18px;padding:0;background:var(--w-face);border:1px solid var(--w-dk);box-shadow:inset 2px 2px var(--w-hi),inset -2px -2px var(--w-sh);cursor:pointer;font-size:8px;color:var(--w-ink);line-height:1}
+.w3 .b3.sysm{left:0}
+.w3 .b3.mn{right:18px}.w3 .b3.mx{right:0}
+.w3 .menu{display:flex;gap:12px;padding:1px 8px;border-bottom:1px solid var(--w-dk);font-size:10.5px}
+/* 95 窗口与控件 */
+.bev{background:var(--w-face);box-shadow:inset -1px -1px var(--w-dk),inset 1px 1px var(--w-hi),inset -2px -2px var(--w-sh),inset 2px 2px var(--w-lt)}
+.bev.dn{box-shadow:inset 1px 1px var(--w-dk),inset -1px -1px var(--w-hi),inset 2px 2px var(--w-sh),inset -2px -2px var(--w-lt)}
+.w95{padding:3px;border:0}
+.w95 .wm-t{justify-content:flex-start;padding:0 44px 0 6px;font-weight:700}
+.w95.inact .wm-t{background:var(--w-sh);color:var(--w-face);border:0}
+.w95 .x95{position:absolute;top:2px;width:16px;height:14px;padding:0;border:0;font-size:9px;line-height:14px;color:var(--w-ink);cursor:pointer;font-weight:700}
+.w95 .x95.cl{right:2px}.w95 .x95.mn{right:20px}
+.w95 .wm-c{background:var(--w-win);margin-top:2px}
+.tb{position:absolute;left:0;right:0;height:9%;min-height:22px;display:flex;align-items:center;gap:3px;padding:2px 3px;z-index:99999}
+.tb.bottom{bottom:0}.tb.top{top:0}
+.tb button{height:100%;border:0;font-size:10.5px;padding:0 8px;cursor:pointer;color:var(--w-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:inherit;max-width:24%}
+.tb .start{font-weight:800;flex:none;max-width:none}
+.tb .clock{margin-left:auto;font-size:10px;padding:0 8px;height:100%;display:flex;align-items:center;box-shadow:inset 1px 1px var(--w-sh),inset -1px -1px var(--w-hi)}
+.flag4{display:inline-grid;grid-template-columns:5px 5px;gap:1px;margin-right:4px;vertical-align:-1px}
+.flag4 i{width:5px;height:5px;display:block}
+.tip{position:absolute;background:var(--w-tip);color:var(--w-ink);border:1px solid var(--w-dk);padding:3px 7px;font-size:10.5px;z-index:600;white-space:nowrap;border-radius:3px}
+.menu95{position:absolute;bottom:9%;z-index:550;min-width:96px;padding:3px;font-size:11px}
+.menu95 div{padding:3px 16px 3px 8px;cursor:pointer;position:relative;white-space:nowrap}
+.menu95 div.sub::after{content:"▸";position:absolute;right:4px}
+.menu95 div:hover,.menu95 div.open{background:var(--w-title);color:var(--w-title-ink)}
+.menu95 .bar{position:absolute;left:3px;top:3px;bottom:3px;width:16px;background:var(--w-sh);color:var(--w-face);writing-mode:vertical-rl;transform:rotate(180deg);font-weight:800;font-size:11px;padding:4px 0;cursor:default}
+.menu95 .bar:hover{background:var(--w-sh);color:var(--w-face)}
+.menu95.first{padding-left:22px}
+.pm-ico{position:absolute;width:62px;display:flex;flex-direction:column;align-items:center;font-size:10px;text-align:center;line-height:1.2;cursor:pointer;background:none;border:0;padding:0;color:var(--w-ink);font-family:inherit}
+.pm-ico .g{width:20px;height:16px;border:1px solid var(--w-dk);background:var(--y);margin-bottom:2px;display:block}
+.pm-ico.grp .g{background:var(--w-win);box-shadow:inset 0 4px var(--w-title)}
+.pm-ico.sel span{background:var(--w-title);color:var(--w-title-ink)}
+.scorebox{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.scorebox div{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;background:var(--surface-2)}
+.scorebox b{font-family:var(--mono);color:var(--p)}
+
+/* 像素画布 */
+canvas.px{image-rendering:pixelated;image-rendering:crisp-edges}
+.pxrow{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:center}
+.pxrow figure{margin:0;text-align:center;font-size:12px;color:var(--muted)}
+.qbtn{cursor:pointer;border:2px solid transparent;border-radius:10px;padding:6px;background:var(--surface-2)}
+.qbtn:focus,.qbtn:hover{border-color:var(--p);outline:none}
+.qbtn.ok{border-color:var(--t)}.qbtn.no{border-color:var(--r)}
+
+/* 鼠标训练：纸牌与扫雷 */
+.sol{position:relative;height:200px;background:var(--t-soft);border-radius:12px;border:1px solid var(--line);overflow:hidden;touch-action:none}
+.slot{position:absolute;top:30px;width:84px;height:120px;border:2px dashed var(--t);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--t);font-size:13px;text-align:center}
+.card{position:absolute;width:84px;height:120px;border-radius:8px;background:#fff;border:1px solid #333;color:#c0182b;font-weight:800;font-size:22px;padding:6px 8px;cursor:grab;box-shadow:0 2px 6px rgba(0,0,0,.25);touch-action:none;transition:left .3s,top .3s;line-height:1.1}
+.card.drag{transition:none;cursor:grabbing;box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.card .big{position:absolute;right:10px;bottom:6px;font-size:40px}
+.ms{display:grid;grid-template-columns:repeat(8,minmax(0,32px));gap:0;justify-content:center;margin:8px auto;width:max-content;max-width:100%;padding:4px}
+.ms button{width:32px;height:32px;max-width:100%;border:0;padding:0;font-weight:800;font-size:15px;font-family:var(--mono);cursor:pointer;color:var(--w-ink)}
+.ms button.op{background:var(--w-lt);box-shadow:inset 1px 1px var(--w-sh);cursor:default}
+.ms button.boom{background:var(--r)}
+@media (max-width:380px){ .ms{grid-template-columns:repeat(8,28px)} .ms button{width:28px;height:28px} }
+
+/* 字体 */
+.fontcmp{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .fontcmp{grid-template-columns:1fr 1fr} }
+.fontcmp > div{background:var(--surface-2);border-radius:10px;padding:10px;min-height:110px;overflow:hidden}
+.fontcmp .h{font-size:12px;color:var(--muted);margin-bottom:8px}
+.ttf{line-height:1.2;color:var(--text);word-break:break-all}
+
+.seg button{white-space:nowrap;flex:none}
+.pm-ico span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:600px){ .wm.tall{aspect-ratio:1/1} .pm-ico{font-size:9px} }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Windows 设计史 01</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Windows 1.0 – 95</div>
+  <h1>Windows 设计史 01：从青涩到成熟</h1>
+  <p class="sub">从 1985 年平铺窗口的 Windows 1.0，到 1995 年带着「开始」按钮和任务栏登场的 Windows 95。十年间，Windows 的界面怎样一步步长成今天我们熟悉的样子？</p>
+  <div class="thesis">Windows 的设计史不只是「抄苹果」：它向施乐 PARC 学过平铺窗口，请过 Susan Kare 画图标，而真正让它定型的，是 Windows 95 时代几十轮可用性测试里用户的真实反应。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>S</i>SUNTRISE</span>
+    <span class="tag">少数派 · 2024-05-06</span>
+  </div>
+  <div class="fig" style="margin-top:18px">
+    <div class="cap"><b>四代桌面，同一组问题。</b>拖动滑块切换版本，再选一个问题，橙色虚线框会标出这一代 Windows 的答案在屏幕上的哪里。界面为示意线框，不是截图还原。</div>
+    <div data-demo="hero"></div>
+  </div>
+  <p class="meta">原文：「Windows 设计史 01 | 从青涩到成熟（Windows 1.0 - 95）」，SUNTRISE，少数派（2024-05-06），少数派「Windows 设计史」系列第一篇。本页忠实于原文的叙述顺序，原文插图全部改为可操作的示意图，并加了几处标注为「本页补充（非原文）」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="prelude" data-title="前奏：名字与偷师">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>前奏：从「界面管理器」到「Windows」</h2>
+    <p class="lead">微软为什么要做图形界面，又为什么把它叫作「Windows」？</p>
+  </div>
+  <div class="prose">
+    <p>1981 年，比尔·盖茨看到了第一台 Macintosh 原型机；1982 年 COMDEX 大会上展示的 Visi On 界面，进一步坚定了微软做自己的图形用户界面（GUI）的决心。和苹果一样，微软也选择向施乐（Xerox）「偷师」：1983 年 8 月，微软聘请了施乐 PARC 的首席开发者之一 Scott A. McGregor，为 MS-DOS 开发新的图形界面。</p>
+    <p>这个界面最初只叫「Microsoft Interface Manager（微软界面管理器）」，给 BYTE 的测试软盘上又叫「Microsoft Window Manager」。McGregor 在施乐时就把自己的软件叫作「Windows」；营销副总裁 Rowland Hanson 也建议用这个词：<span class="hl">用一个通用词当产品名，媒体提到时就不得不加上公司名</span>，于是有了「Microsoft Windows」。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>可点击的时间线。</b>点任意圆点（或用左右按钮）查看事件。上排是人物与事件，下排是版本发布。</div>
+    <div data-demo="timeline"></div>
+  </div>
+</section>
+
+<section class="ch" id="win1" data-title="Windows 1.0：平铺窗口">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>Windows 1.0：蹒跚起步</h2>
+    <p class="lead">Windows 1.0 的窗口为什么是平铺的？真的只是怕侵犯苹果吗？</p>
+  </div>
+  <div class="prose">
+    <p>IBM 当时在做自己的同类项目 TopView，对微软的 Windows 并不感冒。微软 1983 年 9 月在 BYTE 杂志上展示原型、11 月在 COMDEX 演示，宣称 1984 年 4 月发布，却一再延期，得了个「Vaporware（雾件）」的名号。直到 <b>1985 年 11 月 20 日</b>，Windows 1.0 才正式发布。</p>
+    <p>它最大的界面特点是<b>平铺窗口</b>，而同期的 Macintosh 用重叠窗口。网上常说这是「怕侵权苹果」，但施乐 PARC 早在 1981 年的 Cedar 项目里就用了平铺窗口，微软很可能是研究它之后做的选择。McGregor 本人说：<span class="hl">「Windows 从一开始就具有重叠窗口的功能……反而在此基础上编写平铺管理器的工作量要大得多！」</span>原版 1.0 的弹出窗口、菜单和下拉菜单本来就是重叠的，给 BYTE 的版本也是重叠窗口，后来还有人修补 1.0 的界面库让它重叠起来。<sup class="c">[1][7]</sup></p>
+    <p>窗口最小化（图标化）后，图标排在屏幕底部，类似的设计后来被任务栏继承。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>平铺 vs 重叠。</b>点「打开程序」加窗口，切换两种模式对比。窗口标题栏右侧的小方块是最小化，最小化后图标落到底部那一排，点图标还原；重叠模式下点窗口可把它提到最前。</div>
+    <div data-demo="tiling"></div>
+  </div>
+  <div class="prose">
+    <p>平铺的特点也体现在 1.0 的 Logo 上：像四个平铺在屏幕上的窗口。几十年后 Windows 11 的 Logo 又回到了四方格，算是回归「窗口」的本源。</p>
+    <p>作为初代产品，1.0 的图形元素比较粗糙。同样是 32×32 像素网格、黑白配色，它的图标远不如 Macintosh 的优雅，有些图标还缺乏辨识度，比如控制面板和日历，都是分成几块的矩形。少有的亮点是<b>时钟图标：它会跟着当前时间走</b>。微软还做了 Windows 的第一款游戏「黑白棋（Reversi）」，不过名气远不如后来的纸牌和扫雷。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>考考辨识度。</b>下面是按原文描述重绘的三个 1.0 风格黑白图标（32×32，放大显示）。左边两个哪个是「控制面板」？第三个是实时走动的时钟图标。</div>
+    <div data-demo="icons1"></div>
+  </div>
+  <div class="prose">
+    <p>总的来说，Windows 1.0 引起了一定关注，但不算成功：评论批评它系统要求偏高，而且依赖鼠标，对键盘用户不够灵活。</p>
+  </div>
+</section>
+
+<section class="ch" id="win2" data-title="Windows 2.x：重叠窗口">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Windows 2.x：不温不火</h2>
+    <p class="lead">2.x 改了什么？为什么又没改出多大名堂？</p>
+  </div>
+  <div class="prose">
+    <p>1987 年 12 月，Windows 2.0 发布。设计上最大的变化是<b>重叠窗口取代了平铺窗口</b>（上一章演示里的「重叠」模式），由此引发了苹果与微软那场著名的诉讼，最终判决对微软有利，Windows 得以继续用重叠窗口。平铺窗口并没有就此消失，十几年后它还会以新姿态回到 Windows 里。</p>
+    <p>除此之外，2.x 的图形界面改动有限，图标、控件基本沿用 1.0，市场反响一般。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这场诉讼即 Apple Computer, Inc. v. Microsoft Corp.。苹果于 1988 年起诉，指控 Windows 2.0 等抄袭 Macintosh 的「外观与感觉」；地区法院认定绝大多数被诉元素属于 1985 年苹果授予微软的许可范围或不受版权保护，1994 年第九巡回上诉法院维持了对微软有利的判决。<sup class="c">[9]</sup></div>
+</section>
+
+<section class="ch" id="win3" data-title="Windows 3.x：成熟起来">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>Windows 3.x：从一个玩笑开始</h2>
+    <p class="lead">3.x 的界面到底变了哪些，让它成为第一个商业成功的 Windows？</p>
+  </div>
+  <div class="prose">
+    <p>1988 年 6 月下旬一个周五晚上，微软工程师 Murray Sargent 在聚会上取笑朋友 David Weise：你们的 Windows/286 内存管理太糟了，应该进保护模式、打破 640 KB 的限制。没想到 David 当场拉他回园区，一番尝试后真把 Windows 2.0 启动到了保护模式。这个方案在 3.0 的开发会议上获得通过，Windows 3.x 就此开始。<sup class="c">[6]</sup></p>
+    <p>界面上，<b>程序管理器</b>（源自 OS/2 的 PMShell）取代「MS-DOS 执行程序」成为默认外壳，文件管理功能交给「文件管理器」；MS-DOS 执行程序在 3.1 里被彻底删除。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Windows 3.0 发布于 1990 年 5 月 22 日，3.1 发布于 1992 年 4 月 6 日。<sup class="c">[8]</sup></div>
+
+  <h3 style="margin:28px 0 8px;font-size:18px">Susan Kare 的图标：有了颜色和阴影</h3>
+  <div class="prose">
+    <p>为 3.x 设计图标的，正是曾为 Macintosh 设计图标的 <b>Susan Kare</b>。经她整改，3.0 的图标更成熟、辨识度更高，并有了颜色（16 色）和阴影；3.1 里她又加了更多色彩，还设计了纸牌游戏的卡面。到了 Windows 95，部分图标改用类似苹果 Copland 风格的<b>等轴测视图</b>，仍是 32×32、16 色；后来的 Microsoft Plus! 附加包才引入 256 色图标。<sup class="c">[1][12]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>同一个「电脑」图标，四种画法。</b>选一个时代，看 32×32 网格上的变化：黑白线条 → 16 色加投影 → 等轴测 → 256 色。图标先按矢量画出，再<b>现场量化</b>到对应调色板，状态栏统计实际用到几种颜色。图标为本页示意，非原版位图。</div>
+    <div data-demo="iconpal"></div>
+  </div>
+
+  <h3 style="margin:28px 0 8px;font-size:18px">Logo：从一扇窗户到一面旗</h3>
+  <div class="prose">
+    <p>3.0 的 Logo 最写实：一扇黑白窗户。3.1 引入了经典的「四色块」，由高级副总裁 Brad Silverberg 委托、Jonathan D. Cowles 在 Jeff Boettcher 和 Julie Wong 监督下设计。按 Brad 的说法，右边象征「窗口」，左边加了运动效果，整体看又像一面旗帜。此后四色块成了微软的标识，用在 Office、MSN 上，2012 年至今的微软 Logo 也采用了四色块。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>Logo 演变（示意重绘，非官方图形）。</b></div>
+    <div class="cards4" id="logoRow"></div>
+  </div>
+
+  <h3 style="margin:28px 0 8px;font-size:18px">TrueType、壁纸与「立体」的按钮</h3>
+  <div class="prose">
+    <p>字体方面，3.1 采用了 <b>TrueType</b>，加入 Times New Roman（兼容 Times Roman）、Arial（兼容 Helvetica）、Courier New（兼容 Courier）等新字体，提高了文字的辨识度。3.0 还是第一个支持壁纸的 Windows：此前只能设背景色，现在可以用平铺图块或全屏图片。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>位图字体 vs 轮廓字体。</b>选一个字体，拖动字号。左边模拟只做了 12 像素一个尺寸的位图字体被硬放大；右边是浏览器用本机 TrueType 字体按字号重新渲染。（若本机没装该字体，会回落到同类字体。）</div>
+    <div data-demo="fonts"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：TrueType 是苹果在 1980 年代末开发、授权给微软的轮廓字体格式：字形用曲线描述，任何字号都按轮廓重新栅格化，所以不会像只为固定尺寸画好的位图字体那样一放大就出锯齿。<sup class="c">[10]</sup></div>
+  <div class="fig">
+    <div class="cap"><b>像素级放大镜：按钮的「立体感」从哪来。</b>选一种按钮画法，按住画布里的按钮看按下状态；把鼠标移到像素上，状态栏会说出这一格是什么颜色、起什么作用。</div>
+    <div data-demo="bevel"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文没有展开控件画法。这里按常见复刻的配色示意：1.0/2.x 的控件基本是黑线白底的平面；3.x 起按钮变成灰底，左上亮、右下暗，靠一两像素的明暗边模拟凸起；95 把边框整理成两层（外层白/黑、内层亮灰/灰），按下时明暗互换、文字右下移一格。具体像素以实机为准。</div>
+
+  <h3 style="margin:28px 0 8px;font-size:18px">纸牌与扫雷：伪装成游戏的鼠标课</h3>
+  <div class="prose">
+    <p>为了让用户熟悉鼠标、也让 Windows 更好玩，3.0 加入了<b>纸牌</b>，教人练习「拖放」；3.1 里<b>扫雷</b>取代黑白棋，教人用好鼠标的<b>左右键</b>。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>两节鼠标课。</b>纸牌：把红心 A 拖到收牌区。扫雷：左键翻开，右键（手机上长按，或打开「插旗模式」）插旗。</div>
+    <div data-demo="mouse"></div>
+  </div>
+  <div class="prose">
+    <p>3.x 被认为是第一个取得商业成功的 Windows，也是第一个有中文版的 Windows。3.1 已有简繁中文版，微软又为中国市场推出了 Windows 3.2，加入郑码、智能 ABC 等更多中文输入法。</p>
+  </div>
+</section>
+
+<section class="ch" id="w95-test" data-title="Windows 95：听用户的">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>Windows 95（上）：从「开罗」到「芝加哥」，先听听用户</h2>
+    <p class="lead">3.1 的界面到底哪里难用？微软最初的修补方案为什么失败？</p>
+  </div>
+  <div class="prose">
+    <p>3.x 的一个突出问题是：打开的窗口，包括最小化后的图标，都可能被别的窗口盖住，许多用户找不到自己开过的程序，只好再开一份，最后耗尽内存；程序管理器也不够直观。重新设计始于一个叫「开罗（Cairo）」的项目，本来是为了改进 Windows NT，后来它的界面设计被用到 3.1 的下一版，代号「芝加哥（Chicago）」。目标是：老用户容易上手，新手也能轻松上手。著名的失败品 Microsoft Bob 也是那时的产物。</p>
+    <p>据设计团队成员 Kent Sullivan 的报告《Windows 95 用户界面：可用性工程案例研究》，开发期间微软做了这样的测试：<sup class="c">[2]</sup></p>
+  </div>
+  <div class="stat">
+    <div><b>560</b><span>名受试者</span></div>
+    <div><b>64</b><span>个测试阶段</span></div>
+    <div><b>50%</b><span>是 3.1 中等水平用户，其余为新手、高手和其他系统用户</span></div>
+    <div><b>&gt; 9.5 分钟</b><span>新手在 3.1 里找到并打开一个不立即可见的程序的平均用时</span></div>
+  </div>
+  <div class="prose">
+    <p>除了高水平用户，所有人都不了解如何有效管理重叠窗口。一开始，顾及 3.1 用户的适应成本，微软的步子迈得很小。下面是 Cairo/Chicago 早期版本的界面模型。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>早期模型 vs 最终设计。</b>点图上的部件看说明；切换到「Windows 95」看这些部件后来变成了什么。按原文描述示意重绘。<sup class="c">[1][5]</sup></div>
+    <div data-demo="cairo"></div>
+  </div>
+  <div class="prose">
+    <p>早期版本的测试结果同样不理想：用户会搞混左下角三个按钮，找程序的速度和窗口管理效率也没什么提升。许多用户的反馈是：<span class="hl">「新版本 Windows 只是不同，而不是更好。」</span></p>
+    <p>于是团队<b>放开手脚</b>：不再执着于和 3.1 保持一致，转而把重心放在体验上，并加快迭代，在更短时间里试更多新想法。</p>
+  </div>
+</section>
+
+<section class="ch" id="w95-start" data-title="开始菜单与任务栏">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>Windows 95（中）：「发现水的不一定是鱼」</h2>
+    <p class="lead">「开始」按钮和任务栏，分别在解决测试里发现的哪个问题？</p>
+  </div>
+  <div class="prose">
+    <p>1992 年，行为心理学家 <b>Daniel Oran</b> 加入微软参与界面设计。他此前一直用苹果电脑，刚来时连 Windows 都用不顺。他后来说，引用了媒体理论家麦克卢汉的话：「发现水的不一定是鱼。」正因为没深入用过 Windows，他能看到老用户注意不到的东西。<sup class="c">[3]</sup></p>
+    <p>可用性测试的结论有三条：</p>
+    <ol>
+      <li>新手和一些中级用户用鼠标很吃力，<b>尤其是双击</b>；需要双击才能打开的东西，他们常常束手无策。</li>
+      <li>他们几乎完全依赖<b>看得见的提示</b>找命令：用菜单栏和工具栏，但不用右键菜单这类弹出菜单，培训后也一样。</li>
+      <li>窗口管理的主要问题是：<b>窗口并非始终可见</b>，用户没法快速看到自己开了什么。</li>
+    </ol>
+    <p>Daniel 先做了一个叫 ClearView 的新手界面：全屏选项卡，用来启动程序、打开最近文档和切换窗口。测试结果不错，但局限明显，最后放弃了（二十多年后，类似的「Windows Sets」只在几个 Windows 10 测试版里昙花一现）。不过它的优点留了下来：<b>单击即可访问、高可见性、基于菜单的交互</b>，「开始」菜单就是这样设计出来的。</p>
+    <p>「开始」按钮原名「系统（System）」，Daniel 觉得太专业，改成了「开始」；首次启动时，按钮旁还会提示「Click here to begin（单击这里开始）」。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>找程序计时赛。</b>任务：打开「计算器」。先在 3.1 的程序管理器里找（打开群组和程序都要<b>双击</b>），再在 95 的开始菜单里找（全程<b>单击</b>）。比较两边的点击次数与用时。</div>
+    <div data-demo="findapp"></div>
+  </div>
+  <div class="prose">
+    <p>针对「窗口并非始终可见」，微软把每个打开的窗口固定成屏幕上的一个条目，也就是<b>任务栏</b>：每个任务一颗按钮，任务栏位于所有窗口之上。任务栏起初沿袭选项卡的设计，默认在屏幕顶部；但测试发现有些程序默认可用区域从 (0,0)（左上角）开始画，会和任务栏打架，也可能是为了避开和苹果顶部菜单栏相似，最终默认放到了底部。<sup class="c">[1][4]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>开了几个程序，还看得见几个？</b>多点几次「再打开一个」，再把一些窗口最小化。3.1 模式下最小化的图标落在桌面上，会被窗口盖住；95 模式下它们都在任务栏里。95 模式还可以把任务栏挪到顶部，看看左上角那个「老程序」会怎样。</div>
+    <div data-demo="taskmgmt"></div>
+  </div>
+  <div class="prose">
+    <p>微软内部也有人不认同这套界面：有高管觉得任务栏按钮太像汽车上的电台按钮，也有人只是不喜欢「开始」这个名字。但可用性测试的结果最终说服了他们。</p>
+  </div>
+</section>
+
+<section class="ch" id="w95-launch" data-title="Windows 95 发布">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>Windows 95（下）：最终发布</h2>
+    <p class="lead">一个设计决定，怎样变成了操作系统史上最大规模的发布营销之一？</p>
+  </div>
+  <div class="prose">
+    <p><b>1995 年 8 月 24 日</b>，Windows 95 发布。微软放弃了 1.0–3.x 的版本号命名，改用年份。为了宣传「开始」功能，微软买下滚石乐队的《Start Me Up》（价格说法不一：流传过 1200–1400 万美元，可能是乐队成员编的；一位前微软首席运营官说接近 300 万美元），还请 Jennifer Aniston 和 Matthew Perry 拍了喜剧形式的视频教程，「开始」是电视广告的宣传重点。<sup class="c">[1][11]</sup></p>
+    <p>结果大获成功：<b>四天内全球销量 100 万份</b>。彼时苹果正陷在 Pink 项目和 Taligent 的泥潭里，Windows 95 吸引了更多媒体关注，市场份额不断上升，最终让 Windows 主导了操作系统市场。</p>
+    <p>除了桌面，微软还依据测试结果重做了「打开/另存为」「选择打印机」等对话框，其中一些设计沿用至今；图标也改进了，部分采用等轴测视图（见第 04 章的图标演示）。</p>
+    <p>Daniel Oran 在 95 发布前就离开了微软，当时并不确定「开始菜单 + 任务栏」会不会被采用。结果它不仅进了 Windows 95，成了此后 Windows 界面的基础，还影响了 KDE、Xfce 等桌面环境。他说：「这真是太棒了，几乎不可思议。在 1993 年我绝对不会想到这一点。」</p>
+  </div>
+</section>
+
+<section class="ch" id="legacy" data-title="3.x 留下的遗迹">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>念念不忘：Windows 3.x 留下的遗迹</h2>
+    <p class="lead">如果用户就是想要回 3.1 的界面，Windows 95 给了哪些退路？</p>
+  </div>
+  <div class="prose">
+    <p>微软还是不放心：万一有人不适应新界面呢？安装 Windows 95 时，可以选 3.1 的「程序管理器」作为默认界面。但那样得到的只是一个默认打开程序管理器的 95 桌面；想要真正接近 3.1 的体验，得把 <code>system.ini</code> 里的 <code>shell</code> 改成 <code>progman.exe</code>。完整的程序管理器在 Windows XP SP2 之后才被移除；靠 Windows 的向后兼容，移植旧版程序管理器至今仍能在新系统上跑起来。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>三种外壳状态。</b>切换看看 <code>system.ini</code> 的 <code>shell=</code> 那一行和桌面的变化。</div>
+    <div data-demo="shell"></div>
+  </div>
+  <div class="final">Windows 95 之后几年，Windows 的主要界面和设计风格稳定了下来。改变从什么时候再开始？原文的预告是：从一片蓝天白云绿草地开始（系列第三篇讲 Windows XP）。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 SUNTRISE 在少数派发表的《<a href="https://sspai.com/post/87835">Windows 设计史 01 | 从青涩到成熟（Windows 1.0 - 95）</a>》（2024-05-06）制作，是该系列第一篇。原文插图（截图、照片、草图）均已改为内联 SVG、canvas 与 HTML 示意图，未引用外链图片；界面线框只表达结构，不是像素还原。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>SUNTRISE，《Windows 设计史 01 | 从青涩到成熟（Windows 1.0 - 95）》，少数派（2024-05-06）。<a href="https://sspai.com/post/87835">sspai.com/post/87835</a>。含原文脚注：命名、重叠窗口、系统托盘、Start Me Up 价格的说法。</li>
+    <li>Sullivan, K. (1996). The Windows 95 User Interface: A Case Study in Usability Engineering. <i>CHI '96 Proceedings</i>. <a href="https://dl.acm.org/doi/fullHtml/10.1145/238386.238611">ACM DL</a>（原文主要依据）</li>
+    <li>Daniel Oran, Q&amp;A about the Windows Start Menu and Taskbar, Harvard Blogs (2022-11-28). <a href="https://archive.blogs.harvard.edu/danieloran/2022/11/28/qa-about-the-windows-start-menu-and-taskbar/">链接</a></li>
+    <li>Raymond Chen, Where did windows minimize to before the taskbar was invented?, The Old New Thing (2004-10-28). <a href="https://devblogs.microsoft.com/oldnewthing/20041028-00/?p=37453">链接</a></li>
+    <li>Raymond Chen, Why do some people call the taskbar the "system tray"?, The Old New Thing (2003-09-10). <a href="https://devblogs.microsoft.com/oldnewthing/20030910-00/?p=42583">链接</a></li>
+    <li>Murray Sargent, Saving Windows from the OS/2 Bulldozer, Microsoft Learn 存档博客. <a href="https://learn.microsoft.com/en-us/archive/blogs/murrays/saving-windows-from-the-os2-bulldozer">链接</a></li>
+    <li>Xerox Cedar "Viewers Window Package"，toastytech.com；Warren Teitelman 关于窗口系统十年的回顾；Xerox PARC 关于平铺与重叠窗口的比较研究（原文参考资料 6–9）。</li>
+    <li>Wikipedia 条目 Windows 3.0、Windows 3.1x：发布日期 1990-05-22 与 1992-04-06。</li>
+    <li>Wikipedia 条目 Apple Computer, Inc. v. Microsoft Corp.：1988 年起诉，1994 年第九巡回上诉法院维持对微软有利的判决。</li>
+    <li>Wikipedia 条目 TrueType：苹果开发的轮廓字体格式，随 Windows 3.1 进入 Windows。</li>
+    <li>Brad Chase, The story of Windows 95 "Start Me Up". <a href="https://www.bradchase.net/startmeup">链接</a></li>
+    <li>"One Thousand Square Pixels of Canvas"（Susan Kare 访谈），GUIdebook. <a href="https://guidebookgallery.org/articles/onethousandsquarepixelsofcanvas">链接</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面、图标、Logo 均为示意重绘，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const cssv = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const onKey = (node, fn) => node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } });
+const seg = (labels, init, onPick, aria) => {
+  const box = el('div', { class: 'seg', role: 'group', 'aria-label': aria || '' });
+  const bs = labels.map((l, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { set(i); onPick(i); } }, l));
+  function set(i) { bs.forEach((b, j) => b.classList.toggle('on', i === j)); }
+  box.append(...bs); box.set = set; return box;
+};
+const themeListeners = [];
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => themeListeners.forEach((f) => f()));
+
+/* ===================== SVG 线框积木 ===================== */
+const st = (fill, stroke, sw = 1) => (fill ? `fill:var(${fill});` : 'fill:none;') + (stroke ? `stroke:var(${stroke});stroke-width:${sw};` : '');
+const R = (x, y, w, h, fill, stroke, sw) => svg('rect', { x, y, width: w, height: h, style: st(fill, stroke, sw) });
+const TX = (x, y, s, o = {}) => svg('text', { x, y, 'text-anchor': o.a || 'start', style: `fill:var(${o.c || '--w-ink'});font-size:${o.s || 10}px;font-weight:${o.w || 400};font-family:var(--font)` }, s);
+const L = (x1, y1, x2, y2, c = '--w-ink', sw = 1.2) => svg('line', { x1, y1, x2, y2, style: `stroke:var(${c});stroke-width:${sw}` });
+const tri = (cx, cy, up, s = 3) => svg('polygon', { points: up ? `${cx - s},${cy + s / 2} ${cx + s},${cy + s / 2} ${cx},${cy - s}` : `${cx - s},${cy - s / 2} ${cx + s},${cy - s / 2} ${cx},${cy + s}`, style: 'fill:var(--w-ink)' });
+
+function bev(x, y, w, h, kind = '95', pressed = false) {
+  const g = svg('g');
+  if (kind === 'flat') { g.append(R(x, y, w, h, '--w-win', '--w-dk', 1)); return g; }
+  g.append(R(x, y, w, h, '--w-face'));
+  if (kind === '95') {
+    const [a, b, c, d] = pressed ? ['--w-dk', '--w-hi', '--w-sh', '--w-lt'] : ['--w-hi', '--w-dk', '--w-lt', '--w-sh'];
+    g.append(R(x, y, w, 1, a), R(x, y, 1, h, a), R(x, y + h - 1, w, 1, b), R(x + w - 1, y, 1, h, b),
+      R(x + 1, y + 1, w - 2, 1, c), R(x + 1, y + 1, 1, h - 2, c), R(x + 1, y + h - 2, w - 2, 1, d), R(x + w - 2, y + 1, 1, h - 2, d));
+  } else {
+    const [a, b] = pressed ? ['--w-sh', '--w-face'] : ['--w-hi', '--w-sh'];
+    g.append(R(x + 1, y + 1, w - 2, 2, a), R(x + 1, y + 1, 2, h - 2, a), R(x + 1, y + h - 3, w - 2, 2, b), R(x + w - 3, y + 1, 2, h - 2, b), R(x + 0.5, y + 0.5, w - 1, h - 1, null, '--w-dk', 1));
+  }
+  return g;
+}
+
+/* 一扇窗口：ver = 1 | 2 | 3 | 95 */
+function win(ver, x, y, w, h, title, o = {}) {
+  const g = svg('g'); let cy, chrome, ix, iw, ib;
+  const ina = !!o.inactive;
+  if (ver === 1 || ver === 2) {
+    g.append(R(x, y, w, h, '--w-win', '--w-dk', ver === 2 ? 2.5 : 1.5));
+    g.append(R(x, y, w, 16, ina ? '--w-win' : '--w-title', '--w-dk', 1));
+    g.append(TX(x + w / 2, y + 12, title, { a: 'middle', c: ina ? '--w-ink' : '--w-title-ink', s: 10, w: 600 }));
+    g.append(R(x + 3, y + 3, 10, 10, '--w-win', '--w-dk', 1));
+    if (ver === 1) g.append(R(x + w - 13, y + 3, 10, 10, '--w-win', '--w-dk', 1));
+    else g.append(R(x + w - 26, y + 3, 10, 10, '--w-win', '--w-dk', 1), tri(x + w - 21, y + 8, false, 2.5), R(x + w - 13, y + 3, 10, 10, '--w-win', '--w-dk', 1), tri(x + w - 8, y + 8, true, 2.5));
+    chrome = { x, y, w, h: 16 }; cy = y + 16; ix = x + 1; iw = w - 2; ib = y + h - 1;
+  } else if (ver === 3) {
+    g.append(R(x, y, w, h, '--w-face', '--w-dk', 1), R(x + 3.5, y + 3.5, w - 7, h - 7, '--w-win', '--w-dk', 1));
+    g.append(R(x + 4, y + 4, w - 8, 18, ina ? '--w-win' : '--w-title'));
+    g.append(TX(x + w / 2, y + 17, title, { a: 'middle', c: ina ? '--w-ink' : '--w-title-ink', s: 10.5, w: 600 }));
+    g.append(bev(x + 4, y + 4, 18, 18, '3'), R(x + 8, y + 12, 10, 2.5, '--w-hi', '--w-dk', 0.8));
+    g.append(bev(x + w - 40, y + 4, 18, 18, '3'), tri(x + w - 31, y + 13, false), bev(x + w - 22, y + 4, 18, 18, '3'), tri(x + w - 13, y + 13, true));
+    chrome = { x: x + 4, y: y + 4, w: w - 8, h: 18 }; cy = y + 22; ix = x + 4; iw = w - 8; ib = y + h - 4;
+  } else {
+    g.append(bev(x, y, w, h, '95'));
+    g.append(R(x + 3, y + 3, w - 6, 18, ina ? '--w-sh' : '--w-title'));
+    g.append(R(x + 6, y + 6, 12, 12, '--w-face', '--w-dk', 0.8), R(x + 8, y + 8, 8, 3, '--w-title'));
+    g.append(TX(x + 23, y + 16, title, { c: '--w-title-ink', s: 10.5, w: 700 }));
+    const bx = x + w - 21;
+    g.append(bev(bx, y + 5, 16, 14), L(bx + 5, y + 9, bx + 11, y + 15, '--w-ink', 1.5), L(bx + 11, y + 9, bx + 5, y + 15, '--w-ink', 1.5));
+    g.append(bev(bx - 18, y + 5, 16, 14), R(bx - 14.5, y + 8.5, 9, 7, null, '--w-ink', 1.2), R(bx - 15, y + 8, 10, 2, '--w-ink'));
+    g.append(bev(bx - 34, y + 5, 16, 14), R(bx - 30, y + 14, 6, 2, '--w-ink'));
+    chrome = { x: x + 3, y: y + 3, w: w - 6, h: 18 }; cy = y + 21; ix = x + 3; iw = w - 6; ib = y + h - 3;
+  }
+  if (o.menu) {
+    o.menu.forEach((m, i) => g.append(TX(ix + 8 + i * 34, cy + 11, m, { s: 9.5 })));
+    if (ver !== 95) g.append(L(ix, cy + 14, ix + iw, cy + 14, '--w-dk', 0.8));
+    cy += 14;
+  }
+  if (ver === 95) g.append(R(ix + 1, cy + 1, iw - 2, ib - cy - 2, '--w-win', '--w-sh', 1));
+  return { g, x: ix, y: cy, w: iw, h: ib - cy, chrome };
+}
+function ico(x, y, label, ver, c = '--p', lc = '--w-ink') {
+  const g = svg('g');
+  if (ver < 3) g.append(R(x - 9, y, 18, 14, '--w-win', '--w-dk', 1), L(x - 6, y + 4, x + 6, y + 4, '--w-dk', 1), L(x - 6, y + 8, x + 3, y + 8, '--w-dk', 1));
+  else g.append(R(x - 7, y + 2, 18, 14, '--w-sh'), R(x - 9, y, 18, 14, c, '--w-dk', 0.8), R(x - 6, y + 3, 12, 5, '--w-win'));
+  g.append(TX(x, y + 25, label, { a: 'middle', s: 9, c: lc }));
+  return g;
+}
+function grpIco(x, y, label) {
+  return svg('g', {}, R(x - 10, y, 20, 14, '--w-win', '--w-dk', 0.8), R(x - 10, y, 20, 4, '--w-title'), R(x - 6, y + 7, 3, 3, '--y'), R(x - 1, y + 7, 3, 3, '--t'), R(x + 4, y + 7, 3, 3, '--r'), TX(x, y + 24, label, { a: 'middle', s: 9 }));
+}
+function clockFace(cx, cy, r, date = new Date()) {
+  const g = svg('g', {}, svg('circle', { cx, cy, r, style: st('--w-win', '--w-dk', 1.5) }));
+  for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; g.append(L(cx + Math.sin(a) * r * 0.82, cy - Math.cos(a) * r * 0.82, cx + Math.sin(a) * r * 0.95, cy - Math.cos(a) * r * 0.95, '--w-dk', 1.2)); }
+  const hA = ((date.getHours() % 12) + date.getMinutes() / 60) / 12 * Math.PI * 2, mA = date.getMinutes() / 60 * Math.PI * 2;
+  g.append(L(cx, cy, cx + Math.sin(hA) * r * 0.5, cy - Math.cos(hA) * r * 0.5, '--w-dk', 2.5), L(cx, cy, cx + Math.sin(mA) * r * 0.78, cy - Math.cos(mA) * r * 0.78, '--w-dk', 1.6));
+  return g;
+}
+const lines = (x, y, w, n, gap = 12) => { const g = svg('g'); for (let i = 0; i < n; i++) g.append(R(x, y + i * gap, w * (0.55 + ((i * 37) % 40) / 100), 3, '--w-sh')); return g; };
+const flag4 = (x, y, s = 5) => svg('g', {}, R(x, y, s, s, '--r'), R(x + s + 1, y, s, s, '--t'), R(x, y + s + 1, s, s, '--p'), R(x + s + 1, y + s + 1, s, s, '--y'));
+
+/* 整个桌面：返回 { node, spots } */
+function desktop(ver, o = {}) {
+  const root = svg('svg', { viewBox: '0 0 640 400', role: 'img', 'aria-label': '示意桌面', style: 'border-radius:8px;border:1px solid var(--line)' });
+  const add = (...n) => root.append(...n);
+  const spots = { chrome: [], launch: [], tasks: [] };
+  const box = (b) => ({ x: b.x, y: b.y, w: b.w, h: b.h });
+  if (ver === 1 || ver === 2) {
+    add(R(0, 0, 640, 400, '--w-desk1'));
+    const files = ['CALC.EXE', 'CALENDAR.EXE', 'CARDFILE.EXE', 'CLOCK.EXE', 'NOTEPAD.EXE', 'PAINT.EXE', 'REVERSI.EXE', 'WRITE.EXE', 'WIN.INI', 'README.TXT'];
+    const dosWin = (a) => {
+      ['A:', 'B:', 'C:'].forEach((d, i) => add(TX(a.x + 8 + i * 28, a.y + 13, d, { s: 10, w: 700 })));
+      add(L(a.x, a.y + 19, a.x + a.w, a.y + 19, '--w-dk', 0.8));
+      files.forEach((f, i) => add(TX(a.x + 10 + (i % 2) * Math.min(150, a.w / 2), a.y + 34 + Math.floor(i / 2) * 16, f, { s: 9.5 })));
+    };
+    let ws;
+    if (ver === 1) ws = [[0, 0, 320, 352, 'MS-DOS 执行程序'], [320, 0, 320, 176, '时钟'], [320, 176, 320, 176, '记事本']];
+    else ws = [[16, 14, 360, 250, 'MS-DOS 执行程序'], [236, 70, 290, 200, '记事本'], [420, 126, 200, 170, '时钟']];
+    ws.forEach(([x, y, w, h, t], i) => {
+      const a = win(ver, x, y, w, h, t, { menu: i === 1 || i === 0 ? (i === 0 ? ['文件', '视图', '特殊'] : null) : null, inactive: ver === 2 && i < 2 });
+      add(a.g);
+      if (t === 'MS-DOS 执行程序') { dosWin(a); spots.launch.push(box(a)); }
+      else if (t === '时钟') add(clockFace(a.x + a.w / 2, a.y + a.h / 2, Math.min(a.w, a.h) * 0.36));
+      else add(lines(a.x + 10, a.y + 14, a.w - 30, Math.floor((a.h - 20) / 14), 14));
+      spots.chrome.push(a.chrome);
+    });
+    add(L(0, 352, 640, 352, '--w-sh', 1));
+    ['日历', '计算器', '黑白棋'].forEach((n, i) => add(ico(34 + i * 62, 358, n, 1)));
+    spots.tasks.push({ x: 2, y: 354, w: 200, h: 44, label: '← 最小化的图标排在底部', lx: 212, ly: 382 });
+    if (ver === 1) spots.tasks.push({ x: 2, y: 2, w: 636, h: 348, label: '平铺：打开的都看得见', lx: 430, ly: 340 });
+  } else if (ver === 3) {
+    add(R(0, 0, 640, 400, '--w-desk3'));
+    add(ico(40, 356, '时钟', 3, '--t', '--w-title-ink'));
+    add(ico(590, 356, '计算器', 3, '--o', '--w-title-ink'));
+    const pm = win(3, 16, 12, 470, 326, '程序管理器', { menu: ['文件', '选项', '窗口', '帮助'], inactive: true });
+    add(pm.g); spots.chrome.push(pm.chrome);
+    const gw = win(3, pm.x + 10, pm.y + 8, 330, 150, '主群组', { inactive: true });
+    add(gw.g);
+    ['文件管理器', '控制面板', '打印管理器', '剪贴板', 'MS-DOS'].forEach((n, i) => add(ico(gw.x + 32 + i * 62, gw.y + 16, n, 3, ['--y', '--p', '--t', '--o', '--r'][i])));
+    ['附件', '游戏', '启动', '应用程序'].forEach((n, i) => add(grpIco(pm.x + 30 + i * 70, pm.y + pm.h - 42, n)));
+    spots.launch.push({ x: gw.x - 4, y: gw.y - 26, w: gw.w + 8, h: gw.h + 30, label: '群组：双击打开' }, { x: pm.x + 10, y: pm.y + pm.h - 46, w: 280, h: 42 });
+    const np = win(3, 330, 180, 300, 210, '记事本 - 无标题', { menu: ['文件', '编辑', '搜索', '帮助'] });
+    add(np.g, lines(np.x + 10, np.y + 14, np.w - 40, 10, 15));
+    spots.chrome.push(np.chrome);
+    spots.tasks.push({ x: 14, y: 350, w: 52, h: 46, label: '看得见' }, { x: 562, y: 350, w: 56, h: 46, label: '被挡住' });
+  } else {
+    add(R(0, 0, 640, 400, '--w-desk3'));
+    const prog = o.shell === 'progman';
+    const pmWin = (x, y, w, h, ina) => {
+      const p = win(95, x, y, w, h, '程序管理器', { menu: ['文件', '选项', '窗口', '帮助'], inactive: ina });
+      add(p.g);
+      ['附件', '游戏', '启动', '主群组', 'Windows 95'].forEach((n, i) => add(grpIco(p.x + 34 + i * 74, p.y + 18, n)));
+      return p;
+    };
+    if (prog) {
+      const p = pmWin(40, 30, 560, 330, false);
+      spots.chrome.push(p.chrome); spots.launch.push({ x: p.x, y: p.y, w: p.w, h: 60, label: '又回到双击群组' });
+      add(TX(320, 388, '（没有任务栏，也没有桌面图标）', { a: 'middle', s: 11, c: '--w-title-ink' }));
+      spots.tasks.push({ x: 150, y: 372, w: 340, h: 24, label: '任务栏消失了' });
+    } else {
+      [['我的电脑', '--p'], ['网上邻居', '--t'], ['回收站', '--w-sh']].forEach(([n, c], i) => add(ico(34, 14 + i * 58, n, 3, c, '--w-title-ink')));
+      const mc = win(95, 120, 30, 380, 240, '我的电脑', { menu: ['文件', '编辑', '查看', '帮助'], inactive: !!o.progman });
+      add(mc.g);
+      ['3½ 软盘 (A:)', '(C:)', '控制面板', '打印机'].forEach((n, i) => add(ico(mc.x + 44 + i * 82, mc.y + 22, n, 3, ['--w-sh', '--w-sh', '--t', '--o'][i])));
+      spots.chrome.push(mc.chrome);
+      let pm = null;
+      if (o.progman) { pm = pmWin(210, 120, 410, 220, false); spots.chrome.push(pm.chrome); }
+      add(R(0, 370, 640, 30, '--w-face'), L(0, 370.5, 640, 370.5, '--w-hi', 1));
+      add(bev(3, 374, 58, 22), flag4(9, 379, 5), TX(24, 389, '开始', { s: 11, w: 800 }));
+      add(bev(66, 374, 130, 22, '95', !o.progman), TX(74, 389, '我的电脑', { s: 10 }));
+      if (o.progman) add(bev(200, 374, 130, 22, '95', true), TX(208, 389, '程序管理器', { s: 10 }));
+      add(bev(566, 374, 71, 22, '95', true), TX(601, 389, '15:00', { a: 'middle', s: 10 }));
+      spots.launch.push({ x: 1, y: 372, w: 62, h: 26, label: '单击「开始」' });
+      spots.tasks.push({ x: 64, y: 372, w: o.progman ? 270 : 136, h: 26, label: '任务栏：永远在最上层' });
+    }
+  }
+  return { node: root, spots };
+}
+function drawSpots(root, list) {
+  root.querySelectorAll('.spotg').forEach((n) => n.remove());
+  const g = svg('g', { class: 'spotg' });
+  list.forEach((s) => {
+    g.append(svg('rect', { x: s.x, y: s.y, width: s.w, height: s.h, rx: 4, class: 'spot' }));
+    if (s.label) { const ty = s.ly != null ? s.ly : (s.y > 30 ? s.y - 6 : s.y + s.h + 14); g.append(svg('text', { x: s.lx != null ? s.lx : Math.min(Math.max(s.x, 4), 520), y: ty, class: 'spotlbl' }, s.label)); }
+  });
+  root.append(g);
+}
+
+/* ===================== 演示：四代桌面滑块 ===================== */
+reg('hero', (node) => {
+  const VERS = [
+    { v: 1, name: 'Windows 1.0（1985）', feats: ['平铺窗口', 'MS-DOS 执行程序', '黑白图标', '最小化图标在底部'],
+      ans: { chrome: '标题居中，左边小方块是系统菜单。原版窗口平铺，彼此不遮挡（按钮细节为示意）。', launch: '没有「开始」：启动程序靠「MS-DOS 执行程序」这个文件列表，找到 .EXE 再双击。', tasks: '窗口平铺，开着的都看得见；最小化后变成屏幕底部的一排图标，这是任务栏的雏形。' } },
+    { v: 2, name: 'Windows 2.x（1987）', feats: ['重叠窗口', '图标与控件沿用 1.0', '引发苹果诉讼'],
+      ans: { chrome: '重叠窗口要能缩放、能叠放，标题栏右边多了最小化 ▼ 与最大化 ▲（示意）。', launch: '仍是 MS-DOS 执行程序：一个文件列表。', tasks: '窗口可以互相遮挡了；最小化的图标依然排在屏幕底部。' } },
+    { v: 3, name: 'Windows 3.x（1990–92）', feats: ['程序管理器', 'Susan Kare 16 色图标', 'TrueType', '壁纸', '纸牌 / 扫雷'],
+      ans: { chrome: '灰色的立体按钮（▼ 最小化、▲ 最大化），系统菜单是一根短横条（示意）。', launch: '程序管理器（源自 OS/2 的 PMShell）：程序收在「群组」里，先双击群组，再双击图标。', tasks: '最小化的程序成了桌面上的图标，会被别的窗口盖住：右下角的「计算器」就被记事本挡住了。' } },
+    { v: 95, name: 'Windows 95（1995）', feats: ['开始菜单', '任务栏', '标题左对齐 + 关闭按钮 ×', '等轴测图标'],
+      ans: { chrome: '标题左对齐、左侧是程序图标，右侧三颗按钮：最小化、最大化、关闭 ×（示意）。', launch: '左下角的「开始」：单击弹出菜单，逐级展开，不需要双击。', tasks: '任务栏永远在最上层，每个打开的程序一颗按钮，窗口被挡住也找得到。' } },
+  ];
+  const Q = [['chrome', '标题栏按钮'], ['launch', '从哪启动程序'], ['tasks', '开着的程序在哪']];
+  let vi = 3, qi = 2, cur = null;
+  const holder = el('div');
+  const name = el('b', { style: 'min-width:9em' });
+  const range = el('input', { type: 'range', min: '0', max: '3', step: '1', value: '3', 'aria-label': '版本' });
+  const vseg = seg(['1.0', '2.x', '3.x', '95'], vi, (i) => { vi = i; range.value = i; draw(); }, '版本');
+  range.addEventListener('input', () => { vi = +range.value; vseg.set(vi); draw(); });
+  const qseg = seg(Q.map((q) => q[1]), qi, (i) => { qi = i; draw(); }, '问题');
+  const feats = el('div', { class: 'feat' });
+  const status = el('div', { class: 'status' });
+  function draw() {
+    const V = VERS[vi];
+    cur = desktop(V.v); holder.replaceChildren(cur.node);
+    drawSpots(cur.node, cur.spots[Q[qi][0]]);
+    name.textContent = V.name;
+    feats.replaceChildren(...V.feats.map((f) => el('span', { class: 'tag' }, f)));
+    status.innerHTML = `<b>${Q[qi][1]}？</b>${V.ans[Q[qi][0]]}`;
+  }
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '版本', range), vseg), el('div', { class: 'ctrl' }, qseg), holder, el('div', { class: 'ctrl' }, name, feats), status);
+  draw();
+});
+
+/* ===================== 演示：时间线 ===================== */
+reg('timeline', (node) => {
+  const E = [
+    [1981.5, 1, '1981', '盖茨看到 Macintosh 原型机', '微软开始表现出开发图形界面的愿望。'],
+    [1982.87, 1, '1982 年 COMDEX', 'Visi On 亮相', 'VisiCorp 的 Visi On 图形界面进一步刺激了盖茨和微软做自己的 GUI。'],
+    [1983.6, 1, '1983 年 8 月', '聘请 Scott A. McGregor', '施乐 PARC 首席开发者之一，负责为 MS-DOS 开发新图形界面。他在施乐时就把自己的软件叫「Windows」。'],
+    [1983.7, 1, '1983 年 9 月', 'BYTE 杂志展示原型', '此时它还叫「Interface Manager」，给 BYTE 的测试软盘上写着「Microsoft Window Manager」；这个原型用的是重叠窗口。最终采纳 Rowland Hanson 的建议定名「Microsoft Windows」。'],
+    [1983.87, 1, '1983 年 11 月', 'COMDEX 演示', '同年的 COMDEX 大会上公开演示。'],
+    [1984.27, 1, '1984 年 4 月', '原定发布日期', 'VAPOR'],
+    [1985.89, 0, '1985-11-20', 'Windows 1.0 发布', '平铺窗口、MS-DOS 执行程序、黑白图标；第一款游戏「黑白棋」。'],
+    [1987.92, 0, '1987 年 12 月', 'Windows 2.0 发布', '重叠窗口取代平铺窗口，随后引发苹果诉讼。'],
+    [1988.48, 1, '1988 年 6 月', '一个玩笑', 'Murray Sargent 取笑 Windows/286 的内存管理，David Weise 当晚就把 Windows 2.0 启动进了保护模式，3.x 由此开始。'],
+    [1990.39, 0, '1990-05-22', 'Windows 3.0 发布', '程序管理器、16 色图标、壁纸、纸牌。（发布日期为本页补充）'],
+    [1992.1, 1, '1992 年', 'Daniel Oran 加入微软', '行为心理学家，原是苹果用户，后来参与设计了开始菜单与任务栏。'],
+    [1992.26, 0, '1992-04-06', 'Windows 3.1 发布', 'TrueType、四色块旗帜 Logo、扫雷取代黑白棋。（发布日期为本页补充）'],
+    [1993.45, 1, '1993 年 6 月', '开始菜单第一张草图', '「系统」按钮后来改名「开始」。'],
+    [1995.65, 0, '1995-08-24', 'Windows 95 发布', 'AGE'],
+  ];
+  const X = (y) => 24 + (y - 1981) * (592 / 15);
+  const root = svg('svg', { viewBox: '0 0 640 150', role: 'img', 'aria-label': '1981–1995 时间线' });
+  root.append(svg('line', { x1: 20, y1: 100, x2: 620, y2: 100, style: 'stroke:var(--line);stroke-width:2' }));
+  for (let y = 1981; y <= 1996; y += 1) {
+    root.append(svg('line', { x1: X(y), y1: 96, x2: X(y), y2: 104, style: 'stroke:var(--muted);stroke-width:1' }));
+    if ((y - 1981) % 2 === 0) root.append(svg('text', { x: X(y), y: 126, class: 'lbl mid' }, y));
+  }
+  root.append(svg('text', { x: 20, y: 18, class: 'lbl' }, '人物与事件'), svg('text', { x: 20, y: 146, class: 'lbl' }, '↑ 版本发布'));
+  const dots = [];
+  const card = el('div', { class: 'tl-card', 'aria-live': 'polite' });
+  let k = 6;
+  function pick(i) {
+    k = i; dots.forEach((d, j) => d.classList.toggle('sel', j === i));
+    const [, , d, t, txt] = E[i];
+    let body = txt;
+    if (txt === 'VAPOR') {
+      const m = (1985 - 1984) * 12 + (11 - 4);
+      body = `微软宣称这时发布，却一再延期，被叫作「Vaporware（雾件）」——这个词据说最早就出自微软工程师，形容一拖再拖甚至取消的产品。从 1984 年 4 月拖到 1985 年 11 月，晚了约 <b>${m}</b> 个月。`;
+    } else if (txt === 'AGE') {
+      body = `开始菜单 + 任务栏。改用年份命名，四天卖出 100 万份。距 1.0 发布 <b>${(new Date(1995, 7, 24) - new Date(1985, 10, 20)) / 864e5 | 0}</b> 天（JS 现场算）。`;
+    }
+    card.innerHTML = `<div class="d">${d}</div><h3>${t}</h3><div>${body}</div>`;
+  }
+  E.forEach(([y, row, , t], i) => {
+    const cx = X(y), cy = row ? 50 + (i % 3) * 12 - 12 : 100;
+    const g = svg('g', { class: 'tl-dot', tabindex: '0', role: 'button', 'aria-label': t });
+    if (row) g.append(svg('line', { x1: cx, y1: cy, x2: cx, y2: 100, style: 'stroke:var(--line);stroke-width:1' }));
+    g.append(svg('circle', { cx, cy, r: row ? 6 : 9, style: `fill:var(${row ? '--t' : '--p'})` }));
+    g.addEventListener('click', () => pick(i)); onKey(g, () => pick(i));
+    dots.push(g); root.append(g);
+  });
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => pick((k + E.length - 1) % E.length) }, '← 上一个');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => pick((k + 1) % E.length) }, '下一个 →');
+  node.append(root, el('div', { class: 'ctrl' }, prev, next), card);
+  pick(k);
+});
+
+/* ===================== 演示：平铺 vs 重叠 ===================== */
+reg('tiling', (node) => {
+  const APPS = ['记事本', '日历', '时钟', '黑白棋', '计算器', '画图'];
+  let mode = 0, wins = [], z = 1;
+  const wm = el('div', { class: 'wm' });
+  const strip = el('div', { class: 'wm-strip' });
+  const status = el('div', { class: 'status' });
+  const mseg = seg(['平铺（1.0）', '重叠（2.x）'], 0, (i) => { mode = i; render(); }, '窗口模式');
+  const openBtn = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    const name = APPS.find((a) => !wins.some((w) => w.name === a));
+    if (!name) return;
+    wins.push({ name, min: false, z: ++z }); render();
+  } }, '打开程序');
+  const closeBtn = el('button', { class: 'btn', type: 'button', onclick: () => { wins.pop(); render(); } }, '关掉最后一个');
+  function tileRects(n) {
+    const H = 83;
+    if (n === 1) return [[0, 0, 100, H]];
+    if (n === 2) return [[0, 0, 50, H], [50, 0, 50, H]];
+    if (n === 3) return [[0, 0, 50, H], [50, 0, 50, H / 2], [50, H / 2, 50, H / 2]];
+    if (n === 4) return [[0, 0, 50, H / 2], [50, 0, 50, H / 2], [0, H / 2, 50, H / 2], [50, H / 2, 50, H / 2]];
+    const c = Math.ceil(n / 2); return Array.from({ length: n }, (_, i) => [(i % c) * 100 / c, Math.floor(i / c) * H / 2, 100 / c, H / 2]);
+  }
+  function render() {
+    wm.replaceChildren(strip); strip.replaceChildren();
+    const vis = wins.filter((w) => !w.min);
+    const rects = tileRects(vis.length);
+    const top = vis.reduce((m, w) => (w.z > m.z ? w : m), { z: -1 });
+    vis.forEach((w, i) => {
+      const r = mode === 0 ? rects[i] : [4 + wins.indexOf(w) * 9, 3 + wins.indexOf(w) * 7, 56, 56];
+      const d = el('div', { class: 'wm-win' + (w === top || mode === 0 ? '' : ' inact'), style: `left:${r[0]}%;top:${r[1]}%;width:${r[2]}%;height:${r[3]}%;z-index:${mode ? w.z : 1}` });
+      const t = el('div', { class: 'wm-t' }, el('button', { class: 'wm-sys', type: 'button', tabindex: '-1', 'aria-hidden': 'true' }), w.name,
+        el('button', { class: 'wm-min', type: 'button', title: '最小化', 'aria-label': '最小化' + w.name, onclick: (e) => { e.stopPropagation(); w.min = true; render(); } }, '▾'));
+      const body = el('div', { class: 'wm-c' }, el('i'), el('i', { style: 'width:70%' }), el('i', { style: 'width:85%' }), el('i', { style: 'width:50%' }));
+      d.append(t, body);
+      d.addEventListener('pointerdown', (e) => { if (e.target.closest('button')) return; if (mode === 1) { w.z = ++z; render(); } });
+      wm.append(d);
+    });
+    wins.filter((w) => w.min).forEach((w) => strip.append(el('button', { class: 'wm-ico', type: 'button', onclick: () => { w.min = false; w.z = ++z; render(); } }, el('span', { class: 'g' }), el('span', {}, w.name))));
+    if (!wins.length) wm.append(el('div', { style: 'position:absolute;inset:0 0 17% 0;display:flex;align-items:center;justify-content:center;color:var(--w-ink);opacity:.6' }, '点「打开程序」'));
+    const n = vis.length;
+    openBtn.disabled = wins.length >= APPS.length; closeBtn.disabled = !wins.length;
+    if (!n) status.innerHTML = wins.length ? `所有窗口都最小化了，${wins.length} 个图标排在底部。` : '桌面是空的。';
+    else if (mode === 0) status.innerHTML = `<b>平铺</b>：${n} 个窗口自动分屏，谁也不挡谁，每个只剩约 <b>${Math.round(83 / n)}%</b> 的屏幕面积。新开一个，所有窗口都得让位。`;
+    else status.innerHTML = `<b>重叠</b>：每个窗口保持自己的大小，最前面的完整可见；${n > 1 ? `其余 ${n - 1} 个被部分挡住，点露出的部分把它提到最前。` : '再多开几个看看遮挡。'}`;
+  }
+  wins = [{ name: '记事本', min: false, z: 1 }, { name: '时钟', min: false, z: 2 }, { name: '日历', min: true, z: 0 }];
+  node.append(el('div', { class: 'ctrl' }, mseg, openBtn, closeBtn), wm, status);
+  render();
+});
+
+/* ===================== 像素工具 ===================== */
+function paintPixels(cv, w, h, z, colorAt, grid) {
+  cv.width = w * z; cv.height = h * z;
+  const c = cv.getContext('2d');
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const col = colorAt(x, y); if (!col) continue; c.fillStyle = col; c.fillRect(x * z, y * z, z, z); }
+  if (grid && z >= 6) { c.strokeStyle = 'rgba(128,128,128,.28)'; c.lineWidth = 1; c.beginPath(); for (let x = 0; x <= w; x++) { c.moveTo(x * z + 0.5, 0); c.lineTo(x * z + 0.5, h * z); } for (let y = 0; y <= h; y++) { c.moveTo(0, y * z + 0.5); c.lineTo(w * z, y * z + 0.5); } c.stroke(); }
+}
+/* 1 位图：字符串数组 → 布尔 */
+function line(m, x0, y0, x1, y1) { const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1; let e = dx + dy; for (;;) { m[y0 * 32 + x0] = 1; if (x0 === x1 && y0 === y1) break; const e2 = 2 * e; if (e2 >= dy) { e += dy; x0 += sx; } if (e2 <= dx) { e += dx; y0 += sy; } } }
+function rectM(m, x, y, w, h, fill) { for (let j = y; j < y + h; j++) for (let i = x; i < x + w; i++) if (fill || j === y || j === y + h - 1 || i === x || i === x + w - 1) m[j * 32 + i] = 1; }
+
+/* ===================== 演示：1.0 图标辨识度 + 实时时钟 ===================== */
+reg('icons1', (node) => {
+  const cp = new Uint8Array(1024), cal = new Uint8Array(1024);
+  rectM(cp, 3, 5, 26, 22); line(cp, 3, 15, 28, 15); line(cp, 16, 5, 16, 26); rectM(cp, 6, 8, 7, 4, true); rectM(cp, 19, 18, 7, 5);
+  rectM(cal, 3, 5, 26, 22); rectM(cal, 3, 5, 26, 5, true); line(cal, 11, 10, 11, 26); line(cal, 20, 10, 20, 26); line(cal, 3, 18, 28, 18);
+  const order = Math.random() < 0.5 ? [['控制面板', cp], ['日历', cal]] : [['日历', cal], ['控制面板', cp]];
+  const status = el('div', { class: 'status' }, '点左边两个图标之一作答。');
+  const ink = () => cssv('--text'), bg = () => cssv('--surface');
+  const mk = (m) => { const c = el('canvas', { class: 'px', width: 96, height: 96, style: 'width:96px;height:96px' }); return c; };
+  const paintM = (c, m) => paintPixels(c, 32, 32, 3, (x, y) => (m[y * 32 + x] ? ink() : bg()));
+  const figs = order.map(([nm, m], i) => {
+    const c = mk(); paintM(c, m);
+    const lab = el('figcaption', {}, '图标 ' + 'AB'[i]);
+    const b = el('div', { class: 'qbtn', tabindex: '0', role: 'button', 'aria-label': '图标 ' + 'AB'[i] }, c, lab);
+    const go = () => {
+      figs.forEach((f, j) => { f.lab.textContent = order[j][0]; f.b.classList.remove('ok', 'no'); });
+      b.classList.add(nm === '控制面板' ? 'ok' : 'no');
+      status.innerHTML = nm === '控制面板' ? '答对了。但你多半是蒙的：两者都是「分成几块的矩形」，这正是原文批评 1.0 图标<b>缺乏辨识度</b>的地方。' : '错了，这是日历。两者都是「分成几块的矩形」，很难分清——原文说的正是这种<b>辨识度</b>问题。';
+    };
+    b.addEventListener('click', go); onKey(b, go);
+    return { b, lab, c, m };
+  });
+  const clk = mk();
+  const drawClock = () => {
+    const m = new Uint8Array(1024); const d = new Date();
+    for (let a = 0; a < 360; a += 3) { const r = a * Math.PI / 180; m[Math.round(16 + Math.sin(r) * 13) * 32 + Math.round(16 + Math.cos(r) * 13)] = 1; }
+    for (let i = 0; i < 12; i++) { const r = i / 12 * Math.PI * 2; m[Math.round(16 - Math.cos(r) * 11) * 32 + Math.round(16 + Math.sin(r) * 11)] = 1; }
+    const hand = (ang, len) => line(m, 16, 16, Math.round(16 + Math.sin(ang) * len), Math.round(16 - Math.cos(ang) * len));
+    hand(((d.getHours() % 12) + d.getMinutes() / 60) / 12 * Math.PI * 2, 6); hand(d.getMinutes() / 60 * Math.PI * 2, 9); hand(d.getSeconds() / 60 * Math.PI * 2, 11);
+    paintM(clk, m);
+    clkCap.textContent = `时钟 ${d.toTimeString().slice(0, 8)}`;
+  };
+  const clkCap = el('figcaption');
+  let timer = null;
+  const repaint = () => { figs.forEach((f) => paintM(f.c, f.m)); drawClock(); };
+  themeListeners.push(repaint);
+  node.append(el('div', { class: 'pxrow' }, figs[0].b, figs[1].b, el('figure', { class: 'qbtn', style: 'cursor:default' }, clk, clkCap)), status);
+  drawClock();
+  return { start() { if (!timer) timer = setInterval(drawClock, 1000); }, stop() { clearInterval(timer); timer = null; } };
+});
+
+/* ===================== Logo 示意 ===================== */
+(function logos() {
+  const row = document.getElementById('logoRow'); if (!row) return;
+  const box = () => svg('svg', { viewBox: '0 0 120 90', width: '100%', role: 'img' });
+  const sq = (x, y, s, c) => svg('rect', { x, y, width: s, height: s, style: `fill:var(${c})` });
+  const a = box(); a.append(svg('rect', { x: 28, y: 14, width: 64, height: 54, style: 'fill:none;stroke:var(--p);stroke-width:4' }), svg('line', { x1: 60, y1: 14, x2: 60, y2: 68, style: 'stroke:var(--p);stroke-width:4' }), svg('line', { x1: 28, y1: 41, x2: 92, y2: 41, style: 'stroke:var(--p);stroke-width:4' }), svg('rect', { x: 28, y: 14, width: 64, height: 8, style: 'fill:var(--p)' }));
+  const b = box(); b.append(svg('rect', { x: 32, y: 10, width: 56, height: 66, style: 'fill:var(--surface);stroke:var(--text);stroke-width:4' }), svg('line', { x1: 60, y1: 10, x2: 60, y2: 76, style: 'stroke:var(--text);stroke-width:3' }), svg('line', { x1: 32, y1: 43, x2: 88, y2: 43, style: 'stroke:var(--text);stroke-width:3' }), svg('line', { x1: 34, y1: 30, x2: 50, y2: 18, style: 'stroke:var(--muted);stroke-width:2' }));
+  const c = box();
+  const wave = (x, y, col) => svg('path', { d: `M${x} ${y + 3} q5.5 -5 11 0 t11 0 v20 q-5.5 -5 -11 0 t-11 0 z`, style: `fill:var(${col})` });
+  c.append(wave(40, 16, '--r'), wave(64, 16, '--t'), wave(40, 42, '--p'), wave(64, 42, '--y'));
+  [24, 32].forEach((x, i) => c.append(svg('line', { x1: x, y1: 26 + i * 8, x2: x + 10, y2: 26 + i * 8, style: 'stroke:var(--muted);stroke-width:2;stroke-dasharray:3 2' })));
+  const e = box(); e.append(sq(37, 15, 22, '--p'), sq(61, 15, 22, '--p'), sq(37, 39, 22, '--p'), sq(61, 39, 22, '--p'));
+  [[a, 'Windows 1.0：四个平铺的窗口'], [b, '3.0：一扇写实的窗户'], [c, '3.1：四色块，像飘动的旗帜'], [e, 'Windows 11：回到四方格']].forEach(([s, t]) => row.append(el('figure', {}, s, el('figcaption', {}, t))));
+})();
+
+/* ===================== 演示：图标调色板 ===================== */
+reg('iconpal', (node) => {
+  const VGA = [[0,0,0],[128,0,0],[0,128,0],[128,128,0],[0,0,128],[128,0,128],[0,128,128],[192,192,192],[128,128,128],[255,0,0],[0,255,0],[255,255,0],[0,0,255],[255,0,255],[0,255,255],[255,255,255]];
+  const CUBE = []; for (let r = 0; r < 6; r++) for (let g = 0; g < 6; g++) for (let b = 0; b < 6; b++) CUBE.push([r * 51, g * 51, b * 51]);
+  const MONO = [[0,0,0],[255,255,255]];
+  const screenGrad = (c, y0, y1) => { const g = c.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, '#1d3fd8'); g.addColorStop(1, '#38d6c4'); return g; };
+  function front(c, shadow) {
+    if (shadow) { c.fillStyle = '#7a7a7a'; c.fillRect(6, 5, 24, 19); c.fillRect(7, 26, 24, 5); }
+    c.fillStyle = '#c4c4c4'; c.fillRect(4, 3, 24, 19);
+    c.strokeStyle = '#000'; c.lineWidth = 1; c.strokeRect(4.5, 3.5, 23, 18);
+    c.fillStyle = screenGrad(c, 6, 18); c.fillRect(7, 6, 18, 12); c.strokeRect(6.5, 5.5, 19, 13);
+    c.fillStyle = '#6e6e6e'; c.fillRect(13, 22, 6, 2);
+    c.fillStyle = '#c4c4c4'; c.fillRect(5, 24, 24, 5); c.strokeRect(5.5, 24.5, 23, 4);
+    c.fillStyle = '#000'; for (let i = 0; i < 5; i++) c.fillRect(8 + i * 4, 26, 2, 1);
+    c.fillStyle = '#1a9e2a'; c.fillRect(24, 19, 2, 1);
+  }
+  function mono(c) {
+    c.fillStyle = '#fff'; c.fillRect(4, 3, 24, 19); c.strokeStyle = '#000'; c.lineWidth = 1; c.strokeRect(4.5, 3.5, 23, 18);
+    c.fillStyle = '#000'; c.fillRect(7, 6, 18, 12); c.fillStyle = '#fff'; c.fillRect(9, 8, 2, 3); c.fillRect(12, 10, 3, 1);
+    c.fillStyle = '#000'; c.fillRect(13, 22, 6, 2);
+    c.fillStyle = '#fff'; c.fillRect(5, 24, 24, 5); c.strokeRect(5.5, 24.5, 23, 4);
+    c.fillStyle = '#000'; for (let i = 0; i < 5; i++) c.fillRect(8 + i * 4, 26, 2, 1);
+  }
+  function iso(c) {
+    const P = (pts, fill) => { c.beginPath(); pts.forEach(([x, y], i) => (i ? c.lineTo(x, y) : c.moveTo(x, y))); c.closePath(); c.fillStyle = fill; c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1; c.stroke(); };
+    c.fillStyle = 'rgba(70,70,70,.9)'; c.beginPath(); c.moveTo(4, 29); c.lineTo(24, 29); c.lineTo(31, 24); c.lineTo(11, 24); c.closePath(); c.fill();
+    P([[5, 7], [11, 2.5], [28, 2.5], [22, 7]], '#e6e6e6');
+    P([[22, 7], [28, 2.5], [28, 17], [22, 21.5]], '#7d7d7d');
+    P([[5, 7], [22, 7], [22, 21.5], [5, 21.5]], '#c4c4c4');
+    c.fillStyle = screenGrad(c, 9, 19); c.fillRect(7.5, 9.5, 12, 9); c.strokeRect(7.5, 9.5, 12, 9);
+    P([[3, 27], [19, 27], [24, 23.5], [8, 23.5]], '#d0d0d0');
+    c.fillStyle = '#000'; for (let i = 0; i < 4; i++) c.fillRect(8 + i * 3.5, 25, 2, 1);
+  }
+  const STY = [
+    { k: '1.0', name: 'Windows 1.0', pal: MONO, draw: mono, txt: '黑白两色、正面视角、只有轮廓。与 Macintosh 同样是 32×32 网格，但更粗糙。' },
+    { k: '3.x', name: 'Windows 3.x', pal: VGA, draw: (c) => front(c, true), txt: 'Susan Kare 的做法：16 色，加了右下投影，形体更饱满、辨识度更高。屏幕的渐变被 16 色调色板压成了色带。' },
+    { k: '95', name: 'Windows 95', pal: VGA, draw: iso, txt: '部分图标改为类似 Copland 风格的等轴测视图：能看到顶面和侧面。仍是 32×32、16 色。' },
+    { k: 'Plus!', name: '95 Plus!', pal: CUBE, draw: iso, txt: 'Microsoft Plus! 附加包带来 256 色图标：渐变和明暗过渡平滑多了（这里用 216 色的颜色立方近似 256 色调色板）。' },
+  ];
+  const cache = STY.map((s) => {
+    const cv = document.createElement('canvas'); cv.width = 32; cv.height = 32;
+    const c = cv.getContext('2d'); s.draw(c);
+    const d = c.getImageData(0, 0, 32, 32), a = d.data, used = new Set();
+    for (let i = 0; i < a.length; i += 4) {
+      if (a[i + 3] < 128) { a[i + 3] = 0; continue; }
+      let best = 0, bd = 1e9;
+      s.pal.forEach((p, k) => { const dd = (p[0] - a[i]) ** 2 + (p[1] - a[i + 1]) ** 2 + (p[2] - a[i + 2]) ** 2; if (dd < bd) { bd = dd; best = k; } });
+      a[i] = s.pal[best][0]; a[i + 1] = s.pal[best][1]; a[i + 2] = s.pal[best][2]; a[i + 3] = 255; used.add(best);
+    }
+    return { d, n: used.size };
+  });
+  let si = 1;
+  const big = el('canvas', { class: 'px', width: 256, height: 256, style: 'width:min(256px,70vw);height:auto;background:var(--surface-2);border-radius:10px' });
+  const smalls = STY.map((s, i) => { const cv = el('canvas', { class: 'px', width: 32, height: 32, style: 'width:32px;height:32px' }); cv.getContext('2d').putImageData(cache[i].d, 0, 0); return el('figure', {}, cv, el('figcaption', {}, s.k)); });
+  const status = el('div', { class: 'status' });
+  function draw() {
+    const src = document.createElement('canvas'); src.width = 32; src.height = 32; src.getContext('2d').putImageData(cache[si].d, 0, 0);
+    const c = big.getContext('2d'); c.clearRect(0, 0, 256, 256); c.imageSmoothingEnabled = false; c.drawImage(src, 0, 0, 256, 256);
+    c.strokeStyle = 'rgba(128,128,128,.25)'; c.beginPath(); for (let i = 0; i <= 32; i++) { c.moveTo(i * 8 + 0.5, 0); c.lineTo(i * 8 + 0.5, 256); c.moveTo(0, i * 8 + 0.5); c.lineTo(256, i * 8 + 0.5); } c.stroke();
+    smalls.forEach((f, i) => f.style.opacity = i === si ? '1' : '.5');
+    status.innerHTML = `<b>${STY[si].name}</b>：调色板 ${STY[si].pal.length} 色，这个图标实际用到 <b>${cache[si].n}</b> 种（现场统计）。${STY[si].txt}`;
+  }
+  const sg = seg(STY.map((s) => s.k === 'Plus!' ? '95 Plus!' : s.k), si, (i) => { si = i; draw(); }, '图标时代');
+  node.append(el('div', { class: 'ctrl' }, sg), el('div', { class: 'pxrow' }, big, el('div', { class: 'pxrow', style: 'gap:10px;align-items:center' }, el('span', { class: 'tag' }, '实际大小'), ...smalls)), status);
+  draw();
+});
+
+/* ===================== 演示：位图字体 vs TrueType ===================== */
+reg('fonts', (node) => {
+  const F = [['Times New Roman', '"Times New Roman",Times,serif', 'Times Roman'], ['Arial', 'Arial,Helvetica,sans-serif', 'Helvetica'], ['Courier New', '"Courier New",Courier,monospace', 'Courier']];
+  let fi = 1, size = 28;
+  const TXT = 'Windows 3.1 TrueType Ag';
+  const cv = el('canvas', { class: 'px', style: 'max-width:100%' });
+  const ttf = el('div', { class: 'ttf' }, TXT);
+  const out = el('output', {}, size + 'px');
+  const rng = el('input', { type: 'range', min: '8', max: '44', value: String(size), 'aria-label': '字号' });
+  const status = el('div', { class: 'status' });
+  function draw() {
+    const stack = F[fi][1];
+    const tmp = document.createElement('canvas'); const t = tmp.getContext('2d');
+    t.font = `12px ${stack}`; const w = Math.ceil(t.measureText(TXT).width) + 2; tmp.width = w; tmp.height = 16;
+    t.font = `12px ${stack}`; t.fillStyle = '#000'; t.textBaseline = 'top'; t.fillText(TXT, 1, 2);
+    const d = t.getImageData(0, 0, w, 16).data, s = size / 12;
+    const maxW = Math.max(120, (node.clientWidth || 600) - 40);
+    const sc = Math.min(s, maxW / w);
+    cv.width = Math.ceil(w * sc); cv.height = Math.ceil(16 * sc);
+    const c = cv.getContext('2d'); c.fillStyle = cssv('--text');
+    for (let y = 0; y < 16; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 110) c.fillRect(Math.floor(x * sc), Math.floor(y * sc), Math.ceil(sc), Math.ceil(sc));
+    ttf.style.fontFamily = stack; ttf.style.fontSize = size + 'px';
+    out.textContent = size + 'px';
+    status.innerHTML = `<b>${F[fi][0]}</b>（度量兼容 ${F[fi][2]}）。字号 ${size}px 时，位图字体被放大 <b>${(size / 12).toFixed(2)}</b> 倍，每个像素变成一块方砖；轮廓字体按 ${size}px 重新描边，始终平滑。`;
+  }
+  rng.addEventListener('input', () => { size = +rng.value; draw(); });
+  const sg = seg(F.map((f) => f[0]), fi, (i) => { fi = i; draw(); }, '字体');
+  themeListeners.push(draw);
+  node.append(el('div', { class: 'ctrl' }, sg, el('label', { class: 'range' }, '字号', rng, out)),
+    el('div', { class: 'fontcmp' }, el('div', {}, el('div', { class: 'h' }, '位图字体：只有 12px 一个尺寸，硬放大'), cv), el('div', {}, el('div', { class: 'h' }, 'TrueType 轮廓字体：按字号重新渲染'), ttf)), status);
+  draw();
+});
+
+/* ===================== 演示：像素级按钮放大镜 ===================== */
+reg('bevel', (node) => {
+  const W = 64, H = 28, BX = 8, BY = 4, BW = 48, BH = 20;
+  const O = ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], K = ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'];
+  const NAMES = { face: ['按钮面', '--w-face'], hi: ['高光白：模拟光从左上照来', '--w-hi'], lt: ['亮灰：内层高光', '--w-lt'], sh: ['阴影灰：右下的背光面', '--w-sh'], dk: ['近黑：最外的轮廓/投影', '--w-dk'], win: ['白底', '--w-win'], ink: ['文字', '--w-ink'] };
+  let kind = 2, pressed = false, lock = false, z = 8, map = [];
+  function build() {
+    const p = pressed || lock;
+    const bg = kind === 0 ? 'win' : 'face';
+    map = Array.from({ length: H }, () => Array(W).fill(bg));
+    const set = (x, y, c) => { if (x >= 0 && y >= 0 && x < W && y < H) map[y][x] = c; };
+    const hline = (x, y, w, c) => { for (let i = 0; i < w; i++) set(x + i, y, c); };
+    const vline = (x, y, h, c) => { for (let i = 0; i < h; i++) set(x, y + i, c); };
+    let inkC = 'ink';
+    if (kind === 0) {
+      for (let y = BY; y < BY + BH; y++) hline(BX, y, BW, p ? 'dk' : 'win');
+      hline(BX + 1, BY, BW - 2, 'dk'); hline(BX + 1, BY + BH - 1, BW - 2, 'dk'); vline(BX, BY + 1, BH - 2, 'dk'); vline(BX + BW - 1, BY + 1, BH - 2, 'dk');
+      if (p) inkC = 'win';
+    } else if (kind === 1) {
+      for (let y = BY; y < BY + BH; y++) hline(BX, y, BW, 'face');
+      hline(BX + 1, BY, BW - 2, 'dk'); hline(BX + 1, BY + BH - 1, BW - 2, 'dk'); vline(BX, BY + 1, BH - 2, 'dk'); vline(BX + BW - 1, BY + 1, BH - 2, 'dk');
+      if (!p) { for (let k = 1; k <= 2; k++) { hline(BX + 1, BY + k, BW - 2 - k, 'hi'); vline(BX + k, BY + 1, BH - 2 - k, 'hi'); hline(BX + k, BY + BH - 1 - k, BW - 1 - k, 'sh'); vline(BX + BW - 1 - k, BY + k, BH - 1 - k, 'sh'); } }
+      else { hline(BX + 1, BY + 1, BW - 2, 'sh'); vline(BX + 1, BY + 1, BH - 2, 'sh'); }
+    } else {
+      for (let y = BY; y < BY + BH; y++) hline(BX, y, BW, 'face');
+      const [a, b, c, d] = p ? ['dk', 'hi', 'sh', 'lt'] : ['hi', 'dk', 'lt', 'sh'];
+      hline(BX, BY, BW, a); vline(BX, BY, BH, a); hline(BX, BY + BH - 1, BW, b); vline(BX + BW - 1, BY, BH, b);
+      hline(BX + 1, BY + 1, BW - 2, c); vline(BX + 1, BY + 1, BH - 2, c); hline(BX + 1, BY + BH - 2, BW - 2, d); vline(BX + BW - 2, BY + 1, BH - 2, d);
+    }
+    const off = p && kind > 0 ? 1 : 0, tx = BX + 18 + off, ty = BY + 6 + off;
+    [O, K].forEach((gl, gi) => gl.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === '#') set(tx + gi * 7 + x, ty + y, inkC); })));
+  }
+  const cv = el('canvas', { class: 'px', style: 'width:100%;touch-action:none;cursor:pointer;border-radius:8px' });
+  const real = el('canvas', { class: 'px', style: 'width:64px;height:28px' });
+  const status = el('div', { class: 'status' });
+  const info = el('div', { class: 'status', style: 'color:var(--muted);font-size:13px' }, '把鼠标移到像素上看颜色说明。');
+  function draw() {
+    build();
+    const col = {}; Object.keys(NAMES).forEach((k) => (col[k] = cssv(NAMES[k][1])));
+    paintPixels(cv, W, H, z, (x, y) => col[map[y][x]], true);
+    cv.style.maxWidth = W * z + 'px';
+    paintPixels(real, W, H, 1, (x, y) => col[map[y][x]], false);
+    const p = pressed || lock;
+    const txt = [
+      '<b>平面（1.0/2.x）</b>：一圈黑线、白底，没有明暗。按下时整块反色，用「反白」表示状态。',
+      `<b>3.x 立体</b>：灰底 + 黑轮廓，内侧左上 2 像素白、右下 2 像素灰，看起来是凸起的。${p ? '按下：高光消失、左上变成阴影，文字右下移 1 像素，像被按进去。' : ''}`,
+      `<b>95 双层斜面</b>：外层左上白/右下黑，内层左上亮灰/右下灰，两层叠出更细腻的立体感。${p ? '按下：两层明暗全部互换，文字右下移 1 像素。' : ''}`,
+    ][kind];
+    status.innerHTML = txt + `（放大 ${z} 倍；右侧小图为 1:1 实际大小）`;
+  }
+  cv.addEventListener('pointerdown', () => { pressed = true; draw(); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => cv.addEventListener(ev, () => { if (pressed) { pressed = false; draw(); } }));
+  cv.addEventListener('pointermove', (e) => {
+    const r = cv.getBoundingClientRect(); const x = Math.floor((e.clientX - r.left) / r.width * W), y = Math.floor((e.clientY - r.top) / r.height * H);
+    if (map[y] && map[y][x]) info.innerHTML = `像素 (${x}, ${y})：<b>${NAMES[map[y][x]][0]}</b>`;
+  });
+  const zr = el('input', { type: 'range', min: '3', max: '14', value: String(z), 'aria-label': '放大倍数' });
+  const zo = el('output', {}, z + '×');
+  zr.addEventListener('input', () => { z = +zr.value; zo.textContent = z + '×'; draw(); });
+  const lockB = el('button', { class: 'btn', type: 'button', onclick: () => { lock = !lock; lockB.textContent = lock ? '松开按钮' : '锁定为按下'; draw(); } }, '锁定为按下');
+  const sg = seg(['平面 1.0/2.x', '3.x 立体', '95 双层'], kind, (i) => { kind = i; draw(); }, '按钮画法');
+  themeListeners.push(draw);
+  node.append(el('div', { class: 'ctrl' }, sg), el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '放大', zr, zo), lockB, el('span', { class: 'tag' }, '1:1'), real), cv, info, status);
+  draw();
+});
+
+/* ===================== 演示：纸牌拖放 + 扫雷左右键 ===================== */
+reg('mouse', (node) => {
+  const status = el('div', { class: 'status' });
+  const panes = [el('div'), el('div', { style: 'display:none' })];
+  const sg = seg(['纸牌：练拖放', '扫雷：练左右键'], 0, (i) => { panes.forEach((p, j) => (p.style.display = i === j ? '' : 'none')); status.textContent = i ? msMsg : solMsg; }, '鼠标课');
+  /* 纸牌 */
+  let solMsg = '按住红心 A，拖到右边虚线框里再松开。（键盘：聚焦卡片按回车）';
+  const sol = el('div', { class: 'sol' });
+  const slot = el('div', { class: 'slot', style: 'right:20px' }, '♥ 收牌区');
+  const pile = el('div', { class: 'slot', style: 'left:20px;border-style:solid;opacity:.5' }, '牌堆');
+  const card = el('div', { class: 'card', tabindex: '0', role: 'button', 'aria-label': '红心 A，可拖动', style: 'left:20px;top:30px' }, 'A', el('br'), '♥', el('span', { class: 'big' }, '♥'));
+  sol.append(pile, slot, card);
+  let drag = null, done = false;
+  const home = () => { card.style.left = '20px'; card.style.top = '30px'; };
+  const snap = () => { done = true; card.style.left = (sol.clientWidth - 20 - 84) + 'px'; card.style.top = '30px'; solMsg = '放进去了。按住、移动、松开——这就是「拖放」，和在文件管理器里拖文件是同一个动作。纸牌就是为了让人练熟它。'; status.textContent = solMsg; };
+  card.addEventListener('pointerdown', (e) => { if (done) return; card.setPointerCapture(e.pointerId); const r = card.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; card.classList.add('drag'); });
+  card.addEventListener('pointermove', (e) => { if (!drag) return; const s = sol.getBoundingClientRect(); card.style.left = Math.max(0, Math.min(s.width - 84, e.clientX - s.left - drag.dx)) + 'px'; card.style.top = Math.max(0, Math.min(s.height - 120, e.clientY - s.top - drag.dy)) + 'px'; });
+  const end = () => {
+    if (!drag) return; drag = null; card.classList.remove('drag');
+    const a = card.getBoundingClientRect(), b = slot.getBoundingClientRect();
+    const ox = Math.min(a.right, b.right) - Math.max(a.left, b.left), oy = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    if (ox > 40 && oy > 60) snap(); else { home(); status.textContent = '没放准，牌弹回去了。再试一次：要拖到虚线框上方再松手。'; }
+  };
+  card.addEventListener('pointerup', end); card.addEventListener('pointercancel', end);
+  onKey(card, () => { if (!done) snap(); });
+  const solReset = el('button', { class: 'btn', type: 'button', onclick: () => { done = false; home(); solMsg = '已重置。按住红心 A 拖到右边。'; status.textContent = solMsg; } }, '重来');
+  panes[0].append(sol, el('div', { class: 'ctrl' }, solReset));
+  /* 扫雷 */
+  const N = 8, M = 10;
+  let cells, started, over, flagMode = false, msMsg = '左键（点按）翻开格子，右键插旗。第一下不会踩雷。';
+  const grid = el('div', { class: 'ms bev' });
+  const flagB = el('button', { class: 'btn', type: 'button', onclick: () => { flagMode = !flagMode; flagB.textContent = flagMode ? '插旗模式：开' : '插旗模式：关'; } }, '插旗模式：关');
+  const nb = (i) => { const x = i % N, y = (i / N) | 0, r = []; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < N && Y < N) r.push(Y * N + X); } return r; };
+  function newGame() { cells = Array.from({ length: N * N }, () => ({ mine: false, open: false, flag: false, n: 0 })); started = false; over = false; msMsg = '左键（点按）翻开格子，右键插旗。第一下不会踩雷。'; paint(); }
+  function place(first) { const ban = new Set([first, ...nb(first)]); let k = 0; while (k < M) { const i = (Math.random() * N * N) | 0; if (ban.has(i) || cells[i].mine) continue; cells[i].mine = true; k++; } cells.forEach((c, i) => (c.n = nb(i).filter((j) => cells[j].mine).length)); }
+  function reveal(i) { const c = cells[i]; if (c.open || c.flag) return; c.open = true; if (!c.mine && c.n === 0) nb(i).forEach(reveal); }
+  function act(i, right) {
+    if (over) return;
+    const c = cells[i];
+    if (right) { if (!c.open) { c.flag = !c.flag; msMsg = `右键插旗：已插 ${cells.filter((x) => x.flag).length} / ${M} 面。`; } paint(); return; }
+    if (c.flag) return;
+    if (!started) { place(i); started = true; }
+    if (c.mine) { over = true; cells.forEach((x) => { if (x.mine) x.open = true; }); msMsg = '踩雷了。左键翻、右键标——这就是扫雷教的两种点击。点「新游戏」再来。'; paint(i); return; }
+    reveal(i);
+    const left = cells.filter((x) => !x.open && !x.mine).length;
+    msMsg = left ? `左键翻开：还剩 ${left} 个安全格。数字表示周围 8 格里有几颗雷。` : '全部扫清！左右键都练熟了。';
+    if (!left) over = true;
+    paint();
+  }
+  const COL = ['', '#0000c8', '#007b00', '#d00000', '#000080', '#800000', '#008080', '#000', '#808080'];
+  function paint(boom = -1) {
+    grid.replaceChildren(...cells.map((c, i) => {
+      const b = el('button', { type: 'button', class: c.open ? 'op' + (i === boom ? ' boom' : '') : 'bev', 'aria-label': `第 ${((i / N) | 0) + 1} 行第 ${(i % N) + 1} 列` }, c.open ? (c.mine ? '✱' : c.n || '') : c.flag ? '⚑' : '');
+      if (c.open && !c.mine && c.n) b.style.color = COL[c.n];
+      if (c.flag && !c.open) b.style.color = '#c00';
+      let lp = null, longDone = false;
+      b.addEventListener('pointerdown', (e) => { if (e.pointerType === 'touch') { longDone = false; lp = setTimeout(() => { longDone = true; act(i, true); }, 450); } });
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => b.addEventListener(ev, () => clearTimeout(lp)));
+      b.addEventListener('click', () => { if (longDone) { longDone = false; return; } act(i, flagMode); });
+      b.addEventListener('contextmenu', (e) => { e.preventDefault(); act(i, true); });
+      return b;
+    }));
+    if (panes[1].style.display !== 'none') status.textContent = msMsg;
+  }
+  panes[1].append(el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: newGame }, '新游戏'), flagB), grid);
+  newGame();
+  node.append(el('div', { class: 'ctrl' }, sg), ...panes, status);
+  status.textContent = solMsg;
+});
+
+/* ===================== 演示：Cairo/Chicago 早期模型 vs 95 ===================== */
+reg('cairo', (node) => {
+  let mode = 0, selK = null;
+  const holder = el('div');
+  const status = el('div', { class: 'status' });
+  const HOT = [
+    { k: 'cab', t: '「文件柜」', d: '打开一个类似 3.1「文件管理器」的视图：左窗格显示层级，右窗格显示内容。' },
+    { k: 'world', t: '「世界」', d: '显示网络项目。' },
+    { k: 'prog', t: '「程序」', d: '一个文件夹，界面类似 3.1 的「程序管理器」，里面是程序和文件夹的链接。' },
+    { k: 'plate', t: '宽板式最小化窗口', d: '团队起初以为「管不好重叠窗口」是因为用户分不清最小化图标和普通图标，于是把最小化窗口做成带图标和标题的宽板，提高辨识度。' },
+    { k: 'btns', t: '「系统」「查找」「帮助」', d: '托盘一侧的三个按钮。测试中用户经常搞混它们各管什么。' },
+    { k: 'store', t: '文件暂存区', d: '托盘其余区域是一个文件存放区，相当于文件的剪贴板：先把要移动或复制的文件放在这里。' },
+    { k: 'bin', t: '回收站', d: '托盘最右侧是回收站快捷方式，让人联想到后来苹果 Dock 最右侧的「废纸篓」。' },
+    { k: 'tray', t: '「系统托盘」', d: '整条托盘可以停靠在屏幕任何一侧，也可以作为窗口浮动。这可能是后来任务栏「通知区域」被叫作「系统托盘」的来源之一。' },
+  ];
+  const HOT95 = [
+    { k: 'desk', t: '桌面图标', d: '95 的桌面上是「我的电脑」「网上邻居」「回收站」。（与早期模型三个图标的对应关系为本页示意）' },
+    { k: 'start', t: '「开始」', d: '「系统」按钮最终改名为「开始」：Daniel Oran 觉得「系统」太专业。单击即开菜单，不必双击。' },
+    { k: 'task', t: '任务按钮', d: '宽板式最小化图标的思路被任务栏取代：每个打开的窗口都有一颗按钮，任务栏位于所有窗口之上。' },
+    { k: 'notif', t: '通知区域', d: '「系统托盘」这个名字留了下来，任务栏右端的通知区域常被这样称呼。' },
+  ];
+  function hot(k, x, y, w, h, ...kids) {
+    const g = svg('g', { class: 'hot' + (selK === k ? ' sel' : ''), tabindex: '0', role: 'button', 'aria-label': ((mode ? HOT95 : HOT).find((q) => q.k === k) || {}).t || k });
+    g.append(...kids, svg('rect', { x: x - 3, y: y - 3, width: w + 6, height: h + 6, rx: 6, class: 'hl-r', style: 'fill:transparent;stroke:transparent' }));
+    const go = () => { selK = k; draw(); };
+    g.addEventListener('click', go); onKey(g, go);
+    return g;
+  }
+  function draw() {
+    const s = svg('svg', { viewBox: '0 0 640 400', role: 'img', 'aria-label': mode ? 'Windows 95 最终设计示意' : 'Cairo/Chicago 早期界面模型示意', style: 'border-radius:8px;border:1px solid var(--line)' });
+    s.append(R(0, 0, 640, 400, '--w-desk3'));
+    if (!mode) {
+      s.append(hot('cab', 22, 14, 52, 46, R(34, 16, 26, 30, '--w-face', '--w-dk', 1), L(34, 26, 60, 26, '--w-dk', 1), L(34, 36, 60, 36, '--w-dk', 1), TX(47, 58, '文件柜', { a: 'middle', s: 10, c: '--w-title-ink' })));
+      s.append(hot('world', 22, 76, 52, 46, svg('circle', { cx: 47, cy: 92, r: 14, style: st('--t', '--w-dk', 1) }), L(33, 92, 61, 92, '--w-dk', 0.8), svg('ellipse', { cx: 47, cy: 92, rx: 6, ry: 14, style: st(null, '--w-dk', 0.8) }), TX(47, 120, '世界', { a: 'middle', s: 10, c: '--w-title-ink' })));
+      s.append(hot('prog', 22, 138, 52, 46, R(33, 146, 28, 20, '--y', '--w-dk', 1), R(33, 142, 12, 5, '--y', '--w-dk', 1), TX(47, 182, '程序', { a: 'middle', s: 10, c: '--w-title-ink' })));
+      const p1 = win(95, 150, 30, 330, 150, '文件柜', { inactive: true });
+      s.append(p1.g, L(p1.x + 110, p1.y, p1.x + 110, p1.y + p1.h, '--w-sh', 1), lines(p1.x + 10, p1.y + 12, 80, 7, 15), lines(p1.x + 124, p1.y + 12, 170, 7, 15));
+      const plates = svg('g');
+      [['记事本', 220], ['计算器', 262]].forEach(([n, y]) => plates.append(bev(150, y, 180, 32), R(158, y + 8, 16, 16, '--o', '--w-dk', 0.8), TX(182, y + 21, n + '（已最小化）', { s: 11 })));
+      s.append(hot('plate', 150, 220, 180, 74, plates));
+      const tray = svg('g', {}, R(0, 330, 640, 70, '--w-face'), L(0, 330.5, 640, 330.5, '--w-hi', 1));
+      s.append(hot('tray', 0, 330, 640, 70, tray));
+      const btns = svg('g');
+      ['系统', '查找', '帮助'].forEach((n, i) => btns.append(bev(10 + i * 62, 346, 56, 38), TX(38 + i * 62, 370, n, { a: 'middle', s: 12, w: 700 })));
+      s.append(hot('btns', 10, 346, 180, 38, btns));
+      s.append(hot('store', 202, 342, 360, 46, R(202, 342, 360, 46, '--w-win', '--w-sh', 1), svg('rect', { x: 206, y: 346, width: 352, height: 38, style: 'fill:none;stroke:var(--w-sh);stroke-dasharray:5 4' }), R(220, 352, 18, 22, '--w-win', '--w-dk', 1), R(246, 352, 18, 22, '--w-win', '--w-dk', 1), TX(278, 369, '文件暂存区（拖进来，再拖到别处）', { s: 11 })));
+      s.append(hot('bin', 576, 342, 52, 46, R(588, 348, 26, 30, '--w-sh', '--w-dk', 1), L(594, 352, 594, 374, '--w-face', 1.5), L(601, 352, 601, 374, '--w-face', 1.5), L(608, 352, 608, 374, '--w-face', 1.5)));
+    } else {
+      [['我的电脑', '--p'], ['网上邻居', '--t'], ['回收站', '--w-sh']].forEach(([n, c], i) => s.append(ico(47, 16 + i * 62, n, 3, c, '--w-title-ink')));
+      s.append(hot('desk', 16, 12, 62, 170, R(16, 12, 62, 170, null)));
+      const p1 = win(95, 150, 30, 330, 200, '计算器');
+      s.append(p1.g);
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) s.append(bev(p1.x + 20 + c * 50, p1.y + 40 + r * 32, 42, 24));
+      s.append(R(p1.x + 20, p1.y + 10, 192, 20, '--w-win', '--w-sh', 1));
+      s.append(R(0, 366, 640, 34, '--w-face'), L(0, 366.5, 640, 366.5, '--w-hi', 1));
+      s.append(hot('start', 4, 371, 70, 25, bev(4, 371, 70, 25), flag4(12, 377, 6), TX(30, 389, '开始', { s: 13, w: 800 })));
+      s.append(hot('task', 80, 371, 300, 25, bev(80, 371, 146, 25, '95', true), TX(90, 388, '计算器', { s: 11 }), bev(232, 371, 146, 25), TX(242, 388, '记事本', { s: 11 })));
+      s.append(hot('notif', 548, 371, 88, 25, bev(548, 371, 88, 25, '95', true), R(556, 378, 10, 10, '--y'), TX(602, 388, '15:00', { a: 'middle', s: 11 })));
+    }
+    holder.replaceChildren(s);
+    const h = (mode ? HOT95 : HOT).find((q) => q.k === selK);
+    status.innerHTML = h ? `<b>${h.t}</b>：${h.d}` : (mode ? '点「开始」、任务按钮、通知区域或桌面图标。' : '点任意部件：桌面三图标、宽板、托盘上的按钮、暂存区、回收站。');
+  }
+  const sg = seg(['早期模型（Cairo/Chicago）', '最终设计（Windows 95）'], 0, (i) => { mode = i; selK = null; draw(); }, '模型');
+  node.append(el('div', { class: 'ctrl' }, sg), holder, status);
+  draw();
+});
+
+/* ===================== 演示：找程序计时赛 ===================== */
+reg('findapp', (node) => {
+  let mode = 0, clicks = 0, t0 = 0, done = false, lastTap = { k: null, t: 0 }, hint = 0;
+  const best = [null, null];
+  const wm = el('div', { class: 'wm teal tall' });
+  const status = el('div', { class: 'status' });
+  const score = el('div', { class: 'scorebox' });
+  const GROUPS = {
+    '主群组': ['文件管理器', '控制面板', '打印管理器', '剪贴板查看器', 'MS-DOS 提示符', 'Windows 安装'],
+    '附件': ['写字板', '画笔', '终端', '记事本', '录音机', '卡片盒', '日历', '计算器', '时钟', '字符映射表'],
+    '游戏': ['纸牌', '扫雷'],
+    '启动': [],
+  };
+  const tick = () => { if (!t0) t0 = performance.now(); clicks++; };
+  const elapsed = () => ((performance.now() - t0) / 1000).toFixed(1);
+  function finish() {
+    done = true; const r = { c: clicks, s: +elapsed() };
+    if (!best[mode] || r.s < best[mode].s) best[mode] = r;
+    status.innerHTML = `<b>找到了！</b>${mode ? 'Windows 95' : 'Windows 3.1'}：${clicks} 次点击，${r.s} 秒。${mode ? '全程单击、菜单逐级可见，这正是测试里新手需要的。' : '对照：测试中新手在 3.1 里找到并打开一个不立即可见的程序，平均要 9.5 分钟以上。'}`;
+    renderScore();
+  }
+  function renderScore() {
+    score.replaceChildren(...['Windows 3.1', 'Windows 95'].map((n, i) => el('div', {}, n + '：', best[i] ? el('b', {}, `${best[i].c} 次 / ${best[i].s} 秒`) : el('span', { style: 'color:var(--muted)' }, '还没完成'))));
+  }
+  const dbl = (k, onD, onS) => { const now = performance.now(); if (lastTap.k === k && now - lastTap.t < 480) { lastTap = { k: null, t: 0 }; onD(); } else { lastTap = { k, t: now }; onS(); } };
+  /* —— 3.1 —— */
+  let open = ['主群组'], sel = null;
+  function r31() {
+    const pm = el('div', { class: 'wm-win w3', style: 'left:3%;top:4%;width:94%;height:90%' });
+    const inner = el('div', { class: 'inner' });
+    const t = el('div', { class: 'wm-t' }, el('span', { class: 'b3 sysm' }, '—'), '程序管理器', el('span', { class: 'b3 mn' }, '▼'), el('span', { class: 'b3 mx' }, '▲'));
+    const body = el('div', { style: 'position:relative;flex:1;min-height:0' });
+    inner.append(t, el('div', { class: 'menu' }, ...['文件', '选项', '窗口', '帮助'].map((t) => el('span', {}, t))), body);
+    pm.append(inner);
+    open.forEach((g, gi) => {
+      const cw = el('div', { class: 'wm-win w3' + (gi === open.length - 1 ? '' : ' inact'), style: `left:${3 + gi * 6}%;top:${4 + gi * 8}%;width:${g === '附件' ? 78 : 64}%;height:${g === '附件' ? 66 : 54}%;z-index:${gi + 1}` });
+      const ci = el('div', { class: 'inner' });
+      const cbody = el('div', { style: 'position:relative;flex:1;min-height:0;overflow:hidden' });
+      ci.append(el('div', { class: 'wm-t' }, el('span', { class: 'b3 sysm' }, '—'), g, el('span', { class: 'b3 mn', role: 'button', 'aria-label': '最小化群组', onclick: (e) => { e.stopPropagation(); open = open.filter((x) => x !== g); tick(); r31(); } }, '▼'), el('span', { class: 'b3 mx' }, '▲')), cbody);
+      cw.append(ci);
+      GROUPS[g].forEach((a, i) => {
+        const cols = g === '附件' ? 5 : 4;
+        const b = el('button', { type: 'button', class: 'pm-ico' + (sel === a ? ' sel' : ''), style: `left:${(i % cols) * (100 / cols)}%;top:${4 + Math.floor(i / cols) * 46}px;width:${100 / cols}%` }, el('span', { class: 'g' }), el('span', {}, a));
+        b.addEventListener('click', (e) => { e.stopPropagation(); if (done) return; tick();
+          dbl('a:' + a, () => { if (a === '计算器') finish(); else { status.innerHTML = `打开了「${a}」，不是计算器。（${clicks} 次点击）`; } },
+            () => { sel = a; hint++; status.innerHTML = hint >= 3 ? `单击只会<b>选中</b>图标，要<b>快速双击</b>才能打开。这正是新手最常卡住的地方。（${clicks} 次点击）` : `选中了「${a}」。（${clicks} 次点击）`; r31(); }); });
+        cbody.append(b);
+      });
+      if (!GROUPS[g].length) cbody.append(el('div', { style: 'padding:10px;opacity:.6' }, '（空群组）'));
+      cw.addEventListener('click', () => { if (open[open.length - 1] !== g) { open = open.filter((x) => x !== g).concat(g); r31(); } });
+      body.append(cw);
+    });
+    Object.keys(GROUPS).filter((g) => !open.includes(g)).forEach((g, i) => {
+      const b = el('button', { type: 'button', class: 'pm-ico grp' + (sel === g ? ' sel' : ''), style: `left:${2 + i * 18}%;bottom:4px` }, el('span', { class: 'g' }), el('span', {}, g));
+      b.addEventListener('click', (e) => { e.stopPropagation(); if (done) return; tick();
+        dbl('g:' + g, () => { open.push(g); sel = null; status.innerHTML = `打开了群组「${g}」。（${clicks} 次点击）`; r31(); },
+          () => { sel = g; hint++; status.innerHTML = hint >= 3 ? `单击只会<b>选中</b>，要<b>快速双击</b>才能打开群组。（${clicks} 次点击）` : `选中了群组「${g}」。（${clicks} 次点击）`; r31(); }); });
+      body.append(b);
+    });
+    wm.replaceChildren(pm);
+  }
+  /* —— 95 —— */
+  let path = [];
+  const MENU = {
+    root: [['程序', 'prog'], ['文档', 'docs'], ['设置', 'set'], ['查找', 'find'], ['帮助'], ['运行...'], ['关闭系统...']],
+    prog: [['附件', 'acc'], ['游戏', 'game'], ['启动', 'boot'], ['MS-DOS 方式'], ['Windows 资源管理器']],
+    acc: [['计算器'], ['记事本'], ['画图'], ['写字板'], ['超级终端'], ['多媒体', 'mm']],
+    game: [['纸牌'], ['扫雷'], ['红心大战'], ['空当接龙']],
+    boot: [['（空）']], mm: [['CD 播放器'], ['录音机']],
+    docs: [['README.TXT']], set: [['控制面板'], ['打印机'], ['任务栏...']], find: [['文件或文件夹...'], ['计算机...']],
+  };
+  function r95() {
+    const tb = el('div', { class: 'tb bottom bev' });
+    const startB = el('button', { type: 'button', class: 'start bev' + (path.length ? ' dn' : '') }, el('span', { class: 'flag4' }, el('i', { style: 'background:var(--r)' }), el('i', { style: 'background:var(--t)' }), el('i', { style: 'background:var(--p)' }), el('i', { style: 'background:var(--y)' })), '开始');
+    startB.addEventListener('click', (e) => { e.stopPropagation(); if (done) return; tick(); path = path.length ? [] : ['root']; status.innerHTML = path.length ? `开始菜单打开了。（${clicks} 次点击）` : `菜单收起。（${clicks} 次点击）`; r95(); });
+    tb.append(startB, el('span', { class: 'clock' }, '15:00'));
+    wm.replaceChildren(tb);
+    [['我的电脑', 4], ['回收站', 22]].forEach(([n, t]) => wm.append(el('div', { class: 'wm-ico', style: `position:absolute;left:2%;top:${t}%` }, el('span', { class: 'g' }), el('span', {}, n))));
+    if (!path.length && !done && clicks === 0) wm.append(el('div', { class: 'tip', style: 'left:4px;bottom:calc(9% + 8px)' }, '◀ Click here to begin（单击这里开始）'));
+    let left = 0;
+    path.forEach((key, lv) => {
+      const m = el('div', { class: 'menu95 bev' + (lv === 0 ? ' first' : ''), style: `left:${left}%;width:${lv === 0 ? 30 : 26}%` });
+      if (lv === 0) m.append(el('div', { class: 'bar' }, 'Windows 95'));
+      MENU[key].forEach(([label, sub]) => {
+        const it = el('div', { class: (sub ? 'sub' : '') + (path[lv + 1] === sub && sub ? ' open' : ''), role: 'button', tabindex: '0' }, label);
+        const go = (e) => { e.stopPropagation(); if (done) return; tick();
+          if (sub) { path = path.slice(0, lv + 1).concat(sub); status.innerHTML = `展开「${label}」。（${clicks} 次点击）`; r95(); }
+          else if (label === '计算器') { path = []; r95(); finish(); }
+          else { status.innerHTML = `打开了「${label}」，不是计算器。（${clicks} 次点击）`; } };
+        it.addEventListener('click', go); onKey(it, go);
+        m.append(it);
+      });
+      wm.append(m); left += lv === 0 ? 30 : 26;
+    });
+  }
+  function reset() {
+    clicks = 0; t0 = 0; done = false; hint = 0; sel = null; open = ['主群组']; path = []; lastTap = { k: null, t: 0 };
+    if (mode) { r95(); status.textContent = '从左下角开始。全程只需要单击。'; } else { r31(); status.textContent = '计算器在哪个群组里？打开群组和程序都要双击（快速连点两下）。'; }
+  }
+  const sg = seg(['Windows 3.1', 'Windows 95'], 0, (i) => { mode = i; reset(); }, '系统');
+  node.append(el('div', { class: 'ctrl' }, sg, el('button', { class: 'btn', type: 'button', onclick: reset }, '重来')), wm, status, score);
+  reset(); renderScore();
+});
+
+/* ===================== 演示：窗口管理 3.1 vs 95 ===================== */
+reg('taskmgmt', (node) => {
+  const APPS = ['老程序.EXE', '记事本', '计算器', '画笔', '写字板', '纸牌', '扫雷', '终端'];
+  const POS = [[0, 0, 60, 58], [30, 16, 58, 60], [12, 30, 50, 56], [40, 6, 52, 64], [22, 24, 60, 58], [4, 12, 62, 68], [36, 28, 56, 60], [16, 4, 64, 70]];
+  let mode = 0, top = false, wins = [], z = 1;
+  const wm = el('div', { class: 'wm teal tall' });
+  const status = el('div', { class: 'status' });
+  const add = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (wins.length < APPS.length) { wins.push({ i: wins.length, min: false, z: ++z }); render(); } } }, '再打开一个');
+  const clr = el('button', { class: 'btn', type: 'button', onclick: () => { wins = []; render(); } }, '全部关掉');
+  const posB = el('button', { class: 'btn', type: 'button', onclick: () => { top = !top; render(); } }, '');
+  const inside = (r, x, y) => x >= r[0] && x <= r[0] + r[2] && y >= r[1] && y <= r[1] + r[3];
+  function render() {
+    wm.replaceChildren();
+    posB.style.display = mode ? '' : 'none'; posB.textContent = top ? '任务栏放回底部' : '任务栏挪到顶部';
+    const vis = wins.filter((w) => !w.min).sort((a, b) => a.z - b.z);
+    const front = vis[vis.length - 1];
+    vis.forEach((w) => {
+      const r = POS[w.i];
+      const d = el('div', { class: 'wm-win ' + (mode ? 'w95 bev' : 'w3') + (w === front ? '' : ' inact'), style: `left:${r[0]}%;top:${r[1]}%;width:${r[2]}%;height:${r[3]}%;z-index:${w.z}` });
+      const minB = mode ? el('button', { type: 'button', class: 'x95 mn bev', 'aria-label': '最小化' + APPS[w.i] }, '_') : el('button', { type: 'button', class: 'b3 mn', 'aria-label': '最小化' + APPS[w.i] }, '▼');
+      minB.addEventListener('click', (e) => { e.stopPropagation(); w.min = true; render(); });
+      const title = el('div', { class: 'wm-t' }, mode ? '' : el('span', { class: 'b3 sysm' }, '—'), APPS[w.i], minB, mode ? el('span', { class: 'x95 cl bev' }, '×') : el('span', { class: 'b3 mx' }, '▲'));
+      const body = el('div', { class: 'wm-c' }, w.i === 0 ? el('div', { style: 'border-bottom:1px solid var(--w-sh);margin:-4px -6px 4px;padding:0 6px' }, '文件  编辑  帮助') : '', el('i'), el('i', { style: 'width:70%' }), el('i', { style: 'width:85%' }));
+      if (mode) d.append(title, body); else d.append(el('div', { class: 'inner' }, title, body));
+      d.addEventListener('pointerdown', (e) => { if (e.target.closest('button')) return; w.z = ++z; render(); });
+      wm.append(d);
+    });
+    const mins = wins.filter((w) => w.min);
+    let seen = 0;
+    if (!mode) {
+      mins.forEach((w, k) => {
+        const x = 2 + k * 12, y = 86;
+        const b = el('button', { type: 'button', class: 'wm-ico', style: `position:absolute;left:${x}%;top:${y}%;z-index:0` }, el('span', { class: 'g' }), el('span', {}, APPS[w.i]));
+        b.addEventListener('click', () => { w.min = false; w.z = ++z; render(); });
+        wm.append(b);
+        if (!vis.some((v) => inside(POS[v.i], x + 3, y + 5))) seen++;
+      });
+      vis.forEach((w, k) => { const r = POS[w.i]; if (!vis.slice(k + 1).some((v) => inside(POS[v.i], r[0] + r[2] / 2, r[1] + 2))) seen++; });
+      const n = wins.length;
+      status.innerHTML = n ? `<b>Windows 3.1</b>：开了 ${n} 个程序，${seen < n ? `能直接看到的只有 <b>${seen}</b> 个` : `目前 <b>${seen}</b> 个都看得见`}（以标题栏或图标是否被盖住来算）。${mins.length ? '最小化的图标在桌面最底层，一被窗口盖住就「消失」了——用户于是再开一份，最后耗尽内存。' : '试试最小化几个，再多开几个窗口。'}` : '点「再打开一个」。';
+    } else {
+      const tb = el('div', { class: 'tb bev ' + (top ? 'top' : 'bottom') });
+      tb.append(el('button', { type: 'button', class: 'start bev' }, el('span', { class: 'flag4' }, el('i', { style: 'background:var(--r)' }), el('i', { style: 'background:var(--t)' }), el('i', { style: 'background:var(--p)' }), el('i', { style: 'background:var(--y)' })), '开始'));
+      wins.forEach((w) => {
+        const b = el('button', { type: 'button', class: 'bev' + (w === front ? ' dn' : '') }, APPS[w.i]);
+        b.addEventListener('click', () => { if (w === front) w.min = true; else { w.min = false; w.z = ++z; } render(); });
+        tb.append(b);
+      });
+      tb.append(el('span', { class: 'clock' }, '15:00'));
+      wm.append(tb);
+      const n = wins.length;
+      const old = wins.find((w) => w.i === 0 && !w.min);
+      status.innerHTML = n ? `<b>Windows 95</b>：开了 ${n} 个程序，任务栏上 <b>${n}</b> 颗按钮，一个不少；点按钮切换或最小化。` + (top && old ? '<br>任务栏在顶部时，盖住了从 (0,0) 开始画的「老程序」的标题栏和菜单：这是任务栏最终默认放到底部的原因之一。' : (top ? '<br>任务栏现在在顶部。打开或还原「老程序.EXE」看看会怎样。' : '')) : '点「再打开一个」。';
+    }
+    add.disabled = wins.length >= APPS.length;
+  }
+  wins = [{ i: 0, min: false, z: 1 }, { i: 1, min: false, z: 2 }, { i: 2, min: true, z: 0 }];
+  const sg = seg(['Windows 3.1', 'Windows 95'], 0, (i) => { mode = i; render(); }, '系统');
+  node.append(el('div', { class: 'ctrl' }, sg, add, clr, posB), wm, status);
+  render();
+});
+
+/* ===================== 演示：system.ini 的 shell= ===================== */
+reg('shell', (node) => {
+  const S = [
+    { lab: '默认', line: 'shell=Explorer.exe', o: {}, txt: '默认外壳是 Explorer：桌面图标、开始按钮和任务栏。' },
+    { lab: '安装时选「程序管理器」', line: 'shell=Explorer.exe', o: { progman: true }, txt: '安装时选了 3.1 的程序管理器作默认界面，得到的只是<b>一个默认打开程序管理器的 95 桌面</b>：任务栏和开始按钮都还在。' },
+    { lab: '改 shell=progman.exe', line: 'shell=progman.exe', o: { shell: 'progman' }, txt: '把 <code>system.ini</code> 的 <code>shell</code> 改成 <code>progman.exe</code>，程序管理器才真正成为外壳：没有任务栏、没有开始菜单，接近 3.1 的体验（窗口仍是 95 的样式）。' },
+  ];
+  let k = 0;
+  const holder = el('div'), code = el('div', { class: 'codebox' }), status = el('div', { class: 'status' });
+  function draw() {
+    const s = S[k];
+    holder.replaceChildren(desktop(95, s.o).node);
+    code.innerHTML = `; C:\\WINDOWS\\SYSTEM.INI\n[boot]\n<span class="on">${s.line}</span>\nsystem.drv=system.drv`;
+    status.innerHTML = s.txt;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(S.map((s) => s.lab), 0, (i) => { k = i; draw(); }, '外壳')), code, holder, status);
+  draw();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

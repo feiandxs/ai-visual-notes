@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>90 年代失败 Mac 操作系统大赏</title>
+<meta name="description" content="少数派「Mac 视觉史」第二篇的可视化导读：Lisa、Pink/Taligent、Star Trek、Copland、BeOS 与 NeXTSTEP，可点的谱系图、Pink 团队膨胀曲线、粉蓝卡片分拣、Copland 主题与「功能冲突」演示、四个外部候选的决策板，以及界面线框对比。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ================= 本页组件 ================= */
+.status .bad{color:var(--r)}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13.5px;color:var(--muted);margin-top:10px;min-height:3.2em}
+.panel b{color:var(--text)}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.hero-art{margin-top:22px}
+.wide{min-width:640px}
+.sq{max-width:480px;margin:0 auto}
+.lbl.s{font-size:10.5px}
+.lbl.m{font-family:var(--mono)}
+/* 线框 */
+.wf-screen{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}
+.wf-win{fill:var(--surface);stroke:var(--ink);stroke-width:1.2}
+.wf-ink{fill:var(--ink)}
+.wf-soft{fill:var(--grid)}
+.wf-line{stroke:var(--ink);stroke-width:1;fill:none}
+.wf-txt{fill:var(--ink);font-size:9.5px;font-family:var(--font)}
+.wf-txt.c{text-anchor:middle}
+.hot{cursor:pointer}
+.hot circle{fill:var(--o);stroke:var(--surface);stroke-width:2;transition:fill .2s}
+.hot text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:var(--font)}
+.hot:hover circle,.hot:focus circle,.hot.sel circle{fill:var(--p)}
+.hot:focus{outline:none}
+/* 谱系 */
+.ln-node{cursor:pointer;transition:opacity .3s}
+.ln-node:focus{outline:none}
+.ln-node:focus .shape,.ln-node.sel .shape{stroke:var(--text);stroke-width:2.5}
+.ln-node.dim{opacity:.18}
+.ln-edge{fill:none;stroke:var(--muted);stroke-width:1.4;stroke-dasharray:4 3;transition:opacity .3s}
+.ln-edge.dim{opacity:.12}
+/* 卡片分拣 */
+.cards{display:flex;flex-wrap:wrap;gap:8px}
+.card{border:1.5px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 10px;font-size:13px;cursor:pointer;min-width:120px;text-align:left;transition:background .2s,border-color .2s;max-width:100%}
+.card small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.card.blue{background:var(--p-soft);border-color:var(--p)}
+.card.pink{background:var(--r-soft);border-color:var(--r)}
+.card.red{background:var(--o-soft);border-color:var(--o)}
+.card.ok{box-shadow:0 0 0 2px var(--t)}
+.card.no{box-shadow:0 0 0 2px var(--r);border-style:dashed}
+/* 候选决策板 */
+.cands{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:640px){.cands{grid-template-columns:1fr 1fr}}
+.cand{border:1.5px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;cursor:pointer;text-align:left;font-size:13px;color:var(--muted);transition:border-color .2s,opacity .3s}
+.cand h3{font-size:15px;color:var(--text);margin-bottom:4px}
+.cand .who{font-size:12px}
+.cand .more{display:none;margin-top:6px}
+.cand.open .more{display:block}
+.cand.open{border-color:var(--p)}
+.cand.win{border-color:var(--t);background:var(--t-soft)}
+.cand.out{opacity:.5}
+.cand .res{font-weight:700;margin-top:6px;display:none}
+.cand.show .res{display:block}
+.cand.win .res{color:var(--t)}
+.cand.out .res{color:var(--r)}
+.qsrc{font-size:12px;color:var(--muted);margin-top:4px;text-align:right}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">90 年代失败 Mac 系统</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Mac 视觉史（二）</div>
+  <h1>90 年代失败 Mac 操作系统大赏</h1>
+  <p class="sub">经典 Mac OS 挤了十五年牙膏，怎么突然变成了 Mac OS X？明线之外还有一条暗线：Pink、Taligent、Star Trek、Copland 一个接一个失败，最后苹果在 BeOS 和 NeXTSTEP 之间做了选择。</p>
+  <div class="thesis">这些失败的尝试也是 Mac 视觉史的一部分：等轴测图标、Platinum 主题、程序坞这些视觉元素都出自这段时期，Copland 的界面后来进了 Mac OS 8，NeXTSTEP 后来成了 Mac OS X 的底座。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>陈</i>陈子木（原文作者）</span>
+    <span class="au"><i>少</i>少数派转载 · 首发优设网</span>
+  </div>
+  <div class="hero-art fig">
+    <div class="cap"><b>谱系总览</b>：横轴是年份，每一行是一条项目线。点任意一个节点或色条，下方会显示它的来龙去脉；用上面的按钮只看苹果自研或外部候选。虚线箭头表示「技术或界面流向了哪里」。</div>
+    <div data-demo="lineage"></div>
+  </div>
+  <p class="meta">原文：陈子木《Mac 视觉史（二）：90 年代失败 Mac 操作系统大赏》，少数派（2020-05-27）转载，首发于优设网（原题《Mac 视觉史 vol.2：90 年代失败操作系统大赏》）。本页按原文的叙述顺序展开，原文的界面截图都改画成了示意线框（不是像素还原）。另外加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="lisa" data-title="来自内部的压力">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>来自内部的压力：Lisa 与 Macintosh</h2>
+    <p class="lead">Lisa 拿到了更多资源，界面也用心，为什么在内部竞赛中赢的是 Macintosh？</p>
+  </div>
+  <p>乔布斯一直坚持硬件和操作系统是一体的，所以很长时间里 Macintosh 既指电脑也指系统，用户说起系统时用的是 System 1、System 2 这样的名字。Macintosh 原本有个内部对手 Lisa（以乔布斯女儿命名），这个项目从乔布斯手里被拿走之后，他把精力全押在 Macintosh 上，不少设计亲自动手。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">切换两台机器，点橙色编号看原文指出的细节。线框只表示布局与特征，不是截图还原。</div>
+    <div data-demo="lisa"></div>
+  </div>
+  <p style="margin-top:14px">在这样的对比下，字体丰富、媒体功能多样、能玩游戏的 Macintosh 胜出。但乔布斯在 Macintosh 发布两年后被迫离开苹果；硅谷的巨头们也看清了计算机的方向，Macintosh 的外部压力骤增。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="rivals" data-title="激烈的外部竞争">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>激烈的外部竞争</h2>
+    <p class="lead">图形界面这个点子一旦被看见，别人要多久才能做出来？</p>
+  </div>
+  <p>原文的判断是：GUI 的概念和交互模式，这个点子可能比实现技术更重要。在高手云集的硅谷，后来者只要投入足够的人和时间，类似的界面总能做出来。下面这些系统都在 Macintosh 发布前后一两年内相继问世。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">点一个系统，看它在时间轴上的位置和界面的大致样子。</div>
+    <div data-demo="rivals"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：发布时间据维基百科：Visi On 于 1983 年 12 月上市，是 IBM PC 上第一个图形界面软件，比 Macintosh（1984 年 1 月）还早一个月；GEOS 最早在 1986 年为 Commodore 64 推出，Apple II 版在 1988 年。<sup class="c">[8]</sup> 线框里各系统的特征（Windows 1.0 的平铺窗口、Amiga 的蓝橙配色、Visi On 底部的命令栏、GEOS 的记事本式磁盘窗口）是本页按常见描述画的示意。</div>
+</section>
+
+<section class="ch" id="cards" data-title="粉卡与蓝卡">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>从 System 6 开始新尝试：「Pink」和「Blue」</h2>
+    <p class="lead">一次私下会议上的三种颜色卡片，怎么就决定了苹果此后十年的走向？</p>
+  </div>
+  <p>System 6 是 80 年代末的集大成版本，在黑白显示器和当时的硬件下，核心功能已经颇为完善。竞争的压力让苹果开始做探索性项目。1988 年，苹果 5 名中层开发工程师想摆脱日渐僵化的管理、重现 1984 年 Macintosh 的传奇，开了一次私下会议：<b>蓝卡</b>写在 System 6 基础上可以增量更新、很快能实现的功能；<b>粉卡</b>写技术更先进、有长期价值的功能，比如当时 Mac 缺的抢先式多任务和组件化程序设计；<b>红卡</b>写更激进的特性。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">先自己分：点一张卡片会在 蓝 → 粉 → 红 → 未分 之间循环。分完点「揭晓」对照原文，再点「红卡后来去哪了」。标 * 的卡片是本页补充的例子。</div>
+    <div data-demo="cards"></div>
+  </div>
+  <p style="margin-top:14px">结果是：数百名工程师在 System 6 上按部就班地做「Blue」，最终产物就是 System 7；「Pink」一开始并不公开，Erich Ringewald 领导的核心小组想像当年 Macintosh 那样找个隐秘的房间「内部创业」，看中了 Bubb Road 的一间仓库，进去才发现已经被秘密做 Newton 项目的团队占了。红卡太激进，只作备案，没有立项。<sup class="c">[1]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：维基百科的 Copland 条目提到，红卡对应的「Red」项目（又名 Raptor）后来被取消，其中的功能被并入了 Pink，这正是下一章那个「恶性循环」的起点。<sup class="c">[3]</sup> 两张 * 卡片（虚拟内存、文件替身）是 System 7 实际带来的功能，用来示意「蓝卡」长什么样。</div>
+</section>
+
+<section class="ch" id="pink" data-title="一路膨胀的 Pink">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>一路膨胀的「Pink」项目</h2>
+    <p class="lead">「Pink 什么时候上市？」「答案永远都是 2 年后。」这个内部笑话是怎么成真的？</p>
+  </div>
+  <p>Pink 要彻底放弃 System 6 的遗产：面向对象、内存保护、抢先式多任务、多语言国际化、全新图形库。团队于是一路膨胀：开局 6 人，先进技术小组（ATG）加入后 11 人，2 个月后 25 人，7 个月后原始五人组几乎都因为「人员多到失控」离开，1 年后 100 人；到原定的发布之日，团队已有 150 人。市场在变，红卡上的激进功能不断加进来，开发时间不断延长，于是又要拉更多人，恶性循环开始了。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">拖动滑块（或点「播放」）沿时间走。实线是团队人数，橙色小旗是「当时宣称的发布日」：它总在你所处时间的两年之后。虚线部分（1992 年起，Taligent 时期）是本页补充的人数。</div>
+    <div data-demo="pink"></div>
+  </div>
+  <p style="margin-top:14px">苹果在 Pink 上投入太多，不可能放弃。CEO John Sculley 对外宣称 Pink 已有 150 万行代码，还去 IBM 做了内部演示。这个看起来像「被移植到 PC 上的 System 7」引起了 IBM 的注意，比尔·盖茨最不想看到的事情发生了：苹果、IBM、摩托罗拉成立 AIM 联盟。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="taligent" data-title="从未发布的 Taligent">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>从未发布的「Taligent」系统</h2>
+    <p class="lead">Taligent OS 从 Pink 继承了哪些界面设计？又继承了 Pink 的什么命运？</p>
+  </div>
+  <p>AIM 联盟成立于 1991 年 10 月 2 日，此时 Pink 已经开工三年半。半年后苹果和 IBM 组建合资公司 Taligent，苹果占股较小，Pink 也改名 Taligent。它确实有很多超越 Macintosh 的功能（更高效的程序机制、3D 功能等），界面上沿用了 Pink 的设计：<b>等轴测图标</b>、伪 3D 风格的图标，还有<b>非矩形的窗口</b>（看窗口顶部的标题栏）。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">两个开关分别切换窗口形状和图标风格，左边是同期经典 Mac 的做法，右边是 Taligent 的做法。示意线框。</div>
+    <div data-demo="taligent"></div>
+  </div>
+  <p style="margin-top:14px">它从 Pink 继承来的最大特性是：一直在开发，从未正式发布。1994 年 HP 入股 15%，Taligent 的部分技术用进了 HP 的 NewWave 桌面环境；同年它在展会上用 Macintosh IIci 演示了「运行速度和崩溃速度同样快」的 3D 应用。Windows 95 越来越受关注，嘲讽苹果新系统难产成了媒体的政治正确。1995 年苹果出售股权退出，Pink 的最终产品不是 Taligent OS，而是 IBM AIX 系统里的 CommonPoint。<sup class="c">[1]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：维基百科记载 Taligent 公司成立于 1992 年 3 月 2 日，HP 于 1994 年 1 月入股 15%，CommonPoint 1.1 于 1995 年 7 月 28 日发布，1995 年 12 月 19 日苹果与 HP 出售股份，Taligent 成为 IBM 全资子公司，同月 375 名员工中近 200 人被裁。原文写的展示机型「Macintosh IIcI」应为 Macintosh IIci。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="startrek" data-title="迷航的 Star Trek">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>最终迷航的「Star Trek」计划</h2>
+    <p class="lead">Pink 还在难产，苹果把另一个鸡蛋放进了哪个篮子？</p>
+  </div>
+  <p>这个项目借用了《星际迷航》的名字，口号是「大胆地探索 Mac 之前从未去到过的地方」，那个地方就是英特尔 x86 架构的电脑。苹果与当时的服务器供应商 Novell 共同构思，最终因为内部斗争、人事纠纷和市场问题关闭。同样的尝试 1985 年就有过一次，很快就中止了，连正式代号都没留下。这算是第 2 次失败。<sup class="c">[1]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：维基百科记载 Star Trek 于 1992 年 2 月宣布，团队在 1992 年 10 月 31 日的截止日前让一台 486 PC 启动了 System 7.1，屏幕上看起来和 Mac 没有区别；项目在 1993 年年中取消。原文写作「StarTret」系笔误。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="copland" data-title="Copland 缝合怪">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>「Copland」缝合怪操作系统</h2>
+    <p class="lead">Copland 的界面那么超前，为什么所有人都知道它不可能发布？</p>
+  </div>
+  <p>Blue 项目的产物 System 7 并没有解决苹果的困境：内存保护和抢先式多任务依然没有。1994 年 3 月启动的 Copland（代号来自美国作曲家 Aaron Copland）就是为此准备的。视觉上它下了很大功夫：新主题 <b>Platinum</b> 所有元素都有细腻的阴影，窗口元素有明显的凸起，Pink 的等轴测图标也加了进来；此外还有面向儿童的主题和更未来派的主题。功能上，窗口可以最小化到屏幕底部变成标签，支持多用户登录和类似家长管理的权限，拖文件经过文件夹时文件夹会自动打开。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">切换三种主题；点「收进底部标签」和「拖文件过文件夹」看两个超前功能。儿童主题和未来派主题的配色是本页的抽象示意。</div>
+    <div data-demo="copland"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>「要你命 3000」</b>：功能出于市场和项目需求毫无节制地加进来，彼此冲突、互相影响。每点一次「加一个功能」，看需要互相协调的组合数怎么涨。</div>
+    <div data-demo="conflict"></div>
+  </div>
+  <div class="quote">「它只是一个不同团队开发产品的合集……并且期望它们能够神奇地组合到一起。」<div class="qsrc">时任苹果 CEO Gil Amelio</div></div>
+  <p style="margin-top:10px">Copland 的阵亡不可避免，但它的界面管理器和 Platinum 主题最终留在了 Mac OS 8 里。自家团队搞不定，只能从外部想办法了。<sup class="c">[1]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：据维基百科，QuickDraw GX、SOM、OpenDoc 等技术都被塞进了 Copland；苹果于 1996 年 8 月正式取消 Copland。新任 CTO Ellen Hancock 建议把其中面向用户的技术分阶段发布，多线程 Finder、Platinum 主题等随后进入 1997 年的 Mac OS 8，弹簧文件夹（spring-loaded folders）也在 Mac OS 8 里落地。可切换主题（Gizmo、HiTech 等）在 Mac OS 8.5 的测试版里出现过，正式版最终只保留了 Platinum。<sup class="c">[3][5]</sup> 「加一个功能」里的 QuickDraw GX、OpenDoc、SOM 三项出自这里。</div>
+</section>
+
+<section class="ch" id="options" data-title="4 个外部备选">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>4 个外部备选方案</h2>
+    <p class="lead">自研失败后，桌上摆着哪四个系统？谁支持谁，又为什么只剩两个？</p>
+  </div>
+  <p>当时 Windows 95 已经发布一年，Windows NT 刚发布，市场反响极好。苹果和微软的纠葛早就开始了：Windows 1.0 的图形界面专利是苹果授权的；Windows 2.0 沿用 1.0 的设计但没有获得授权，引发纠纷，盖茨以「不再维护 Mac 版 Word 和 Excel」为筹码与当时的 CEO 庭外和解。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">点开每张卡片看支持者和优缺点，最后点「揭晓」。</div>
+    <div data-demo="options"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：据维基百科 BeOS 条目，Amelio 与 Be 的收购谈判卡在价格上，加西要价 3 亿美元。苹果最终于 1996 年 12 月 20 日宣布收购 NeXT，作价 4.27 亿美元（现金、股票、期权与债务合计）。<sup class="c">[6][7]</sup></div>
+</section>
+
+<section class="ch" id="gassee" data-title="加西与乔布斯">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>让-路易·加西和乔布斯的纠葛</h2>
+    <p class="lead">为什么说最后这场二选一「极具戏剧性」？</p>
+  </div>
+  <p>因为两个候选系统背后的两个人，十几年来一直纠缠在一起。<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">上面一行是乔布斯，下面一行是加西。点「下一步」或直接点圆点，按年份走一遍。</div>
+    <div data-demo="gassee"></div>
+  </div>
+</section>
+
+<section class="ch" id="desktops" data-title="BeOS 与 NeXTSTEP">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>极具潜力的 BeOS，定位高端的 NeXTSTEP</h2>
+    <p class="lead">两个最终候选的桌面长什么样？各自的亮点在哪？</p>
+  </div>
+  <p><b>BeOS</b> 是为多媒体处理而生的激进系统，没有采用当时流行的 Unix 架构，有自己独特的系统逻辑和设计规则。它延续了流行的等轴测图标，配色更鲜亮，图标的统一性和规范性很高；交互上沿用了很多 Unix 系统的右侧工具栏，正在运行的程序可以在那里看到，右上角的 BeOS 标志类似开始菜单。它能进入候选的重要原因是兼容 Macintosh 所用的 PowerPC 架构；它一直没推进到 1.0 正式版，在消费市场上依然是失败的产品。<sup class="c">[1]</sup></p>
+  <p style="margin-top:10px"><b>NeXTSTEP</b> 所在的 NeXT 电脑没能复制 Macintosh 在消费市场上的成功，但作为高端工作站吸引了科学家、计算机研究者和顶尖数字创意从业者。被收购前它已推进到 4.0，细节竭尽全力：精巧的 3D 小插件、全彩高清大尺寸拟物图标、程序坞、可以购买软件的软件商店，登录与关闭窗口里也有光影细节；Doom 和 Quake 也与它有关。（注：NeXTSTEP 是操作系统，OpenStep 是一套 API。）<sup class="c">[1]</sup></p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap">切换两个桌面，点橙色编号看对应的特征。示意线框。</div>
+    <div data-demo="desktops"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文说 NeXTSTEP 有「底部程序坞组件」，但 NeXTSTEP 的 Dock 实际是竖排在屏幕右侧的一列图标，Mac OS X 才把它放到屏幕底部（并允许放在左、右两侧）。原文说 Doom 和 Quake「在 NeXTSTEP 上首发」，更准确的说法是 id Software 在 NeXT 电脑上开发了这两款游戏，发售版本面向 DOS。BeOS 的第一个正式商业版 R3 在 1998 年 3 月才推出。<sup class="c">[6][7][9]</sup></div>
+</section>
+
+<section class="ch" id="end" data-title="结语：自此重启">
+  <div class="ch-head">
+    <span class="num">11</span>
+    <h2>结语：自此重启</h2>
+    <p class="lead">一场没有演示的发言和一场魔术般的演示，决定了 Mac OS X 的血统。</p>
+  </div>
+  <p>原文记载，终极对决在帕罗奥托的花园庭院酒店（Garden Court Hotel）进行，CEO Amelio、CTO Hancock 和另外 6 位董事会成员是最终决策者。加西志得意满，没有做任何演示；乔布斯不仅用上了「现实扭曲力场」，还像魔术师一样演示了 NeXTSTEP 的各种功能。苹果、乔布斯、加西三方的命运在这里汇聚，然后再次扭转。不过这个扭转并不顺利：离开苹果、创立 NeXT 的那几年，乔布斯和苹果数度交恶，当年的纠纷和诉讼此刻依然是障碍。<sup class="c">[1]</sup></p>
+  <div class="quote">NeXT 公司同意了种种限制条款：其产品将作为高端智能终端直接销售给高校，而且 NeXT 公司不能在 1987 年 3 月之前推出产品。苹果公司还坚持，NeXT 的机器「不能使用与 Mac 兼容的操作系统」。后来的情况表明，如果当时苹果公司的要求刚好相反，会对自身更为有利。<div class="qsrc">《史蒂夫·乔布斯传》，原文引用<sup class="c">[11]</sup></div></div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文把这场对决的日期写成 1996 年 10 月 12 日。本页没有找到可以直接核对这个日期的来源；可以确认的是，苹果在 1996 年 8 月取消 Copland，12 月 20 日宣布收购 NeXT。<sup class="c">[3][6]</sup> 若对决在收购宣布前不久，「12 月 10 日」的可能性更大，原文日期或为月、日颠倒，存疑。原文说「距离苹果的命运彻底改变还有 4 年」：收购之后，Rhapsody 于 1997 年 1 月的 Macworld 上宣布，后以 Mac OS X Server 1.0 的形式发布；面向普通用户的 Mac OS X 在 2001 年推出。<sup class="c">[10]</sup></div>
+  <div class="final">没有这些失败，就没有后来的 macOS 视觉风格：Pink 的等轴测图标流进了 Copland，Copland 的 Platinum 进了 Mac OS 8，落选的 BeOS 和胜出的 NeXTSTEP 一起示范了「下一代」该长什么样。下一篇，从「水」聊起。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据陈子木《<a href="https://sspai.com/post/60696">Mac 视觉史（二）：90 年代失败 Mac 操作系统大赏</a>》制作，少数派 2020-05-27 经授权转载，首发于优设网（原题《Mac 视觉史 vol.2：90 年代失败操作系统大赏》）。原文中的插图与界面截图均已用内联 SVG 和 JS 重绘为示意线框，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>陈子木，《Mac 视觉史（二）：90 年代失败 Mac 操作系统大赏》，少数派（2020-05-27），<a href="https://sspai.com/post/60696">sspai.com/post/60696</a>；原文参考链接包括 Wikipedia 的 Jean-Louis Gassée、Appearance Manager、Star Trek project、System 7 条目，lowendmac.com《Apple's Copland Project》，Wired（1993）《Taligent》等。</li>
+    <li>Wikipedia 条目 Taligent：Pink 团队人数（5 → 11 → 25 → 100+ → 150）、Taligent 成立（1992-03-02）、HP 入股、CommonPoint 1.1（1995-07-28）、苹果退出（1995-12-19）、员工人数。</li>
+    <li>Wikipedia 条目 Copland (operating system)：Red/Raptor 并入 Pink、QuickDraw GX/SOM/OpenDoc、Amelio 原话、1996 年 8 月取消、Hancock 的分阶段方案、Rhapsody 与 Mac OS X Server 1.0。</li>
+    <li>Wikipedia 条目 Star Trek project：1992 年 2 月宣布、System 7.1 跑在 486 上、1993 年年中取消。</li>
+    <li>Wikipedia 条目 Mac OS 8 与 Appearance Manager：Platinum、多线程 Finder、弹簧文件夹、8.5 测试版的 Gizmo/HiTech 主题。</li>
+    <li>Wikipedia 条目 NeXT：1996-12-20 宣布收购、4.27 亿美元；Doom、Quake 由 id Software 在 NeXT 电脑上开发。</li>
+    <li>Wikipedia 条目 BeOS：1995 年 10 月随 BeBox 交付开发者、DR7/DR8（1996）、加西要价 3 亿美元、R3（1998 年 3 月）。</li>
+    <li>Wikipedia 条目 Visi On（1983-12-16 上市）、GEOS (8-bit operating system)（1986 年 C64 版、1988 年 Apple II 版）。</li>
+    <li>Wikipedia 条目 Dock (macOS)；toastytech.com 的 NeXTSTEP 界面导览：NeXTSTEP 的 Dock 位于屏幕右侧。</li>
+    <li>Wikipedia 条目 Rhapsody (operating system)：1997 年 1 月 7 日 Macworld Expo 上宣布。</li>
+    <li>沃尔特·艾萨克森，《史蒂夫·乔布斯传》（原文引用段落）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面线框均为示意，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+const btn = (label, fn, primary) => el('button', { class: 'btn' + (primary ? ' primary' : ''), type: 'button', onclick: fn }, label);
+const keyable = (g, fn) => {
+  g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button');
+  g.addEventListener('click', fn);
+  g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+  return g;
+};
+/* 线框小工具 */
+const R = (x, y, w, h, cls, extra = {}) => svg('rect', Object.assign({ x, y, width: w, height: h, class: cls || '' }, extra));
+const T = (x, y, s, cls = 'wf-txt', extra = {}) => svg('text', Object.assign({ x, y, class: cls }, extra), s);
+const hot = (x, y, n, onPick) => keyable(svg('g', { class: 'hot', 'aria-label': '细节 ' + n }, svg('circle', { cx: x, cy: y, r: 10 }), svg('text', { x, y }, n)), onPick);
+/* 等轴测小方块：中心 (x,y)，边长 s */
+const iso = (x, y, s, top, side) => {
+  const h = s * 0.5;
+  return svg('g', {},
+    svg('polygon', { points: `${x},${y - h} ${x + s},${y} ${x},${y + h} ${x - s},${y}`, style: `fill:${top};stroke:var(--ink);stroke-width:.8` }),
+    svg('polygon', { points: `${x - s},${y} ${x},${y + h} ${x},${y + h + s * .8} ${x - s},${y + s * .8}`, style: `fill:${side};stroke:var(--ink);stroke-width:.8` }),
+    svg('polygon', { points: `${x + s},${y} ${x},${y + h} ${x},${y + h + s * .8} ${x + s},${y + s * .8}`, style: `fill:var(--surface);stroke:var(--ink);stroke-width:.8` }));
+};
+/* 一张带编号热点的线框图：modes = [{draw(g), spots:[[x,y,text],...]}] */
+function hotFigure(node, W, H, modes, labels, initText) {
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'sq', role: 'img' });
+  const panel = el('div', { class: 'panel' }, initText);
+  let cur = 0;
+  function show(i) {
+    cur = i; s.replaceChildren();
+    const g = svg('g'); s.append(g); modes[i].draw(g);
+    const hs = [];
+    modes[i].spots.forEach(([x, y, txt], k) => {
+      const h = hot(x, y, k + 1, () => { hs.forEach((q) => q.classList.remove('sel')); h.classList.add('sel'); panel.innerHTML = `<b>${k + 1}.</b> ${txt}`; });
+      hs.push(h); s.append(h);
+    });
+    panel.innerHTML = modes[i].intro;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(labels, show)), s, panel);
+  show(0);
+}
+
+/* ================= 谱系总览 ================= */
+reg('lineage', (node) => {
+  const Y0 = 1983, W = 740, H = 360, X = (y) => 120 + (y - Y0) * 33;
+  const LANES = ['Mac 主线', 'Blue', 'Pink / Taligent', 'Star Trek', 'Copland', 'Be', 'NeXT'];
+  const LY = (l) => 34 + l * 42;
+  const FATE = { ship: ['var(--t)', '发布了'], fail: ['var(--r)', '失败 / 未发布'], ext: ['var(--p)', '外部候选'], lost: ['var(--y)', '内部竞争落败'], add: ['var(--o)', '本页补充：后续'] };
+  const N = [
+    { id: 'lisa', l: 0, a: 1983, n: 'Lisa', f: 'lost', side: 'own', up: 1, d: '1983 年，以乔布斯女儿命名、资源倾斜的办公电脑，系统直接叫 Lisa Office System。界面很用心（比如顶部菜单的阴影渐变），但在内部竞赛中输给了 Macintosh。' },
+    { id: 'mac', l: 0, a: 1984, n: 'Macintosh', f: 'ship', side: 'own', d: '1984 年。软硬一体：Macintosh 既指电脑也指系统，系统版本叫 System 1、System 2……字体丰富、能玩游戏。' },
+    { id: 'sys6', l: 0, a: 1988, n: 'System 6', f: 'ship', side: 'own', up: 1, d: '80 年代末的集大成版本，黑白显示器下核心功能已颇完善。苹果从这里开始做探索性项目。' },
+    { id: 'os8', l: 0, a: 1997, n: 'Mac OS 8', f: 'ship', side: 'own', up: 1, d: 'Copland 阵亡后，它的界面管理器和 Platinum 主题留在了 Mac OS 8 里（发布年份 1997 为本页补充）。' },
+    { id: 'osx', l: 0, a: 2001, n: 'Mac OS X', f: 'add', side: 'own', d: '本页补充：2001 年推出的 Mac OS X 以 NeXTSTEP 为底座，加上 Aqua 界面。它是这个系列第三篇的主题。' },
+    { id: 'blue', l: 1, a: 1988.2, b: 1991.4, n: 'Blue → System 7', f: 'ship', side: 'own', d: '1988 年会议上的蓝卡：可在 System 6 上增量更新、很快能实现的功能。数百名工程师按部就班，产物就是 System 7（1991 年发布为本页补充）。' },
+    { id: 'pink', l: 2, a: 1988.2, b: 1992.2, n: 'Pink', f: 'fail', side: 'own', d: '粉卡：抢先式多任务、组件化、内存保护、国际化、全新图形库。从 6 人膨胀到 150 人，「Pink 什么时候上市？永远是 2 年后」。' },
+    { id: 'tal', l: 2, a: 1992.2, b: 1995.95, n: 'Taligent', f: 'fail', side: 'own', d: '1991 年 10 月 AIM 联盟成立，半年后苹果与 IBM 合资成立 Taligent，Pink 改名。等轴测图标、非矩形窗口。1994 年 HP 入股；1995 年苹果退出，最终产品是 IBM AIX 里的 CommonPoint。' },
+    { id: 'st', l: 3, a: 1992.1, b: 1993.5, n: 'Star Trek', f: 'fail', side: 'own', d: '与 Novell 合作，把 Mac 系统搬到英特尔 x86 电脑上；因内部斗争、人事纠纷和市场问题关闭。（起止年份为本页补充）' },
+    { id: 'cop', l: 4, a: 1994.2, b: 1996.6, n: 'Copland', f: 'fail', side: 'own', d: '1994 年 3 月启动。Platinum 主题、儿童与未来派主题、底部标签窗口、多用户、弹簧文件夹。功能无节制堆叠成「缝合怪」，不可能发布。' },
+    { id: 'be', l: 5, a: 1991, b: 1996.9, n: 'Be 公司 / BeOS', f: 'ext', side: 'ext', d: '加西 1990 年离开苹果，次年创立 Be。BeOS 为多媒体而生，兼容 PowerPC，但一直没推进到 1.0。1996 年成为最终两个候选之一，落选。' },
+    { id: 'next', l: 6, a: 1985.7, b: 1996.95, n: 'NeXT / NeXTSTEP', f: 'ext', side: 'ext', d: '乔布斯离开苹果后创立 NeXT，定位高端工作站。NeXTSTEP 推进到 4.0，细节竭尽全力。1996 年被苹果选中。' },
+    { id: 'rh', l: 6, a: 1997.05, b: 1999.2, n: 'Rhapsody', f: 'add', side: 'ext', d: '本页补充：收购 NeXT 后的过渡系统，1997 年 1 月 Macworld 上宣布，后来作为 Mac OS X Server 1.0 发布。' },
+  ];
+  const E = [['lisa', 'mac'], ['sys6', 'blue', 'a'], ['pink', 'cop', 'b', '等轴测图标'], ['cop', 'os8', 'b', 'Platinum'], ['next', 'rh', 'b'], ['rh', 'osx', 'b', '底座'], ['sys6', 'pink', 'a']];
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'wide', role: 'img', 'aria-label': '1983 到 2001 年 Mac 操作系统项目谱系图' });
+  for (let y = Y0; y <= 2001; y++) {
+    const x = X(y);
+    s.append(svg('line', { x1: x, y1: 14, x2: x, y2: H - 30, stroke: 'var(--grid)', 'stroke-width': y % 5 === 0 ? 1.4 : .8 }));
+    if (y % 2 === 1 || y === 2001) s.append(T(x, H - 14, y, 'lbl mid s m'));
+  }
+  LANES.forEach((t, l) => s.append(T(8, LY(l) + 4, t, 'lbl s')));
+  const pos = (nd, end) => { const y = LY(nd.l); if (nd.b == null) return [X(nd.a), y]; return [end === 'b' ? X(nd.b) : X(nd.a), y]; };
+  const byId = Object.fromEntries(N.map((n) => [n.id, n]));
+  const edges = E.map(([a, b, from, lab]) => {
+    const A = byId[a], B = byId[b];
+    const [x1, y1] = pos(A, from || 'b'), [x2, y2] = pos(B, 'a');
+    const mx = (x1 + x2) / 2;
+    const p = svg('path', { d: `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`, class: 'ln-edge', 'marker-end': 'url(#ln-arr)' });
+    const g = svg('g', { 'data-a': a, 'data-b': b }, p);
+    if (lab) g.append(T(mx + 4, (y1 + y2) / 2 - 3, lab, 'lbl s'));
+    return g;
+  });
+  s.append(svg('defs', {}, svg('marker', { id: 'ln-arr', viewBox: '0 0 8 8', refX: 7, refY: 4, markerWidth: 7, markerHeight: 7, orient: 'auto' }, svg('path', { d: 'M0,0 L8,4 L0,8 z', fill: 'var(--muted)' }))));
+  edges.forEach((e) => s.append(e));
+  const panel = el('div', { class: 'panel' }, '点一个节点。');
+  const nodes = N.map((nd) => {
+    const [c] = FATE[nd.f]; const y = LY(nd.l);
+    const g = svg('g', { class: 'ln-node', 'aria-label': nd.n });
+    const dash = nd.f === 'add' ? '4 3' : '';
+    if (nd.b == null) g.append(svg('circle', { class: 'shape', cx: X(nd.a), cy: y, r: 7, style: `fill:${c};stroke:${c}`, 'stroke-dasharray': dash }));
+    else g.append(svg('rect', { class: 'shape', x: X(nd.a), y: y - 7, width: X(nd.b) - X(nd.a), height: 14, rx: 7, style: `fill:${c};fill-opacity:.85;stroke:${c}`, 'stroke-dasharray': dash }));
+    const lx = nd.b == null ? X(nd.a) : (X(nd.a) + X(nd.b)) / 2;
+    g.append(T(lx, nd.up ? y - 13 : y + 22, nd.n, 'lbl mid', { style: 'font-weight:600;fill:var(--text)' }));
+    const pick = () => {
+      nodes.forEach((q) => q.classList.remove('sel')); g.classList.add('sel');
+      const yr = nd.b == null ? Math.floor(nd.a) : `${Math.floor(nd.a)}–${Math.floor(nd.b)}`;
+      const ins = E.filter((e) => e[1] === nd.id).map((e) => byId[e[0]].n), outs = E.filter((e) => e[0] === nd.id).map((e) => byId[e[1]].n);
+      panel.innerHTML = `<b>${nd.n}</b>（${yr}，<span style="color:${FATE[nd.f][0]}">${FATE[nd.f][1]}</span>）：${nd.d}${ins.length ? `<br>来自：${ins.join('、')}` : ''}${outs.length ? `<br>流向：${outs.join('、')}` : ''}`;
+    };
+    keyable(g, pick); s.append(g); g.nd = nd; g.pick = pick; return g;
+  });
+  const filt = (k) => {
+    nodes.forEach((g) => g.classList.toggle('dim', k === 1 ? g.nd.side !== 'own' : k === 2 ? g.nd.side !== 'ext' : false));
+    edges.forEach((e) => { const A = byId[e.dataset.a], B = byId[e.dataset.b]; const vis = k === 0 || (k === 1 ? A.side === 'own' && B.side === 'own' : A.side === 'ext' || B.side === 'ext'); e.querySelector('path').classList.toggle('dim', !vis); });
+  };
+  const legend = el('div', { class: 'legend' }, ...Object.values(FATE).map(([c, t]) => el('span', {}, el('i', { style: `background:${c}` }), t)));
+  node.append(el('div', { class: 'ctrl' }, seg(['全部', '苹果自研', '外部候选'], filt)), el('div', { class: 'scrollx' }, s), legend, panel);
+  nodes[6].pick();
+});
+
+/* ================= 01 Lisa vs Macintosh ================= */
+reg('lisa', (node) => {
+  const W = 360, H = 250;
+  const menu = (g, grad) => {
+    g.append(R(10, 10, 340, 18, '', grad ? { fill: 'url(#lisaGrad)', stroke: 'var(--ink)' } : { class: 'wf-win' }));
+  };
+  const modes = [
+    {
+      intro: '<b>Lisa（1983）</b>：定位明确的办公电脑，资源充足，细节也算用心。',
+      draw(g) {
+        g.append(svg('defs', {}, svg('linearGradient', { id: 'lisaGrad', x1: 0, y1: 0, x2: 0, y2: 1 },
+          svg('stop', { offset: 0, style: 'stop-color:var(--surface)' }), svg('stop', { offset: 1, style: 'stop-color:var(--muted)' }))));
+        g.append(R(10, 10, 340, 230, 'wf-screen'));
+        menu(g, true);
+        [30, 80, 125, 180].forEach((x, i) => g.append(R(x, 15, [36, 30, 42, 34][i], 8, 'wf-ink', { rx: 2, opacity: .55 })));
+        g.append(R(40, 46, 230, 150, 'wf-win'), R(40, 46, 230, 16, 'wf-soft', { stroke: 'var(--ink)' }), T(155, 58, 'Lisa Office System', 'wf-txt c'));
+        for (let i = 0; i < 6; i++) g.append(R(54, 74 + i * 18, 150 - (i % 3) * 30, 7, 'wf-soft', { rx: 2 }));
+        g.append(R(212, 74, 46, 106, 'wf-win', { 'stroke-dasharray': '3 2' }), T(235, 130, '表格', 'wf-txt c'));
+        [0, 1].forEach((i) => { g.append(R(292, 60 + i * 60, 30, 36, 'wf-win'), svg('path', { d: `M${292 + 20},${60 + i * 60} l10,10 h-10z`, class: 'wf-ink', opacity: .5 })); });
+        g.append(T(307, 112, '文档', 'wf-txt c'), T(307, 172, '文档', 'wf-txt c'));
+      },
+      spots: [[340, 19, '顶部菜单栏带「阴影渐变效果」：原文特意点出的细节，在 1983 年的界面上算非常用心。'],
+        [155, 40, '系统名称就叫 Lisa Office System，简单直接：它就是一台办公电脑。'],
+        [235, 190, '整个环境围绕办公文档组织。资源大量倾斜给 Lisa，它「看起来也并不差」。']],
+    },
+    {
+      intro: '<b>Macintosh（1984）</b>：乔布斯被调离 Lisa 之后投入「300% 精力」的项目，硬件和系统同名。',
+      draw(g) {
+        g.append(R(10, 10, 340, 230, 'wf-screen'));
+        menu(g, false);
+        g.append(svg('circle', { cx: 26, cy: 19, r: 5, class: 'wf-ink' }));
+        [42, 76, 108, 142].forEach((x, i) => g.append(R(x, 15, [24, 22, 24, 34][i], 8, 'wf-ink', { rx: 2, opacity: .55 })));
+        g.append(R(30, 44, 180, 130, 'wf-win'), R(30, 44, 180, 14, 'wf-win'));
+        for (let i = 0; i < 6; i++) g.append(svg('line', { x1: 34, y1: 47 + i * 2, x2: 206, y2: 47 + i * 2, class: 'wf-line', opacity: .5 }));
+        const fonts = [['Aa 衬线体', 'Georgia,serif', 15], ['Aa 无衬线', 'var(--font)', 14], ['Aa 等宽', 'var(--mono)', 13], ['Aa 斜体', 'Georgia,serif;font-style:italic', 14]];
+        fonts.forEach(([t, f, sz], i) => g.append(T(44, 80 + i * 24, t, '', { style: `fill:var(--ink);font-family:${f};font-size:${sz}px` })));
+        g.append(R(170, 110, 120, 96, 'wf-win'), R(170, 110, 120, 14, 'wf-win'));
+        for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) if (i + j * 4 < 11) g.append(R(182 + i * 25, 130 + j * 24, 21, 20, 'wf-soft', { stroke: 'var(--ink)', 'stroke-width': .8 }), T(192 + i * 25, 144 + j * 24, i + j * 4 + 1, 'wf-txt c'));
+        g.append(R(300, 40, 34, 26, 'wf-win', { rx: 3 }), T(317, 78, '磁盘', 'wf-txt c'), R(304, 196, 26, 30, 'wf-win', { rx: 2 }), T(317, 236, '废纸篓', 'wf-txt c'));
+      },
+      spots: [[26, 36, '硬件和系统一体，Macintosh 同时指电脑和系统；系统版本被叫作 System 1、System 2。'],
+        [130, 82, '丰富的字体：原文认为这是 Macintosh 胜出的理由之一。'],
+        [290, 120, '多样的媒体功能、能玩游戏（示意：一个拼图小游戏窗口）。']],
+    },
+  ];
+  hotFigure(node, W, H, modes, ['Lisa · 1983', 'Macintosh · 1984'], '');
+});
+
+/* ================= 02 外部竞争 ================= */
+reg('rivals', (node) => {
+  const SYS = [
+    { n: 'Visi On', m: 'VisiCorp', p: 'IBM PC', y: 1983.85, yl: '1983 年 12 月', t: '原文：Visi Corp 给 IBM 提供了 Visi On 这样的图形化程序。', draw: (g) => { g.append(R(16, 16, 288, 150, 'wf-screen')); g.append(R(26, 26, 150, 90, 'wf-win'), R(26, 26, 150, 12, 'wf-soft', { stroke: 'var(--ink)' }), R(140, 56, 150, 76, 'wf-win'), R(140, 56, 150, 12, 'wf-soft', { stroke: 'var(--ink)' })); g.append(R(16, 146, 288, 20, 'wf-win'), T(160, 160, 'Services · Help · Close · Full · Frame … 底部命令栏', 'wf-txt c')); } },
+    { n: 'Macintosh', m: 'Apple', p: 'Macintosh', y: 1984.12, yl: '1984 年 1 月', t: '参照物：顶部菜单栏 + 可层叠的窗口 + 桌面图标。', draw: (g) => { g.append(R(16, 16, 288, 150, 'wf-screen'), R(16, 16, 288, 14, 'wf-win')); g.append(R(36, 44, 150, 90, 'wf-win'), R(36, 44, 150, 12, 'wf-win'), R(120, 70, 140, 80, 'wf-win'), R(120, 70, 140, 12, 'wf-win')); g.append(R(272, 40, 22, 18, 'wf-win', { rx: 2 }), R(274, 136, 18, 22, 'wf-win', { rx: 2 })); } },
+    { n: 'Windows 1.0', m: 'Microsoft', p: 'IBM PC', y: 1985.85, yl: '1985 年', t: '原文：微软也在 1985 年为 IBM 的 PC 提供了 Windows 软件。示意里的窗口互相平铺、不重叠。', draw: (g) => { g.append(R(16, 16, 288, 150, 'wf-screen')); [[16, 16, 144, 120], [160, 16, 144, 60], [160, 76, 144, 60]].forEach(([x, y, w, h]) => g.append(R(x, y, w, h, 'wf-win'), R(x, y, w, 12, 'wf-ink', { opacity: .75 }), R(x, y + 12, w, 10, 'wf-soft', { stroke: 'var(--ink)', 'stroke-width': .6 }))); for (let i = 0; i < 5; i++) g.append(R(26 + i * 54, 142, 40, 18, 'wf-win', { rx: 2 })); g.append(T(160, 176, '底部一排图标化的程序', 'wf-txt c')); } },
+    { n: 'Amiga Workbench', m: 'Commodore', p: 'Amiga', y: 1985.55, yl: '1985 年', t: '原文：Commodore 的图形化界面也差不多同期问世。示意：彩色的蓝橙配色，标题栏右侧有层叠控制按钮。', draw: (g) => { g.append(R(16, 16, 288, 150, '', { style: 'fill:var(--p);opacity:.75' }), R(16, 16, 288, 12, '', { style: 'fill:var(--surface)' })); g.append(R(40, 40, 170, 100, '', { style: 'fill:var(--p-soft);stroke:var(--surface);stroke-width:1.5' }), R(40, 40, 170, 12, '', { style: 'fill:var(--o)' })); [190, 200].forEach((x) => g.append(R(x, 42, 8, 8, '', { style: 'fill:var(--surface)' }))); [0, 1, 2].forEach((i) => g.append(R(56 + i * 46, 70, 26, 22, '', { style: 'fill:var(--o)', rx: 2 }))); g.append(R(232, 50, 46, 34, '', { style: 'fill:var(--surface);opacity:.9', rx: 3 }), T(255, 98, '磁盘', 'wf-txt c', { style: 'fill:var(--surface)' })); } },
+    { n: 'GEOS', m: 'Berkeley Softworks', p: 'Commodore 64，后有 Apple II 版', y: 1986.3, yl: '1986 年（Apple II 版 1988 年）', t: '原文：GEOS 甚至为更老的 Apple II 提供了图形化界面的操作系统。示意：磁盘内容画成一本可翻页的记事本。', draw: (g) => { g.append(R(16, 16, 288, 150, 'wf-screen'), R(16, 16, 288, 14, 'wf-win')); g.append(R(50, 40, 200, 100, 'wf-win'), R(50, 40, 200, 12, 'wf-ink', { opacity: .75 })); for (let i = 0; i < 4; i++) g.append(R(64 + i * 44, 64, 26, 22, 'wf-soft', { stroke: 'var(--ink)', rx: 2 })); g.append(svg('path', { d: 'M50,140 l18,-18 v18z', class: 'wf-ink', opacity: .6 }), T(150, 132, '记事本式的磁盘窗口（翻页角）', 'wf-txt c')); g.append(R(268, 40, 26, 20, 'wf-win', { rx: 2 }), R(268, 130, 26, 26, 'wf-win', { rx: 2 })); } },
+  ];
+  const tl = svg('svg', { viewBox: '0 0 340 60', width: '100%', class: 'sq' });
+  const X = (y) => 20 + (y - 1983) * 60;
+  tl.append(svg('line', { x1: 20, y1: 30, x2: 320, y2: 30, stroke: 'var(--line)', 'stroke-width': 2 }));
+  for (let y = 1983; y <= 1988; y++) tl.append(svg('line', { x1: X(y), y1: 25, x2: X(y), y2: 35, stroke: 'var(--muted)' }), T(X(y), 52, y, 'lbl mid s m'));
+  const dots = SYS.map((sy, i) => { const c = svg('circle', { cx: X(sy.y), cy: 30, r: 6, style: 'fill:var(--surface);stroke:var(--p);stroke-width:2;cursor:pointer' }); keyable(c, () => show(i)); c.setAttribute('aria-label', sy.n); tl.append(c); return c; });
+  const lab = T(0, 14, '', 'lbl mid', { style: 'fill:var(--p);font-weight:700' }); tl.append(lab);
+  const pic = svg('svg', { viewBox: '0 0 320 182', width: '100%', class: 'sq' });
+  const panel = el('div', { class: 'panel' });
+  const sg = seg(SYS.map((x) => x.n), (i) => show(i, true), 1);
+  function show(i, fromSeg) {
+    const sy = SYS[i];
+    if (!fromSeg) [...sg.children].forEach((b, j) => b.classList.toggle('on', j === i));
+    dots.forEach((d, j) => d.style.fill = j === i ? 'var(--p)' : 'var(--surface)');
+    lab.setAttribute('x', X(sy.y)); lab.textContent = sy.n;
+    pic.replaceChildren(); sy.draw(pic);
+    const gap = Math.round((sy.y - 1984.12) * 12);
+    panel.innerHTML = `<b>${sy.n}</b>：${sy.m}，运行于 ${sy.p}，${sy.yl}。${gap === 0 ? '这是 Macintosh 本身。' : gap < 0 ? `比 Macintosh 早约 ${-gap} 个月。` : `比 Macintosh 晚约 ${gap} 个月。`}<br>${sy.t}`;
+  }
+  node.append(el('div', { class: 'ctrl' }, sg), tl, pic, panel);
+  show(1);
+});
+
+/* ================= 03 粉卡蓝卡 ================= */
+reg('cards', (node) => {
+  const C = [
+    ['抢先式多任务处理', 'pink', '原文点名的粉卡功能'],
+    ['组件化程序设计', 'pink', '原文点名的粉卡功能'],
+    ['内存保护', 'pink', 'Pink 要做的能力'],
+    ['面向对象的程序', 'pink', 'Pink 要做的能力'],
+    ['多语言、足够国际化', 'pink', 'Pink 要做的能力'],
+    ['全新的图形库', 'pink', 'Pink 要做的能力'],
+    ['在 System 6 上可以增量更新的特性', 'blue', '原文对蓝卡的定义'],
+    ['可以很快实现的功能', 'blue', '原文对蓝卡的定义'],
+    ['* 虚拟内存', 'blue', '本页补充：System 7 实际带来的功能'],
+    ['* 文件替身（Alias）', 'blue', '本页补充：System 7 实际带来的功能'],
+    ['更加激进的特性', 'red', '原文没举例：太激进，只作备案'],
+  ];
+  const ORDER = ['', 'blue', 'pink', 'red'], NAME = { blue: '蓝卡', pink: '粉卡', red: '红卡', '': '未分' };
+  const st = C.map(() => '');
+  const panel = el('div', { class: 'panel' }, '还没分。点卡片给它上色。');
+  let revealed = false;
+  const cards = C.map(([t, ans, why], i) => {
+    const b = el('button', { type: 'button', class: 'card' }, t, el('small', {}, '未分'));
+    b.addEventListener('click', () => {
+      if (revealed) { panel.innerHTML = `<b>${t}</b> → ${NAME[ans]}：${why}。`; return; }
+      st[i] = ORDER[(ORDER.indexOf(st[i]) + 1) % 4];
+      b.className = 'card ' + st[i]; b.lastChild.textContent = NAME[st[i]];
+      const done = st.filter(Boolean).length; panel.textContent = `已分 ${done} / ${C.length} 张。`;
+    });
+    return b;
+  });
+  const reveal = btn('揭晓', () => {
+    revealed = true; let ok = 0;
+    cards.forEach((b, i) => { const a = C[i][1]; const right = st[i] === a; if (right) ok++; b.className = 'card ' + a + (right ? ' ok' : ' no'); b.lastChild.textContent = NAME[a] + (right ? ' ✓' : (st[i] ? `（你选了${NAME[st[i]]}）` : '（你没分）')); });
+    panel.innerHTML = `你分对了 <b>${ok} / ${C.length}</b>。蓝卡就是后来的 <b>Blue → System 7</b>；粉卡成了 <b>Pink</b>：几乎每一张都意味着「放弃 System 6 的遗产，从头再来」。红卡没有立项。现在点卡片可以看理由。`;
+  }, true);
+  const loop = btn('红卡后来去哪了？', () => {
+    const rb = cards[C.length - 1];
+    rb.className = 'card pink'; rb.lastChild.textContent = '红卡 → 被塞进 Pink';
+    panel.innerHTML = '原文：随着时间推移，为了让 Pink 更有竞争力，原本写在<b>红卡</b>上的激进功能开始不断加入 Pink → 需要更多开发时间 → 市场又变了 → 再加功能……<b>恶性循环</b>就这样开始了。下一章看它怎么膨胀。';
+  });
+  const reset = btn('重置', () => { revealed = false; st.fill(''); cards.forEach((b) => { b.className = 'card'; b.lastChild.textContent = '未分'; }); panel.textContent = '还没分。点卡片给它上色。'; });
+  node.append(el('div', { class: 'cards' }, ...cards), el('div', { class: 'ctrl' }, reveal, loop, reset), panel);
+});
+
+/* ================= 04 Pink 膨胀 ================= */
+reg('pink', (node) => {
+  const M0 = 1988 * 12 + 2; /* 1988 年 3 月 */
+  const D = [[0, 6], [1, 11], [2, 25], [12, 100], [24, 150]];
+  const D2 = [[48, 170], [61, 260], [84, 400], [93, 375], [94, 175]];
+  const EV = [[7, '原始五人组几乎都离开'], [24, '原定发布日'], [43, 'AIM 联盟成立'], [48, 'Taligent 成立'], [70, 'HP 入股 15%'], [88, 'CommonPoint 1.1'], [93, '苹果退出']];
+  const MAXM = 96, W = 660, H = 290, L = 46, Rr = 640, Tp = 30, B = 240;
+  const X = (m) => L + (m / MAXM) * (Rr - L), Y = (v) => B - (v / 420) * (B - Tp);
+  const ym = (m) => { const t = M0 + Math.round(m); return `${Math.floor(t / 12)} 年 ${t % 12 + 1} 月`; };
+  const head = (m) => { const all = D.concat(D2); let v = all[0][1]; all.forEach(([mm, vv]) => { if (mm <= m) v = vv; }); return v; };
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'wide', role: 'img', 'aria-label': 'Pink 与 Taligent 团队人数随时间变化' });
+  for (let v = 0; v <= 400; v += 100) s.append(svg('line', { x1: L, y1: Y(v), x2: Rr, y2: Y(v), stroke: 'var(--grid)' }), T(L - 6, Y(v) + 4, v, 'lbl s m', { 'text-anchor': 'end' }));
+  for (let y = 1988; y <= 1996; y++) { const m = (y * 12) - M0; if (m >= 0 && m <= MAXM) s.append(T(X(m), B + 16, y, 'lbl mid s m')); }
+  s.append(T(L, 16, '团队人数', 'lbl s'));
+  const step = (pts, until) => { let d = ''; pts.forEach(([m, v], i) => { d += i ? `H${X(m)}V${Y(v)}` : `M${X(m)},${Y(v)}`; }); return d + `H${X(until)}`; };
+  s.append(svg('path', { d: step(D, 48), fill: 'none', stroke: 'var(--r)', 'stroke-width': 2.5 }));
+  s.append(svg('path', { d: `M${X(48)},${Y(150)}V${Y(170)}` + step(D2, MAXM).replace(/^M[^H]*/, ''), fill: 'none', stroke: 'var(--r)', 'stroke-width': 2, 'stroke-dasharray': '5 4' }));
+  EV.forEach(([m, t], i) => { s.append(svg('line', { x1: X(m), y1: B, x2: X(m), y2: B + 4, stroke: 'var(--muted)' }), T(X(m), B + 30 + (i % 2) * 12, t, 'lbl mid s')); });
+  s.append(svg('line', { x1: X(24), y1: Tp, x2: X(24), y2: B, stroke: 'var(--muted)', 'stroke-dasharray': '2 3' }));
+  const cur = svg('line', { y1: Tp - 6, y2: B, stroke: 'var(--p)', 'stroke-width': 1.5 });
+  const dot = svg('circle', { r: 5, fill: 'var(--p)' });
+  const flag = svg('g', {}, svg('line', { x1: 0, y1: 0, x2: 0, y2: 26, stroke: 'var(--o)', 'stroke-width': 2 }), svg('polygon', { points: '0,0 16,5 0,10', fill: 'var(--o)' }), T(4, 38, '宣称发布日', 'lbl s', { style: 'fill:var(--o)' }));
+  const arrow = svg('line', { stroke: 'var(--o)', 'stroke-width': 1.2, 'stroke-dasharray': '3 3' });
+  s.append(arrow, cur, dot, flag);
+  const out = el('div', { class: 'status' });
+  const inp = el('input', { type: 'range', min: 0, max: MAXM, value: 0, step: 1, 'aria-label': '时间（月）' });
+  const o = el('output', {});
+  function upd() {
+    const m = +inp.value, v = head(m);
+    o.textContent = ym(m);
+    cur.setAttribute('x1', X(m)); cur.setAttribute('x2', X(m));
+    dot.setAttribute('cx', X(m)); dot.setAttribute('cy', Y(v));
+    const ended = m >= 93;
+    const fm = Math.min(m + 24, MAXM);
+    flag.setAttribute('transform', `translate(${X(fm)},${Tp - 4})`); flag.style.opacity = ended ? 0 : 1;
+    arrow.setAttribute('x1', X(m)); arrow.setAttribute('x2', X(fm)); arrow.setAttribute('y1', Tp + 6); arrow.setAttribute('y2', Tp + 6); arrow.style.opacity = ended ? 0 : 1;
+    const ev = EV.filter(([mm]) => mm <= m).pop();
+    out.innerHTML = ended
+      ? `${ym(m)}：苹果出售股权退出 Taligent，<b>Pink 到此终结</b>，至此已过去 ${(m / 12).toFixed(1)} 年。最终产品是 IBM AIX 里的 CommonPoint，Taligent OS 从未正式发布。`
+      : `${ym(m)}：团队约 <b>${v}</b> 人${m >= 48 ? '（本页补充数据）' : ''}。「Pink 什么时候上市？」答案：<b>${ym(m + 24)}</b>，也就是两年后。${m > 24 ? `比原定发布日（${ym(24)}）已经晚了 ${m - 24} 个月。` : ''}${ev ? ` 最近的事件：${ev[1]}。` : ''}`;
+  }
+  inp.addEventListener('input', upd);
+  let timer = 0;
+  const stop = () => { clearInterval(timer); timer = 0; play.textContent = '▶ 播放'; };
+  const play = btn('▶ 播放', () => {
+    if (timer) return stop();
+    if (+inp.value >= MAXM) inp.value = 0;
+    play.textContent = '⏸ 暂停';
+    timer = setInterval(() => { inp.value = +inp.value + 1; upd(); if (+inp.value >= MAXM) stop(); }, RM ? 30 : 110);
+  }, true);
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '时间', inp, o), play), el('div', { class: 'scrollx' }, s), out);
+  upd();
+  return { stop };
+});
+
+/* ================= 05 Taligent 界面 ================= */
+reg('taligent', (node) => {
+  let shape = 0, icon = 0;
+  const s = svg('svg', { viewBox: '0 0 360 220', width: '100%', class: 'sq', role: 'img', 'aria-label': '窗口形状与图标风格对比' });
+  const panel = el('div', { class: 'panel' });
+  function draw() {
+    s.replaceChildren(R(6, 6, 348, 208, 'wf-screen'));
+    if (shape === 0) s.append(R(40, 40, 230, 150, 'wf-win'), R(40, 40, 230, 18, 'wf-win'), T(155, 53, '文件夹', 'wf-txt c'));
+    else s.append(svg('path', { d: 'M40,60 V190 H270 V60 H210 L196,40 H96 L82,60 Z', class: 'wf-win' }), svg('line', { x1: 40, y1: 60, x2: 270, y2: 60, class: 'wf-line' }), T(146, 54, '文件夹', 'wf-txt c'));
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) {
+      const cx = 82 + i * 70, cy = 92 + j * 52;
+      if (icon === 0) s.append(R(cx - 14, cy - 12, 28, 24, 'wf-soft', { stroke: 'var(--ink)', rx: 2 }));
+      else s.append(iso(cx, cy - 6, 15, ['var(--p-soft)', 'var(--t-soft)', 'var(--y-soft)'][(i + j) % 3], ['var(--p)', 'var(--t)', 'var(--y)'][(i + j) % 3]));
+    }
+    s.append(T(305, 110, icon ? '等轴测' : '平面', 'wf-txt c'), T(305, 124, '图标', 'wf-txt c'), T(305, 150, shape ? '非矩形' : '矩形', 'wf-txt c'), T(305, 164, '窗口', 'wf-txt c'));
+    const pick = (shape ? '窗口顶部不再是一整条矩形标题栏，而是凸起的一段，整个窗口轮廓不再是矩形' : '窗口是规整的矩形，标题栏横贯顶部') + '；' + (icon ? '图标画成从斜上方俯视的等轴测伪 3D 立体，这是从 Pink 继承来的设计，后来又进了 Copland，BeOS 也在用' : '图标是正面平视的平面图形');
+    panel.innerHTML = `${shape && icon ? '<b>Taligent 的组合</b>：' : !shape && !icon ? '<b>同期经典 Mac 的做法</b>：' : '混搭：'}${pick}。`;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['矩形窗口', '非矩形窗口'], (i) => { shape = i; draw(); }), seg(['平面图标', '等轴测图标'], (i) => { icon = i; draw(); })), s, panel);
+  draw();
+});
+
+/* ================= 07 Copland 主题 ================= */
+reg('copland', (node) => {
+  const TH = [
+    { n: 'Platinum', win: 'var(--surface)', bar: 'var(--surface-2)', acc: 'var(--muted)', rx: 2, sw: 1.2, d: '<b>Platinum</b>：所有元素都有细腻的阴影，窗口元素明显凸起（看高光与暗边），Pink 的等轴测图标也加了进来。后来成为 Mac OS 8/9 的默认外观。' },
+    { n: '儿童主题', win: 'var(--y-soft)', bar: 'var(--o)', acc: 'var(--t)', rx: 14, sw: 2.5, d: '<b>面向儿童的主题</b>（原文称主题 P）：本页用大圆角、粗描边和鲜亮配色做示意。' },
+    { n: '未来派主题', win: 'var(--p-soft)', bar: 'var(--p)', acc: 'var(--p)', rx: 0, sw: 1.5, chamfer: 1, d: '<b>更具未来派风格的主题</b>（原文称主题 Z）：本页用切角和单一冷色做示意。' },
+  ];
+  let th = 0, collapsed = false, busy = false;
+  const s = svg('svg', { viewBox: '0 0 360 240', width: '100%', class: 'sq', role: 'img', 'aria-label': 'Copland 主题与功能示意' });
+  const panel = el('div', { class: 'panel' });
+  let winG, sub, file, folderG;
+  function draw() {
+    const t = TH[th];
+    s.replaceChildren(R(6, 6, 348, 228, 'wf-screen'));
+    winG = svg('g', { style: 'transition:transform .6s ease, opacity .6s ease;transform-origin:60px 222px' });
+    const x = 30, y = 26, w = 220, h = 160;
+    if (t.chamfer) winG.append(svg('path', { d: `M${x + 12},${y} H${x + w} V${y + h - 12} L${x + w - 12},${y + h} H${x} V${y + 12} Z`, style: `fill:${t.win};stroke:${t.bar};stroke-width:${t.sw}` }));
+    else {
+      if (th === 0) winG.append(R(x + 4, y + 4, w, h, '', { rx: t.rx, style: 'fill:var(--ink);opacity:.18' }));
+      winG.append(R(x, y, w, h, '', { rx: t.rx, style: `fill:${t.win};stroke:var(--ink);stroke-width:${t.sw}` }));
+    }
+    winG.append(R(x + 1, y + 1, w - 2, 18, '', { rx: t.rx ? Math.min(t.rx, 9) : 0, style: `fill:${t.bar}` }));
+    if (th === 0) { for (let i = 0; i < 5; i++) winG.append(svg('line', { x1: x + 30, y1: y + 5 + i * 2.5, x2: x + w - 30, y2: y + 5 + i * 2.5, stroke: 'var(--muted)', 'stroke-width': .8 })); winG.append(svg('line', { x1: x + 1, y1: y + 1, x2: x + w - 1, y2: y + 1, stroke: 'var(--surface)', 'stroke-width': 2 }), svg('line', { x1: x + 1, y1: y + 19, x2: x + w - 1, y2: y + 19, stroke: 'var(--muted)', 'stroke-width': 1.2 })); }
+    winG.append(R(x + 8, y + 5, 10, 9, '', { rx: t.rx ? 5 : 1, style: `fill:${th === 0 ? 'var(--surface)' : 'var(--surface)'};stroke:var(--ink);stroke-width:.8` }));
+    if (th === 0) winG.append(R(x + w / 2 - 30, y + 3, 60, 14, '', { style: 'fill:var(--surface-2)' }));
+    winG.append(T(x + w / 2, y + 14, '我的文档', 'wf-txt c', { style: `font-weight:700;fill:${th === 0 ? 'var(--ink)' : '#fff'}` }));
+    winG.append(R(x + w - 14, y + 20, 13, h - 21, '', { style: `fill:${th === 0 ? 'var(--surface-2)' : t.win};stroke:${t.acc}` }), R(x + w - 12, y + 40, 9, 26, '', { rx: t.rx ? 4 : 1, style: `fill:${t.acc}` }));
+    folderG = svg('g');
+    [0, 1, 2].forEach((i) => { const cx = x + 40 + i * 58, cy = y + 60; if (th === 0) folderG.append(iso(cx, cy, 13, 'var(--surface)', 'var(--surface-2)')); else folderG.append(R(cx - 16, cy - 10, 32, 24, '', { rx: t.rx ? 6 : 0, style: `fill:${t.acc};opacity:.85` })); folderG.append(T(cx, cy + 30, ['照片', '作业', '音乐'][i], 'wf-txt c')); });
+    winG.append(folderG);
+    sub = svg('g', { style: 'opacity:0;transition:opacity .4s' }, R(196, 104, 120, 80, '', { rx: t.rx, style: `fill:${t.win};stroke:var(--ink);stroke-width:${t.sw}` }), R(197, 105, 118, 14, '', { style: `fill:${t.bar}` }), T(256, 115, '作业 ▸ 自动打开', 'wf-txt c', { style: `fill:${th === 0 ? 'var(--ink)' : '#fff'}` }));
+    file = svg('g', { style: 'transition:transform .9s ease' }, R(52, 160, 18, 22, '', { style: 'fill:var(--surface);stroke:var(--ink)' }), T(61, 196, '文件', 'wf-txt c'));
+    const tab = svg('g', { style: `opacity:${collapsed ? 1 : 0};transition:opacity .5s` }, R(40, 212, 96, 18, '', { rx: 6, style: `fill:${t.bar};stroke:var(--ink)` }), T(88, 224, '我的文档', 'wf-txt c', { style: `fill:${th === 0 ? 'var(--ink)' : '#fff'}` }));
+    if (collapsed) { winG.style.transform = 'scale(.15)'; winG.style.opacity = 0; }
+    s.append(winG, sub, file, tab);
+    panel.innerHTML = t.d;
+  }
+  const collapse = btn('收进底部标签', () => {
+    collapsed = !collapsed; collapse.textContent = collapsed ? '从标签恢复窗口' : '收进底部标签'; draw();
+    if (collapsed) panel.innerHTML = '<b>最小化到底部成为标签</b>：窗口收起后在屏幕底部留下一个带标题的标签，点一下就能恢复。原文说这在当时非常超前。';
+  });
+  const spring = btn('拖文件过文件夹', () => {
+    if (busy || collapsed) return; busy = true;
+    file.style.transform = 'translate(140px,-80px)';
+    setTimeout(() => { sub.style.opacity = 1; panel.innerHTML = '<b>弹簧文件夹</b>：拖着文件停在文件夹上，文件夹会自动打开，可以一路拖进深层目录，不用先松手再逐层打开。'; }, RM ? 0 : 800);
+    setTimeout(() => { file.style.transform = ''; sub.style.opacity = 0; busy = false; }, RM ? 1500 : 2600);
+  });
+  node.append(el('div', { class: 'ctrl' }, seg(TH.map((t) => t.n), (i) => { th = i; draw(); if (collapsed) panel.innerHTML = TH[i].d; })), s, el('div', { class: 'ctrl' }, collapse, spring), panel);
+  draw();
+});
+
+/* ================= 07b 功能冲突 ================= */
+reg('conflict', (node) => {
+  const F = ['内存保护', '抢先式多任务', 'Platinum 主题', '儿童 / 未来派主题', '底部标签窗口', '多用户登录', '家长式权限', '弹簧文件夹', '等轴测图标', 'QuickDraw GX*', 'OpenDoc*', 'SOM*', '新的打开对话框*'];
+  const W = 380, H = 300, cx = 190, cy = 150, Rr = 112;
+  let n = 2;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'sq', style: 'max-width:420px', role: 'img', 'aria-label': '功能之间两两需要协调的组合' });
+  const out = el('div', { class: 'status' });
+  function draw() {
+    s.replaceChildren();
+    const P = Array.from({ length: n }, (_, i) => { const a = i / n * Math.PI * 2 - Math.PI / 2; return [cx + Rr * Math.cos(a), cy + Rr * Math.sin(a), a]; });
+    const pairs = n * (n - 1) / 2;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) s.append(svg('line', { x1: P[i][0], y1: P[i][1], x2: P[j][0], y2: P[j][1], stroke: 'var(--r)', 'stroke-width': 1, opacity: Math.max(.18, Math.min(.7, 6 / pairs)) }));
+    P.forEach(([x, y, a], i) => {
+      s.append(svg('circle', { cx: x, cy: y, r: 6, fill: i === n - 1 ? 'var(--o)' : 'var(--p)' }));
+      const lx = cx + (Rr + 12) * Math.cos(a), ly = cy + (Rr + 12) * Math.sin(a);
+      s.append(T(lx, ly + 4, F[i], 'lbl s', { 'text-anchor': Math.cos(a) > .2 ? 'start' : Math.cos(a) < -.2 ? 'end' : 'middle' }));
+    });
+    s.append(T(cx, cy - 4, pairs, 'lbl big mid', { style: 'font-size:28px;fill:var(--r)' }), T(cx, cy + 16, '对需要协调', 'lbl mid s'));
+    out.innerHTML = `${n} 个功能 → 两两之间 <b>${n} × ${n - 1} ÷ 2 = ${pairs}</b> 对可能互相影响。${n >= F.length ? '全部塞进去了：这就是 Amelio 说的「期望它们神奇地组合到一起」。' : n > 6 ? '功能数只多了几个，要协调的组合却翻着倍涨。' : ''}`;
+  }
+  node.append(el('div', { class: 'ctrl' }, btn('+ 加一个功能', () => { if (n < F.length) { n++; draw(); } }, true), btn('全部塞进去', () => { n = F.length; draw(); }), btn('重置', () => { n = 2; draw(); })), s, out, el('div', { class: 'src' }, '标 * 的四项来自维基百科 Copland 条目（本页补充）；两两计数只是示意组合爆炸，不代表每一对都真的冲突。'));
+  draw();
+});
+
+/* ================= 08 四个外部备选 ================= */
+reg('options', (node) => {
+  const O = [
+    { n: 'Windows NT', w: '支持者：CEO Amelio', more: 'Amelio 个人倾向 Windows NT，专门给盖茨打了电话；盖茨表示，如果愿意用 Windows，他可以组队把苹果的拳头产品 QuickDraw 移植过来。当时 Windows 95 已发布一年，NT 刚发布、份额节节攀升。', res: '未进入最后两强', win: 0 },
+    { n: 'Solaris', w: '支持者：CTO Ellen Hancock', more: 'Hancock 其实想选 Solaris，但它还没有一套友好的用户界面，赢面不大。', res: '未进入最后两强', win: 0 },
+    { n: 'BeOS', w: '背后：让-路易·加西（Be 公司）', more: '为多媒体而生、非 Unix 架构、等轴测鲜亮图标、兼容 PowerPC；但一直没推到 1.0。最终对决时加西志得意满，没有做任何演示。', res: '最终两强之一 · 落选', win: 1 },
+    { n: 'NeXTSTEP', w: '背后：史蒂夫·乔布斯（NeXT 公司）', more: '已推进到 4.0，3D 小插件、大尺寸拟物图标、程序坞、软件商店；对决时乔布斯像魔术师一样演示了各种功能。', res: '胜出 · 被苹果收购', win: 2 },
+  ];
+  const panel = el('div', { class: 'panel' }, '先点开卡片看看。');
+  const cs = O.map((o) => {
+    const c = el('button', { type: 'button', class: 'cand' }, el('h3', {}, o.n), el('div', { class: 'who' }, o.w), el('div', { class: 'more' }, o.more), el('div', { class: 'res' }, o.res));
+    c.addEventListener('click', () => { c.classList.toggle('open'); });
+    return c;
+  });
+  let stage = 0;
+  const rv = btn('揭晓：先筛到两个', () => {
+    stage++;
+    if (stage === 1) { cs.forEach((c, i) => { if (!O[i].win) { c.classList.add('out', 'show'); } }); rv.textContent = '揭晓：1996 年的最终选择'; panel.innerHTML = '摆到 CEO 和董事会桌面上的只剩两个：<b>BeOS</b> 和 <b>NeXTSTEP</b>。而这两个系统背后的两个人，有着极深的纠葛（见下一章）。'; }
+    else { cs.forEach((c, i) => { c.classList.add('show'); c.classList.toggle('win', O[i].win === 2); c.classList.toggle('out', O[i].win !== 2); }); rv.disabled = true; panel.innerHTML = '苹果选择了 <b>NeXTSTEP</b>，连同乔布斯一起。原文：这不仅是市场的选择，也是苹果的选择，是乔布斯的选择。'; }
+  }, true);
+  const reset = btn('重置', () => { stage = 0; rv.disabled = false; rv.textContent = '揭晓：先筛到两个'; cs.forEach((c) => c.className = 'cand'); panel.textContent = '先点开卡片看看。'; });
+  node.append(el('div', { class: 'cands' }, ...cs), el('div', { class: 'ctrl' }, rv, reset), panel);
+});
+
+/* ================= 09 加西与乔布斯 ================= */
+reg('gassee', (node) => {
+  const EV = [
+    [1981, 1, '加西加入苹果，负责欧洲业务。'],
+    [1985, 1, '加西得知乔布斯计划在阵亡将士纪念日罢免 CEO 约翰·斯卡利，抢先告知董事会。'],
+    [1985.5, 0, '乔布斯从苹果辞职（Macintosh 发布两年后），随后创立 NeXT。'],
+    [1987, 1, '加西启动「Skunkworks」项目，产物是后来的掌上电脑 Newton MessagePad；这条产品线最终是乔布斯关停的。'],
+    [1988, 1, 'Pink 五人组想借用 Bubb Road 的仓库，撞见的正是加西的 Newton 团队。'],
+    [1990, 1, '加西与 CEO 交恶，董事会也不满意他推出的 Macintosh 产品，他离开苹果。'],
+    [1990.6, 0, 'NeXT 业务艰难，乔布斯在媒体那边口碑不好；加西这时反而对 NeXT 不吝溢美之词。'],
+    [1991, 1, '加西创立 Be 公司。'],
+    [1996, 2, 'NeXT 与 Be 被摆在同一张桌子上，等苹果选择。'],
+  ];
+  const W = 640, H = 170, X = (y) => 40 + (y - 1980) * 34, LY = [50, 120, 85];
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'wide', role: 'img', 'aria-label': '乔布斯与加西的时间线' });
+  s.append(T(6, 34, '乔布斯', 'lbl s', { style: 'fill:var(--p);font-weight:700' }), T(6, 146, '加西', 'lbl s', { style: 'fill:var(--o);font-weight:700' }));
+  s.append(svg('line', { x1: 40, y1: LY[0], x2: X(1997), y2: LY[0], stroke: 'var(--p)', 'stroke-width': 2, opacity: .4 }), svg('line', { x1: 40, y1: LY[1], x2: X(1997), y2: LY[1], stroke: 'var(--o)', 'stroke-width': 2, opacity: .4 }));
+  for (let y = 1980; y <= 1997; y += 2) s.append(T(X(y), H - 4, y, 'lbl mid s m'));
+  const col = ['var(--p)', 'var(--o)', 'var(--r)'];
+  const out = el('div', { class: 'panel' });
+  let k = -1;
+  const dots = EV.map(([y, l], i) => {
+    const g = keyable(svg('g', { style: 'cursor:pointer', 'aria-label': String(Math.floor(y)) }, svg('circle', { cx: X(y), cy: LY[l], r: l === 2 ? 10 : 7, style: `fill:var(--surface);stroke:${col[l]};stroke-width:2.5` })), () => go(i));
+    s.append(g); return g;
+  });
+  s.append(svg('line', { x1: X(1996), y1: LY[0] + 6, x2: X(1996), y2: LY[1] - 6, stroke: 'var(--r)', 'stroke-dasharray': '3 3' }));
+  function go(i) {
+    k = Math.max(0, Math.min(EV.length - 1, i));
+    dots.forEach((g, j) => g.firstChild.style.fill = j <= k ? col[EV[j][1]] : 'var(--surface)');
+    const [y, l, t] = EV[k];
+    out.innerHTML = `<b>${Math.floor(y)}</b> · <span style="color:${col[l]}">${['乔布斯', '加西', '交汇'][l]}</span>：${t}（${k + 1} / ${EV.length}）`;
+  }
+  node.append(el('div', { class: 'scrollx' }, s), el('div', { class: 'ctrl' }, btn('上一步', () => go(k - 1)), btn('下一步', () => go(k + 1), true)), out);
+  go(0);
+});
+
+/* ================= 10 BeOS vs NeXTSTEP ================= */
+reg('desktops', (node) => {
+  const W = 360, H = 250;
+  const modes = [
+    {
+      intro: '<b>BeOS</b>：为多媒体而生，界面鲜亮、规范统一。点橙色编号。',
+      draw(g) {
+        g.append(R(6, 6, 348, 238, '', { style: 'fill:var(--t-soft);stroke:var(--line)' }));
+        g.append(R(262, 10, 88, 22, 'wf-win'), R(266, 14, 30, 14, '', { rx: 3, style: 'fill:var(--p)' }), T(281, 25, 'Be', 'wf-txt c', { style: 'fill:#fff;font-weight:700' }));
+        g.append(R(262, 32, 88, 70, 'wf-win'));
+        ['Tracker', 'StyledEdit', 'MediaPlayer'].forEach((t, i) => g.append(R(268, 38 + i * 21, 12, 12, '', { style: `fill:${['var(--y)', 'var(--t)', 'var(--r)'][i]}` }), T(285, 48 + i * 21, t, 'wf-txt')));
+        g.append(R(56, 70, 180, 140, 'wf-win'), R(56, 54, 96, 17, '', { style: 'fill:var(--y);stroke:var(--ink)' }), T(104, 66, '文件夹', 'wf-txt c', { style: 'fill:#1c1c1e' }));
+        for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) g.append(iso(90 + i * 52, 102 + j * 52, 13, ['var(--y-soft)', 'var(--p-soft)', 'var(--r-soft)'][(i + j) % 3], ['var(--y)', 'var(--p)', 'var(--r)'][(i + j) % 3]));
+        g.append(iso(28, 30, 11, 'var(--surface)', 'var(--p)'), iso(28, 78, 11, 'var(--surface)', 'var(--t)'));
+      },
+      spots: [[254, 21, '右上角的 BeOS 标志类似开始菜单，点开呼出程序列表。'],
+        [254, 66, '沿用很多 Unix 系统的右侧工具栏：正在运行的程序都能在这里看到。'],
+        [244, 140, '延续当时流行的等轴测图标，配色更鲜亮，统一性和规范性极高，今天看来很多设计都不落俗套。'],
+        [160, 54, '本页补充：BeOS 的窗口标题是一块黄色的「标签」，只占窗口顶边的一段。']],
+    },
+    {
+      intro: '<b>NeXTSTEP</b>：高端工作站上的系统，在当时条件下把细节做到尽善尽美。点橙色编号。',
+      draw(g) {
+        g.append(R(6, 6, 348, 238, '', { style: 'fill:var(--muted);opacity:.55' }));
+        for (let i = 0; i < 6; i++) g.append(R(310, 12 + i * 38, 36, 36, 'wf-win', { style: 'fill:var(--surface-2)' }), R(318, 20 + i * 38, 20, 20, '', { rx: i ? 3 : 0, style: `fill:${i ? 'var(--grid)' : 'var(--ink)'}` }));
+        ['Workspace', 'Info', 'File', 'Edit', 'Windows', 'Services', 'Hide', 'Quit'].forEach((t, i) => g.append(R(12, 12 + i * 15, 70, 15, 'wf-win', { style: i ? 'fill:var(--surface-2)' : 'fill:var(--ink)' }), T(16, 23 + i * 15, t, 'wf-txt', i ? {} : { style: 'fill:var(--surface);font-weight:700' })));
+        g.append(R(100, 60, 190, 140, 'wf-win', { style: 'fill:var(--surface-2)' }), R(100, 60, 190, 15, 'wf-ink'), T(195, 71, '/NextDeveloper', 'wf-txt c', { style: 'fill:var(--surface)' }), R(276, 63, 10, 9, '', { style: 'fill:var(--surface)' }));
+        [0, 1, 2].forEach((i) => { g.append(R(116 + i * 56, 96, 36, 36, '', { rx: 4, style: `fill:${['var(--p)', 'var(--t)', 'var(--o)'][i]}` })); g.append(svg('line', { x1: 116 + i * 56, y1: 132, x2: 152 + i * 56, y2: 132, stroke: 'var(--ink)', 'stroke-width': 2 })); });
+        g.append(R(100, 200, 190, 4, '', { style: 'fill:var(--ink);opacity:.35' }), R(290, 64, 4, 140, '', { style: 'fill:var(--ink);opacity:.35' }));
+      },
+      spots: [[300, 30, '程序坞（Dock）。原文说是「底部程序坞」；本页补充：NeXTSTEP 的 Dock 实际竖排在屏幕右侧，Mac OS X 才把它放到底部。'],
+        [90, 22, '本页补充：NeXTSTEP 的应用菜单是左上角一列竖排的浮动菜单，不是顶部的横向菜单栏。'],
+        [134, 146, '全彩、高清、大尺寸的拟物化图标，这些想法后来惠及 Mac OS X 乃至 macOS。'],
+        [195, 52, '黑色标题栏与立体边框：原文特别举了登录窗口、关闭窗口里的光影细节。']],
+    },
+  ];
+  hotFigure(node, W, H, modes, ['BeOS', 'NeXTSTEP'], '');
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

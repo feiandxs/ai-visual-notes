@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>拆解 Cline 的系统提示词</title>
+<meta name="description" content="把 Cline 源码里的 system.ts 拆成一张结构图：角色设定、工具定义与 XML 调用协议、编辑规则、ACT/PLAN 模式、能力、规则、系统信息与目标循环。可展开分区图、参数注入器、工具参数查看器、消息往返模拟、SEARCH/REPLACE 匹配器、规则检查器。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ================= 本页组件 ================= */
+pre.code{font-family:var(--mono);font-size:12.5px;line-height:1.55;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;overflow-x:auto;white-space:pre;color:var(--ink);max-width:100%}
+pre.code.wrap{white-space:pre-wrap;word-break:break-word}
+code.k{font-family:var(--mono);font-size:.9em;background:var(--surface-2);border:1px solid var(--line);border-radius:5px;padding:0 5px;word-break:break-word}
+.hl{background:var(--y-soft);color:var(--text);border-radius:3px;padding:0 2px}
+.hl.t{background:var(--t-soft)}
+.hl.r{background:var(--r-soft)}
+.hl.p{background:var(--p-soft)}
+p + p{margin-top:10px}
+.prose{font-size:15px}
+.prose p{margin:10px 0}
+
+/* 分区图 */
+.amap{display:grid;gap:6px}
+.arow{display:grid;grid-template-columns:minmax(0,1fr);gap:4px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);padding:8px 10px;cursor:pointer;text-align:left;width:100%}
+.arow:hover,.arow:focus-visible{border-color:var(--p);outline:none}
+.arow.on{border-color:var(--p);background:var(--p-soft)}
+.arow .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.arow .nm{font-weight:600;font-size:14px}
+.arow .nm .en{font-family:var(--mono);font-size:11.5px;color:var(--muted);font-weight:400;margin-left:6px}
+.arow .sz{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.arow .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.arow .bar i{display:block;height:100%;border-radius:4px}
+.arow.dyn{border-style:dashed}
+.adetail{margin-top:12px;border-left:4px solid var(--p);background:var(--surface-2);border-radius:0 10px 10px 0;padding:12px 14px;font-size:14px}
+.adetail h3{font-size:16px;margin-bottom:6px}
+.adetail ul{margin:6px 0 0;padding-left:20px}
+.adetail .q{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:8px;border-top:1px dashed var(--line);padding-top:8px;word-break:break-word}
+
+/* 参数注入器 */
+.pgrid{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:760px){ .pgrid{grid-template-columns:1fr 1fr} }
+.pbox{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2);min-width:0}
+.pbox h4{margin:0 0 6px;font-size:13px;color:var(--muted);font-weight:600}
+.ctrlrow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0;font-size:13px;color:var(--muted)}
+.sw{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;color:var(--text)}
+.sw input{accent-color:var(--p);width:16px;height:16px}
+.stat{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0}
+.stat .s{flex:1 1 120px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:8px 10px}
+.stat .s b{display:block;font-family:var(--mono);font-size:20px;color:var(--p)}
+.stat .s span{font-size:12px;color:var(--muted)}
+
+/* 工具查看器 */
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:5px 9px;cursor:pointer;font-family:var(--mono);font-size:12.5px;color:var(--text)}
+.chip:hover{border-color:var(--p)}
+.chip.on{background:var(--p);border-color:var(--p);color:#fff}
+.chip.cond{border-style:dashed}
+.chip.dim{opacity:.38}
+.chip.lit{border-color:var(--t);background:var(--t-soft)}
+.chip.only{border-color:var(--o);background:var(--o-soft)}
+.grp{margin:10px 0 4px;font-size:12px;color:var(--muted)}
+table.pt{width:100%;border-collapse:collapse;font-size:13px}
+table.pt th,table.pt td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.pt th{color:var(--muted);font-weight:600;font-size:12px}
+table.pt td:first-child{font-family:var(--mono);overflow-wrap:anywhere;min-width:7em}
+.req{color:var(--r);font-size:12px;white-space:nowrap}
+.opt{color:var(--muted);font-size:12px;white-space:nowrap}
+
+/* 消息往返 */
+.chat{display:grid;gap:8px}
+.msg{border:1px solid var(--line);border-radius:12px;padding:8px 12px;background:var(--surface-2);opacity:.28;transition:opacity .35s,border-color .35s;min-width:0}
+.msg.on{opacity:1}
+.msg.cur{border-color:var(--p);box-shadow:0 0 0 2px var(--p-soft)}
+.msg .who{font-size:12px;font-weight:700;letter-spacing:.04em}
+.msg.sys .who{color:var(--y)}
+.msg.user .who{color:var(--t)}
+.msg.asst .who{color:var(--p)}
+.msg.asst{margin-left:clamp(0px,6vw,48px)}
+.msg pre.code{background:var(--surface);font-size:12px;margin:6px 0 0}
+.why{margin-top:10px;border-left:4px solid var(--o);background:var(--o-soft);border-radius:0 10px 10px 0;padding:8px 12px;font-size:13.5px}
+
+/* 校验器 */
+textarea.ta{width:100%;min-height:150px;font-family:var(--mono);font-size:12.5px;line-height:1.5;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);color:var(--text);padding:10px;resize:vertical}
+textarea.ta.sm{min-height:70px}
+.checks{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:5px;font-size:13.5px}
+.checks li{display:grid;grid-template-columns:22px 1fr;gap:6px;align-items:start}
+.checks .ok{color:var(--t);font-weight:700}
+.checks .bad{color:var(--r);font-weight:700}
+.checks .na{color:var(--muted)}
+
+/* SEARCH/REPLACE */
+.filev{font-family:var(--mono);font-size:12.5px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);overflow-x:auto;padding:6px 0}
+.filev .ln{display:grid;grid-template-columns:30px max-content;white-space:pre;padding:0 10px 0 0}
+.filev .ln span:first-child{color:var(--muted);text-align:right;padding-right:10px;user-select:none}
+.filev .ln.m{background:var(--y-soft)}
+.filev .ln.add{background:var(--t-soft)}
+.filev .ln.del{background:var(--r-soft);text-decoration:line-through}
+
+/* 规则列表 */
+.rules{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.rules li{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface-2);font-size:14px}
+.rules li .tag{margin-right:6px}
+.rules li .en{display:block;font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:3px;word-break:break-word}
+
+/* 决策流程 */
+.flow{display:grid;gap:8px}
+.fstep{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.4;transition:opacity .35s,border-color .35s}
+.fstep.on{opacity:1}
+.fstep.cur{border-color:var(--p)}
+.fstep .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.fstep p{font-size:13px;color:var(--muted)}
+.fstep .ans{display:block;margin-top:4px;font-size:13.5px;color:var(--text)}
+.xref{display:inline-block;margin-top:10px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">拆解 Cline 系统提示词</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 编程智能体 · 源码导读</div>
+  <h1>拆解 Cline 的系统提示词</h1>
+  <p class="sub">一个开源编程智能体，在每次对话开头先给模型塞一份约 4.8 万字符的「上岗说明书」。这页把它按段拆开：每一段写了什么、为什么这样写、哪些地方会随你的电脑和设置变化。</p>
+  <div class="thesis">Cline 的系统提示词就是一个 TypeScript 模板字符串：一句角色设定，接着用 <code class="k">====</code> 分隔的八大段（工具与 XML 调用协议、MCP 服务器、编辑文件、ACT/PLAN 模式、能力、规则、系统信息、目标），末尾再拼上用户自己的指令。模型能做什么、怎么开口、什么时候停，全写在这里。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>C</i>Cline 项目（GitHub cline/cline）</span>
+  </div>
+  <p class="meta">原料：Cline 仓库源码文件 <code class="k">src/core/prompts/system.ts</code> 的 GitHub 页面剪藏（clipping 日期 2025-04-26；当时该文件最新提交为「ENG-524 Remove supportsComputerUse restriction and support browser us…」，5439426）。这不是一篇文章，本页按「改写」处理：以源码段落为骨架重新组织并配上中文讲解，引用的英文均出自该文件；几处标注为「本页补充（非原文）」的是额外的核对与说明。它讲的是你看到的那一版，之后的版本可能已经不同。</p>
+  <p class="meta">姊妹篇：<a href="../how-cline-works/index.html">《Cline 是怎么工作的》</a>讲的是 Cline 整个「收集信息 → 问模型 → 执行 → 再问」的循环；本页只钻进其中那份系统提示词本身，逐段看它的写法。</p>
+</header>
+
+<section class="ch" id="anatomy" data-title="全貌：九块拼图">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>全貌：一份提示词，九块拼图</h2>
+    <p class="lead">这份 4.8 万字符的说明书由哪几块组成？哪一块最重？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>可展开的分区图</b>：每一行是提示词里用 <code class="k">====</code> 隔开的一段，条形长度按源码字符数（含 <code class="k">${…}</code> 模板表达式，本页从剪藏统计所得）画出。点任意一行展开，看它写了什么、在约束模型的哪种行为。虚线行是运行时才拼上去的部分。</div>
+    <div data-demo="anatomy"></div>
+  </div>
+  <p class="src">字符数取自剪藏里 <code class="k">SYSTEM_PROMPT</code> 模板字符串的源码文本，按 <code class="k">\n====\n</code> 切分统计。条件分支（如浏览器工具）在关闭时不会出现在最终提示词里，所以真实长度会比这里略短，见下一章。</p>
+</section>
+
+<section class="ch" id="params" data-title="参数：每人一份">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>四个参数：为什么每个人收到的提示词都不一样</h2>
+    <p class="lead">它不是一段写死的文本，而是一个函数 <code class="k">SYSTEM_PROMPT(cwd, supportsBrowserUse, mcpHub, browserSettings)</code>。这四个参数改了哪些地方？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>参数注入器</b>：切换操作系统、工作目录、是否支持浏览器、接了几个 MCP 服务器，看提示词里对应的句子怎么变。黄色高亮是被替换进去的值。</div>
+    <div data-demo="params"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：系统信息段用到的 <code class="k">osName()</code>、<code class="k">getShell()</code>、<code class="k">os.homedir()</code> 分别来自 npm 包 os-name、Cline 自己的 shell 工具函数和 Node.js 的 os 模块（见文件开头的 import）。注入器里的操作系统名、Shell 路径、视口尺寸只是示例值，不代表某台真实机器。<code class="k">cwd.toPosix()</code> 会把 Windows 路径里的反斜杠换成正斜杠，所以 Windows 用户看到的也是 <code class="k">C:/…</code> 形式。</div>
+</section>
+
+<section class="ch" id="tools" data-title="工具：15 个动作">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>工具定义：模型手里有哪些「动作」</h2>
+    <p class="lead">TOOL USE 段占了全文一半。每个工具都按同一个模板写：Description、Parameters、Usage。它们各要哪些参数？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>工具参数查看器</b>：点一个工具名，看它的中文说明、参数表（必填/可选）和提示词里给出的 XML 用法。虚线框的 <code class="k">browser_action</code> 只在 <code class="k">supportsBrowserUse</code> 为真时出现。</div>
+    <div data-demo="tools"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：原文按固定顺序平铺 15 个工具，本页按用途重新分成七组；分组名是本页加的。每个工具的中文说明是对原文 Description 的节译，关键约束保留原文。</div>
+</section>
+
+<section class="ch" id="protocol" data-title="XML 协议与往返">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>XML 调用协议：模型怎么「写」一次工具调用</h2>
+    <p class="lead">没有函数调用 API，模型只能输出文字。提示词规定：工具名做外层标签，每个参数各占一层标签，一条消息只能调一个工具，然后等结果。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>一次任务的消息往返</b>：点「下一步」，看系统提示词、用户消息、模型回复依次出现；橙色框说明这一步受提示词里哪条规定约束。</div>
+    <div data-demo="roundtrip"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>格式检查器</b>：选一个预设或自己改文本框里的「模型回复」，按提示词里写明的几条硬规定逐条检查。这是本页按提示词条文写的演示，不是 Cline 真实的解析代码。</div>
+    <div data-demo="validator"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：工具结果以什么格式回给模型（例如往返演示里的 <code class="k">[read_file for '…'] Result:</code> 和 <code class="k">&lt;environment_details&gt;</code> 的具体内容）由 Cline 其他源码决定，不在 system.ts 里，演示中这部分标为「示意」。环境快照的内容和整个多轮循环，可看姊妹篇<a href="../how-cline-works/index.html">《Cline 是怎么工作的》</a>。</div>
+</section>
+
+<section class="ch" id="editing" data-title="改文件：SEARCH/REPLACE">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>编辑文件：为什么 SEARCH 必须逐字符一致</h2>
+    <p class="lead">提示词专门拿出一整段（EDITING FILES）讲两种写文件工具。默认用 replace_in_file，而它的 SEARCH 块必须是完整行、逐字符匹配，并且只替换第一次出现。这些规定各防什么错？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>SEARCH/REPLACE 匹配器</b>：左边是一个小文件，选一个预设或自己改 SEARCH/REPLACE，看能不能匹配上、改了哪一行。判定严格按提示词的规则：SEARCH 的每一行都要和文件里连续的若干行完全相同，只替换第一处。</div>
+    <div data-demo="sr"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>write_to_file 还是 replace_in_file？</b>提示词「Choosing the Appropriate Tool」的要点：</div>
+    <div class="grid2 prose">
+      <div class="pbox"><h4>replace_in_file（默认）</h4>小范围、局部的修改：改几行、换函数实现、改变量名；长文件里大部分内容不动的时候。原文称它「更安全、更精确」（Default to replace_in_file for most changes）。</div>
+      <div class="pbox"><h4>write_to_file</h4>新建文件；改动大到用 SEARCH/REPLACE 反而更复杂更易错；整体重组文件结构；文件很小且大部分内容要变；生成样板文件。要求给出文件<b>完整</b>的最终内容。</div>
+    </div>
+    <p class="src">另有一条容易忽略的提醒：编辑器可能在写入后自动格式化（换行、缩进、引号、import 排序、尾逗号……），工具返回的是格式化后的最终内容，下一次写 SEARCH 必须以它为准。</p>
+  </div>
+</section>
+
+<section class="ch" id="modes" data-title="ACT 与 PLAN 模式">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>ACT 模式与 PLAN 模式</h2>
+    <p class="lead">同一份提示词里写了两种工作状态。模型怎么知道自己处在哪种模式，两种模式下能用的工具有什么不同？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>模式切换</b>：切换模式，看工具清单里哪些被点亮。当前模式写在每条用户消息末尾的 environment_details 里，由用户手动切换。</div>
+    <div data-demo="modes"></div>
+  </div>
+</section>
+
+<section class="ch" id="rules" data-title="能力与规则">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>能力与规则：先说「你能做什么」，再说「你不准做什么」</h2>
+    <p class="lead">CAPABILITIES 段用散文告诉模型工具能组合出什么；RULES 段则是 20 多条硬性约束，篇幅仅次于工具定义。这些规则在防什么？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>规则分类浏览</b>：原文 RULES 是一长串平铺的条目，本页把它们按用途分成四类，点分类筛选。每条附原文关键句。</div>
+    <div data-demo="rules"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>语气检查器</b>：规则里有两条专管说话方式：消息不许以 "Great"、"Certainly"、"Okay"、"Sure" 开头；attempt_completion 的结果不许以提问或「还需要什么」收尾。在下面写一句回复试试。</div>
+    <div data-demo="tone"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：四个分类（环境、工具纪律、沟通、上下文）是本页为了阅读方便加的，原文没有分组；部分规则做了合并与节译。</div>
+</section>
+
+<section class="ch" id="objective" data-title="系统信息与目标">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>系统信息与目标：每次调工具之前先想清楚什么</h2>
+    <p class="lead">SYSTEM INFORMATION 只有四行（系统、Shell、主目录、工作目录）；最后的 OBJECTIVE 把整件事归结为五步，第 3 步写了一套调用前的自检：参数不齐，宁可问也不要瞎填。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>调用前自检</b>：选一个用户请求，点「下一步」，按 OBJECTIVE 第 3 步和 RULES 的要求一步步走到最终动作。</div>
+    <div data-demo="objective"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>OBJECTIVE 五步（节译）</b></div>
+    <ol class="prose" style="margin:0;padding-left:22px">
+      <li>分析任务，定下清晰可达的目标，并排好优先级。</li>
+      <li>按顺序推进，每次用一个工具，每个目标对应一个步骤。</li>
+      <li>调工具前先在 <code class="k">&lt;thinking&gt;</code> 里分析：看文件结构、选最相关的工具、逐个检查必填参数；缺了且推断不出就别调用（「not even with fillers for the missing params」），改用 ask_followup_question；可选参数缺了不必问。</li>
+      <li>完成后用 attempt_completion 交付，可附一条演示命令（如 <code class="k">open index.html</code>）。</li>
+      <li>用户可能给反馈，据此改进，但不要陷入无意义的来回，不以提问收尾。</li>
+    </ol>
+  </div>
+</section>
+
+<section class="ch" id="custom" data-title="用户指令：拼在末尾">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>用户自己的指令拼在哪里</h2>
+    <p class="lead">同一文件里还有第二个函数 <code class="k">addUserInstructions</code>：它把用户的各种自定义规则按固定顺序拼成「USER'S CUSTOM INSTRUCTIONS」段，接在系统提示词后面。谁先谁后？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>拼接器</b>：勾选你有的指令来源（括号里是示例内容），看最终拼出的尾段。顺序是代码写死的：偏好语言 → 设置里的自定义指令 → 全局 .clinerules → 项目 .clinerules → .clineignore 说明。</div>
+    <div data-demo="custom"></div>
+  </div>
+  <p class="src">原文这一段的引导语很讲究：用户指令要「尽力遵守」，但前提是「不干扰 TOOL USE 的规范」（without interfering with the TOOL USE guidelines）。也就是说，用户可以改风格、改偏好，但改不了 XML 调用协议。</p>
+</section>
+
+<section class="ch" id="summary" data-title="总结">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>一句话带走</h2>
+  </div>
+  <div class="fig">
+    <div class="final">Cline 的「智能体能力」相当一部分写在这份提示词里：工具清单定义它能做什么，XML 协议定义它怎么说，「一次一个工具、等确认再走」定义节奏，RULES 管住边界和语气，OBJECTIVE 给出循环与自检，最后再留一个口子给用户自己的规则。</div>
+    <p class="src">从篇幅看，工具定义与示例约占一半，规则约占六分之一；角色设定只有一句话。写好一个智能体的提示词，重点不在「你是谁」，而在「你能做什么、怎么做、什么时候停」。</p>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：本页制作时（2026-10-24）用 GitHub API 查看 cline/cline 主分支，仓库已改为 monorepo 结构（VS Code 扩展位于 <code class="k">apps/vscode/</code>），原路径 <code class="k">src/core/prompts/system.ts</code> 已不存在，<code class="k">apps/vscode/src/core/prompts/</code> 下可见的是 <code class="k">responses.ts</code> 等文件。所以本页讲的是 2025 年 4 月那一版的写法，想看最新提示词请到仓库里自行查找。<sup class="c">[1]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页以 Cline 项目（GitHub <a href="https://github.com/cline/cline">cline/cline</a>）的源码文件 <a href="https://github.com/cline/cline/blob/main/src%2Fcore%2Fprompts%2Fsystem.ts">src/core/prompts/system.ts</a> 为骨架重新组织（剪藏日期 2025-04-26，对应提交 <a href="https://github.com/cline/cline/commit/5439426ff682a95ae42e0b6d5908c85e36a9c1d0">5439426</a>）。章节顺序大体沿用源码，分组、中文说明与交互示例为本页改写，已逐处标注。页面中没有引用任何外链图片，所有图示均为内联 HTML/JS 绘制。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Cline 项目，<code class="k">src/core/prompts/system.ts</code>（<code class="k">SYSTEM_PROMPT</code> 与 <code class="k">addUserInstructions</code>），GitHub cline/cline，提交 5439426，剪藏于 2025-04-26。</li>
+    <li>nazha，《AI Coding 编辑器没有那么神秘 - How Cline works》，nazha.co（2025-01-24）；本仓库讲解页 <a href="../how-cline-works/index.html">ai/how-cline-works/</a>。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文生成，仅供学习；本页的字符统计由剪藏的源码文本统计得出，提示词细节以 Cline 仓库源码为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', 'aria-pressed': i === init ? 'true' : 'false', onclick: () => { bs.forEach((b, j) => { b.classList.toggle('on', j === i); b.setAttribute('aria-pressed', j === i ? 'true' : 'false'); }); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+const fmt = (n) => n.toLocaleString('en-US');
+
+/* ================= 数据：工具 ================= */
+const CWD = '${cwd.toPosix()}';
+const TOOLS = [
+  { n: 'execute_command', g: '命令', d: '在用户系统上执行一条 CLI 命令。命令要适配用户的系统和 Shell，并说明它做什么；复杂操作优先直接写命令而不是写脚本。命令在当前工作目录 ' + CWD + ' 下执行。',
+    p: [['command', 1, '要执行的命令，必须对当前操作系统有效，且不含有害指令。', 'Your command here'],
+        ['requires_approval', 1, '布尔值。即使用户开了自动批准，这条命令是否仍需明确批准。装卸依赖、删除/覆盖文件、改系统配置、网络操作等设 true；读文件、启动开发服务器、构建等无破坏性操作设 false。', 'true or false']] },
+  { n: 'read_file', g: '文件', d: '读取指定路径文件的内容，用于查看不知道内容的已有文件。会自动从 PDF 和 DOCX 提取纯文本；其他二进制文件可能不适用。',
+    p: [['path', 1, '要读取的文件路径（相对于 ' + CWD + '）。', 'File path here']] },
+  { n: 'write_to_file', g: '文件', d: '把内容写入指定路径：已存在就整体覆盖，不存在就新建，并自动创建所需目录。',
+    p: [['path', 1, '要写入的文件路径（相对于工作目录）。', 'File path here'],
+        ['content', 1, '文件内容。必须给出完整的最终内容，不得截断或省略，没改动的部分也要写全（原文用了 ALWAYS 和 MUST）。', 'Your file content here']] },
+  { n: 'replace_in_file', g: '文件', d: '用 SEARCH/REPLACE 块对已有文件做定点修改。规则见第 05 章：逐字符完全匹配、只替换第一处、多个块按文件中的先后顺序排列、保持简短、每行完整。',
+    p: [['path', 1, '要修改的文件路径（相对于工作目录）。', 'File path here'],
+        ['diff', 1, '一个或多个 SEARCH/REPLACE 块，格式为 <<<<<<< SEARCH … ======= … >>>>>>> REPLACE。', 'Search and replace blocks here']] },
+  { n: 'search_files', g: '检索', d: '在指定目录下递归做正则搜索，返回带上下文的匹配结果。',
+    p: [['path', 1, '要搜索的目录（相对于工作目录），会递归搜索。', 'Directory path here'],
+        ['regex', 1, '正则表达式，使用 Rust 正则语法。', 'Your regex pattern here'],
+        ['file_pattern', 0, 'Glob 文件过滤，例如 *.ts；不给就搜全部文件。', 'file pattern here (optional)']] },
+  { n: 'list_files', g: '检索', d: '列出目录内容；recursive 为真时递归列出。不要用它确认自己刚创建的文件是否存在，用户会告诉你创建是否成功。',
+    p: [['path', 1, '要列出的目录（相对于工作目录）。', 'Directory path here'],
+        ['recursive', 0, '是否递归；省略或 false 只列顶层。', 'true or false (optional)']] },
+  { n: 'list_code_definition_names', g: '检索', d: '列出指定目录顶层源码文件里的定义名（类、函数、方法等），用来快速把握代码库结构。',
+    p: [['path', 1, '目录路径（相对于工作目录）。', 'Directory path here']] },
+  { n: 'browser_action', g: '浏览器', cond: 1, d: '操作一个由 Puppeteer 控制的浏览器，除 close 外每个动作都会返回截图和新的控制台日志。必须以 launch 开始、以 close 结束；浏览器开着的时候只能用 browser_action，要改文件得先关浏览器。点击坐标要根据截图取元素中心，且在视口分辨率（由 browserSettings 注入）之内。',
+    p: [['action', 1, '要执行的动作：launch、click、type、scroll_down、scroll_up、close。', 'Action to perform (e.g., launch, click, type, scroll_down, scroll_up, close)'],
+        ['url', 0, 'launch 时使用的网址，需带协议（http://、file:// 等）。', 'URL to launch the browser at (optional)'],
+        ['coordinate', 0, 'click 时的 x,y 坐标，须在视口分辨率之内。', 'x,y coordinates (optional)'],
+        ['text', 0, 'type 时要输入的文字。', 'Text to type (optional)']] },
+  { n: 'use_mcp_tool', g: 'MCP', d: '调用已连接 MCP 服务器提供的工具。每个工具有自己的输入 schema。',
+    p: [['server_name', 1, '提供该工具的 MCP 服务器名。', 'server name here'],
+        ['tool_name', 1, '要执行的工具名。', 'tool name here'],
+        ['arguments', 1, '符合该工具输入 schema 的 JSON 对象。', '{\n  "param1": "value1",\n  "param2": "value2"\n}']] },
+  { n: 'access_mcp_resource', g: 'MCP', d: '读取 MCP 服务器提供的资源（文件、API 响应、系统信息等可作为上下文的数据源）。',
+    p: [['server_name', 1, '提供该资源的 MCP 服务器名。', 'server name here'],
+        ['uri', 1, '标识资源的 URI。', 'resource URI here']] },
+  { n: 'load_mcp_documentation', g: 'MCP', d: '加载「如何创建 MCP 服务器」的文档。用户要求「加一个工具」、新建或安装 MCP 服务器时使用。',
+    p: [] },
+  { n: 'ask_followup_question', g: '与用户沟通', d: '向用户提问以获取完成任务所需的信息。遇到歧义、需要澄清时使用，但要节制，避免过多来回。',
+    p: [['question', 1, '要问的问题，清楚具体。', 'Your question here'],
+        ['options', 0, '2 到 5 个可选答案的数组。重要：绝不能提供「切换到 Act 模式」的选项，那必须由用户自己手动切换。', 'Array of options here (optional), e.g. ["Option 1", "Option 2", "Option 3"]']] },
+  { n: 'attempt_completion', g: '与用户沟通', d: '确认任务完成后向用户交付结果。重要：在确认之前所有工具调用都成功之前不能用它，用之前必须在 <thinking> 里自问一遍；否则「会导致代码损坏和系统故障」。',
+    p: [['result', 1, '任务结果。要写成终结性的，不以问题或「还需要什么帮助」结尾。', 'Your final result description here'],
+        ['command', 0, '用来演示结果的 CLI 命令，例如 open index.html；不要用 echo、cat 这类只打印文字的命令。', 'Command to demonstrate result (optional)']] },
+  { n: 'plan_mode_respond', g: '与用户沟通', d: '在 PLAN 模式下回复用户：澄清问题、设计方案、和用户头脑风暴。只在 PLAN 模式可用。',
+    p: [['response', 1, '给用户的回复。不要在这里写工具调用；内容必须放进 response 参数，不能直接写在 plan_mode_respond 标签里。', 'Your response here']] },
+  { n: 'new_task', g: '任务控制', d: '带着预载上下文开一个新任务：把到目前为止的对话写成详细摘要，用户可以预览后决定是否开新任务。',
+    p: [['context', 1, '预载上下文，建议包含五部分：当前工作、关键技术概念、相关文件与代码、已解决的问题、待办与下一步（要逐字引用最近对话）。', 'context to preload new task with']] },
+];
+const GROUPS = ['文件', '检索', '命令', '浏览器', 'MCP', '与用户沟通', '任务控制'];
+const usage = (t) => t.p.length
+  ? `<${t.n}>\n` + t.p.map(([k, , , v]) => (v.includes('\n') ? `<${k}>\n${v}\n</${k}>` : `<${k}>${v}</${k}>`)).join('\n') + `\n</${t.n}>`
+  : `<${t.n}>\n</${t.n}>`;
+/* 按原文 Usage 修正几个跨行写法 */
+const USAGE_FIX = {
+  write_to_file: '<write_to_file>\n<path>File path here</path>\n<content>\nYour file content here\n</content>\n</write_to_file>',
+  replace_in_file: '<replace_in_file>\n<path>File path here</path>\n<diff>\nSearch and replace blocks here\n</diff>\n</replace_in_file>',
+  ask_followup_question: '<ask_followup_question>\n<question>Your question here</question>\n<options>\nArray of options here (optional), e.g. ["Option 1", "Option 2", "Option 3"]\n</options>\n</ask_followup_question>',
+  attempt_completion: '<attempt_completion>\n<result>\nYour final result description here\n</result>\n<command>Command to demonstrate result (optional)</command>\n</attempt_completion>',
+  plan_mode_respond: '<plan_mode_respond>\n<response>Your response here</response>\n</plan_mode_respond>',
+};
+const usageOf = (t) => USAGE_FIX[t.n] || usage(t);
+const TOOLMAP = Object.fromEntries(TOOLS.map((t) => [t.n, t]));
+
+/* ================= 01 分区图 ================= */
+reg('anatomy', (node) => {
+  const S = [
+    { k: 'role', zh: '角色设定', en: 'You are Cline…', n: 155, c: 'var(--y)',
+      what: '全文唯一的一句「人设」：Cline 是一位技能高超的软件工程师，熟悉多种编程语言、框架、设计模式和最佳实践。',
+      pts: ['只有一句，没有性格描写、没有口吻设定。', '后面八段才是重点：讲它能做什么、怎么做。'],
+      q: 'You are Cline, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.' },
+    { k: 'tool', zh: '工具使用', en: 'TOOL USE', n: 24545, c: 'var(--p)',
+      what: '最大的一段，约占全文一半。分五小节：总则 → XML 调用格式（Tool Use Formatting）→ 15 个工具定义（Tools）→ 6 个调用示例（Tool Use Examples）→ 使用守则（Tool Use Guidelines）。',
+      pts: ['工具调用需经用户批准；一条消息只能用一个工具，结果会在下一条用户消息里返回。', '每个工具固定写 Description / Parameters / Usage 三部分（第 03 章）。', '守则要求先在 <thinking> 里评估已有信息、选最合适的工具，并且每一步都等用户确认结果后再走下一步（第 04 章）。', '其中工具定义约 1.9 万字符，示例与守则各约 2.4 千字符。'],
+      q: 'You can use one tool per message, and will receive the result of that tool use in the user\'s response.' },
+    { k: 'mcp', zh: 'MCP 服务器', en: 'MCP SERVERS', n: 1623, c: 'var(--t)',
+      what: '介绍 Model Context Protocol，并在运行时列出当前已连接的服务器：服务器名与启动命令、可用工具（附 JSON 输入 schema）、资源模板、直接资源。',
+      pts: ['内容由 mcpHub.getServers() 动态生成，只列 status 为 connected 的服务器。', '没有服务器时写「(No MCP servers currently connected)」。', '字符数里很大一部分是生成代码本身，真实长度取决于你接了什么（第 02 章）。'],
+      q: 'The Model Context Protocol (MCP) enables communication between the system and locally running MCP servers that provide additional tools and resources to extend your capabilities.' },
+    { k: 'edit', zh: '编辑文件', en: 'EDITING FILES', n: 4064, c: 'var(--o)',
+      what: '单独讲 write_to_file 与 replace_in_file 的分工：各自用途、何时用、注意事项，以及「默认用 replace_in_file」。',
+      pts: ['提醒编辑器可能自动格式化，后续 SEARCH 要以工具返回的最终内容为准。', '给出四步工作流：先评估改动范围再选工具。'],
+      q: 'Default to replace_in_file for most changes. It\'s the safer, more precise option that minimizes potential issues.' },
+    { k: 'mode', zh: 'ACT 与 PLAN 模式', en: 'ACT MODE V.S. PLAN MODE', n: 2388, c: 'var(--r)',
+      what: '两种模式：ACT 用工具干活，完成后 attempt_completion；PLAN 用 plan_mode_respond 和用户讨论方案，可以画 Mermaid 图，方案定了请用户切回 ACT。',
+      pts: ['当前模式写在每条用户消息的 environment_details 里。', '模式由用户切换，模型只能请用户去切（第 06 章）。'],
+      q: 'In PLAN MODE, the goal is to gather information and get context to create a detailed plan for accomplishing the task, which the user will review and approve before they switch you to ACT MODE to implement the solution.' },
+    { k: 'cap', zh: '能力', en: 'CAPABILITIES', n: 4602, c: 'var(--t)',
+      what: '用散文把工具「串」起来：任务开始时会收到工作目录的递归文件列表；可以先看结构、再用 list_code_definition_names、read_file 深入，最后 replace_in_file 修改，再用 search_files 检查其他受影响的地方。',
+      pts: ['命令在用户的 VS Code 终端里运行，允许交互式和长时间运行的命令。', '支持浏览器时多一段：改完网页可以 launch 浏览器截图验证。'],
+      q: 'Interactive and long-running commands are allowed, since the commands are run in the user\'s VSCode terminal.' },
+    { k: 'rules', zh: '规则', en: 'RULES', n: 8588, c: 'var(--r)',
+      what: '23 条平铺的硬性约束（另有 2 条在支持浏览器时追加）：不能 cd 出工作目录、不用 ~、禁止以 Great/Certainly/Okay/Sure 开头、只能通过 ask_followup_question 提问、每步等确认……',
+      pts: ['篇幅仅次于工具段，约占全文六分之一。', '本页把它分成环境、工具纪律、沟通、上下文四类（第 07 章）。'],
+      q: 'You are STRICTLY FORBIDDEN from starting your messages with "Great", "Certainly", "Okay", "Sure".' },
+    { k: 'sys', zh: '系统信息', en: 'SYSTEM INFORMATION', n: 166, c: 'var(--y)',
+      what: '四行运行时数据：操作系统、默认 Shell、主目录、当前工作目录。',
+      pts: ['RULES 要求执行命令前先参考这里，保证命令与系统兼容。'],
+      q: 'Operating System: ${osName()}\nDefault Shell: ${getShell()}\nHome Directory: ${os.homedir().toPosix()}\nCurrent Working Directory: ${cwd.toPosix()}' },
+    { k: 'obj', zh: '目标', en: 'OBJECTIVE', n: 2261, c: 'var(--p)',
+      what: '收尾段：把工作方式归结为五步的迭代循环，其中第 3 步是调用前自检（第 08 章）。',
+      pts: ['缺必填参数且推断不出时不调用工具，改为提问；可选参数缺了不问。', '最后一句再次强调：不要无意义地来回对话。'],
+      q: 'You accomplish a given task iteratively, breaking it down into clear steps and working through them methodically.' },
+    { k: 'user', zh: '用户自定义指令', en: "USER'S CUSTOM INSTRUCTIONS", n: null, c: 'var(--muted)', dyn: 1,
+      what: '不在 SYSTEM_PROMPT 里，而是同一文件的 addUserInstructions 函数生成，用户有自定义规则时才拼到末尾（第 09 章）。',
+      pts: ['长度完全取决于用户写了什么。'],
+      q: 'The following additional instructions are provided by the user, and should be followed to the best of your ability without interfering with the TOOL USE guidelines.' },
+  ];
+  const total = S.reduce((a, s) => a + (s.n || 0), 0);
+  const max = Math.max(...S.map((s) => s.n || 0));
+  const detail = el('div', { class: 'adetail', 'aria-live': 'polite' });
+  const rows = S.map((s, i) => {
+    const pct = s.n ? (s.n / total * 100) : 0;
+    const r = el('button', { type: 'button', class: 'arow' + (s.dyn ? ' dyn' : '') },
+      el('div', { class: 'top' },
+        el('span', { class: 'nm' }, s.zh, el('span', { class: 'en' }, s.en)),
+        el('span', { class: 'sz' }, s.n ? `${fmt(s.n)} 字符 · ${pct.toFixed(1)}%` : '运行时拼接，长度不定')),
+      el('div', { class: 'bar' }, el('i', { style: `width:${s.n ? Math.max(1.2, s.n / max * 100) : 0}%;background:${s.c}` })));
+    r.addEventListener('click', () => show(i));
+    return r;
+  });
+  function show(i) {
+    rows.forEach((r, j) => r.classList.toggle('on', j === i));
+    const s = S[i];
+    detail.innerHTML = '';
+    detail.append(el('h3', {}, `${s.zh}（${s.en}）`), el('p', {}, s.what),
+      el('ul', {}, s.pts.map((p) => el('li', {}, p))),
+      el('div', { class: 'q' }, '原文：' + s.q));
+  }
+  node.append(el('div', { class: 'amap' }, rows), detail,
+    el('div', { class: 'status', html: `九段合计 <b>${fmt(total)}</b> 字符；工具段一家就占 <b>${(S[1].n / total * 100).toFixed(0)}%</b>，规则段 <b>${(S[6].n / total * 100).toFixed(0)}%</b>，角色设定只有 <b>${(S[0].n / total * 100).toFixed(1)}%</b>。` }));
+  show(1);
+});
+
+/* ================= 02 参数注入器 ================= */
+reg('params', (node) => {
+  const OS = [
+    { name: 'macOS Sequoia', shell: '/bin/zsh', home: '/Users/dev', raw: '/Users/dev/projects/todo-app' },
+    { name: 'Windows 11', shell: 'C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', home: 'C:\\Users\\dev', raw: 'C:\\Users\\dev\\projects\\todo-app' },
+    { name: 'Linux 6.8', shell: '/bin/bash', home: '/home/dev', raw: '/home/dev/projects/todo-app' },
+  ];
+  const VP = [[900, 600], [1280, 800]];
+  const MCP = [
+    { name: 'weather-server', cmd: 'node /Users/dev/mcp/weather/build/index.js', tool: 'get_forecast', desc: 'Get weather forecast for a city', schema: { type: 'object', properties: { city: { type: 'string' }, days: { type: 'number' } }, required: ['city'] } },
+    { name: 'github', cmd: 'npx -y @modelcontextprotocol/server-github', tool: 'create_issue', desc: 'Create a new issue in a GitHub repository', schema: { type: 'object', properties: { owner: { type: 'string' }, repo: { type: 'string' }, title: { type: 'string' } }, required: ['owner', 'repo', 'title'] } },
+  ];
+  const st = { os: 0, br: true, vp: 0, mcp: 1 };
+  const toPosix = (p) => p.replace(/\\/g, '/');
+  const H = (v, c = '') => `<span class="hl ${c}">${esc(v)}</span>`;
+  const brChk = el('input', { type: 'checkbox', checked: '' });
+  brChk.addEventListener('change', () => { st.br = brChk.checked; render(); });
+  const controls = el('div', {},
+    el('div', { class: 'ctrlrow' }, '操作系统', seg(OS.map((o) => o.name.split(' ')[0]), (i) => { st.os = i; render(); })),
+    el('div', { class: 'ctrlrow' }, el('label', { class: 'sw' }, brChk, 'supportsBrowserUse（支持浏览器）'), '视口', seg(VP.map((v) => v.join('×')), (i) => { st.vp = i; render(); })),
+    el('div', { class: 'ctrlrow' }, '已连接 MCP 服务器', seg(['0 个', '1 个', '2 个'], (i) => { st.mcp = i; render(); }, 1)));
+  const stats = el('div', { class: 'stat' });
+  const boxes = el('div', { class: 'pgrid' });
+  const status = el('div', { class: 'status' });
+  function render() {
+    const o = OS[st.os], cwd = toPosix(o.raw), [w, h] = VP[st.vp];
+    const nTools = st.br ? 15 : 14;
+    stats.innerHTML = '';
+    stats.append(
+      el('div', { class: 's' }, el('b', {}, String(nTools)), el('span', {}, '内置工具数（浏览器工具随开关增减）')),
+      el('div', { class: 's' }, el('b', {}, '14'), el('span', {}, '处 ${cwd.toPosix()} 被替换成工作目录')),
+      el('div', { class: 's' }, el('b', {}, st.br ? '+5,323' : '0'), el('span', {}, '浏览器相关文字（源码字符数，5 处条件分支合计）')));
+    let mcpTxt;
+    if (st.mcp === 0) mcpTxt = '(No MCP servers currently connected)';
+    else mcpTxt = MCP.slice(0, st.mcp).map((s) => {
+      const sch = JSON.stringify(s.schema, null, 2).split('\n').join('\n    ');
+      return `## ${s.name} (\`${s.cmd}\`)\n\n### Available Tools\n- ${s.tool}: ${s.desc}\n    Input Schema:\n    ${sch}`;
+    }).join('\n\n');
+    const B = [
+      ['SYSTEM INFORMATION 段', `Operating System: ${H(o.name)}\nDefault Shell: ${H(o.shell)}\nHome Directory: ${H(toPosix(o.home))}\nCurrent Working Directory: ${H(cwd)}`],
+      ['execute_command 的说明末句', `…Commands will be executed in the current working directory: ${H(cwd)}`],
+      ['RULES 前两条', `- Your current working directory is: ${H(cwd)}\n- You cannot \`cd\` into a different directory to complete a task. You are stuck operating from '${H(cwd)}', …`],
+      ['CAPABILITIES 首句', `- You have access to tools that let you execute CLI commands on the user's computer, list files, view source code definitions, regex search${st.br ? H(', use the browser', 't') : ''}, read and edit files, and ask follow-up questions.`],
+      ['browser_action 工具', st.br ? `## browser_action\n…\n- The browser window has a resolution of **${H(w + 'x' + h)}** pixels. When performing any click actions, ensure the coordinates are within this resolution range.` : H('（supportsBrowserUse = false：整个工具定义不出现，CAPABILITIES 和 RULES 里另外 4 处浏览器相关文字也一并消失）', 'r')],
+      ['MCP SERVERS · Connected MCP Servers', st.mcp ? H(mcpTxt, 'p') : H(mcpTxt, 'r')],
+    ];
+    boxes.innerHTML = '';
+    B.forEach(([t, html]) => boxes.append(el('div', { class: 'pbox' }, el('h4', {}, t), el('pre', { class: 'code wrap', html }))));
+    status.innerHTML = st.os === 1
+      ? `Windows 的原始路径 <code class="k">${esc(o.raw)}</code> 经 <code class="k">toPosix()</code> 变成 <b>${esc(cwd)}</b>，模型看到的永远是正斜杠。`
+      : `当前工作目录 <b>${esc(cwd)}</b> 被写进提示词 14 处；规则还要求模型「不要用 ~ 或 $HOME 指代主目录」，所以路径都写全。`;
+  }
+  node.append(controls, stats, boxes, status);
+  render();
+});
+
+/* ================= 03 工具查看器 ================= */
+reg('tools', (node) => {
+  const chipBox = el('div', {});
+  const panel = el('div', { style: 'margin-top:12px' });
+  const chips = {};
+  GROUPS.forEach((g) => {
+    const ts = TOOLS.filter((t) => t.g === g);
+    chipBox.append(el('div', { class: 'grp' }, g), el('div', { class: 'chips' }, ts.map((t) => {
+      const c = el('button', { type: 'button', class: 'chip' + (t.cond ? ' cond' : '') }, t.n);
+      c.addEventListener('click', () => show(t.n));
+      chips[t.n] = c; return c;
+    })));
+  });
+  function show(n) {
+    const t = TOOLMAP[n];
+    Object.entries(chips).forEach(([k, c]) => c.classList.toggle('on', k === n));
+    panel.innerHTML = '';
+    const req = t.p.filter((x) => x[1]).length, opt = t.p.length - req;
+    panel.append(el('div', { class: 'adetail' },
+      el('h3', { class: 'mono' }, t.n),
+      el('p', {}, t.d),
+      t.cond ? el('p', { class: 'src' }, '条件工具：只有 supportsBrowserUse 为真时，这一整段才会出现在提示词里。') : null,
+      t.n === 'plan_mode_respond' ? el('p', { class: 'src' }, '模式工具：ACT 模式下不可用（见第 06 章）。') : null,
+      t.p.length
+        ? el('div', { class: 'scrollx', style: 'margin-top:8px' }, el('table', { class: 'pt' },
+            el('thead', {}, el('tr', {}, el('th', {}, '参数'), el('th', {}, ''), el('th', {}, '说明'))),
+            el('tbody', {}, t.p.map(([k, r, d]) => el('tr', {}, el('td', {}, k), el('td', {}, el('span', { class: r ? 'req' : 'opt' }, r ? '必填' : '可选')), el('td', {}, d))))))
+        : el('p', { class: 'src' }, 'Parameters: None —— 不需要任何参数。'),
+      el('div', { class: 'grp' }, '提示词里的 Usage：'),
+      el('pre', { class: 'code' }, usageOf(t))));
+    status.innerHTML = `<b>${n}</b>：${req} 个必填参数，${opt} 个可选参数。`;
+  }
+  const status = el('div', { class: 'status' });
+  node.append(chipBox, panel, status);
+  show('execute_command');
+});
+
+/* ================= 04 消息往返 ================= */
+reg('roundtrip', (node) => {
+  const M = [
+    ['sys', 'SYSTEM', 'SYSTEM_PROMPT(cwd, supportsBrowserUse, mcpHub, browserSettings)\n  → 约 4.8 万字符的说明书\n+ addUserInstructions(…)\n  → USER\'S CUSTOM INSTRUCTIONS（如果有）',
+      '系统提示词放在对话最前面；模型之后的每一次回复都在它的约束下产生。'],
+    ['user', 'USER', '<task>\n给 src/greet.js 里的 greet 函数加一个默认参数 name = "world"\n</task>\n\n<environment_details>\n# Current Working Directory (/Users/dev/todo-app) Files\npackage.json\nsrc/\nsrc/greet.js\n\n# Current Mode\nACT MODE\n</environment_details>   ← 示意',
+      'RULES：每条用户消息末尾自动附带 environment_details，它不是用户本人写的，可参考但别当作用户的请求。当前模式（ACT/PLAN）也写在这里。'],
+    ['asst', 'ASSISTANT', '<thinking>\n用户给了路径，但我不知道文件现在的内容。\nread_file 只要一个必填参数 path，已知。\n</thinking>\n\n<read_file>\n<path>src/greet.js</path>\n</read_file>',
+      'Tool Use Guidelines 第 1、3 条：先在 <thinking> 里评估已有和缺少的信息；一条消息只用一个工具，「不要假设工具的结果」。说完这个调用，模型就停下等待。'],
+    ['user', 'USER', '[read_file for \'src/greet.js\'] Result:   ← 示意\nfunction greet(name) {\n  console.log("Hello, " + name);\n}',
+      'Tool Use Guidelines 第 5 条：工具结果以「用户回复」的形式送回，可能包含成功/失败及原因、linter 错误、终端新输出等。'],
+    ['asst', 'ASSISTANT', '<replace_in_file>\n<path>src/greet.js</path>\n<diff>\n<<<<<<< SEARCH\nfunction greet(name) {\n=======\nfunction greet(name = "world") {\n>>>>>>> REPLACE\n</diff>\n</replace_in_file>',
+      'EDITING FILES：小改动默认用 replace_in_file；SEARCH 写完整的一行。RULES：要改文件就直接调用工具，不必先把改动展示一遍。'],
+    ['user', 'USER', '[replace_in_file for \'src/greet.js\'] Result:   ← 示意\n保存成功，并附上文件（可能已被编辑器自动格式化）的最终内容',
+      'EDITING FILES：工具返回的是自动格式化之后的最终状态，后续再写 SEARCH 必须以它为准。'],
+    ['asst', 'ASSISTANT', '<thinking>\n上一步 replace_in_file 已由用户确认成功，可以交付。\n</thinking>\n\n<attempt_completion>\n<result>\n已为 greet 函数加上默认参数 name = "world"，不传参数时输出 Hello, world。\n</result>\n</attempt_completion>',
+      'attempt_completion：用之前必须在 <thinking> 里确认先前的工具调用都已成功；结果要写成终结性的，不以提问收尾。'],
+  ];
+  const msgs = M.map(([cls, who, body]) => el('div', { class: 'msg ' + cls }, el('div', { class: 'who' }, who), el('pre', { class: 'code' }, body)));
+  const why = el('div', { class: 'why' });
+  const status = el('div', { class: 'status' });
+  let k = 0;
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => go(k + 1) }, '下一步');
+  const prev = el('button', { class: 'btn', type: 'button', onclick: () => go(k - 1) }, '上一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => go(0) }, '重置');
+  function go(i) {
+    k = Math.max(0, Math.min(M.length - 1, i));
+    msgs.forEach((m, j) => { m.classList.toggle('on', j <= k); m.classList.toggle('cur', j === k); });
+    why.textContent = '依据：' + M[k][3];
+    next.disabled = k === M.length - 1; prev.disabled = k === 0;
+    const calls = M.slice(0, k + 1).filter((m) => m[0] === 'asst').length;
+    status.innerHTML = `第 <b>${k + 1}</b> / ${M.length} 条消息；模型已发出 <b>${calls}</b> 次工具调用，每次恰好一个。`;
+  }
+  node.append(el('div', { class: 'chat' }, msgs), el('div', { class: 'ctrl' }, prev, next, reset), why, status);
+  go(0);
+});
+
+/* ================= 04b 格式检查器 ================= */
+reg('validator', (node) => {
+  const P = [
+    ['规范示例', '<thinking>\n先看看 package.json 里有哪些脚本。\n</thinking>\n\n<read_file>\n<path>package.json</path>\n</read_file>'],
+    ['一次两个工具', '<read_file>\n<path>src/a.js</path>\n</read_file>\n\n<read_file>\n<path>src/b.js</path>\n</read_file>'],
+    ['缺必填参数', '<thinking>\n安装依赖。\n</thinking>\n\n<execute_command>\n<command>npm install lodash</command>\n</execute_command>'],
+    ['客套开头', 'Great, I\'ve updated the CSS.\n\n<attempt_completion>\n<result>\nThe CSS has been updated. Let me know if you need anything else?\n</result>\n</attempt_completion>'],
+    ['违规选项', '<ask_followup_question>\n<question>数据库用哪个？</question>\n<options>\n["SQLite", "PostgreSQL", "切换到 Act 模式后再决定"]\n</options>\n</ask_followup_question>'],
+  ];
+  const ta = el('textarea', { class: 'ta', spellcheck: 'false', 'aria-label': '模型回复文本' });
+  const list = el('ul', { class: 'checks' });
+  const status = el('div', { class: 'status' });
+  const names = TOOLS.map((t) => t.n);
+  function check() {
+    const s = ta.value;
+    const R = [];
+    const add = (ok, txt) => R.push([ok, txt]);
+    const body = s.replace(/<thinking>[\s\S]*?<\/thinking>/g, '');
+    const calls = [...body.matchAll(/<([a-z_]+)>([\s\S]*?)<\/\1>/g)].filter((m) => names.includes(m[1]));
+    const tops = [...body.matchAll(/^<([a-z_]+)>/gm)].map((m) => m[1]);
+    const unknown = tops.filter((t) => !names.includes(t) && !calls.some((c) => c[2].includes('<' + t + '>')));
+    if (calls.length === 1) add(1, `恰好一个工具调用：<${calls[0][1]}>（「one tool per message」）`);
+    else if (calls.length === 0) add(0, '没有找到任何已定义的工具调用；提示词要求用工具推进任务，完成时也要用 attempt_completion。');
+    else add(0, `一条消息里有 ${calls.length} 个工具调用，违反「use one tool at a time per message」。`);
+    if (unknown.length) add(0, `出现未定义的标签 <${unknown[0]}>，提示词的工具清单里没有它。`);
+    if (calls.length) {
+      const [, name, inner] = calls[0];
+      const t = TOOLMAP[name];
+      const miss = t.p.filter(([k, r]) => r && !new RegExp(`<${k}>[\\s\\S]*?\\S[\\s\\S]*?</${k}>`).test(inner)).map((x) => x[0]);
+      if (miss.length) add(0, `${name} 缺少必填参数：${miss.join('、')}。OBJECTIVE：缺必填参数时不要调用（连占位符也不行），应该先问用户。`);
+      else add(1, `${name} 的必填参数齐全${t.p.length ? '（' + t.p.filter((x) => x[1]).map((x) => x[0]).join('、') + '）' : '（它不需要参数）'}。`);
+      if (name === 'attempt_completion') {
+        add(/<thinking>[\s\S]*?<\/thinking>/.test(s) ? 1 : 0, '用 attempt_completion 前要在 <thinking> 里确认先前工具都成功' + (/<thinking>/.test(s) ? '：有 thinking。' : '：这里没有 thinking。'));
+        const res = (inner.match(/<result>([\s\S]*?)<\/result>/) || [, ''])[1].trim();
+        add(/[?？]$/.test(res) || /let me know|anything else|还需要|需要我/i.test(res) ? 0 : 1, 'result 不以提问或「还需要什么」收尾。');
+      }
+      if (name === 'ask_followup_question') {
+        const op = (inner.match(/<options>([\s\S]*?)<\/options>/) || [, ''])[1];
+        if (op.trim()) {
+          let arr = null; try { arr = JSON.parse(op); } catch (e) { arr = null; }
+          if (!Array.isArray(arr)) add(0, 'options 应是一个数组。');
+          else add(arr.length >= 2 && arr.length <= 5 ? 1 : 0, `options 有 ${arr.length} 项（要求 2 到 5 项）。`);
+          add(/act\s*(mode|模式)/i.test(op) ? 0 : 1, 'options 里不能出现「切换到 Act 模式」：模式只能由用户手动切换。');
+        }
+      }
+    }
+    const opener = s.trim().match(/^(great|certainly|okay|sure)\b/i);
+    add(opener ? 0 : 1, opener ? `以 "${opener[1]}" 开头：RULES 严禁以 Great / Certainly / Okay / Sure 开头。` : '开头没有客套词。');
+    if (!/<thinking>/.test(s)) R.push([2, '没有 <thinking>：Tool Use Guidelines 建议先在 thinking 里评估再选工具（这条是建议，不计为违规）。']);
+    list.innerHTML = '';
+    R.forEach(([ok, txt]) => list.append(el('li', {}, el('span', { class: ok === 1 ? 'ok' : ok === 0 ? 'bad' : 'na' }, ok === 1 ? '✓' : ok === 0 ? '✗' : '·'), el('span', {}, txt))));
+    const bad = R.filter((r) => r[0] === 0).length;
+    status.innerHTML = bad ? `有 <b style="color:var(--r)">${bad}</b> 处违反提示词的硬规定。` : '<b>全部通过</b>：这条回复符合提示词写明的格式规定。';
+  }
+  ta.addEventListener('input', check);
+  const sg = seg(P.map((p) => p[0]), (i) => { ta.value = P[i][1]; check(); });
+  ta.value = P[0][1];
+  node.append(el('div', { class: 'ctrl' }, sg), ta, list, status);
+  check();
+});
+
+/* ================= 05 SEARCH/REPLACE 匹配器 ================= */
+reg('sr', (node) => {
+  const FILE = ['function greet(name) {', '  console.log("Hello, " + name);', '}', '', 'function bye(name) {', '  console.log("Bye, " + name);', '}'];
+  const P = [
+    ['完整行', '  console.log("Hello, " + name);', '  console.log(`Hello, ${name}!`);'],
+    ['缩进不对', 'console.log("Hello, " + name);', 'console.log(`Hello, ${name}!`);'],
+    ['半行', '"Hello, " + name', '`Hello, ${name}!`'],
+    ['多处出现', '}', '}\n// greet 结束'],
+    ['多行块', 'function bye(name) {\n  console.log("Bye, " + name);', 'function bye(name = "friend") {\n  console.log("Bye, " + name);'],
+  ];
+  const sTa = el('textarea', { class: 'ta sm', spellcheck: 'false', 'aria-label': 'SEARCH 内容' });
+  const rTa = el('textarea', { class: 'ta sm', spellcheck: 'false', 'aria-label': 'REPLACE 内容' });
+  const before = el('div', { class: 'filev', 'aria-label': '原文件' });
+  const after = el('div', { class: 'filev', 'aria-label': '修改后' });
+  const status = el('div', { class: 'status' });
+  const line = (n, txt, cls = '') => el('div', { class: 'ln ' + cls }, el('span', {}, n), el('span', {}, txt === '' ? ' ' : txt));
+  function run() {
+    let sl = sTa.value.split('\n'); if (sl.length > 1 && sl[sl.length - 1] === '') sl.pop();
+    const rl = rTa.value === '' ? [] : rTa.value.split('\n');
+    const hits = [];
+    for (let i = 0; i + sl.length <= FILE.length; i++) if (sl.every((x, j) => FILE[i + j] === x)) hits.push(i);
+    before.innerHTML = ''; after.innerHTML = '';
+    const at = hits.length ? hits[0] : -1;
+    FILE.forEach((t, i) => before.append(line(i + 1, t, at >= 0 && i >= at && i < at + sl.length ? 'm' : '')));
+    if (at >= 0) {
+      let n = 1;
+      FILE.slice(0, at).forEach((t) => after.append(line(n++, t)));
+      sl.forEach((t) => after.append(line('−', t, 'del')));
+      rl.forEach((t) => after.append(line(n++, t, 'add')));
+      FILE.slice(at + sl.length).forEach((t) => after.append(line(n++, t)));
+      status.innerHTML = `<b>匹配成功</b>：替换了第 ${at + 1}${sl.length > 1 ? '–' + (at + sl.length) : ''} 行。` +
+        (hits.length > 1 ? ` 同样的内容在第 ${hits.slice(1).map((h) => h + 1).join('、')} 行也出现了，但<b>只替换第一处</b>（「will ONLY replace the first match occurrence」）。想改别处，就得多带几行上下文让 SEARCH 唯一。` : '');
+    } else {
+      after.append(line('', '（未修改）'));
+      const txt = FILE.join('\n'), q = sTa.value;
+      let why = '找不到逐字符相同的连续行。';
+      if (q && txt.includes(q)) why = '这段文字在文件里找得到，但它<b>不是完整的行</b>。RULES：SEARCH 必须包含完整行，系统按整行匹配，不能匹配行的片段。';
+      else if (sl.every((x) => FILE.some((f) => f.trim() === x.trim()))) why = '去掉首尾空白后能对上，但<b>缩进不一致</b>。原文要求「character-for-character including whitespace, indentation」。';
+      status.innerHTML = '<b style="color:var(--r)">匹配失败</b>：' + why;
+    }
+  }
+  [sTa, rTa].forEach((t) => t.addEventListener('input', run));
+  const sg = seg(P.map((p) => p[0]), (i) => { sTa.value = P[i][1]; rTa.value = P[i][2]; run(); });
+  sTa.value = P[0][1]; rTa.value = P[0][2];
+  node.append(el('div', { class: 'ctrl' }, sg),
+    el('div', { class: 'grid2' },
+      el('div', {}, el('div', { class: 'grp' }, '<<<<<<< SEARCH'), sTa, el('div', { class: 'grp' }, '======='), rTa, el('div', { class: 'grp' }, '>>>>>>> REPLACE')),
+      el('div', {}, el('div', { class: 'grp' }, 'src/greet.js（黄色 = 匹配到的行）'), before, el('div', { class: 'grp' }, '替换后（红删绿增）'), after)),
+    status);
+  run();
+});
+
+/* ================= 06 模式 ================= */
+reg('modes', (node) => {
+  const chips = {};
+  const box = el('div', { class: 'chips' }, TOOLS.map((t) => (chips[t.n] = el('span', { class: 'chip' }, t.n))));
+  const text = el('div', { class: 'adetail' });
+  const D = [
+    { h: 'ACT 模式（默认）', p: '可用除 plan_mode_respond 以外的全部工具。用工具完成任务，完成后用 attempt_completion 交付结果。', q: 'In ACT MODE, you have access to all tools EXCEPT the plan_mode_respond tool.' },
+    { h: 'PLAN 模式', p: '目标是收集信息、弄清上下文、拿出详细方案给用户审阅。要和用户交流或给出方案时，直接用 plan_mode_respond，而不是在 <thinking> 里琢磨何时回复。提示词举例可以用 read_file、search_files 收集信息，可以提澄清问题，鼓励用 Mermaid 图（颜色要高对比）展示方案。方案定了，请用户自己切回 ACT 模式。', q: 'Finally once it seems like you\'ve reached a good plan, ask the user to switch you back to ACT MODE to implement the solution.' },
+  ];
+  const status = el('div', { class: 'status' });
+  function set(m) {
+    TOOLS.forEach((t) => {
+      const c = chips[t.n]; c.className = 'chip';
+      if (m === 0) c.classList.add(t.n === 'plan_mode_respond' ? 'dim' : 'lit');
+      else if (t.n === 'plan_mode_respond') c.classList.add('only');
+      else if (t.n === 'read_file' || t.n === 'search_files') c.classList.add('lit');
+    });
+    text.innerHTML = '';
+    text.append(el('h3', {}, D[m].h), el('p', {}, D[m].p), el('div', { class: 'q' }, '原文：' + D[m].q));
+    status.innerHTML = m === 0
+      ? '绿色 = 可用（14 个；浏览器工具另视开关），灰色 = 不可用。'
+      : '橙色 = 只在 PLAN 模式可用；绿色 = 提示词明确举例可用来收集信息；白色 = 提示词没有逐一说明。注意 ask_followup_question 的选项里不许出现「切换到 Act 模式」，切换只能由用户手动完成。';
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['ACT MODE', 'PLAN MODE'], (i) => set(i))), box, text, status);
+  set(0);
+});
+
+/* ================= 07 规则 ================= */
+reg('rules', (node) => {
+  const C = { env: '环境', tool: '工具纪律', comm: '沟通', ctx: '上下文' };
+  const R = [
+    ['env', '工作目录固定，不能 cd 到别处完成任务；要在别的目录跑命令，就写成「cd 目录 && 命令」一条完成。', "You cannot `cd` into a different directory to complete a task. You are stuck operating from '${cwd.toPosix()}'…"],
+    ['env', '不要用 ~ 或 $HOME 指代主目录。', 'Do not use the ~ character or $HOME to refer to the home directory.'],
+    ['env', '执行命令前先参考 SYSTEM INFORMATION，确保命令与用户系统兼容。', 'Before using the execute_command tool, you must first think about the SYSTEM INFORMATION context…'],
+    ['env', '新项目放进专门的项目目录；没特别要求时要开箱即跑，比如多数项目可以用 HTML、CSS、JS 写成，直接在浏览器打开。', 'Unless otherwise specified, new projects should be easily run without additional setup…'],
+    ['env', '考虑项目类型和清单文件（manifest）；改代码要与现有代码库兼容、遵循它的规范。', 'Ensure that your changes are compatible with the existing codebase and that they follow the project\'s coding standards…'],
+    ['tool', 'search_files 的正则要兼顾精确和宽松；找到后用 read_file 看完整上下文，再 replace_in_file。', 'When using the search_files tool, craft your regex patterns carefully to balance specificity and flexibility.'],
+    ['tool', '要改文件就直接调用 replace_in_file 或 write_to_file，不必先把改动展示出来。', 'You do not need to display the changes before using the tool.'],
+    ['tool', 'replace_in_file 的 SEARCH 必须是完整行；多个 SEARCH/REPLACE 块按在文件中出现的先后排列。', 'When using the replace_in_file tool, you must include complete lines in your SEARCH blocks, not partial lines.'],
+    ['tool', '每次工具调用后都要等用户回复确认成功再走下一步：做 todo app 时建一个文件、等确认、再建下一个。', 'It is critical you wait for the user\'s response after each tool use, in order to confirm the success of the tool use.'],
+    ['tool', 'MCP 操作同样一次一个，等确认再继续。', 'MCP operations should be used one at a time, similar to other tool usage.'],
+    ['tool', '（支持浏览器时）非开发类请求，如查新闻、查天气，可以用 browser_action；但有 MCP 工具能做时优先用 MCP。', 'However, if an available MCP server tool or resource can be used instead, you should prefer to use it over browser_action.'],
+    ['comm', '只能通过 ask_followup_question 提问；能用工具查到的就别问，例如用户提到桌面上的某个文件，就用 list_files 去找。', 'You are only allowed to ask the user questions using the ask_followup_question tool.'],
+    ['comm', '不要索要不必要的信息；完成后必须用 attempt_completion 交付。', 'Do not ask for more information than necessary.'],
+    ['comm', '目标是完成任务，而不是来回聊天。', 'Your goal is to try to accomplish the user\'s task, NOT engage in a back and forth conversation.'],
+    ['comm', 'attempt_completion 的结果绝不以问题或继续对话的邀请收尾。', 'NEVER end attempt_completion result with a question or request to engage in further conversation!'],
+    ['comm', '严禁以 "Great"、"Certainly"、"Okay"、"Sure" 开头，说话要直接、技术化：说 "I\'ve updated the CSS"，而不是 "Great, I\'ve updated the CSS"。', 'You are STRICTLY FORBIDDEN from starting your messages with "Great", "Certainly", "Okay", "Sure".'],
+    ['ctx', '收到图片时用视觉能力仔细看，提取有用信息。', 'When presented with images, utilize your vision capabilities to thoroughly examine them…'],
+    ['ctx', '每条用户消息末尾自动附带 environment_details：它不是用户写的，用来参考，不要当成用户的请求。', 'This information is not written by the user themselves, but is auto-generated…'],
+    ['ctx', '执行命令前看 environment_details 里的 "Actively Running Terminals"：开发服务器已在跑，就别再起一个。', 'Before executing commands, check the "Actively Running Terminals" section in environment_details.'],
+    ['ctx', '命令执行后没看到预期输出，就假设执行成功并继续；确实需要输出时，用 ask_followup_question 请用户粘贴回来。', 'When executing commands, if you don\'t see the expected output, assume the terminal executed the command successfully…'],
+    ['ctx', '用户已经在消息里贴了文件内容，就不要再 read_file。', 'The user may provide a file\'s contents directly in their message, in which case you shouldn\'t use the read_file tool…'],
+  ];
+  const ul = el('ul', { class: 'rules' });
+  const status = el('div', { class: 'status' });
+  const keys = ['all', ...Object.keys(C)];
+  function show(i) {
+    const k = keys[i];
+    const rs = R.filter((r) => k === 'all' || r[0] === k);
+    ul.innerHTML = '';
+    rs.forEach(([c, zh, en]) => ul.append(el('li', {}, el('span', { class: 'tag' }, C[c]), zh, el('span', { class: 'en' }, en))));
+    status.innerHTML = `显示 <b>${rs.length}</b> 条（共 ${R.length} 条节选，原文另有几条合并或略去）。`;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(['全部', ...Object.values(C)], (i) => show(i))), ul, status);
+  show(0);
+});
+
+/* ================= 07b 语气检查器 ================= */
+reg('tone', (node) => {
+  const P = ["Great, I've updated the CSS.", "I've updated the CSS.", "Sure! The tests now pass. Anything else I can help with?", '已把按钮颜色改成主题色，运行 npm run dev 可查看效果。'];
+  const ta = el('textarea', { class: 'ta sm', spellcheck: 'false', 'aria-label': '回复文本' });
+  const list = el('ul', { class: 'checks' });
+  function check() {
+    const s = ta.value.trim();
+    const op = s.match(/^(great|certainly|okay|sure)\b/i);
+    const q = /[?？]$/.test(s) || /anything else|let me know|还需要|需要我/i.test(s);
+    list.innerHTML = '';
+    [[!op, op ? `以 "${op[1]}" 开头，被 RULES 明令禁止。` : '开头不是 Great / Certainly / Okay / Sure。'],
+     [!q, q ? '以提问或「还需要什么」收尾；作为 attempt_completion 的结果，这是不允许的。' : '没有以提问或继续对话的邀请收尾。']]
+      .forEach(([ok, t]) => list.append(el('li', {}, el('span', { class: ok ? 'ok' : 'bad' }, ok ? '✓' : '✗'), el('span', {}, t))));
+  }
+  ta.addEventListener('input', check);
+  ta.value = P[0];
+  node.append(el('div', { class: 'ctrl' }, seg(['客套开头', '直接陈述', '开头加结尾', '中文示例'], (i) => { ta.value = P[i]; check(); })), ta, list);
+  check();
+});
+
+/* ================= 08 调用前自检 ================= */
+reg('objective', (node) => {
+  const STEPS = ['看 environment_details 里的文件结构', '选出最相关的工具', '逐个检查必填参数', '缺的参数能从上下文推断吗？', '最终动作'];
+  const SC = [
+    { q: '「看看 src/app.js 里写了什么」', a: ['文件列表里确实有 src/app.js。', 'read_file 最直接。', 'read_file 只有一个必填参数：path。', '用户直接给出了路径，不用推断。', '<read_file>\n<path>src/app.js</path>\n</read_file>'] },
+    { q: '「把配置文件里的端口改成 8080」', a: ['文件列表里有 config/default.json，也有 .env，不确定端口写在哪个文件。', '最终要用 replace_in_file。', 'replace_in_file 要 path 和 diff；diff 里的 SEARCH 需要知道原文。', '眼下推断不出，但 RULES 说能用工具查到就别问用户，所以先搜索。', '<search_files>\n<path>.</path>\n<regex>port</regex>\n</search_files>\n（等结果回来，再 read_file、replace_in_file）'] },
+    { q: '「把项目部署到我的服务器」', a: ['文件列表里看不出服务器信息。', '大概要用 execute_command（例如 rsync 或 scp）。', 'command 必填，且必须是完整可执行的命令，需要服务器地址和登录方式。', '上下文里没有，也查不到；OBJECTIVE 明确说不能拿占位符凑参数。', '<ask_followup_question>\n<question>请提供服务器地址和登录用户名。</question>\n</ask_followup_question>'] },
+  ];
+  let sc = 0, k = -1;
+  const items = STEPS.map((t, i) => el('div', { class: 'fstep' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, t), el('span', { class: 'ans' }))));
+  const status = el('div', { class: 'status' });
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => go(k + 1) }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => go(-1) }, '重置');
+  function go(i) {
+    k = Math.max(-1, Math.min(STEPS.length - 1, i));
+    items.forEach((it, j) => {
+      it.classList.toggle('on', j <= k); it.classList.toggle('cur', j === k);
+      const a = it.querySelector('.ans'); a.innerHTML = '';
+      if (j <= k) { const v = SC[sc].a[j]; a.append(j === 4 ? el('pre', { class: 'code' }, v) : v); }
+    });
+    next.disabled = k === STEPS.length - 1;
+    status.innerHTML = k < 0 ? `请求：<b>${SC[sc].q}</b>。点「下一步」开始自检。` : k === 4 ? `结论：${['参数齐全，直接调用。', '先用工具补齐信息，而不是去问用户。', '参数缺失且推断不出，改为提问。'][sc]}` : `第 ${k + 1} 步 / 共 5 步。`;
+  }
+  node.append(el('div', { class: 'ctrl' }, seg(SC.map((s, i) => '请求 ' + (i + 1)), (i) => { sc = i; go(-1); })), el('div', { class: 'flow' }, items), el('div', { class: 'ctrl' }, next, reset), status);
+  go(-1);
+});
+
+/* ================= 09 用户指令拼接 ================= */
+reg('custom', (node) => {
+  const SRC = [
+    ['preferredLanguageInstructions', '偏好语言', '（示例）Speak in 简体中文.'],
+    ['settingsCustomInstructions', '设置里的自定义指令', '（示例）Prefer TypeScript and functional React components.'],
+    ['globalClineRulesFileInstructions', '全局 .clinerules', '（示例）Never commit directly to the main branch.'],
+    ['localClineRulesFileInstructions', '项目 .clinerules', '（示例）This project uses pnpm, not npm.'],
+    ['clineIgnoreInstructions', '.clineignore 说明', '（示例）Files matched by .clineignore must not be read or modified.'],
+  ];
+  const on = [true, false, true, true, false];
+  const out = el('pre', { class: 'code wrap' });
+  const status = el('div', { class: 'status' });
+  const boxes = SRC.map(([v, zh], i) => {
+    const c = el('input', { type: 'checkbox' }); c.checked = on[i];
+    c.addEventListener('change', () => { on[i] = c.checked; render(); });
+    return el('label', { class: 'sw' }, c, `${i + 1}. ${zh}`);
+  });
+  function render() {
+    let ci = '';
+    SRC.forEach(([, , txt], i) => { if (on[i]) ci += txt + (i < 4 ? '\n\n' : ''); });
+    out.textContent = "\n====\n\nUSER'S CUSTOM INSTRUCTIONS\n\nThe following additional instructions are provided by the user, and should be followed to the best of your ability without interfering with the TOOL USE guidelines.\n\n" + ci.trim();
+    const n = on.filter(Boolean).length;
+    status.innerHTML = n ? `拼入 <b>${n}</b> 个来源，顺序固定，与勾选先后无关。` : '一个都不勾时，这个函数仍会返回只有段头的空段；什么时候调用它由 Cline 的其他源码决定，不在 system.ts 里。';
+  }
+  node.append(el('div', { class: 'ctrlrow' }, boxes), out, status);
+  render();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>英语删掉一个字母，删哪个影响最小？</title>
+<meta name="description" content="从「欧洲英语五年计划」拼写段子出发，看字母频率、亲手删掉任意一个字母、检测漏字文，再看越战战俘的敲击码为何真的删掉了 K。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.yr{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.yr button{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.yr button.on{background:var(--p);border-color:var(--p);color:#fff}
+.joke{font-family:var(--mono);font-size:13.5px;line-height:1.7;background:var(--surface-2);border-radius:10px;padding:12px 14px;white-space:pre-wrap;word-break:break-word}
+.joke .gl{display:block;font-family:var(--font);color:var(--muted);font-size:13px;margin-top:6px}
+.out{font-family:var(--mono);font-size:14px;line-height:1.75;background:var(--surface-2);border-radius:10px;padding:12px 14px;white-space:pre-wrap;word-break:break-word;min-height:3em}
+.out mark{background:var(--y-soft);color:var(--text);border-radius:3px;padding:0 1px}
+.out .gone{color:var(--r);opacity:.75}
+textarea.inp{width:100%;min-height:84px;font-family:var(--mono);font-size:13.5px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);padding:10px 12px;resize:vertical}
+.abc{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;margin-top:10px}
+.abc .lt{border:1px solid var(--line);border-radius:7px;background:var(--surface);text-align:center;font-family:var(--mono);font-size:13px;padding:3px 0 2px;line-height:1.15}
+.abc .lt small{display:block;font-size:10px;color:var(--muted)}
+.abc .lt.zero{background:var(--r-soft);border-color:var(--r);color:var(--r)}
+.abc .lt.zero small{color:var(--r)}
+.abc.gk{grid-template-columns:repeat(12,minmax(0,1fr))}
+.abc button.lt{cursor:pointer;color:var(--text)}
+.abc button.lt.sel{background:var(--p);border-color:var(--p);color:#fff}
+.abc button.lt.sel small{color:#fff}
+.bar{cursor:pointer}
+.bar rect{transition:fill .2s,height .4s,y .4s}
+.bar text{font-family:var(--mono);font-size:11px;fill:var(--muted);text-anchor:middle}
+.bar.sel text{fill:var(--text);font-weight:700}
+.bar:focus{outline:none}
+.bar:focus rect{stroke:var(--text);stroke-width:1}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.metrics div{background:var(--surface-2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.metrics b{display:block;font-family:var(--mono);font-size:clamp(16px,3.5vw,20px);color:var(--text)}
+.rank{display:grid;gap:3px;margin-top:10px}
+.rank .rw{display:grid;grid-template-columns:18px 1fr 52px;gap:8px;align-items:center;font-family:var(--mono);font-size:11.5px;color:var(--muted);cursor:pointer}
+.rank .rw i{display:block;height:9px;border-radius:5px;background:var(--t)}
+.rank .rw.sel{color:var(--text);font-weight:700}
+.rank .rw.sel i{background:var(--p)}
+.tap{display:grid;grid-template-columns:28px repeat(5,minmax(0,1fr));gap:5px;max-width:360px;margin:0 auto}
+.tap .hd{font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;align-items:center;justify-content:center}
+.tap button{border:1px solid var(--line);background:var(--surface-2);border-radius:9px;padding:8px 0;font-family:var(--mono);font-size:15px;cursor:pointer;transition:background .2s,color .2s}
+.tap button.ck{background:var(--o-soft);border-color:var(--o)}
+.tap button.hot{background:var(--p);border-color:var(--p);color:#fff}
+.taps{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.taps .tk{border:1px solid var(--line);border-radius:8px;padding:3px 8px;font-family:var(--mono);font-size:12px;background:var(--surface)}
+.taps .tk b{color:var(--p);margin-right:4px}
+.taps .tk.on{border-color:var(--p);background:var(--p-soft)}
+.tline{display:grid;gap:8px}
+.tline button{display:grid;grid-template-columns:92px 1fr;gap:10px;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:14px}
+.tline button .y{font-family:var(--mono);color:var(--p);font-size:13px}
+.tline button.on{border-color:var(--p);background:var(--p-soft)}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13.5px;color:var(--muted);margin-top:10px}
+.panel b{color:var(--text)}
+.split{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:860px){.split{grid-template-columns:1fr 1fr;align-items:start}}
+.mini{font-size:12px;color:var(--muted)}
+@media (min-width:1024px){.toc-sheet,.toc-mask{display:none}}
+.greek{font-size:15px;line-height:1.8}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">删掉一个英文字母</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">语言 · 拼写 · 字母频率 · 漏字文</div>
+  <h1>英语里如果要删掉一个字母，删哪个影响最小？</h1>
+  <p class="sub">知乎上有人这样问。高赞回答没有直接给结论，而是贴出一个流传很广的拼写段子：欧共体用五年时间，一年删一批字母，最后把英语删成了「ZE DREAM VIL FINALI KUM TRU」。这页把段子拆开跑一遍，再亲手删删看。</p>
+  <div class="thesis">从频率看，Q、Z、J、X 这样的稀有字母删掉几乎没人察觉；但即使是最常见的 E，也有人写出整本不用它的小说。英语的冗余度很高，删掉一个字母，读者大多仍读得懂，真正被打乱的是拼写和单词之间的区分。越战美军战俘的敲击码就真的删掉了 K，用 C 顶替。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>软</i>软箭攻城师（主回答）</span>
+    <span class="au"><i style="background:var(--t)">杞</i>杞鋂</span>
+    <span class="au"><i style="background:var(--o)">汪</i>汪萌玉盘</span>
+  </div>
+  <p class="meta">原文：知乎问题「英语里如果要删掉一个字母，删掉哪个影响最小？」下软箭攻城师的回答（发布于 2023-10-29）。剪藏页同时收录了同一问题下的另外两则回答（一则讲漏字文，一则讲越战敲击码），剪藏记录的作者还有杞鋂、汪萌玉盘，但哪一则对应哪位答主未能逐条核实，所以本页把它们统称为「同问题下的另两则回答」。本页按原文顺序展开，并加了几处标注为「本页补充」的出处考证与数据核对。</p>
+</header>
+
+<section class="ch" id="euro" data-title="欧洲英语五年计划">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>主回答：一个「五年计划」段子</h2>
+    <p class="lead">如果真的一年删一批字母，英语会变成什么样？段子的每一年都在问：这一步删掉的东西，读者还猜得出来吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原文贴出的英文段子（主回答说「内容引用自互联网」）。点年份，看段子那一年的原文和中文大意。段子本身就是用当年的新拼写写的，所以越往后越「怪」。</div>
+    <div class="yr" id="yrJoke" role="group" aria-label="选择年份"></div>
+    <div class="joke" id="jokeBox" aria-live="polite"></div>
+  </div>
+  <div class="fig">
+    <div class="cap" data-demo="euro"><b>把规则当成程序跑一遍。</b>本页把段子里的规则写成了替换程序：第 1 年软 c→s、硬 c→k；第 2 年 ph→f；第 3 年去双写字母、去词尾不发音的 e；第 4 年 th→z、w→v；第 5 年 ou→u。在下面框里换成任何英文，点年份或「下一年」，黄色是那一年新改动的词，底下统计每个字母还剩多少次。</div>
+    <textarea class="inp" id="euroIn" aria-label="输入英文">The European Commission has announced that English will be the official language. Physics, photographs and the office of public accounts will never be the same, though we all agree it is a sensible change.</textarea>
+    <div class="ctrl">
+      <div class="yr" id="yrRun" role="group" aria-label="规则年份" style="margin:0"></div>
+      <button class="btn primary" id="euroNext" type="button">下一年</button>
+    </div>
+    <div class="out" id="euroOut" aria-live="polite"></div>
+    <div class="abc" id="euroAbc" aria-label="各字母剩余次数"></div>
+    <div class="status" id="euroStat"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：程序版只是近似。段子并不严格按自己的规则来：例如第 5 年仍保留了 each 里的 ch（按第 1 年规则 c 应变 k），「不发音的 e」也没有给出可执行的定义。本页的程序对 ch 保持不动，只删 4 个字母以上单词词尾、前面是辅音的 e。所以程序输出和段子原文会有出入，这本身说明「删字母」比看上去难定规则。</div>
+  <div class="note-add"><b>本页补充（非原文）：这个段子从哪来？</b>
+    <br>1. 网上常把它署名为马克·吐温（Mark Twain）的 <i>A Plan for the Improvement of English Spelling</i>，但吐温研究者普遍不认可这一署名，现存的吐温著作里找不到这篇。吐温确实写过谈拼写的文章，但不是这一篇。<sup class="c">[2][3]</sup>
+    <br>2. 目前能查到的最早同类作品是科幻杂志《惊奇科幻》（<i>Astounding Science Fiction</i>）1946 年刊出的讽刺短文 <i>Meihem in ce Klasrum</i>（《课堂里的混乱》），署名 Dolton Edwards，这是一个笔名（维基百科所列选集目录记作 W. K. Lessing）。它同样用「逐年简化拼写」的结构，边讲边改，越写越难认。<sup class="c">[4]</sup>
+    <br>3. 网上另有一说：流传的英文段落摘自 M. J. Shields 写给《经济学人》（<i>The Economist</i>）的读者来信，信末署名已变成「M. J. Yilz」。这一说法只见于转述，本页未能找到原信，列此存疑。<sup class="c">[3]</sup>
+    <br>4. 「欧共体/欧盟选择英语作官方语言」这层外壳是 1990 年代互联网上加的。1996 年 9 月美国方言学会（American Dialect Society）邮件列表已有人转发「EEC」版本，并评论「看来马克·吐温先做过了」；原文贴出的「EuroEnglish」版本是之后的变体。<sup class="c">[5]</sup>
+  </div>
+</section>
+
+<section class="ch" id="freq" data-title="字母频率">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>先看频率：哪个字母最少用？</h2>
+    <p class="lead">同问题下另一则回答先给了数据：E 的使用率高达约 11%，Q 最低，理应删 Q。真是这样吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">英语 26 个字母的相对频率。切换数据来源，或改成按频率排序；点任一根柱子，下一节的「删字母实验」会自动换成这个字母。</div>
+    <div class="ctrl">
+      <div class="seg" id="freqSrc" role="group" aria-label="数据来源">
+        <button type="button" class="on" data-k="text">一般文本</button><button type="button" data-k="dict">词典词条</button><button type="button" data-k="live">本页样本现场统计</button>
+      </div>
+      <div class="seg" id="freqSort" role="group" aria-label="排序">
+        <button type="button" class="on" data-k="abc">A→Z</button><button type="button" data-k="f">按频率</button>
+      </div>
+    </div>
+    <div id="freqChart" data-demo="freq"></div>
+    <div class="status" id="freqStat"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文说的「E 约 11%、Q 最低」对应的是<b>按词典词条</b>统计的频率（每个词只算一次），此时 E ≈ 11.0%、Q ≈ 0.19% 最低；按牛津简明词典词条统计的字母顺序是 EARIOTNSLCUDPMHGBFYWKVXZJQ。若按<b>一般文本</b>统计（常用词反复出现，the 之类会大量计入），E 升到约 12.7%，而最少的是 Z（约 0.074%），Q 约 0.12% 排倒数第二。所以「该删哪个」取决于你在乎词典还是实际文本。两列数据取自维基百科「Letter frequency」条目，文本列源自 Lewand《Cryptological Mathematics》；词典列在该条目中标注了「需要引用」。<sup class="c">[6]</sup></div>
+</section>
+
+<section class="ch" id="delete" data-title="删一个字母试试">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>亲手删一个：影响到底有多大？</h2>
+    <p class="lead">频率低只说明删掉后少掉的字符少。读者还读不读得懂、会不会把两个词混成一个，要看删完的文本。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一段样本、选一个字母。红色是被删掉的位置（也可以切成「直接删掉」看真实效果）。下方三个数：字符少了多少、多少比例的单词（按出现次数）被改动、删完后有几组原本不同的词撞成了同一个拼写。最下面是 26 个字母在当前样本上的「受影响词比例」排行。</div>
+    <div class="ctrl">
+      <div class="seg" id="delSample" role="group" aria-label="样本">
+        <button type="button" class="on" data-k="gb">葛底斯堡演说</button><button type="button" data-k="ga">《Gadsby》片段</button><button type="button" data-k="eu">段子开头</button>
+      </div>
+      <div class="seg" id="delMode" role="group" aria-label="显示方式">
+        <button type="button" class="on" data-k="mark">标出删除处</button><button type="button" data-k="cut">直接删掉</button>
+      </div>
+    </div>
+    <div data-demo="delete" class="abc" id="delPick" role="group" aria-label="选择要删的字母"></div>
+    <div class="out" id="delOut" style="margin-top:10px;max-height:260px;overflow:auto" aria-live="polite"></div>
+    <div class="metrics" id="delMet"></div>
+    <div class="status" id="delStat"></div>
+    <details style="margin-top:8px"><summary class="mini" style="cursor:pointer">26 个字母排行：删掉后受影响的单词比例（当前样本）</summary><div class="rank" id="delRank"></div></details>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：本节的三个指标都在你的浏览器里对样本现场计算。「撞车」只在样本自身的词汇里比较：例如删掉 E 后，样本中两个不同的词若变成同一个拼写，就算一组。删 E 时葛底斯堡演说里近一半的词次被改动，删 Q、X、Z、J 则基本为零，这就是「频率」直观的含义；但即便删 E，多数句子仍然可以猜读，这是英语拼写冗余度高的表现。葛底斯堡演说文本按 Bliss 抄本。</div>
+</section>
+
+<section class="ch" id="lipogram" data-title="漏字文">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>漏字文：连 E 都可以不要</h2>
+    <p class="lead">同问题下第二则回答说：26 个字母哪个都不重要，都可以删，有人用整本小说证明了这一点。</p>
+  </div>
+  <div class="split">
+    <div class="fig">
+      <div class="cap"><b>漏字文检测器。</b>选一段原文引用的文字，或者自己写一段，看 26 个字母里哪些<b>一次都没出现</b>（红色）。试试自己写一句不含 e 的英文，比想象中难。</div>
+      <div class="seg" id="lipPre" role="group" aria-label="预设文本" style="margin-bottom:8px">
+        <button type="button" class="on" data-k="gadsby">Gadsby</button><button type="button" data-k="unusual">不寻常的段落</button><button type="button" data-k="def">漏字文定义</button><button type="button" data-k="nassan">Nassan 诗</button><button type="button" data-k="swain">A jovial swain</button>
+      </div>
+      <textarea data-demo="lipo" class="inp" id="lipIn" aria-label="输入要检测的文字" style="min-height:150px"></textarea>
+      <div class="abc" id="lipAbc"></div>
+      <div class="status" id="lipStat" aria-live="polite"></div>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>原文提到的三部作品</b></div>
+      <div class="panel" style="margin-top:0"><b>《Gadsby》（1939）</b>：欧内斯特·文森特·赖特（Ernest Vincent Wright）的小说，约 5 万词，除引言和结尾注释外不含字母 e。原文引用了开头一段，左边可直接检测。回答评论说：没有一个 e，丝毫不影响阅读，而且用的多是口语化表达。</div>
+      <div class="panel"><b>《La Disparition》（1969）</b>：法国作家乔治·佩雷克（Georges Perec）的小说，部分受《Gadsby》启发，同样通篇不用 e。</div>
+      <div class="panel"><b>《Eunoia》（2001）</b>：加拿大诗人克里斯蒂安·博克（Christian Bök）的作品。标题 eunoia 恰好把五个元音各用一次；全书五章，第一章只用含元音 A 的词，第二章只用含 E 的词，依次是 I、O、U。</div>
+      <div class="quote">这种创作方式叫<b>约束写作</b>（constrained writing）：作者受某种条件约束，禁止某些字词或强加一种模式。被省略的常常是最常见的元音，如英语里的 e。写一篇不含 z、j、x 的漏字文很容易，不含 e 则很难，因为很多常用词都得绕开，写得好的漏字文很少。（原文第二则回答）</div>
+    </div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：检测器预设里「漏字文定义」那段自己就是漏字文：它说作者「只使用辅音以及 A、I、O、U」，「字母数是 50 的一半」，即 25 个，而全段恰好没有 e。更巧的是，「A jovial swain」四行诗和《Fate of Nassan》那首八行诗不只是没有 e，而且其余 25 个字母一个不缺，是「缺 e 的全字母句」，检测器里可以看到只有 E 一格变红（前面那首四行 Nassan 诗另外还缺 p）。Gadsby 片段按原文所引转录（原文引文里有「disciplinary factor」「that puts out out」等疑似转录笔误，本页照录未改）。</div>
+</section>
+
+<section class="ch" id="history" data-title="最古老的漏字文">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>从古希腊到越战：删字母的历史</h2>
+    <p class="lead">漏字文（lipogram，来自希腊语 lipagrammatos，「缺失的字母」）被称为西方文学中最古老的文字技巧之一。点时间线看每一站删掉了什么。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点任一条目，下方显示原文给出的细节。拉苏斯那首诗可以直接拿去检测有没有 σ。</div>
+    <div data-demo="timeline" class="tline" id="tline" role="group" aria-label="时间线"></div>
+    <div class="panel" id="tlPanel" aria-live="polite"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>拉苏斯《献给得墨忒耳的赞美诗》仅存的第一节</b>（原文所引）。拉苏斯不喜欢 sigma（σ），把它从诗里排除了。点按钮检测：</div>
+    <p class="greek">Δάματρα μέλπω Κόραν τε Κλυμένοι᾽ ἄλοχον<br>μελιβόαν ὕμνον ἀναγνέων<br>Αἰολίδ᾽ ἂμ βαρύβρομον ἁρμονίαν</p>
+    <p class="mini">英译：I chant of Demeter and Kore, / Wife of the famed [Hades] / Lifting forth a gentle-voiced hymn / In the deep-toned Aeolian mode.</p>
+    <div class="ctrl"><button class="btn primary" id="gkBtn" type="button">检测 24 个希腊字母</button></div>
+    <div class="abc gk" id="gkAbc"></div>
+    <div class="status" id="gkStat" aria-live="polite"></div>
+  </div>
+</section>
+
+<section class="ch" id="tapcode" data-title="真的删过 K">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>第三则回答：真有人删掉了 K</h2>
+    <p class="lead">「虽然我觉得是 U，但这个事真有人干过，删了 K。」为什么偏偏是 K？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>敲击码（tap code）</b>：越战期间美军战俘把字母排进 5×5 方阵，敲墙传递「行、列」两个数。方阵只有 25 格，于是 K 被拿掉，由 C 顶替（橙色格）。输入一个词，或者点格子拼词，再点「演示敲击」看它一格一格敲出来（无声）。</div>
+    <div class="split">
+      <div><div data-demo="tap" class="tap" id="tapGrid" role="group" aria-label="敲击码方阵"></div></div>
+      <div>
+        <label class="mini" for="tapIn">要敲的词</label>
+        <input id="tapIn" class="inp" style="width:100%;font-family:var(--mono);font-size:15px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);padding:8px 10px" value="KNOCK KNOCK">
+        <div class="ctrl"><button class="btn primary" id="tapPlay" type="button">演示敲击</button><button class="btn" id="tapClr" type="button">清空</button></div>
+        <div class="taps" id="tapSeq"></div>
+        <div class="status" id="tapStat" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：敲击码源自古希腊的波利比奥斯方阵（Polybius square）。1965 年 6 月，四名关押在河内火炉监狱（俗称「河内希尔顿」）的美军战俘把它带进监狱，其中之一是空军上尉卡莱尔·「斯米蒂」·哈里斯（Carlyle "Smitty" Harris）。它比摩尔斯码好学，新来的战俘几天就能熟练。选 K 而不是别的字母，正是因为 C 在多数词里能读成 K 音，合并后几乎不产生歧义：上面的 KNOCK 敲成 CNOCC，照样认得出来。<sup class="c">[7]</sup></div>
+</section>
+
+<section class="ch" id="summary" data-title="总结">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>所以删哪个？</h2>
+  </div>
+  <div class="fig">
+    <div class="final">按频率，删 Q、Z、J、X 最省事，几乎没人察觉；按实际先例，敲击码删的是 K，因为 C 能顶上；而漏字文告诉我们，就算删掉最常用的 E，英语照样能写整本小说。主回答那个段子则提醒：一旦开始「为了省事」删字母，拼写会一路滑向谁都认不出的样子。</div>
+    <p class="src">原文结尾还附了一首 1870 年之前的匿名诗《Fate of Nassan》和 Susan Elkin 书中引用的四行诗，均不含 e，可在第 04 节检测器里选「Nassan 诗」验证。</p>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据知乎问题「<a href="https://www.zhihu.com/question/625593581">英语里如果要删掉一个字母，删掉哪个影响最小？</a>」下软箭攻城师的<a href="https://www.zhihu.com/question/625593581/answer/3269327329">回答</a>（发布于 2023-10-29）制作，并采用了剪藏页一并收录的同问题另两则回答（漏字文、敲击码；剪藏记录的作者还有杞鋂、汪萌玉盘，具体对应未核实）。原文中的插图均已用内联 SVG 和 JS 重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>知乎回答原文：软箭攻城师，2023-10-29；及同问题下关于漏字文（Gadsby、La Disparition、Eunoia、拉苏斯、Nassan 诗）与越战敲击码的两则回答。</li>
+    <li>Maxfield, C. (2007-10-19). A Plan for the Improvement of English Spelling（讨论该文是否出自马克·吐温）. <i>EDN</i>. <a href="https://www.edn.com/?p=4032062">链接</a></li>
+    <li>lua-l 邮件列表（2015-01）关于该文署名的讨论：吐温研究者多不认可此署名，另有 M. J. Shields / M. J. Yilz 致《经济学人》来信之说。<a href="https://lua-users.org/lists/lua-l/2015-01/msg00452.html">链接</a></li>
+    <li>Wikipedia 条目 The Astounding Science Fiction Anthology：<i>Meihem in ce Klasrum</i>（1946），讽刺短文，最初以笔名 Dolton Edwards 发表。</li>
+    <li>American Dialect Society 邮件列表存档，1996-09-25：转发「ENGLISH IS TOO COMPLICATED」EEC 版本并指出马克·吐温版本在先。<a href="https://americandialect.org/americandialectarchives/sept96430.html">链接</a></li>
+    <li>Wikipedia 条目 Letter frequency：英文文本与词典中的字母相对频率表；牛津简明词典词条字母顺序 EARIOTNSLCUDPMHGBFYWKVXZJQ。Lewand, R. E. (2000). <i>Cryptological Mathematics</i>. Mathematical Association of America.</li>
+    <li>Wikipedia 条目 Tap code：5×5 方阵以 C 代 K；源自 Polybius square；1965 年 6 月由 Carlyle "Smitty" Harris 等四名战俘在火炉监狱引入。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；频率、改动比例、撞车词等数值均在页面内用 JS 现场计算，细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const ABC = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const seg = (id, cb) => {
+  const g = $(id);
+  g.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+    g.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); cb(b.dataset.k);
+  }));
+};
+const countLetters = (t) => { const c = Object.fromEntries(ABC.map((a) => [a, 0])); for (const ch of t.toLowerCase()) if (ch in c) c[ch]++; return c; };
+const abcStrip = (box, counts) => {
+  box.innerHTML = '';
+  ABC.forEach((a) => box.append(el('div', { class: 'lt' + (counts[a] ? '' : ' zero') }, a.toUpperCase(), el('small', {}, String(counts[a])))));
+};
+
+/* ---------- 文本 ---------- */
+const JOKE = [
+  ['开头', 'The European Commission have just announced an agreement whereby English will be the official language of the EU, rather than German, which was the other possibility. As part of the negotiations, Her Majesty\'s government conceded that English spelling had some room for improvement and has accepted a five year phase in plan that would be known as "EuroEnglish".', '欧盟委员会宣布：英语成为欧盟官方语言，而不是另一个候选德语。作为谈判条件，英国政府承认英语拼写有改进空间，接受一个分五年推行、名为「欧洲英语」的计划。'],
+  ['第 1 年', 'In the first year, "s" will replace the soft "c". Sertainly, this will make the sivil servants jump for joy. The hard "c" will be dropped in favour of the "k". This should klear up konfusion and keyboards kan have 1 less letter.', '软 c（读 /s/ 的 c）改成 s，硬 c 删掉改用 k。这能消除混乱，键盘也能少一个键。注意文中已经写成 Sertainly、sivil、klear、konfusion、kan。'],
+  ['第 2 年', 'There will be growing publik enthusiasm in the sekond year, when the troublesome "ph" will be replaced with the "f". This will make words like "fotograf" 20% shorter.', '第二年，麻烦的 ph 换成 f。photograph 变成 fotograf，短了 20%（10 个字母变 8 个）。'],
+  ['第 3 年', 'In the third year, publik akseptanse of the new spelling kan be expekted to reach the stage where more komplikated changes are possible. Governments will enkorage the removal of double letters, which have always ben a deterent to akurate speling. Also, al wil agre that the horible mes of the silent "e"s in the language is disgraseful, and they should go away.', '第三年可以做更复杂的改动：去掉双写字母（ben、deterent、akurate、speling、al、wil），去掉不发音的 e（agre、mes、disgraseful）。'],
+  ['第 4 年', 'By the 4th year, peopl wil be reseptiv to steps such as replasing "th" with "z" and "w" with "v".', '第四年：th 换成 z，w 换成 v。'],
+  ['第 5 年', 'During ze fifz year, ze unesesary "o" kan be dropd from vords kontaining "ou" and similar changes vud of kors be aplid to ozer kombinations of leters. After zis fifz year, ve vil hav a realy sensibl riten styl. Zer vil be no mor trubls or difikultis and evrivun vil find it ezi to understand each ozer.\n\nZE DREAM VIL FINALI KUM TRU!', '第五年：ou 里多余的 o 删掉（vud=would、kors=course、trubls=troubles），其他组合照此办理。「从此我们有了真正合理的书写体系……梦想终于成真！」'],
+];
+const GETTYSBURG = 'Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal. Now we are engaged in a great civil war, testing whether that nation, or any nation so conceived and so dedicated, can long endure. We are met on a great battle-field of that war. We have come to dedicate a portion of that field, as a final resting place for those who here gave their lives that that nation might live. It is altogether fitting and proper that we should do this. But, in a larger sense, we can not dedicate, we can not consecrate, we can not hallow, this ground. The brave men, living and dead, who struggled here, have consecrated it, far above our poor power to add or detract. The world will little note, nor long remember what we say here, but it can never forget what they did here. It is for us the living, rather, to be dedicated here to the unfinished work which they who fought here have thus far so nobly advanced. It is rather for us to be here dedicated to the great task remaining before us, that from these honored dead we take increased devotion to that cause for which they gave the last full measure of devotion, that we here highly resolve that these dead shall not have died in vain, that this nation, under God, shall have a new birth of freedom, and that government of the people, by the people, for the people, shall not perish from the earth.';
+const GADSBY = 'If Youth, throughout all history, had had a champion to stand up for it; to show a doubting world that a child can think; and, possibly, do it practically, you wouldn\'t constantly run across folks today who claim that "a child don\'t know anything." A child\'s brain starts functioning at birth; and has, amongst its many infant convolutions, thousands of dormant atoms, into which God has put a mystic possibility for noticing an adult\'s act, and figuring out its purport. Up to about its primary school days a child thinks, naturally, only of play. But many a form of play contains disciplinary factor. "You can\'t do this," or "that puts out out," shows a child that it must think, practically, or fail. Now, if, throughout childhood, a brain has no opposition, it is plain that it will attain a position of "status quo," as with our ordinary animals. Man knows not why a cow, dog, or lion was not born with a brain on a par with ours; why such animals cannot add, subtract, or obtain from books and schooling, that paramount position which Man Holds today. But a human brain is not in that class. Constantly throbbing and pulsating, it rapidly forms opinions; attaining an ability of its own; a fact which is startlingly shown by an occasional child "prodigy" in music or school work. And as, with our dumb animals, a child\'s inability convincingly to impart its thoughts to us, should not class it as ignorant.';
+const LIP = {
+  gadsby: GADSBY,
+  unusual: 'This is an unusual paragraph. I\'m curious how quickly you can find out what is so unusual about it? It looks so plain you would think nothing was wrong with it! In fact, nothing is wrong with it! It is unusual though. Study it, and think about it, but you still may not find anything odd. But if you work at it a bit, you might find out! Try to do so without any coaching!',
+  def: 'A lipogram is a kind of writing with constraints consisting of writing full paragraphs or books in which a particular symbol, such as that fifth symbol (which is most common in talks), is missing. An author must submit to an awful handicap, allowing only consonants and A, I, O, and U. This is ordinarily a quorum of half of fifty.',
+  nassan: 'Bold Nassan quits his caravan,\nA hazy mountain grot to scan;\nClimbs jaggy rocks to find his way,\nDoth tax his sight, but far doth stray.\n\nNot work of man, nor sport of child\nFinds Nassan on this mazy wild;\nLax grow his joints, limbs toil in vain—\nPoor wight! why didst thou quit that plain?\nVainly for succour Nassan calls;\nKnow, Zillah, that thy Nassan falls;\nBut prowling wolf and fox may joy\nTo quarry on thy Arab boy.',
+  swain: 'A jovial swain should not complain\nOf any buxom fair\nWho mocks his pain and thinks it gain\nTo quiz his awkward air.',
+};
+
+/* ---------- 01 欧洲英语：段子 + 规则引擎 ---------- */
+const matchCase = (src, rep) => {
+  if (src === src.toUpperCase() && src !== src.toLowerCase() && src.length > 1) return rep.toUpperCase();
+  if (src[0] === src[0].toUpperCase() && src[0] !== src[0].toLowerCase()) return rep[0].toUpperCase() + rep.slice(1);
+  return rep;
+};
+const RULES = [
+  (w) => w.replace(/c(?!h)/gi, (m, i, s) => { const nx = (s[i + 1] || '').toLowerCase(); const r = 'eiy'.includes(nx) && nx ? 's' : 'k'; return m === 'C' ? r.toUpperCase() : r; }),
+  (w) => w.replace(/ph/gi, (m) => matchCase(m, 'f')),
+  (w) => { let x = w.replace(/([a-z])\1+/gi, '$1'); if (x.length >= 4 && /[^aeiouy]e$/i.test(x)) x = x.slice(0, -1); return x; },
+  (w) => w.replace(/th/gi, (m) => matchCase(m, 'z')).replace(/w/gi, (m) => m === 'W' ? 'V' : 'v'),
+  (w) => w.replace(/ou/gi, (m) => (m[1] === 'U' ? 'U' : 'u')),
+];
+const applyYear = (text, y) => text.replace(/[A-Za-z]+/g, (w) => { for (let i = 0; i < y; i++) w = RULES[i](w); return w; });
+
+reg('euro', () => {
+  const jb = $('jokeBox'), yj = $('yrJoke');
+  const showJoke = (k) => {
+    yj.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === k));
+    jb.innerHTML = '';
+    jb.append(JOKE[k][1], el('span', { class: 'gl' }, JOKE[k][2]));
+  };
+  JOKE.forEach(([lab], i) => yj.append(el('button', { type: 'button', onclick: () => showJoke(i) }, lab)));
+  showJoke(0);
+
+  const inp = $('euroIn'), out = $('euroOut'), yr = $('yrRun'), stat = $('euroStat'), abc = $('euroAbc');
+  let year = 0;
+  const NAMES = ['原样', '第 1 年', '第 2 年', '第 3 年', '第 4 年', '第 5 年'];
+  NAMES.forEach((n, i) => yr.append(el('button', { type: 'button', onclick: () => { year = i; render(); } }, n)));
+  const render = () => {
+    yr.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === year));
+    const src = inp.value;
+    const prev = applyYear(src, Math.max(0, year - 1)), cur = applyYear(src, year);
+    const pw = prev.match(/[A-Za-z]+|[^A-Za-z]+/g) || [], cw = cur.match(/[A-Za-z]+|[^A-Za-z]+/g) || [];
+    out.innerHTML = cw.map((t, i) => (year > 0 && /[A-Za-z]/.test(t) && t !== pw[i]) ? '<mark>' + esc(t) + '</mark>' : esc(t)).join('');
+    const c0 = (src.match(/[A-Za-z]/g) || []).length, c1 = (cur.match(/[A-Za-z]/g) || []).length;
+    const counts = countLetters(cur);
+    abcStrip(abc, counts);
+    const changed = cw.filter((t, i) => year > 0 && /[A-Za-z]/.test(t) && t !== pw[i]).length;
+    const gone = ABC.filter((a) => counts[a] === 0 && countLetters(src)[a] > 0).map((a) => a.toUpperCase());
+    stat.innerHTML = year === 0 ? `原文共 <b>${c0}</b> 个字母。点年份开始。`
+      : `${NAMES[year]}：这一年改动 <b>${changed}</b> 个词；累计字母 ${c0} → <b>${c1}</b>（少 ${((1 - c1 / Math.max(1, c0)) * 100).toFixed(1)}%）。` + (gone.length ? `本段已经用不到的字母：<b>${gone.join(' ')}</b>。` : '');
+    $('euroNext').disabled = year >= 5;
+  };
+  $('euroNext').addEventListener('click', () => { if (year < 5) { year++; render(); } });
+  inp.addEventListener('input', render);
+  render();
+});
+
+/* ---------- 02 频率柱状图 ---------- */
+const FREQ = {
+  text: { a: 8.2, b: 1.5, c: 2.8, d: 4.3, e: 12.7, f: 2.2, g: 2.0, h: 6.1, i: 7.0, j: 0.16, k: 0.77, l: 4.0, m: 2.4, n: 6.7, o: 7.5, p: 1.9, q: 0.12, r: 6.0, s: 6.3, t: 9.1, u: 2.8, v: 0.98, w: 2.4, x: 0.15, y: 2.0, z: 0.074 },
+  dict: { a: 7.8, b: 2.0, c: 4.0, d: 3.8, e: 11.0, f: 1.4, g: 3.0, h: 2.3, i: 8.6, j: 0.25, k: 0.97, l: 5.3, m: 2.7, n: 7.2, o: 6.1, p: 2.8, q: 0.19, r: 7.3, s: 8.7, t: 6.7, u: 3.3, v: 1.0, w: 0.91, x: 0.27, y: 1.6, z: 0.44 },
+};
+{ const c = countLetters(GETTYSBURG + ' ' + GADSBY + ' ' + JOKE.map((j) => j[1]).join(' ')); const tot = Object.values(c).reduce((a, b) => a + b, 0); FREQ.live = Object.fromEntries(ABC.map((a) => [a, c[a] / tot * 100])); }
+const bus = new EventTarget();
+let selLetter = 'e';
+const setLetter = (a) => { selLetter = a; bus.dispatchEvent(new Event('letter')); };
+
+reg('freq', (node) => {
+  let src = 'text', sort = 'abc';
+  const W = 640, H = 250, padL = 30, padB = 26, padT = 18;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '英语字母频率柱状图' });
+  node.append(root);
+  const stat = $('freqStat');
+  const bars = {};
+  const axis = svg('g');
+  root.append(axis);
+  ABC.forEach((a) => {
+    const g = svg('g', { class: 'bar', tabindex: '0', role: 'button', 'aria-label': '字母 ' + a.toUpperCase() });
+    const r = svg('rect', { rx: 3 }), t = svg('text', {}, a.toUpperCase()), v = svg('text', { style: 'font-size:9px' });
+    g.append(r, t, v); root.append(g);
+    const pick = () => setLetter(a);
+    g.addEventListener('click', pick);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    bars[a] = { g, r, t, v };
+  });
+  const draw = () => {
+    const f = FREQ[src];
+    const order = sort === 'abc' ? ABC.slice() : ABC.slice().sort((x, y) => f[y] - f[x]);
+    const max = 14, bw = (W - padL - 6) / 26;
+    axis.innerHTML = '';
+    [0, 5, 10].forEach((v) => {
+      const y = H - padB - (v / max) * (H - padB - padT);
+      axis.append(svg('line', { x1: padL, x2: W - 4, y1: y, y2: y, stroke: 'var(--grid)' }), svg('text', { x: padL - 4, y: y + 4, class: 'lbl', 'text-anchor': 'end', style: 'font-size:10px' }, v + '%'));
+    });
+    order.forEach((a, i) => {
+      const b = bars[a], x = padL + i * bw + 2, h = Math.max(1, (f[a] / max) * (H - padB - padT)), y = H - padB - h;
+      b.r.setAttribute('x', x); b.r.setAttribute('width', bw - 4); b.r.setAttribute('y', y); b.r.setAttribute('height', h);
+      const sel = a === selLetter;
+      b.r.setAttribute('fill', sel ? 'var(--p)' : (f[a] < 0.5 ? 'var(--o)' : 'var(--t)'));
+      b.g.classList.toggle('sel', sel);
+      b.t.setAttribute('x', x + (bw - 4) / 2); b.t.setAttribute('y', H - padB + 15);
+      b.v.setAttribute('x', x + (bw - 4) / 2); b.v.setAttribute('y', y - 3);
+      b.v.textContent = sel ? f[a].toFixed(f[a] < 1 ? 2 : 1) : '';
+    });
+    const rk = ABC.slice().sort((x, y) => f[y] - f[x]);
+    const srcName = { text: '一般文本（Lewand）', dict: '词典词条', live: '本页三段样本现场统计' }[src];
+    stat.innerHTML = `${srcName}：<b>${selLetter.toUpperCase()}</b> 占 <b>${f[selLetter].toFixed(f[selLetter] < 1 ? 3 : 2)}%</b>，排第 ${rk.indexOf(selLetter) + 1} / 26。最常见 ${rk[0].toUpperCase()}，最少 <b>${rk[25].toUpperCase()}</b>（${f[rk[25]].toFixed(3)}%），倒数第二 ${rk[24].toUpperCase()}。橙色柱为频率低于 0.5% 的字母。`;
+  };
+  seg('freqSrc', (k) => { src = k; draw(); });
+  seg('freqSort', (k) => { sort = k; draw(); });
+  bus.addEventListener('letter', draw);
+  draw();
+});
+
+/* ---------- 03 删字母实验 ---------- */
+reg('delete', () => {
+  const SAMPLES = { gb: GETTYSBURG, ga: GADSBY, eu: JOKE[0][1] };
+  let sk = 'gb', mode = 'mark';
+  const pickBox = $('delPick'), out = $('delOut'), met = $('delMet'), stat = $('delStat'), rank = $('delRank');
+  const btns = {};
+  ABC.forEach((a) => { const b = el('button', { class: 'lt', type: 'button', 'aria-label': '删掉 ' + a.toUpperCase(), onclick: () => setLetter(a) }, a.toUpperCase()); btns[a] = b; pickBox.append(b); });
+  const analyze = (text, a) => {
+    const words = (text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []);
+    const letters = (text.match(/[A-Za-z]/g) || []).length;
+    const removed = words.reduce((s, w) => s + w.split(a).length - 1, 0);
+    const hit = words.filter((w) => w.includes(a)).length;
+    const vocab = [...new Set(words)];
+    const groups = new Map();
+    vocab.forEach((w) => { const d = w.split(a).join(''); if (!groups.has(d)) groups.set(d, []); groups.get(d).push(w); });
+    const clashes = [...groups.entries()].filter(([, ws]) => ws.length > 1);
+    return { words: words.length, letters, removed, hit, clashes, empty: vocab.filter((w) => w.split(a).join('') === '') };
+  };
+  const draw = () => {
+    const a = selLetter, text = SAMPLES[sk];
+    Object.entries(btns).forEach(([k, b]) => b.classList.toggle('sel', k === a));
+    const re = new RegExp(a, 'gi');
+    out.innerHTML = mode === 'mark' ? esc(text).replace(re, (m) => `<span class="gone">${m === m.toUpperCase() ? '▯' : '▯'}</span>`) : esc(text.replace(re, ''));
+    const r = analyze(text, a);
+    met.innerHTML = '';
+    met.append(
+      el('div', {}, el('b', {}, (r.removed / r.letters * 100).toFixed(1) + '%'), '字符被删'),
+      el('div', {}, el('b', {}, (r.hit / r.words * 100).toFixed(1) + '%'), '词次被改动'),
+      el('div', {}, el('b', {}, String(r.clashes.length)), '组词撞车'));
+    const ex = r.clashes.slice(0, 4).map(([d, ws]) => `${ws.join(' / ')} → <b>${esc(d || '（空）')}</b>`).join('；');
+    stat.innerHTML = `删掉 <b>${a.toUpperCase()}</b>：样本 ${r.words} 个词次里有 ${r.hit} 个被改动。` + (r.clashes.length ? `撞车例子：${ex}${r.clashes.length > 4 ? ' 等' : ''}。` : '样本里没有两个词因此变成同一拼写。') + (r.empty.length ? ` 有词整个消失：${r.empty.join('、')}。` : '');
+    const all = ABC.map((x) => [x, analyze(text, x).hit / r.words * 100]).sort((p, q) => q[1] - p[1]);
+    const mx = all[0][1] || 1;
+    rank.innerHTML = '';
+    all.forEach(([x, v]) => rank.append(el('div', { class: 'rw' + (x === a ? ' sel' : ''), onclick: () => setLetter(x) }, x.toUpperCase(), el('span', {}, el('i', { style: `width:${Math.max(0.5, v / mx * 100)}%` })), v.toFixed(1) + '%')));
+  };
+  seg('delSample', (k) => { sk = k; draw(); });
+  seg('delMode', (k) => { mode = k; draw(); });
+  bus.addEventListener('letter', draw);
+  draw();
+});
+
+/* ---------- 04 漏字文检测器 ---------- */
+reg('lipo', () => {
+  const inp = $('lipIn'), box = $('lipAbc'), stat = $('lipStat');
+  const run = () => {
+    const t = inp.value, c = countLetters(t);
+    abcStrip(box, c);
+    const miss = ABC.filter((a) => !c[a]).map((a) => a.toUpperCase());
+    const n = Object.values(c).reduce((s, v) => s + v, 0);
+    stat.innerHTML = n === 0 ? '输入一些英文。' : `共 ${n} 个字母，用到 ${26 - miss.length} 种。` + (miss.length ? `没出现的字母：<b>${miss.join(' ')}</b>` + (miss.includes('E') ? '。<b>这是一篇不含 E 的漏字文。</b>' : '。') : '26 个字母全部出现。');
+  };
+  seg('lipPre', (k) => { inp.value = LIP[k]; run(); });
+  inp.value = LIP.gadsby;
+  inp.addEventListener('input', run);
+  run();
+});
+
+/* ---------- 05 时间线 + 希腊字母检测 ---------- */
+reg('timeline', () => {
+  const ITEMS = [
+    ['约前 6 世纪', '拉苏斯：不用 σ 的颂歌', '赫尔弥俄涅的拉苏斯（Lasus of Hermione），古希腊早期抒情诗人与音乐家，在僭主希庇阿斯的兄弟希帕库斯资助下创作。据原文，他不喜欢 sigma，写过不含 σ 的《半人马颂歌》（已失传）和《献给得墨忒耳的赞美诗》（仅存第一节，见下）。原文称他是最古老的漏字文作者。'],
+    ['1939', 'Gadsby：5 万词不用 e', '欧内斯特·文森特·赖特出版《Gadsby》，除引言与结尾注释外通篇不含 e。第 04 节检测器里可以直接验证原文所引的那一段。'],
+    ['1965', '敲击码：删掉 K', '越战美军战俘在河内的监狱里用 5×5 敲击码传递消息，25 格放不下 26 个字母，于是删掉 K、用 C 代替。见第 06 节。（年份为本页补充）'],
+    ['1969', 'La Disparition：法语版无 e 小说', '乔治·佩雷克的小说，部分灵感来自《Gadsby》，同样省略字母 e。法语里 e 比英语更常见，难度更高。（后半句为本页补充的常识性判断）'],
+    ['2001', 'Eunoia：每章只用一个元音', '克里斯蒂安·博克的书，五章分别只用元音 A、E、I、O、U 中的一个。这不再是「删一个字母」，而是一次删四个元音。'],
+  ];
+  const tl = $('tline'), panel = $('tlPanel'), btns = [];
+  const show = (i) => { btns.forEach((b, j) => b.classList.toggle('on', i === j)); panel.innerHTML = `<b>${ITEMS[i][0]} · ${ITEMS[i][1]}</b><br>${ITEMS[i][2]}`; };
+  ITEMS.forEach(([y, t], i) => { const b = el('button', { type: 'button', onclick: () => show(i) }, el('span', { class: 'y' }, y), el('span', {}, t)); btns.push(b); tl.append(b); });
+  show(0);
+
+  const GK = 'αβγδεζηθικλμνξοπρστυφχψω'.split('');
+  const POEM = 'Δάματρα μέλπω Κόραν τε Κλυμένοι᾽ ἄλοχον μελιβόαν ὕμνον ἀναγνέων Αἰολίδ᾽ ἂμ βαρύβρομον ἁρμονίαν';
+  $('gkBtn').addEventListener('click', () => {
+    const norm = POEM.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/ς/g, 'σ');
+    const c = Object.fromEntries(GK.map((g) => [g, 0]));
+    for (const ch of norm) if (ch in c) c[ch]++;
+    const box = $('gkAbc'); box.innerHTML = '';
+    GK.forEach((g) => box.append(el('div', { class: 'lt' + (c[g] ? '' : ' zero') }, g, el('small', {}, String(c[g])))));
+    const miss = GK.filter((g) => !c[g]);
+    $('gkStat').innerHTML = `去掉变音符号后共 ${Object.values(c).reduce((s, v) => s + v, 0)} 个字母。没出现的：<b>${miss.join(' ')}</b>。σ 的确一次都没有；ζ、ξ、ψ 等本来就少见的字母缺席不算刻意。`;
+  });
+});
+
+/* ---------- 06 敲击码 ---------- */
+reg('tap', () => {
+  const GRID = ['ABCDE', 'FGHIJ', 'LMNOP', 'QRSTU', 'VWXYZ'];
+  const pos = {};
+  GRID.forEach((row, r) => row.split('').forEach((ch, c) => { pos[ch] = [r + 1, c + 1]; }));
+  pos.K = pos.C;
+  const grid = $('tapGrid'), inp = $('tapIn'), seq = $('tapSeq'), stat = $('tapStat');
+  const cells = {};
+  grid.append(el('div', { class: 'hd' }, ''));
+  for (let c = 1; c <= 5; c++) grid.append(el('div', { class: 'hd' }, String(c)));
+  GRID.forEach((row, r) => {
+    grid.append(el('div', { class: 'hd' }, String(r + 1)));
+    row.split('').forEach((ch) => {
+      const b = el('button', { type: 'button', class: ch === 'C' ? 'ck' : '', 'aria-label': ch === 'C' ? 'C 或 K' : ch, onclick: () => { inp.value += ch; build(); } }, ch === 'C' ? 'C/K' : ch);
+      cells[ch] = b; grid.append(b);
+    });
+  });
+  let timer = null, chips = [];
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } Object.values(cells).forEach((b) => b.classList.remove('hot')); chips.forEach((x) => x.classList.remove('on')); };
+  const build = () => {
+    stop();
+    const letters = inp.value.toUpperCase().replace(/[^A-Z]/g, '').split('');
+    seq.innerHTML = ''; chips = [];
+    letters.forEach((ch) => {
+      const [r, c] = pos[ch];
+      const sent = ch === 'K' ? 'C' : ch;
+      const k = el('span', { class: 'tk' }, el('b', {}, sent), '•'.repeat(r) + ' ' + '•'.repeat(c));
+      chips.push(k); seq.append(k);
+    });
+    const taps = letters.reduce((s, ch) => s + pos[ch][0] + pos[ch][1], 0);
+    const ks = letters.filter((x) => x === 'K').length;
+    stat.innerHTML = letters.length ? `收到的是 <b>${letters.map((x) => x === 'K' ? 'C' : x).join('')}</b>，共敲 ${taps} 下。` + (ks ? `其中 ${ks} 个 K 被当成 C 发出，读的人靠上下文还原。` : '') : '输入英文字母。';
+    return letters;
+  };
+  $('tapPlay').addEventListener('click', () => {
+    const letters = build();
+    if (!letters.length) return;
+    let i = 0;
+    const tick = () => {
+      Object.values(cells).forEach((b) => b.classList.remove('hot')); chips.forEach((x) => x.classList.remove('on'));
+      if (i >= letters.length) { stop(); return; }
+      const ch = letters[i] === 'K' ? 'C' : letters[i];
+      cells[ch].classList.add('hot'); chips[i].classList.add('on'); i++;
+    };
+    tick(); timer = setInterval(tick, RM ? 400 : 700);
+  });
+  $('tapClr').addEventListener('click', () => { inp.value = ''; build(); });
+  inp.addEventListener('input', build);
+  build();
+  return { stop };
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = $('sidenav'), toc = $('tocList');
+const sheet = $('tocSheet'), mask = $('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+$('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = $('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

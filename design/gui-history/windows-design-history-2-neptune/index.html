@@ -1,0 +1,884 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Windows 设计史 02：「海王星」项目，「稳定」表象背后的求索</title>
+<meta name="description" content="Windows 98 的桌面更新、RedShark 的「项目」构想、Neptune 的活动中心与它们的去向。带 hta 改后缀实验、98 桌面线框、窗口与项目页面对比、家谱图、活动中心模拟器、开始按钮对比等交互。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ================= 本页：线框示意 ================= */
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.hero-art svg{margin:0 auto;max-width:560px}
+.pcap{text-align:center;font-size:13px;color:var(--muted);margin-top:6px;min-height:1.4em}
+.fig svg{max-width:620px;margin:0 auto}
+.body p{margin-top:10px;font-size:15.5px}
+.body p:first-child{margin-top:0}
+.body{margin-bottom:16px}
+.wf{stroke:var(--ink);stroke-opacity:.55;stroke-width:1.2}
+.wf-frame{fill:var(--surface)}
+.wf-title{fill:var(--p)}
+.wf-title-t{fill:var(--surface);font-size:10px;font-family:var(--font);font-weight:600}
+.wf-block{fill:var(--surface-2)}
+.wf-line{fill:var(--line)}
+.wf-desk{fill:var(--t-soft)}
+.wf-task{fill:var(--surface-2)}
+.wf-accent{fill:var(--p-soft);stroke:var(--p);stroke-width:1.2}
+.wf-o{fill:var(--o-soft);stroke:var(--o);stroke-width:1.2}
+.wf-y{fill:var(--y-soft);stroke:var(--y);stroke-width:1.2}
+.wf-t{fill:var(--t-soft);stroke:var(--t);stroke-width:1.2}
+.wf-txt{fill:var(--text);font-size:10px;font-family:var(--font)}
+.wf-mut{fill:var(--muted);font-size:9px;font-family:var(--font)}
+.wf-hl{fill:none;stroke:var(--r);stroke-width:2.4;stroke-dasharray:5 3}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:13px;text-align:left}
+.chip.on{border-color:var(--p);background:var(--p-soft);color:var(--p);font-weight:600}
+.chip .k{font-family:var(--mono);font-size:11px;opacity:.7;margin-right:4px}
+/* 活动中心模拟器（HTML 线框） */
+.ac{border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--surface);max-width:620px;margin:0 auto}
+.ac-top{display:flex;align-items:center;gap:6px;background:var(--p);color:var(--surface);padding:5px 10px;font-size:12px;font-weight:600}
+.ac-nav{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 8px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.ac-nav button{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:3px 9px;font-size:12.5px;cursor:pointer}
+.ac-nav button[disabled]{opacity:.45;cursor:default}
+.ac-nav .crumb{font-size:12px;color:var(--muted);margin-left:4px;min-width:0;overflow-wrap:anywhere}
+.ac-body{padding:14px 16px 16px;min-height:230px}
+.ac-body h3{font-size:18px;margin-bottom:4px}
+.ac-body .q{font-size:13px;color:var(--muted);margin-bottom:10px}
+.ac-tasks{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:560px){ .ac-tasks{grid-template-columns:1fr 1fr} }
+.ac-task{display:flex;gap:10px;align-items:center;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:9px 11px;cursor:pointer;font-size:14px}
+.ac-task:hover,.ac-task:focus{border-color:var(--p);outline:none}
+.ac-task .ico{flex:none;width:26px;height:26px;border-radius:7px;background:var(--p-soft);color:var(--p);display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.ac-task.main{border-color:var(--p)}
+.ac-more{margin-top:12px;font-size:12.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:8px}
+.ac-more a{cursor:pointer;margin-right:12px}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:360px}
+.thumb{aspect-ratio:4/3;border-radius:8px;border:2px solid var(--line);background:linear-gradient(160deg,var(--t-soft),var(--y-soft));cursor:pointer}
+.thumb.sel{border-color:var(--p);box-shadow:0 0 0 2px var(--p-soft)}
+.prin{display:grid;gap:6px;margin-top:12px}
+.prin div{font-size:13px;padding:6px 10px;border-radius:8px;border:1px solid var(--line);color:var(--muted);transition:all .25s}
+.prin div.on{border-color:var(--t);background:var(--t-soft);color:var(--text)}
+.prin div .k{font-family:var(--mono);font-size:11px;margin-right:6px}
+/* 路径对比 */
+.lane{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 12px}
+.lane .st{font-size:12.5px;padding:4px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2)}
+.lane .st.extra{border-style:dashed;border-color:var(--r);color:var(--r)}
+.lane .ar{color:var(--muted);font-size:12px}
+.bars{display:grid;gap:8px;margin-top:6px}
+.bar{display:grid;grid-template-columns:7.5em 1fr 4.5em;gap:8px;align-items:center;font-size:13px}
+.bar .tr{height:14px;background:var(--surface-2);border-radius:7px;overflow:hidden}
+.bar .fl{height:100%;border-radius:7px;transition:width .3s}
+/* 遗产映射 */
+.legacy{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .legacy{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)} }
+.legacy .list{display:grid;gap:6px}
+.legacy .card{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--surface-2);min-height:160px}
+.legacy .card .era{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--p-soft);color:var(--p);border-radius:6px;padding:1px 7px;margin-bottom:6px}
+.legacy .card h4{margin:0 0 6px;font-size:16px}
+.legacy .card p{font-size:14px;margin-top:6px}
+.fate{display:inline-block;font-size:11px;border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.fate.gone{background:var(--r-soft);color:var(--r)}
+.fate.live{background:var(--t-soft);color:var(--t)}
+/* 起始页 / 开始按钮 */
+.scr{position:relative;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--t-soft);height:280px;max-width:620px;margin:0 auto}
+.scr .icons{position:absolute;left:12px;top:12px;display:grid;gap:12px;font-size:11px;color:var(--text);text-align:center}
+.scr .icons i{display:block;width:30px;height:24px;margin:0 auto 2px;border-radius:5px;background:var(--surface);border:1px solid var(--line)}
+.scr .tb{position:absolute;left:0;right:0;bottom:0;height:34px;background:var(--surface-2);border-top:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 6px}
+.scr .startb{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer;font-size:13px}
+.scr .startb.on{background:var(--p);color:#fff;border-color:var(--p)}
+.scr .clock{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.scr .menu{position:absolute;left:6px;bottom:38px;width:170px;background:var(--surface);border:1.5px solid var(--ink);border-radius:6px;display:none;font-size:12.5px;overflow:hidden}
+.scr .menu .side{position:absolute;left:0;top:0;bottom:0;width:22px;background:var(--p)}
+.scr .menu ul{list-style:none;margin:0;padding:4px 6px 4px 28px}
+.scr .menu li{padding:4px 2px;border-bottom:1px solid var(--line)}
+.scr .menu li:last-child{border-bottom:0}
+.scr .full{position:absolute;left:0;right:0;top:0;bottom:34px;background:var(--surface);display:none;padding:12px 14px;overflow:hidden}
+.scr .full h4{margin:0 0 8px;font-size:16px}
+.scr .full .g{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+@media (min-width:520px){ .scr .full .g{grid-template-columns:repeat(3,1fr)} }
+.scr .full .g div{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:8px;font-size:12.5px}
+.scr .full.tiles{background:var(--p)}
+.scr .full.tiles h4{color:#fff}
+.scr .full.tiles .g div{background:var(--surface);border:0;border-radius:2px;min-height:44px}
+.shift{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.shift input{accent-color:var(--p)}
+.cmp{width:100%;border-collapse:collapse;font-size:13.5px}
+.cmp th,.cmp td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.cmp th{color:var(--muted);font-weight:600;font-size:12.5px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Windows 设计史 02 · 海王星</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · GUI 史 · Windows 设计史 02</div>
+  <h1>「海王星」项目：「稳定」表象背后的求索</h1>
+  <p class="sub">Windows 95 之后，Windows 的外观看上去稳定了好几年。可微软内部一直在试另一条路：把浏览器揉进系统，用「页面」代替「桌面」和「窗口」，围绕「项目」和「任务」组织一切。这条路最终没走通，却留下了很多影子。</p>
+  <div class="thesis">1990 年代末，微软从「Windows 桌面更新」到 RedShark 构想，再到 Neptune 的「活动中心」，试图建立一个以任务为导向、以页面替代桌面与窗口的界面。它因理念太超前、底层技术跟不上而搁浅，但帮助中心、全屏开始屏幕等设计，都能在后来的 Windows 里找到。<sup class="c">[1]</sup></div>
+  <div class="hero-art">
+    <div data-demo="hero"></div>
+    <div class="pcap" id="heroCap"></div>
+  </div>
+  <div class="authors">
+    <span class="au"><i>S</i>SUNTRISE</span>
+  </div>
+  <p class="meta">原文：《Windows 设计史 02 |「海王星」项目，「稳定」表象背后的求索》，SUNTRISE，少数派（2024-05-13）。本页忠实于原文的叙述顺序，原文中的界面截图都改成了示意性的线框重绘（不追求像素还原），并加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="web" data-title="操作系统网页化">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>「操作系统网页化」？</h2>
+    <p class="lead">把一个 .html 文件的后缀改成 .hta，它为什么就像变成了一个独立程序？</p>
+  </div>
+  <div class="body">
+    <p>原文先请读者做一个实验：在 Windows 上随便找一个不太复杂的网页文件，把后缀从 html 改为 hta，双击打开，网页内容照常显示，但它看起来已经是一个独立的程序。这个小小的 hta 文件，是微软在上世纪末那场「操作系统网页化」试验留下的遗产。随着 IE 内核逐渐从 Windows 中移除，hta 文件将来可能不再受支持。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>改后缀实验</b>：切换文件后缀，看同一份网页由谁来承载、外面套了什么。</div>
+    <div data-demo="hta"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：HTA（HTML Application）由系统里的 mshta.exe 承载运行，不经过浏览器的安全区限制，权限与普通本地程序相同，因此可以读写文件、调用系统组件。这也是它能「像程序一样」的原因，同时让它成了一种常被滥用的脚本载体。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="w98" data-title="Windows 98 = Windows + IE">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>Windows 98 = Windows + IE</h2>
+    <p class="lead">「Windows 桌面更新」到底往桌面上加了什么？</p>
+  </div>
+  <div class="body">
+    <p>1997 年 9 月，Internet Explorer 4 发布，同时为 Windows 引入「Windows 桌面更新」。它在 Win95 与 NT 4.0 上是可选更新，在默认装了 IE4 的 Windows 98 上是内置功能。它的目的是加强 IE 与 Windows 的集成：资源管理器用上了类似 IE 的界面；任务栏引入了工具栏和「快速启动」栏；还有「活动桌面（Active Desktop）」和「频道栏（Channel Bar）」。活动桌面允许把网页之类的 Web 项目设成壁纸并直接在桌面上与之交互；频道栏用来实时接收并在桌面上显示网站的信息。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>Windows 98 桌面线框</b>：逐个打开「桌面更新」带来的四项改动。原文配了两张截图：装了桌面更新的 Windows，以及把 Yahoo! 网站设为桌面的 Windows；这里都画成线框。</div>
+    <div data-demo="desk98"></div>
+  </div>
+  <div class="body" style="margin-top:16px">
+    <p>微软为什么在这时执着于把浏览器和 Windows 绑在一起？当时正是「第一次浏览器大战」最激烈的时期。据说网景创始人马克·安德森（Marc Andreessen）曾放话：</p>
+    <div class="quote">「未来，在网景面前，Windows 将被简化为一堆设计拙劣的设备驱动程序的集合。」</div>
+    <p>为了与网景竞争，微软借 Windows 的力量推 IE 的份额；加上人们普遍看好互联网的潜力，微软开始了「操作系统网页化」试验。前面的 hta 就是随 IE5 引入的特性，当时也被用在欢迎程序等系统文件里。副作用是：IE 后来失去份额乃至停止支持时，怎样把它从 Windows 里剥离成了不小的难题。不过原文关心的是另一件事：这些抬高自带浏览器地位的举措，如何引出了一场重构 Windows 界面的试验。</p>
+  </div>
+</section>
+
+<section class="ch" id="redshark" data-title="RedShark 到 Neptune">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>从「RedShark（红鲨）」到「Neptune（海王星）」</h2>
+    <p class="lead">如果「项目」而不是「程序」才是组织原则，界面会长成什么样？</p>
+  </div>
+  <div class="body">
+    <p>1998 年，Ben Slivka、Joe Belfiore、Steve Capps 等 15 名微软员工组成了「RedShark」项目团队（据雷蒙德·陈（Raymond Chen），名字来自办公室里一个小型充气红鲨玩偶），负责构想 Windows 新的用户界面。核心理念是「软件即服务」，要打造超越 Windows 和 Internet 的、以人为本的计算体验。四条思想是：</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>同一件事，两种界面</b>：一对夫妇在计划夏威夷度假。先看传统「桌面 + 窗口」里资料散落成什么样，再切到「项目页面」；点下面四条 RedShark 思想，看它在页面上落在哪里。</div>
+    <div data-demo="pages"></div>
+  </div>
+  <div class="body" style="margin-top:16px">
+    <p>Ben Slivka 回顾这个项目时，借 Microsoft Teams 和 Slack 来说明当年的愿景：「Microsoft Teams 和 Slack 都走在实现我们当年愿景的道路上，但两者都有复杂性和局限性。我们的主要见解是：<b>项目</b>应该是组织原则，而不是<b>团队</b>。」</p>
+    <p>界面怎么设计？团队的回答是：<b>按照页面组织内容，全屏且无窗口管理，具有统一的搜索/历史记录，支持多用户和漫游功能</b>。这些概念最终在代号「Neptune（海王星）」的 Windows 版本里付诸实践。从概念演示可以看出，界面借用了浏览器的导航栏、主页等概念。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>概念演示</b>：原文展示了四张概念图。这里按原文点明的共同元素（导航栏、主页、全屏页面）画成示意线框，不还原原图细节。</div>
+    <div data-demo="concepts"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Ben Slivka 的回顾文章题为 “Before Slack and Teams: The Windows Service (1998)”，发表于 2020-11-20（据文章网址）。<sup class="c">[8]</sup></div>
+</section>
+
+<section class="ch" id="neptune" data-title="神秘的海王星">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>神秘的「海王星」</h2>
+    <p class="lead">一个只公开过一个构建的版本，在 Windows 家谱里处在什么位置？</p>
+  </div>
+  <div class="body">
+    <p>Neptune 出现时间很短，目前公开的只有一个构建，是 Windows 史上一个神秘的存在，但其中一些设计对当时和后来的 Windows 影响深远。它本来要接替 Windows 98，却基于 NT 内核而非 98 的 9x 内核；它的一些功能被同时期的 Windows Me 采用；最后它又与旨在继承 Windows 2000 的 Odyssey 项目（至今一个版本都没公开）合并，成为代号「Whistler」的项目。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>家谱图</b>：点任意一个节点看它的位置。橙色是 9x 内核，紫色是 NT 内核，虚线框是没有正式发布的项目。</div>
+    <div data-demo="lineage"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Windows Me 于 2000 年 9 月发布，是最后一个 9x 内核的 Windows；Whistler 最终以 Windows XP 之名在 2001 年 10 月发布，从此家用版也转到 NT 内核。<sup class="c">[3]</sup></div>
+</section>
+
+<section class="ch" id="ac" data-title="活动中心">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>活动中心：以任务为中心</h2>
+    <p class="lead">「根据任务目标而不是工具来表述选项」，点起来是什么感觉？</p>
+  </div>
+  <div class="body">
+    <p>Neptune 的「活动中心（Activity Centers）」就是对上述想法的实践。它是一种<b>以任务为中心</b>的新界面，与前文的「项目」概念相似，都从用户要完成的事出发；用 HTML 与 Win32 API 组合编写，跑在一个叫 Mars 的 Web 框架上。由于 Neptune 和 Windows Me 的开发互相交织，实际版本里 Neptune 的活动中心用的是 Me 的 Millennium 代号。</p>
+    <p>据科技评论员 Paul Thurrott 的描述，它计划包括照片中心、音乐中心、游戏中心、帮助中心、家庭网络配置中心和自动更新页面，遵循「感应式导航」的设计原则（下方模拟器里列出五条）。「起始页」可以通过活动桌面设为桌面，放着推荐任务（查看邮箱、浏览网络等）和最近的程序/文件。每个中心的主页提供主要任务，用户也能自定义；次要任务页面给出完成单个任务的明显步骤，标题往往是一个问题或一句描述。各中心都有导航栏，可以定位页面或回到主页。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>活动中心模拟器</b>：从起始页进入照片中心，走一遍「扫描」或「编辑图片」。每到一页，下方会亮起这一页体现了哪几条感应式导航原则。页面标题里的两句话取自原文，其余界面为示意。</div>
+    <div data-demo="center"></div>
+  </div>
+  <div class="body" style="margin-top:16px">
+    <p>原文还提到 Neptune 引入的其他特性：自动更新与自托管机制（后来 Windows 的 Insider 项目也用了类似机制），以及「快速启动」功能（类似功能后来出现在 Windows 8 中）。原文配有 Neptune 的项目 Logo、活动中心概念动图、实际版本里的活动中心和 Neptune 升级提醒的截图。</p>
+    <p>Paul Thurrott 评价：「如果微软能够成功，活动中心对于新用户和缺乏经验的用户来说将是一个巨大的福音……从逻辑上讲，我们会使用计算机来完成任务，而不是漫无目的地在无连接性的用户界面中徘徊……」但他也指出局限：活动中心更适合新手，熟练用户更愿意直接找工具；而且它强调简单和可发现，不强调效率，所以不适合频繁重复的任务。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>新手福音，老手负担</b>：同一件事「挑一张照片拿去编辑」，比较两条路径。切换用户类型、拖动每周重复次数。步数是本页为说明 Thurrott 的论点而设的<b>假设值</b>，不是测量数据。</div>
+    <div data-demo="paths"></div>
+  </div>
+</section>
+
+<section class="ch" id="compromise" data-title="向现实妥协">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>向现实妥协</h2>
+    <p class="lead">试验搁浅后，这些想法各自去了哪里？</p>
+  </div>
+  <div class="body">
+    <p>重构界面的试验最终不了了之，RedShark/Neptune 的理念没有被微软接受。Ben Slivka 猜测，比尔·盖茨觉得它听起来太像大型机，而微软正是靠 Windows 和个人电脑消灭了大型机。他感叹：「我们实在太超前于时代了。」现实情况是，当时的底层技术也不足以支撑类似活动中心的界面。</p>
+    <p>Windows Me 部分实现了活动中心的设计；随着 Neptune 并入 Whistler，试验渐渐没了下文。用原文的话说，内部「风高浪急」，却很少有「浪花」溅到最终版本里。已经进入 Windows 的那些功能也命运各异。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>去向图</b>：点左侧任一项，看它后来落在了哪个版本或产品里。原文对应的截图有 Windows Me 帮助与支持、Windows Media Player 7、Vista/7 游戏资源管理器、Lively Wallpaper。</div>
+    <div data-demo="legacy"></div>
+  </div>
+</section>
+
+<section class="ch" id="reborn" data-title="海王星的重生">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>「海王星」的重生</h2>
+    <p class="lead">全屏开始屏幕的种子，是什么时候埋下的？</p>
+  </div>
+  <div class="body">
+    <p>在 Whistler 里活动中心基本停止了开发，但 Build 2410 做了一个不起眼的尝试：把活动中心的「起始页」映射到「开始」按钮上，也就是考虑用起始页替代开始菜单。同时仍然可以按 Shift+Win 打开传统的开始菜单，原文认为这比 Windows 8 的设计更人性化。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>点「开始」</b>：在 Build 2410 下分别不按 / 按住 Shift 点开始按钮（勾选「按住 Shift」，或真的按着 Shift 键点），再切到 Windows 8 对比。界面为示意线框。</div>
+    <div data-demo="start"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Windows 8（2012 年 10 月）去掉了传统开始菜单，开始按钮也不再常驻任务栏；Windows 8.1 恢复了开始按钮，但点开仍是开始屏幕；传统样式的开始菜单到 Windows 10 才回来。<sup class="c">[4]</sup></div>
+  <div class="body" style="margin-top:16px">
+    <p>回看 RedShark/Neptune 对如何组织操作系统的思考，与今天「云计算」的概念十分相似。前微软高管 Brad Silverberg 评论：「Neptune 团队对基于云的计算有着出色的了解。」活动桌面「把网页设为桌面」的功能，也在今天许多动态桌面软件里实现了。</p>
+    <p>而「以项目/任务为中心」的界面，后来被一位叫 Jason Yuan 的设计师翻新，提出了一套以任务为导向的界面。巧合的是，他也用一颗行星给它命名：<b>Mercury（水星）</b>。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>三种组织方式</b>：把本文出现的几种界面思路放在一起比较。</div>
+    <div class="scrollx">
+    <table class="cmp">
+      <tr><th>思路</th><th>组织单位</th><th>主要容器</th><th>典型例子</th></tr>
+      <tr><td>桌面 + 窗口</td><td>程序与文件</td><td>可重叠的窗口</td><td>Windows 95/98</td></tr>
+      <tr><td>RedShark / Neptune</td><td>项目、任务</td><td>全屏页面 + 导航栏</td><td>活动中心、起始页</td></tr>
+      <tr><td>Mercury</td><td>任务（以任务为导向）</td><td>原文未展开</td><td>Jason Yuan 的 Mercury OS 概念</td></tr>
+    </table>
+    </div>
+    <div class="final">「稳定」的 Windows 背后，微软曾经认真想过让电脑围着「你要做的事」转，而不是围着「程序」转。这个想法在当时太早，却一直没有消失。</div>
+  </div>
+  <div class="body" style="margin-top:16px">
+    <p>原文结尾预告：下期回到现实，看 Windows 在 Win95 之后还面临哪些亟需解决的现实问题，其中之一是上期缺席的内容：Windows 的视觉风格。</p>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 SUNTRISE 在少数派发表的《<a href="https://sspai.com/post/88506">Windows 设计史 02 |「海王星」项目，「稳定」表象背后的求索</a>》（2024-05-13）制作，是「Windows 设计史」系列的第二篇（第一篇：<a href="https://sspai.com/post/87835">Windows 设计史 01</a>）。原文中的插图与界面截图均已用内联 SVG、HTML 线框和 JS 示意性重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>SUNTRISE，《Windows 设计史 02 |「海王星」项目，「稳定」表象背后的求索》，少数派（2024-05-13），<a href="https://sspai.com/post/88506">sspai.com/post/88506</a>；及其所列参考资料：Wikipedia「Windows Desktop Update」、Betawiki「Internet Explorer 4」「Windows Neptune」「Windows XP build 2410」、BetaArchive「Activity Centers」、ZDNet「How Internet Explorer really beat Netscape」、Albacore 与 Brad Silverberg 的推文、Jason Yuan「Introducing Mercury OS」。</li>
+    <li>Wikipedia 条目 HTML Application：HTA 由 mshta.exe 执行，不受浏览器安全模型限制，享有本地程序的权限。</li>
+    <li>Wikipedia 条目 Windows Me、Windows XP：发布时间（2000 年 9 月；2001 年 10 月）与内核。</li>
+    <li>Wikipedia 条目 Windows 8、Windows 8.1、Start menu：开始菜单的移除与恢复。</li>
+    <li>Paul Thurrott. <a href="https://www.itprotoday.com/windows-server/activity-centers-preview">Activity Centers Preview</a>. ITPro Today（原文引用的活动中心描述与评价）。</li>
+    <li><a href="https://betawiki.net/wiki/Windows_Neptune">Windows Neptune - Betawiki</a>（原文资料来源）。</li>
+    <li><a href="https://www.betaarchive.com/wiki/index.php/Activity_Centers">Activity Centers - BetaArchive</a>（原文资料来源）。</li>
+    <li>Ben Slivka (2020-11-20). <a href="https://benslivka.com/2020/11/20/before-slack-and-teams-the-windows-service-1998/">Before Slack and Teams: The Windows Service (1998)</a>.</li>
+    <li><a href="https://www.mercuryos.com/">Mercury OS</a>，Jason Yuan。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；界面线框均为示意，不代表原界面的真实细节，历史细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+/* ---------- 线框小工具 ---------- */
+const R = (x, y, w, h, cls, rx = 0, extra = {}) => svg('rect', { x, y, width: w, height: h, rx, class: cls, ...extra });
+const Tx = (x, y, t, cls = 'wf-txt', extra = {}) => svg('text', { x, y, class: cls, ...extra }, t);
+const lines = (x, y, w, n, gap = 7) => { const g = svg('g'); for (let i = 0; i < n; i++) g.append(R(x, y + i * gap, w * (i % 3 === 2 ? 0.6 : 1), 3, 'wf-line', 1.5)); return g; };
+const win = (x, y, w, h, title) => svg('g', {},
+  R(x, y, w, h, 'wf wf-frame', 3), R(x, y, w, 14, 'wf-title', 0),
+  Tx(x + 5, y + 10, title, 'wf-title-t'),
+  R(x + w - 12, y + 3, 8, 8, 'wf-block', 1), R(x + w - 22, y + 3, 8, 8, 'wf-block', 1));
+const makeSeg = (labels, onPick, init = 0) => {
+  const seg = el('div', { class: 'seg', role: 'tablist' });
+  const bs = labels.map((t, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); onPick(i); } }, t));
+  seg.append(...bs);
+  return seg;
+};
+const keyable = (n, fn) => { n.setAttribute('tabindex', '0'); n.addEventListener('click', fn); n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } }); };
+
+/* ---------- 标题区：从「桌面 + 窗口」到「页面」 ---------- */
+reg('hero', (node) => {
+  const s = svg('svg', { viewBox: '0 0 560 200', role: 'img', 'aria-label': '左边是桌面加重叠窗口，右边是一页一个任务的全屏页面' });
+  // 左：桌面
+  s.append(R(10, 20, 230, 160, 'wf wf-desk', 6), R(10, 166, 230, 14, 'wf wf-task', 0), R(14, 168, 26, 10, 'wf-accent', 2));
+  s.append(win(24, 34, 110, 70, '我的电脑'), win(70, 56, 120, 80, '写字板'), win(120, 40, 104, 66, '浏览器'));
+  s.append(lines(78, 78, 100, 5), lines(128, 62, 88, 4));
+  s.append(Tx(125, 196, '桌面 + 窗口：你管理窗口', 'wf-mut', { 'text-anchor': 'middle' }));
+  // 箭头
+  s.append(svg('path', { d: 'M252 100 h46', stroke: 'var(--o)', 'stroke-width': 2.5, fill: 'none' }), svg('path', { d: 'M296 93 l9 7 -9 7z', fill: 'var(--o)' }));
+  // 右：页面
+  s.append(R(318, 20, 232, 160, 'wf wf-frame', 6), R(318, 20, 232, 20, 'wf-block', 0));
+  s.append(svg('circle', { cx: 330, cy: 30, r: 5, class: 'wf wf-frame' }), svg('circle', { cx: 344, cy: 30, r: 5, class: 'wf wf-frame' }), R(356, 25, 10, 10, 'wf-accent', 2), R(374, 25, 120, 10, 'wf wf-frame', 5));
+  s.append(Tx(330, 60, '今天要做什么？', 'wf-txt', { style: 'font-size:13px;font-weight:700' }));
+  [['查看邮件', 0], ['计划度假', 1], ['整理照片', 2], ['听音乐', 3]].forEach(([t, i]) => {
+    const x = 330 + (i % 2) * 108, y = 72 + Math.floor(i / 2) * 48;
+    s.append(R(x, y, 98, 40, i === 1 ? 'wf-accent' : 'wf wf-block', 6), Tx(x + 8, y + 24, t));
+  });
+  s.append(Tx(434, 196, '页面：一页一个任务（示意）', 'wf-mut', { 'text-anchor': 'middle' }));
+  node.append(s);
+  document.getElementById('heroCap').textContent = '本文讲的，就是 1990 年代末微软内部一次没走完的转向。';
+});
+
+/* ---------- 01 改后缀：html 与 hta ---------- */
+reg('hta', (node) => {
+  const s = svg('svg', { viewBox: '0 0 360 250', role: 'img', 'aria-label': '同一份网页在浏览器里和作为 hta 程序时的外观对比' });
+  const status = el('div', { class: 'status' });
+  const draw = (hta) => {
+    s.replaceChildren();
+    const name = hta ? 'page.hta' : 'page.html';
+    s.append(R(10, 8, 340, 206, 'wf wf-frame', 4), R(10, 8, 340, 18, 'wf-title', 0));
+    s.append(Tx(16, 21, hta ? 'page' : 'page - Microsoft Internet Explorer', 'wf-title-t'));
+    let y = 26;
+    if (!hta) {
+      s.append(R(10, y, 340, 14, 'wf-block', 0), Tx(16, y + 10, '文件  编辑  查看  收藏  工具  帮助', 'wf-mut'));
+      y += 14;
+      s.append(R(10, y, 340, 20, 'wf-block', 0));
+      ['后退', '前进', '停止', '刷新', '主页', '搜索', '收藏'].forEach((t, i) => s.append(R(14 + i * 40, y + 3, 36, 14, 'wf wf-frame', 3), Tx(32 + i * 40, y + 13, t, 'wf-mut', { 'text-anchor': 'middle' })));
+      y += 20;
+      s.append(R(10, y, 340, 16, 'wf-block', 0), Tx(16, y + 11, '地址', 'wf-mut'), R(40, y + 2, 300, 12, 'wf wf-frame', 2), Tx(44, y + 11, 'C:\\我的文档\\' + name, 'wf-mut'));
+      y += 16;
+    }
+    const bottom = hta ? 214 : 198;
+    // 网页内容（两种情况完全一样）
+    s.append(R(22, y + 10, 200, 14, 'wf-accent', 3), Tx(28, y + 21, '我的小工具', 'wf-txt'));
+    s.append(lines(22, y + 34, 300, 5, 9));
+    s.append(R(22, y + 84, 70, 18, 'wf-t', 9), Tx(57, y + 96, '开始', 'wf-txt', { 'text-anchor': 'middle' }));
+    if (!hta) s.append(R(10, bottom, 340, 16, 'wf-block', 0), Tx(16, bottom + 11, '完成', 'wf-mut'), Tx(344, bottom + 11, '我的电脑', 'wf-mut', { 'text-anchor': 'end' }));
+    // 文件图标
+    s.append(R(130, 222, 20, 24, hta ? 'wf-o' : 'wf-accent', 2), Tx(156, 238, name, 'wf-txt'), Tx(214, 238, hta ? '→ 由 mshta.exe 打开' : '→ 由浏览器打开', 'wf-mut'));
+    status.innerHTML = hta
+      ? '后缀是 <b>.hta</b>：同一份网页，没有菜单栏、工具栏、地址栏和状态栏，只剩标题栏和内容，看上去就是一个独立程序。'
+      : '后缀是 <b>.html</b>：网页被装进浏览器窗口，外面一圈是浏览器的菜单、按钮、地址栏和状态栏。';
+  };
+  draw(false);
+  node.append(el('div', { class: 'ctrl' }, makeSeg(['page.html', 'page.hta'], (i) => draw(i === 1))), s, status);
+});
+
+/* ---------- 02 Windows 98 桌面更新 ---------- */
+reg('desk98', (node) => {
+  const feats = [
+    ['active', '活动桌面', '网页直接做壁纸，并且能在桌面上点里面的链接、输入搜索词。原文的截图就是把 Yahoo! 网站设为了桌面。'],
+    ['channel', '频道栏', '桌面右侧的一列「频道」按钮，订阅网站后实时接收并显示它们的内容。'],
+    ['quick', '快速启动', '任务栏「开始」旁边多了一排小图标，一点就启动常用程序；任务栏也能放工具栏了。'],
+    ['web', 'Web 风格资源管理器', '资源管理器用上了类似 IE 的界面：左侧一栏像网页一样显示当前文件夹的标题和说明。'],
+  ];
+  const on = { active: true, channel: true, quick: true, web: true };
+  const s = svg('svg', { viewBox: '0 0 400 270', role: 'img', 'aria-label': 'Windows 98 桌面线框' });
+  const status = el('div', { class: 'status' });
+  const chips = feats.map(([k, t]) => { const b = el('button', { type: 'button', class: 'chip on', 'aria-pressed': 'true' }, t); b.addEventListener('click', () => { on[k] = !on[k]; b.classList.toggle('on', on[k]); b.setAttribute('aria-pressed', on[k]); draw(k); }); return b; });
+  const draw = (last) => {
+    s.replaceChildren();
+    s.append(R(0, 0, 400, 248, 'wf wf-desk', 4));
+    [['我的电脑', 14], ['回收站', 64], ['Internet', 114]].forEach(([t, y]) => s.append(R(16, y, 26, 22, 'wf wf-frame', 3), Tx(29, y + 34, t, 'wf-mut', { 'text-anchor': 'middle' })));
+    if (on.active) {
+      s.append(R(70, 12, 230, 120, 'wf wf-frame', 3), R(70, 12, 230, 18, 'wf-o', 0), Tx(76, 25, '门户网站首页（作为壁纸）', 'wf-txt'));
+      s.append(R(80, 38, 130, 12, 'wf wf-frame', 2), R(214, 38, 32, 12, 'wf-accent', 2), Tx(230, 47, '搜索', 'wf-mut', { 'text-anchor': 'middle' }));
+      for (let c = 0; c < 3; c++) { s.append(Tx(80 + c * 72, 66, ['新闻', '天气', '股票'][c], 'wf-txt')); s.append(lines(80 + c * 72, 72, 60, 6, 8)); }
+    }
+    if (on.channel) {
+      s.append(R(330, 12, 60, 176, 'wf wf-frame', 4), R(330, 12, 60, 16, 'wf-title', 0), Tx(336, 24, '频道', 'wf-title-t'));
+      ['新闻', '体育', '商业', '娱乐', '生活', '微软'].forEach((t, i) => s.append(R(336, 34 + i * 25, 48, 20, i % 2 ? 'wf-y' : 'wf-t', 3), Tx(360, 48 + i * 25, t, 'wf-txt', { 'text-anchor': 'middle' })));
+    }
+    // 资源管理器
+    const ex = 84, ey = 140, ew = 230, eh = 96;
+    s.append(win(ex, ey, ew, eh, '我的电脑'));
+    let ix = ex + 10;
+    if (on.web) {
+      s.append(R(ex + 1, ey + 15, 80, eh - 16, 'wf-accent', 0), Tx(ex + 8, ey + 34, '我的电脑', 'wf-txt', { style: 'font-size:12px;font-weight:700' }), lines(ex + 8, ey + 44, 64, 4, 8));
+      ix = ex + 92;
+    }
+    for (let i = 0; i < 3; i++) s.append(R(ix + i * 44, ey + 30, 24, 20, 'wf wf-block', 3), Tx(ix + i * 44 + 12, ey + 62, ['A:', 'C:', 'D:'][i], 'wf-mut', { 'text-anchor': 'middle' }));
+    // 任务栏
+    s.append(R(0, 248, 400, 22, 'wf wf-task', 0), R(4, 251, 40, 16, 'wf wf-frame', 3), Tx(24, 263, '开始', 'wf-txt', { 'text-anchor': 'middle', style: 'font-weight:700' }));
+    let tx = 50;
+    if (on.quick) { for (let i = 0; i < 4; i++) s.append(R(tx + i * 16, 253, 12, 12, i === 0 ? 'wf-accent' : 'wf-t', 2)); tx += 70; s.append(R(tx - 4, 251, 1.5, 16, 'wf-line')); }
+    s.append(R(tx, 251, 90, 16, 'wf wf-block', 3), Tx(tx + 6, 263, '我的电脑', 'wf-mut'));
+    s.append(Tx(392, 263, '12:00', 'wf-mut', { 'text-anchor': 'end' }));
+    const f = feats.find((x) => x[0] === last);
+    const n = Object.values(on).filter(Boolean).length;
+    status.innerHTML = f ? `<b>${f[1]}</b>${on[last] ? '已打开' : '已关闭'}：${f[2]}（当前打开 ${n} / 4 项）` : '四项都已打开，这大致就是装了「Windows 桌面更新」的 Windows 98。点按钮逐项关掉，对比 Windows 95 原本的样子。';
+  };
+  draw();
+  node.append(el('div', { class: 'chips' }, ...chips), s, status);
+});
+
+/* ---------- 03 同一件事，两种界面 ---------- */
+reg('pages', (node) => {
+  const P = [
+    ['所有数据都存储在服务器上', 'server', '页面底部的徽标：项目里的讨论、文档、照片都放在服务器上，换哪台电脑都是同一份。'],
+    ['计算机只是代码和数据的安全缓存', 'cache', '本机只缓存一份，丢了也不怕，服务器上还有。'],
+    ['「项目」是关键的组织原则', 'project', '整个页面按「夏威夷度假」这个项目来组织：成员、讨论、文档、照片、相关网页都在一页上，而不是散在不同程序里。'],
+    ['可以很好地「离线」工作', 'offline', '断网时页面照样能看能改，联网后再同步。'],
+  ];
+  let mode = 0, pick = -1;
+  const s = svg('svg', { viewBox: '0 0 400 252', role: 'img', 'aria-label': '计划度假任务在窗口界面与项目页面中的对比' });
+  const status = el('div', { class: 'status' });
+  const segWrap = el('div', { class: 'ctrl' });
+  let seg;
+  const chips = P.map(([t], i) => { const b = el('button', { type: 'button', class: 'chip' }, el('span', { class: 'k' }, i + 1 + '.'), t); b.addEventListener('click', () => { pick = i; if (mode !== 1) { mode = 1; seg.querySelectorAll('button').forEach((x, j) => x.classList.toggle('on', j === 1)); } draw(); }); return b; });
+  const draw = () => {
+    s.replaceChildren();
+    chips.forEach((c, i) => c.classList.toggle('on', i === pick && mode === 1));
+    if (mode === 0) {
+      s.append(R(0, 0, 400, 252, 'wf wf-desk', 4));
+      const ws = [[10, 12, 170, 100, '收件箱 - Outlook Express'], [214, 10, 176, 92, '我的图片'], [110, 40, 190, 112, '机票 - Internet Explorer'], [24, 120, 160, 100, '行程.doc - Word'], [236, 118, 150, 98, '预算.xls - Excel']];
+      ws.forEach(([x, y, w, h, t]) => { s.append(win(x, y, w, h, t), lines(x + 8, y + 24, w - 20, Math.floor((h - 30) / 9), 9)); });
+      s.append(R(0, 230, 400, 22, 'wf wf-task', 0), R(4, 233, 36, 16, 'wf wf-frame', 3), Tx(22, 245, '开始', 'wf-txt', { 'text-anchor': 'middle' }));
+      ['收件箱', '机票', '行程', '图片', '预算'].forEach((t, i) => s.append(R(46 + i * 66, 233, 62, 16, 'wf wf-block', 3), Tx(52 + i * 66, 245, t, 'wf-mut')));
+      status.innerHTML = '桌面 + 窗口：同一个度假计划，散在 <b>5 个程序</b>的 5 个窗口里，你得自己在任务栏和重叠的窗口之间来回找。';
+      return;
+    }
+    s.append(R(0, 0, 400, 252, 'wf wf-frame', 4), R(0, 0, 400, 26, 'wf-block', 0));
+    s.append(svg('circle', { cx: 14, cy: 13, r: 6, class: 'wf wf-frame' }), svg('circle', { cx: 30, cy: 13, r: 6, class: 'wf wf-frame' }), R(42, 7, 12, 12, 'wf-accent', 2));
+    s.append(R(64, 6, 200, 14, 'wf wf-frame', 7), Tx(72, 16, '统一的搜索 / 历史记录', 'wf-mut'));
+    s.append(R(276, 5, 118, 16, 'wf-accent', 8), Tx(335, 16, '小林 · 漫游登录', 'wf-txt', { 'text-anchor': 'middle' }));
+    s.append(Tx(14, 48, '项目：夏威夷度假', 'wf-txt', { style: 'font-size:15px;font-weight:700' }));
+    ['夫', '妇', '旅'].forEach((t, i) => s.append(svg('circle', { cx: 300 + i * 26, cy: 43, r: 10, class: i < 2 ? 'wf-t' : 'wf-y' }), Tx(300 + i * 26, 47, t, 'wf-txt', { 'text-anchor': 'middle' })));
+    s.append(Tx(380, 47, '成员', 'wf-mut'));
+    const cards = [[14, 62, '讨论'], [206, 62, '文档：行程 · 预算'], [14, 146, '照片'], [206, 146, '相关网页：机票 · 酒店']];
+    cards.forEach(([x, y, t]) => { s.append(R(x, y, 180, 74, 'wf wf-block', 6), Tx(x + 8, y + 16, t, 'wf-txt', { style: 'font-weight:600' })); if (t === '照片') { for (let i = 0; i < 4; i++) s.append(R(x + 8 + i * 42, y + 26, 36, 36, 'wf-t', 4)); } else s.append(lines(x + 8, y + 28, 160, 5, 8)); });
+    const badges = { server: [14, 228, 130, '☁ 数据都在服务器上'], cache: [150, 228, 120, '本机 = 安全缓存'], offline: [276, 228, 110, '离线也能用'] };
+    for (const [k, [x, y, w, t]] of Object.entries(badges)) s.append(R(x, y, w, 18, 'wf-o', 9), Tx(x + w / 2, y + 13, t, 'wf-txt', { 'text-anchor': 'middle' }));
+    if (pick >= 0) {
+      const k = P[pick][1];
+      const box = k === 'project' ? [8, 30, 384, 192] : [badges[k][0] - 4, badges[k][1] - 4, badges[k][2] + 8, 26];
+      s.append(R(...box, 'wf-hl', 8));
+      status.innerHTML = `<b>${pick + 1}. ${P[pick][0]}</b>：${P[pick][2]}`;
+    } else status.innerHTML = '项目页面：全屏、没有窗口要管理；顶部像浏览器一样有后退、前进、主页和统一的搜索 / 历史；右上角是可漫游的多用户登录。点上面四条思想看它们各落在哪里。';
+  };
+  seg = makeSeg(['桌面 + 窗口', '项目页面'], (i) => { mode = i; if (i === 0) pick = -1; draw(); });
+  segWrap.append(seg);
+  draw();
+  node.append(segWrap, el('div', { class: 'chips' }, ...chips), s, status);
+});
+
+/* ---------- 03 概念演示（示意） ---------- */
+reg('concepts', (node) => {
+  const s = svg('svg', { viewBox: '0 0 400 210', role: 'img', 'aria-label': 'Neptune 概念演示的示意线框' });
+  const status = el('div', { class: 'status' });
+  const nav = () => { s.append(R(0, 0, 400, 22, 'wf-block', 0), svg('circle', { cx: 12, cy: 11, r: 5, class: 'wf wf-frame' }), svg('circle', { cx: 26, cy: 11, r: 5, class: 'wf wf-frame' }), R(37, 5, 11, 11, 'wf-accent', 2), R(56, 5, 160, 12, 'wf wf-frame', 6), Tx(62, 14, '搜索', 'wf-mut')); };
+  const views = [
+    ['欢迎屏幕', () => {
+      s.append(Tx(200, 60, '欢迎', 'wf-txt', { 'text-anchor': 'middle', style: 'font-size:22px;font-weight:700' }), Tx(200, 82, '请选择你的名字', 'wf-mut', { 'text-anchor': 'middle' }));
+      ['用户 A', '用户 B', '用户 C'].forEach((t, i) => s.append(svg('circle', { cx: 130 + i * 70, cy: 124, r: 20, class: ['wf-t', 'wf-y', 'wf-o'][i] }), Tx(130 + i * 70, 162, t, 'wf-txt', { 'text-anchor': 'middle' })));
+    }, '欢迎屏幕概念：全屏的欢迎页。按人登录（多用户）是 RedShark 对界面的要求之一。'],
+    ['StartPage 概念 1', () => {
+      nav(); s.append(Tx(14, 44, '起始页', 'wf-txt', { style: 'font-size:15px;font-weight:700' }));
+      ['查看邮件', '浏览网络', '写文档', '整理照片'].forEach((t, i) => s.append(R(14, 54 + i * 34, 170, 28, 'wf-accent', 6), Tx(24, 72 + i * 34, t)));
+      s.append(Tx(206, 64, '最近使用', 'wf-txt', { style: 'font-weight:600' }), lines(206, 74, 170, 9, 12));
+    }, 'StartPage 概念：像浏览器主页一样的起始页，左边是要做的事，右边是最近使用的东西。'],
+    ['StartPage 概念 2', () => {
+      nav(); s.append(Tx(14, 44, '起始页', 'wf-txt', { style: 'font-size:15px;font-weight:700' }));
+      for (let i = 0; i < 6; i++) { const x = 14 + (i % 3) * 126, y = 56 + Math.floor(i / 3) * 74; s.append(R(x, y, 118, 66, i === 0 ? 'wf-o' : 'wf wf-block', 8), lines(x + 8, y + 12, 90, 4, 9)); }
+    }, '另一版起始页：同样有导航栏，内容排成一格一格的任务卡片。'],
+    ['Word 概念', () => {
+      nav(); s.append(R(14, 32, 90, 168, 'wf-accent', 6), Tx(22, 50, '这份文档', 'wf-txt', { style: 'font-weight:600' }));
+      ['发送给…', '打印', '另存为网页'].forEach((t, i) => s.append(Tx(22, 72 + i * 18, t, 'wf-mut')));
+      s.append(R(118, 32, 268, 168, 'wf wf-frame', 2), Tx(130, 52, '度假行程', 'wf-txt', { style: 'font-size:13px;font-weight:700' }), lines(130, 62, 240, 14, 9));
+    }, 'Word 概念：文档本身也是全屏页面，没有可拖动的窗口，相关操作列在旁边，顶上是同一条导航栏。'],
+  ];
+  const draw = (i) => { s.replaceChildren(); s.append(R(0, 0, 400, 210, 'wf wf-frame', 4)); views[i][1](); status.innerHTML = `<b>${views[i][0]}</b>：${views[i][2]}`; };
+  draw(0);
+  node.append(el('div', { class: 'ctrl' }, makeSeg(views.map((v) => v[0]), draw)), s, status);
+});
+
+/* ---------- 04 家谱图 ---------- */
+reg('lineage', (node) => {
+  const N = {
+    w98: [10, 14, 'Windows 98', '9x', true, 'Windows 98（1998）：9x 内核，默认装了 IE4，「桌面更新」成为内置功能。'],
+    me: [190, 14, 'Windows Me', '9x', true, 'Windows Me：代号 Millennium，9x 内核，是 98 实际上的继任者。它与 Neptune 的开发相互交织，部分功能可能先在 Me 上实现、再移植到 Neptune，所以 Neptune 里的活动中心用的是 Millennium 代号；Me 最终版本也部分实现了活动中心的设计。'],
+    nep: [190, 92, 'Neptune', 'NT', false, 'Neptune（海王星）：本来要接替 Windows 98，却基于 NT 内核。目前公开的只有一个构建。活动中心、自动更新、自托管、快速启动都出现在这里。'],
+    w2k: [10, 170, 'Windows 2000', 'NT', true, 'Windows 2000：NT 内核的商用系统。'],
+    ody: [190, 170, 'Odyssey', 'NT', false, 'Odyssey：旨在继承 Windows 2000 的项目，存在感更低，至今一个版本都没公开。'],
+    wh: [370, 92, 'Whistler', 'NT', false, 'Whistler：Neptune 与 Odyssey 合并而成的项目。活动中心在这里基本停止开发，但 Build 2410 把「起始页」映射到了开始按钮上。'],
+    xp: [370, 170, 'Windows XP', 'NT', true, 'Windows XP：Whistler 的最终产品（下一篇的主角）。'],
+  };
+  const E = [['w98', 'me', '实际继任', 's'], ['w98', 'nep', '计划接替', 'd'], ['me', 'nep', '开发交织', 'dot'], ['w2k', 'ody', '计划继承', 'd'], ['nep', 'wh', '合并', 's'], ['ody', 'wh', '合并', 's'], ['wh', 'xp', '发布为', 's']];
+  const W = 120, H = 44;
+  const s = svg('svg', { viewBox: '0 0 500 226', role: 'img', 'aria-label': 'Windows 98 到 Windows XP 之间各项目的关系图' });
+  const status = el('div', { class: 'status' }, '点一个节点。');
+  const c = (k) => [N[k][0] + W / 2, N[k][1] + H / 2];
+  const edgeEls = [];
+  E.forEach(([a, b, t, st]) => {
+    const [x1, y1] = c(a), [x2, y2] = c(b);
+    const p = svg('path', { d: `M${x1} ${y1} L${x2} ${y2}`, stroke: 'var(--muted)', 'stroke-width': 1.6, fill: 'none', 'stroke-dasharray': st === 'd' ? '6 4' : st === 'dot' ? '2 3' : 'none' });
+    const lx = (x1 + x2) / 2, ly = (y1 + y2) / 2;
+    const lab = Tx(lx + (x1 === x2 ? 4 : 0), ly - 3, t, 'wf-mut', { 'text-anchor': x1 === x2 ? 'start' : 'middle' });
+    edgeEls.push([a, b, p]); s.append(p);
+    s.append(svg('g', {}, R(lx - (x1 === x2 ? -2 : 24), ly - 13, 48, 13, 'wf-frame', 3, { opacity: 0.85 }), lab));
+  });
+  const gs = {};
+  Object.entries(N).forEach(([k, [x, y, name, ker, rel, info]]) => {
+    const g = svg('g', { class: 'pick', role: 'button', 'aria-label': name, style: 'cursor:pointer' });
+    const box = R(x, y, W, H, ker === '9x' ? 'wf-o' : 'wf-accent', 8, rel ? {} : { 'stroke-dasharray': '5 3' });
+    g.append(box, Tx(x + W / 2, y + 19, name, 'wf-txt', { 'text-anchor': 'middle', style: 'font-size:12px;font-weight:700' }), Tx(x + W / 2, y + 34, (ker === '9x' ? '9x 内核' : 'NT 内核') + (rel ? ' · 已发布' : ' · 未发布'), 'wf-mut', { 'text-anchor': 'middle' }));
+    keyable(g, () => {
+      Object.values(gs).forEach((b) => b.style.strokeWidth = ''); box.style.strokeWidth = '3.2';
+      edgeEls.forEach(([a, b, p]) => { const hit = a === k || b === k; p.setAttribute('stroke', hit ? 'var(--r)' : 'var(--muted)'); p.setAttribute('stroke-width', hit ? 2.6 : 1.6); });
+      status.innerHTML = `<b>${name}</b>：${info}`;
+    });
+    gs[k] = box; s.append(g);
+  });
+  node.append(el('div', { class: 'scrollx' }, s), status);
+});
+
+/* ---------- 05 活动中心模拟器 ---------- */
+reg('center', (node) => {
+  const PR = ['为几个主要领域的所有任务提供无缝的用户体验', '以任务为导向，根据任务目标而不是工具来表述选项', '把用户聚焦于每个「页面」的单个任务上，并清楚说明该焦点', '始终使下一个导航步骤显而易见', '在主要任务以外枚举操作的选项'];
+  const pages = {
+    start: { hub: 'start', title: '起始页', q: '今天想做什么？（可通过活动桌面设为桌面）', pr: [0, 1, 4], tasks: [['✉', '查看邮箱', null], ['⌂', '浏览网络', null], ['▣', '照片中心', 'photo'], ['♪', '音乐中心', 'other:音乐中心'], ['▶', '游戏中心', 'other:游戏中心'], ['?', '帮助中心', 'other:帮助中心']], more: '最近的程序 / 文件：度假行程.doc · 画图 · 家庭照片' },
+    photo: { hub: 'photo', title: '照片中心', q: '主要任务（用户也可以自定义）', pr: [1, 3, 4], main: true, tasks: [['⇩', '从扫描仪或数码相机获取图像', 'scan'], ['▣', '查看系统上已存储的图像', 'view'], ['⌕', '搜索图片', 'search']], more: '其他操作：自定义主要任务 · 打印 · 发送图片' },
+    scan: { hub: 'photo', title: '您想使用 MicroTek ScanMaker 6i 扫描图像吗？', q: '次要任务页：标题直接是一个问题，告诉你这一页只做这一件事。', pr: [2, 3], tasks: [['✓', '是，开始扫描', 'scanned'], ['↺', '不，使用其他设备', 'photo']] },
+    scanned: { hub: 'photo', title: '扫描完成（示意）', q: '下一步是什么，页面直接摆出来。', pr: [3], tasks: [['▣', '保存到「我的图片」', 'view'], ['✎', '编辑这张图片', 'edit']] },
+    view: { hub: 'photo', title: '我的图片（示意）', q: '选中一张，再决定要对它做什么。', pr: [2, 3], thumbs: true, tasks: [['✎', '编辑所选图片', 'edit']] },
+    edit: { hub: 'photo', title: '选择要使用 Microsoft PhotoDraw 2001 进行编辑的图片', q: '次要任务页：标题是一句描述，同样明确这一页的用途。', pr: [1, 2, 3], thumbs: true, tasks: [['✓', '用 PhotoDraw 打开（示意）', 'done']] },
+    done: { hub: 'photo', title: '已交给 PhotoDraw（示意）', q: '任务完成。导航栏可以随时回到照片中心主页或起始页。', pr: [0, 3], tasks: [['▣', '回到照片中心', 'photo']] },
+    search: { hub: 'photo', title: '您要找哪些图片？（示意）', q: '同样一页只问一个问题。', pr: [2, 3], tasks: [['⌕', '按日期查找', 'view'], ['⌕', '按名称查找', 'view']] },
+  };
+  let hist = [], cur = 'start', sel = -1;
+  const top = el('div', { class: 'ac-top' }, el('span', {}, '活动中心'), el('span', { style: 'opacity:.8;font-weight:400' }, '· Millennium'));
+  const back = el('button', { type: 'button' }, '← 后退');
+  const home = el('button', { type: 'button' }, '⌂ 中心主页');
+  const startB = el('button', { type: 'button' }, '起始页');
+  const crumb = el('span', { class: 'crumb' });
+  const body = el('div', { class: 'ac-body' });
+  const prin = el('div', { class: 'prin' }, ...PR.map((t, i) => el('div', {}, el('span', { class: 'k' }, i + 1), t)));
+  const status = el('div', { class: 'status' });
+  const go = (k, push = true) => { if (push && k !== cur) hist.push(cur); cur = k; sel = -1; render(); };
+  back.addEventListener('click', () => { if (hist.length) go(hist.pop(), false); });
+  home.addEventListener('click', () => { const p = pages[cur] || { hub: 'start' }; go(p.hub === 'start' ? 'start' : p.hub); });
+  startB.addEventListener('click', () => go('start'));
+  const render = () => {
+    let p = pages[cur];
+    if (!p && cur.startsWith('other:')) {
+      const name = cur.slice(6);
+      p = { hub: 'start', title: name, q: '原文只列出了这个中心的名字，本页不虚构它内部的任务。', pr: [0], tasks: [['⌂', '回到起始页', 'start']] };
+    }
+    back.disabled = !hist.length;
+    crumb.textContent = (p.hub === 'photo' ? '起始页 › 照片中心' : '起始页') + (cur !== 'start' && cur !== 'photo' ? ' › ' + p.title.slice(0, 12) + (p.title.length > 12 ? '…' : '') : '');
+    body.replaceChildren(el('h3', {}, p.title), el('div', { class: 'q' }, p.q));
+    if (p.thumbs) {
+      const th = el('div', { class: 'thumbs', style: 'margin-bottom:10px' });
+      for (let i = 0; i < 6; i++) { const t = el('div', { class: 'thumb' + (i === sel ? ' sel' : ''), role: 'button', 'aria-label': '图片 ' + (i + 1) }); keyable(t, () => { sel = i; render(); }); th.append(t); }
+      body.append(th);
+    }
+    const box = el('div', { class: 'ac-tasks' });
+    p.tasks.forEach(([ic, t, to]) => {
+      const b = el('button', { type: 'button', class: 'ac-task' + (p.main ? ' main' : '') }, el('span', { class: 'ico' }, ic), t);
+      const needSel = p.thumbs && sel < 0;
+      if (needSel) b.style.opacity = '.5';
+      b.addEventListener('click', () => {
+        if (p.thumbs && sel < 0) { status.innerHTML = '先点一张图片：这一页的焦点就是「选哪张」。'; return; }
+        if (!to) { status.innerHTML = `「${t}」在本模拟器里不展开。`; return; }
+        go(to);
+      });
+      box.append(b);
+    });
+    body.append(box);
+    if (p.more) body.append(el('div', { class: 'ac-more' }, p.more));
+    [...prin.children].forEach((d, i) => d.classList.toggle('on', p.pr.includes(i)));
+    status.innerHTML = `当前页：<b>${p.title}</b>。亮起的原则：${p.pr.map((i) => i + 1).join('、')}。`;
+  };
+  render();
+  node.append(el('div', { class: 'ac' }, top, el('div', { class: 'ac-nav' }, back, home, startB, crumb), body), prin, status);
+});
+
+/* ---------- 05 新手福音，老手负担 ---------- */
+reg('paths', (node) => {
+  let novice = true;
+  const A = ['起始页', '照片中心', '查看已存储的图像', '选中图片', '编辑所选图片', '用 PhotoDraw 打开'];
+  const D = ['双击 PhotoDraw 图标', '文件 › 最近打开'];
+  const Dx = ['不知道该用哪个程序', '在开始菜单里一层层找', '试错打开另一个程序', '再回开始菜单找'];
+  const Dn = ['双击 PhotoDraw 图标', '文件 › 打开', '在文件夹里一层层找图片'];
+  const laneA = el('div', { class: 'lane' }), laneD = el('div', { class: 'lane' });
+  const input = el('input', { type: 'range', min: '1', max: '30', value: '3', step: '1', 'aria-label': '每周重复次数' });
+  const out = el('output', {}, '3');
+  const bars = el('div', { class: 'bars' });
+  const status = el('div', { class: 'status' });
+  const fill = (lane, arr, extra = []) => { lane.replaceChildren(); [...extra.map((t) => [t, 1]), ...arr.map((t) => [t, 0])].forEach(([t, x], i) => { if (i) lane.append(el('span', { class: 'ar' }, '→')); lane.append(el('span', { class: 'st' + (x ? ' extra' : '') }, t)); }); };
+  const upd = () => {
+    const f = +input.value; out.textContent = f;
+    const DD = novice ? Dn : D;
+    const a = A.length, d = DD.length + (novice ? Dx.length : 0);
+    fill(laneA, A); fill(laneD, DD, novice ? Dx : []);
+    const ta = a * f, td = d * f, mx = Math.max(ta, td);
+    bars.replaceChildren(
+      el('div', { class: 'bar' }, el('span', {}, '活动中心'), el('div', { class: 'tr' }, el('div', { class: 'fl', style: `width:${ta / mx * 100}%;background:var(--t)` })), el('span', { class: 'mono' }, ta + ' 步')),
+      el('div', { class: 'bar' }, el('span', {}, '直接找工具'), el('div', { class: 'tr' }, el('div', { class: 'fl', style: `width:${td / mx * 100}%;background:var(--o)` })), el('span', { class: 'mono' }, td + ' 步')));
+    status.innerHTML = novice
+      ? `新用户：不知道该用哪个程序时，直接找工具要先摸索（虚线红框），活动中心每一步都写明了下一步，反而更省事（每次 ${a} 步 vs ${d} 步）。这是 Thurrott 说的「巨大的福音」。`
+      : `熟练用户：知道该用什么工具，直接打开只要 ${d} 步，活动中心每次都要走 ${a} 步；每周做 ${f} 次就多出 <b>${ta - td}</b> 步。这是 Thurrott 说的「强调可发现性，而不是效率」。`;
+  };
+  input.addEventListener('input', upd);
+  node.append(el('div', { class: 'ctrl' }, makeSeg(['新用户', '熟练用户'], (i) => { novice = i === 0; upd(); }), el('label', { class: 'range' }, '每周重复', input, out, '次')),
+    el('div', { style: 'font-size:13px;font-weight:600' }, '活动中心路径'), laneA, el('div', { style: 'font-size:13px;font-weight:600' }, '直接找工具'), laneD, bars, status);
+  upd();
+});
+
+/* ---------- 06 去向图 ---------- */
+reg('legacy', (node) => {
+  const L = [
+    ['帮助中心', 'Windows Me（2000）', '「帮助与支持」', '活动中心的帮助中心在 Windows Me 中更名为「帮助与支持」。', 'live'],
+    ['音乐中心', 'Windows Media Player 7', '部分设计进入 WMP 7', '音乐中心的部分设计被应用到了新的 Windows Media Player 7 中。', 'live'],
+    ['游戏中心', 'Windows Vista / 7', '游戏资源管理器', '游戏中心在 Windows Vista/7 的「游戏资源管理器」里得到了类似实现。', 'live'],
+    ['起始页', 'Whistler Build 2410 → Windows 8', '全屏开始屏幕的种子', 'Build 2410 把起始页映射到开始按钮上，微软考虑过用起始页替代开始菜单。原文说，Windows 全屏开始屏幕的种子从这时就已埋下。', 'live'],
+    ['频道栏', '仅 Windows 98', '后来的「侧边栏」', '频道栏只在 Windows 98 中出现过，之后悄然离去；原文认为后来 Windows 的「侧边栏」可以视为它的后续实现。', 'gone'],
+    ['活动桌面', 'XP 之后移除 → 动态桌面软件', '如 Lively Wallpaper', '活动桌面因系统占用大、稳定性低等原因没有大规模流行，在 Windows XP 之后被移除；但「把网页设为桌面」在今天许多动态桌面软件（如 Lively Wallpaper）里实现了。', 'gone'],
+    ['自动更新与自托管', '后来的 Windows Insider', '类似机制', 'Neptune 引入的自动更新与自托管机制，后来 Windows 的 Insider 项目也采用了类似机制。', 'live'],
+    ['快速启动', 'Windows 8', '类似功能', 'Neptune 支持「快速启动」功能，类似功能后来也出现在 Windows 8 中。', 'live'],
+    ['以项目 / 任务为中心', 'Mercury OS', 'Jason Yuan 的概念', '时过境迁，设计师 Jason Yuan 翻新了这一概念，提出以任务为导向的 Mercury（水星）界面。', 'live'],
+  ];
+  const card = el('div', { class: 'card' });
+  const list = el('div', { class: 'list' });
+  const bs = L.map((x, i) => { const b = el('button', { type: 'button', class: 'chip' }, x[0]); b.addEventListener('click', () => show(i)); return b; });
+  const show = (i) => {
+    bs.forEach((b, j) => b.classList.toggle('on', j === i));
+    const [a, era, dest, txt, fate] = L[i];
+    card.replaceChildren(el('span', { class: 'era' }, era), el('h4', {}, a + ' → ' + dest, el('span', { class: 'fate ' + fate }, fate === 'gone' ? '本身已消失' : '延续下来')), el('p', {}, txt));
+  };
+  list.append(...bs); show(0);
+  node.append(el('div', { class: 'legacy' }, list, card));
+});
+
+/* ---------- 07 Build 2410 的开始按钮 ---------- */
+reg('start', (node) => {
+  let mode = 0;
+  const scr = el('div', { class: 'scr' });
+  const icons = el('div', { class: 'icons' }, el('div', {}, el('i'), '我的电脑'), el('div', {}, el('i'), '回收站'));
+  const menu = el('div', { class: 'menu' }, el('div', { class: 'side' }), el('ul', {}, ...['程序', '文档', '设置', '搜索', '帮助', '运行…', '关机…'].map((t) => el('li', {}, t))));
+  const full = el('div', { class: 'full' });
+  const startb = el('button', { type: 'button', class: 'startb' }, '开始');
+  const tb = el('div', { class: 'tb' }, startb, el('span', { class: 'clock' }, '12:00'));
+  scr.append(icons, full, menu, tb);
+  const shiftBox = el('input', { type: 'checkbox' });
+  const shiftL = el('label', { class: 'shift' }, shiftBox, '按住 Shift');
+  const status = el('div', { class: 'status' });
+  const close = () => { menu.style.display = 'none'; full.style.display = 'none'; startb.classList.remove('on'); };
+  const idle = () => { status.innerHTML = mode === 0 ? 'Build 2410：点「开始」。' : 'Windows 8：点「开始」（示意：8 的任务栏上其实没有常驻开始按钮，靠屏幕角落和 Win 键）。'; };
+  startb.addEventListener('click', (e) => {
+    if (startb.classList.contains('on')) { close(); idle(); return; }
+    const sh = shiftBox.checked || e.shiftKey;
+    startb.classList.add('on');
+    if (mode === 0 && sh) { menu.style.display = 'block'; status.innerHTML = 'Build 2410 + Shift：弹出的仍是<b>传统开始菜单</b>。新旧两条路都留着，原文认为这比 Windows 8 更人性化。'; return; }
+    full.className = 'full' + (mode === 1 ? ' tiles' : '');
+    full.replaceChildren(el('h4', {}, mode === 0 ? '起始页' : '开始'), el('div', { class: 'g' }, ...(mode === 0 ? ['查看邮箱', '浏览网络', '照片中心', '音乐中心', '最近的文件', '帮助中心'] : ['', '', '', '', '', '']).map((t) => el('div', {}, t))));
+    full.style.display = 'block';
+    status.innerHTML = mode === 0
+      ? 'Build 2410：开始按钮打开的是活动中心的<b>起始页</b>，而不是开始菜单。'
+      : (sh ? 'Windows 8：按不按 Shift 都一样，只有全屏<b>开始屏幕</b>，没有退回传统菜单的路。' : 'Windows 8：全屏<b>开始屏幕</b>取代了开始菜单。');
+  });
+  idle();
+  node.append(el('div', { class: 'ctrl' }, makeSeg(['Whistler Build 2410', 'Windows 8（本页补充）'], (i) => { mode = i; close(); idle(); }), shiftL), scr, status);
+});
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

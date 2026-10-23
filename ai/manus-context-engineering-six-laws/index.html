@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Manus 的六条上下文工程法则</title>
+<meta name="description" content="解读凡人小北对 Manus 上下文工程博客的推文串：KV 缓存、工具掩码、文件系统外置、todo 复述、保留错误、避免少样本模仿，六条法则各配一个可操作的示意实验。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.blk-row{display:flex;gap:3px;align-items:stretch;margin:6px 0 2px}
+.blk-row .lab{flex:0 0 52px;font-size:12px;color:var(--muted);align-self:center}
+.blk-wrap{display:flex;gap:2px;flex:1;min-width:0}
+.blk{min-width:0;height:34px;border-radius:6px;font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text);border:1px solid var(--line);background:var(--surface-2);transition:background .3s,border-color .3s;overflow:hidden;white-space:nowrap}
+.blk.hit{background:var(--t-soft);border-color:var(--t)}
+.blk.miss{background:var(--r-soft);border-color:var(--r)}
+.blk.chg{box-shadow:inset 0 -4px 0 var(--o)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px;border:1px solid var(--line)}
+.tog{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;user-select:none}
+.tog[aria-pressed="true"]{background:var(--o-soft);border-color:var(--o);color:var(--text)}
+.tog::before{content:"";width:10px;height:10px;border-radius:50%;border:1.5px solid var(--muted)}
+.tog[aria-pressed="true"]::before{background:var(--o);border-color:var(--o)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:10px}
+.kpi{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.kpi .k{font-size:12px;color:var(--muted)}
+.kpi .v{font-family:var(--mono);font-size:18px;font-weight:600}
+.kpi .v.good{color:var(--t)} .kpi .v.bad{color:var(--r)}
+.panes{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+@media (min-width:640px){ .panes{grid-template-columns:1fr 1fr} }
+.pane{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2);min-width:0}
+.pane h4{margin:0 0 8px;font-size:13px;color:var(--muted);font-weight:600}
+.tool{font-family:var(--mono);font-size:12.5px;padding:3px 8px;border-radius:6px;margin:3px 0;border:1px solid transparent;overflow-wrap:anywhere}
+.tool.ok{background:var(--t-soft);border-color:var(--t)}
+.tool.off{opacity:.45;text-decoration:line-through}
+.tool.gone{background:var(--r-soft);border-color:var(--r)}
+.tool.plain{background:var(--surface)}
+.log{font-family:var(--mono);font-size:12px;line-height:1.55;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;max-height:240px;overflow:auto;overflow-wrap:anywhere}
+.log div{padding:1px 0}
+.log .er{color:var(--r)} .log .ok{color:var(--t)} .log .dim{color:var(--muted)} .log .hl{background:var(--y-soft)}
+.cap-bar{position:relative;height:26px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden;display:flex}
+.cap-bar span{height:100%;transition:width .35s}
+.cap-bar .over{position:absolute;right:6px;top:3px;font-size:12px;color:var(--r);font-weight:700}
+.files{display:flex;flex-wrap:wrap;gap:6px}
+.file{font-family:var(--mono);font-size:12px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 9px;cursor:pointer}
+.file.loaded{border-color:var(--p);background:var(--p-soft)}
+.todo{font-family:var(--mono);font-size:13px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+.todo div{padding:2px 0}
+.todo .done{color:var(--muted);text-decoration:line-through}
+.todo .cur{color:var(--p);font-weight:700}
+.dist{display:grid;grid-template-columns:76px 1fr 70px;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin:6px 0}
+.dist .track{height:14px;border-radius:7px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.dist .track span{display:block;height:100%;border-radius:7px;transition:width .3s}
+.dist b{font-family:var(--mono);color:var(--text);font-weight:600;text-align:right}
+.ratio{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.qa{display:grid;grid-template-columns:1fr;gap:8px}
+.qrow{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2)}
+.qrow .q{flex:1;font-size:14px}
+.qrow .q small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.qrow .seg{flex:0 0 auto}
+.laws{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:18px}
+.law{display:block;text-decoration:none;color:var(--text);border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 12px;font-size:13px}
+.law b{display:block;color:var(--p);font-family:var(--mono);font-size:12px}
+.law:hover{border-color:var(--p)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">上下文工程六法则</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 智能体 · 上下文工程</div>
+  <h1>Manus 的六条上下文工程法则</h1>
+  <p class="sub">把一个「GitHub 上看起来能跑」的智能体原型，变成扛得住百万次交互的系统，靠的往往不是更聪明的提示词，而是给模型搭一套稳定、可回溯、能自我纠错的上下文。这页把一条推文串里的六条拆解逐条做成可以动手试的小实验。</p>
+  <div class="thesis">Prompt 是告诉模型你想要什么；Context 是构建一个系统，让模型每一次都有机会自动靠近正确。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>北</i>凡人小北 @frxiaobei</span>
+    <span class="au"><i style="background:var(--t)">M</i>被解读的原文：Yichao 'Peak' Ji，Manus 博客</span>
+  </div>
+  <p class="meta">原文：凡人小北（@frxiaobei）在 X 上的推文串（2025-07-21），解读 Manus 团队的博客《Context Engineering for AI Agents: Lessons from Building Manus》。本页按推文串的顺序与观点组织，六条法则一条一章；对照 Manus 博客原文核对了几处细节，并加了几处标注为「本页补充」的数字与延伸。页面里的演示都是示意模型，数值只用来说明机制，不代表任何真实系统的测量。</p>
+</header>
+
+<section class="ch" id="why" data-title="为什么值得读">
+  <div class="ch-head">
+    <span class="num">00</span>
+    <h2>写在前面：智能体的成本花在哪里</h2>
+    <p class="lead">聊天机器人一问一答，输入输出大致均衡；智能体每一轮只输出几十个 token 的工具调用，却要读进几千上万 token 的上下文。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">作者说读 Manus 这篇博客，有当年读《编程珠玑》时「结构清晰又内功深厚」的感觉：很多坑大家都踩过，也做过优化，却没能把它总结成一条法则。拖动滑块看一轮「读上下文 + 推理 + 输出调用」里，输入和输出各占多少。</div>
+    <div data-demo="ratio"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Manus 博客给出的数字是，Manus 里平均输入与输出 token 比约为 <b>100 : 1</b>，一个典型任务平均要调用约 <b>50</b> 次工具；团队前后把智能体框架重写了四次，作者自嘲这套「搜架构、调提示词、凭经验猜」的过程叫「随机研究生下降」（Stochastic Graduate Descent）。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="kv" data-title="一 围绕 KV-Cache 设计">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>法则一：围绕 KV-Cache 进行设计</h2>
+    <p class="lead">为什么系统提示开头的一个秒级时间戳，就能让整个智能体变慢、变贵？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">KV 缓存只认<b>前缀</b>：本轮请求与上一轮请求从头开始逐个 token 比对，一直相同的部分可以复用，从第一个不同的 token 起，后面全部要重新预填充（prefill）。下面两行是相邻两轮请求，打开上面任意一个「坏习惯」，看缓存从哪里断掉。</div>
+    <div data-demo="kv"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>Manus 的三条做法</b>（推文串原文）：<br>① 保持提示词前缀稳定，哪怕一个 token 的变化也会让该位置之后的缓存全部失效；<br>② 上下文只追加（append-only），不改历史动作和观察，并保证序列化是确定的，很多语言序列化 JSON 时不保证键的顺序；<br>③ 显式标记缓存断点，有的推理框架需要手动插入，至少让系统提示末尾是一个断点。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Manus 博客举的价格是 Claude Sonnet，缓存命中的输入 0.30 美元/百万 token，未命中 3 美元/百万 token，相差 10 倍（上面的费用即按此现场计算）。博客还建议自部署 vLLM 时打开前缀缓存（prefix caching），并用会话 ID 之类的办法把同一会话的请求稳定路由到同一批工作节点上，否则缓存在别的机器上也白搭。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="mask" data-title="二 掩码，而非移除">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>法则二：掩码，而非移除</h2>
+    <p class="lead">工具越来越多，为什么不该按需加载、中途增删工具，而是把它们全留着、在解码时「遮住」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">切换策略和当前状态。<b>移除</b>：每换一个状态就改写上下文里的工具定义；<b>掩码</b>：工具定义一个字都不动，只在解码阶段用 logits 处理器屏蔽不允许的 token，或预填一段前缀。注意看历史里那条 <span class="mono">browser_click</span> 调用。</div>
+    <div data-demo="mask"></div>
+  </div>
+  <p class="src">推文串的总结：不要试图让模型「理解你不想让它做什么」，直接不给它做的可能性。工具名用统一前缀（浏览器类 <span class="mono">browser_</span>、命令行类 <span class="mono">shell_</span>），只允许某一类工具时，只要把前缀预填进去即可。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：Manus 博客以 Hermes 函数调用格式为例，区分三种模式：<b>Auto</b>（可调可不调，只预填回复前缀）、<b>Required</b>（必须调用某个工具但不限哪个，预填到工具调用标记为止）、<b>Specified</b>（必须从某个子集里选，预填到函数名开头，如 <span class="mono">browser_</span>）。统一前缀的好处是不用写有状态的 logits 处理器也能约束到一组工具。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="fs" data-title="三 文件系统即上下文">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>法则三：将文件系统作为上下文</h2>
+    <p class="lead">上下文窗口给到 128K、1M 也不够用，那该扩容还是外置？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点按钮让智能体遇到一个 2 万 token 的网页、几十页的 PDF、五层嵌套的 JSON。切到「外置到文件系统」后，大块内容写进文件，上下文里只留路径和一句摘要；需要时点右侧的文件把它读回来，用完再释放。</div>
+    <div data-demo="fs"></div>
+  </div>
+  <p class="src">推文串列出的三个问题：观察结果巨大，一次就可能撑爆窗口；即使没超限，超长上下文里模型表现也会下降；即使有前缀缓存，每个 token 的传输和预填充仍要付费。Manus 的回答是「不是扩容，而是外置」：文件系统大小不限、天然持久、智能体可以直接读写；而且压缩是<b>可恢复</b>的，网页正文丢了，URL 还在，随时能再读。作者把这称为让模型具备「知道信息在哪」的能力。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：Manus 博客原话是「我们的压缩策略总是设计成可恢复的」。博客结尾还设想，如果状态空间模型（SSM）学会把长期状态放进文件而不是放在上下文里，「智能体化的 SSM 可能成为神经图灵机真正的继承者」。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="recite" data-title="四 通过复述操控注意力">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>法则四：通过复述操控注意力</h2>
+    <p class="lead">走了几十步之后，智能体为什么会忘了自己最初要干什么？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">拖动滑块推进任务步数。不复述时，最初的目标一直停在上下文开头，离「最近的位置」越来越远；复述时，智能体每一轮都改写一份 <span class="mono">todo.md</span>、勾掉做完的项，把它贴到上下文末尾。条形长度是目标距离上下文末尾的 token 数（示意数值：每步约 1,500 token）。</div>
+    <div data-demo="recite"></div>
+  </div>
+  <p class="src">推文串的解读：这种「目标漂移」本质上是注意力失焦。LLM 的注意力更偏向上下文末尾的近期信息，复读把全局计划推进了模型的近期注意力范围，用自然语言本身偏置注意力，而不需要改任何模型结构。作者说它「特别美」：没有引入额外结构，却最接近人类不断自我提醒的行为。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：「迷失在中间」（lost in the middle）出自 Liu 等人 2023 年的研究：关键信息放在长上下文的开头或结尾时模型用得最好，放在中间时效果明显变差。Manus 博客用的正是这个词，说复述能避免它并减少目标错位。<sup class="c">[2][3]</sup></div>
+</section>
+
+<section class="ch" id="errors" data-title="五 保留错误的内容">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>法则五：保留错误的内容</h2>
+    <p class="lead">出错就清掉重试，看起来「干净」，为什么反而让智能体永远不长记性？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">智能体要列出某目录里的文件，第一次调用写错了参数。选一种处理方式，反复点「下一轮」。关键看模型的<b>输入</b>：如果把失败抹掉，下一轮它看到的上下文和出错那一轮一模一样，凭什么会做出不同的选择？</div>
+    <div data-demo="errors"></div>
+  </div>
+  <p class="src">推文串：Manus 选择保留所有出错信息，失败调用、错误观察、甚至栈追踪，一条不删。有了这些证据，模型能在后续推理里隐式更新「信念」，降低在相似情境下重复犯错的概率。「错是它的，但学会是你的责任。」</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：Manus 博客认为「错误恢复是真正智能体行为最清晰的标志之一」，并指出多数学术基准只测理想条件下的成功率，很少考察从失败中恢复的能力。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="fewshot" data-title="六 别被少样本困住">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>法则六：不要被少样本示例所困</h2>
+    <p class="lead">上下文里的动作记录太整齐，为什么会把模型变成「照搬机器」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">智能体在逐份审阅一批简历，历史里每一步的动作和观察都会成为它下一步的「示例」。切换序列化方式，看历史记录的模板相似度（页面现场计算相邻行的词重合度），以及它面对第 7 份「扫描件图片」时会怎么做。</div>
+    <div data-demo="fewshot"></div>
+  </div>
+  <p class="src">推文串：few-shot 用得太像「few-clone」，模型会陷入「格式安全区」，变成行动保守者而不是策略探索者。Manus 的做法是在动作和观察里有意引入少量但<b>结构化</b>的变体：语义一致、表达不同，让模型知道「还有别的方式也可以对」。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：「审阅一批简历时智能体容易进入节奏、重复相似动作」正是 Manus 博客自己举的例子；博客提到的变体手段包括不同的序列化模板、换一种措辞、顺序或格式上的小噪声。本页的「扫描件」情节为示意。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="check" data-title="最后：六条自检">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>最后：拿这份清单把你的系统过一遍</h2>
+    <p class="lead">所谓「智能体跑不起来」，往往是没给模型构造一个可持续运行的信息生命系统：记不清目标、摸不清状态、想不清下一步，更谈不上从失败中自我修正。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">推文串结尾留下的五个问题。按你自己的系统如实回答，下方会指出对应该回头看哪一条法则。</div>
+    <div data-demo="check"></div>
+    <div class="final">六条约束一句话：前缀要稳，工具别动只遮，大块内容外置且可找回，目标每轮复述到末尾，错误留给模型看，示例要有变化。</div>
+  </div>
+  <div class="laws">
+    <a class="law" href="#kv"><b>01</b>围绕 KV-Cache 设计</a>
+    <a class="law" href="#mask"><b>02</b>掩码，而非移除</a>
+    <a class="law" href="#fs"><b>03</b>文件系统即上下文</a>
+    <a class="law" href="#recite"><b>04</b>复述操控注意力</a>
+    <a class="law" href="#errors"><b>05</b>保留错误的内容</a>
+    <a class="law" href="#fewshot"><b>06</b>别被少样本困住</a>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据凡人小北（@frxiaobei）在 X 上发布的<a href="https://x.com/frxiaobei/status/1947267481942601764">推文串</a>（2025-07-21）制作，章节顺序与观点均取自该推文串；推文串解读的是 Manus 团队 Yichao 'Peak' Ji 的博客文章，本页对照该文核对了细节，凡取自博客而推文串未提及的内容都放在「本页补充」框内。演示中的 token 数、简历情节等均为示意。页面中的图示均为内联 SVG / HTML 绘制，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>凡人小北（@frxiaobei），关于 Manus 六大上下文工程法则的推文串，X（2025-07-21）。<a href="https://x.com/frxiaobei/status/1947267481942601764">原帖链接</a></li>
+    <li>Ji, Yichao 'Peak' (2025-07-18). <a href="https://manus.im/blog/Context-Engineering-for-AI-Agents-Lessons-from-Building-Manus">Context Engineering for AI Agents: Lessons from Building Manus</a>. <i>Manus Blog</i>.（100:1 输入输出比、约 50 次工具调用、Sonnet 缓存价格、vLLM 前缀缓存与会话 ID、Auto/Required/Specified 三种模式、todo.md、可恢复压缩、错误恢复、简历例子、SSM 设想）</li>
+    <li>Liu, N. F. et al. (2023). <a href="https://arxiv.org/abs/2307.03172">Lost in the Middle: How Language Models Use Long Contexts</a>. arXiv:2307.03172（后刊于 <i>TACL</i> 2024）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；演示均为示意模型，技术细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const keyAct = (fn) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } };
+const segCtl = (opts, cur, onPick) => {
+  const s = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map(([v, t]) => {
+    const b = el('button', { type: 'button', 'aria-pressed': String(v === cur) }, t);
+    if (v === cur) b.classList.add('on');
+    b.addEventListener('click', () => { bs.forEach((x) => { x.classList.remove('on'); x.setAttribute('aria-pressed', 'false'); }); b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); onPick(v); });
+    return b;
+  });
+  s.append(...bs);
+  return s;
+};
+const toggle = (label, onChange) => {
+  const b = el('button', { type: 'button', class: 'tog', 'aria-pressed': 'false' }, label);
+  b.addEventListener('click', () => { const v = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(v)); onChange(v); });
+  return b;
+};
+const PRICE_HIT = 0.30, PRICE_MISS = 3.0; // 美元 / 百万 token（Manus 博客，Claude Sonnet）
+
+/* ---------- 00 输入输出比 ---------- */
+reg('ratio', (node) => {
+  const input = el('input', { type: 'range', min: '1', max: '200', value: '100', step: '1', 'aria-label': '输入与输出 token 比' });
+  const out = el('output', {}, '100');
+  const box = el('div', { class: 'ratio' });
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    const r = +input.value; out.textContent = r + ' : 1';
+    const outTok = 60, inTok = outTok * r;
+    const inPct = r / (r + 1) * 100;
+    box.innerHTML = '';
+    const row = (name, pct, color, txt) => el('div', { class: 'dist' }, el('span', {}, name),
+      el('div', { class: 'track' }, el('span', { style: `width:${Math.max(pct, .6)}%;background:${color}` })), el('b', {}, txt));
+    box.append(row('输入(预填充)', inPct, 'var(--o)', fmt(inTok)), row('输出(生成)', 100 - inPct, 'var(--p)', fmt(outTok)));
+    const missCost = inTok * PRICE_MISS / 1e6;
+    status.innerHTML = `一轮输出约 ${outTok} token 的工具调用，就要读入 <b>${fmt(inTok)}</b> token；输入占全部 token 的 <b>${inPct.toFixed(1)}%</b>。按未命中缓存的价格，这一轮仅输入就是 $${missCost.toFixed(4)}，一个 50 步的任务大头全在「读」上。`;
+  };
+  input.addEventListener('input', upd); upd();
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '输入 : 输出', input, out)), box, status);
+});
+
+/* ---------- 01 KV-Cache ---------- */
+reg('kv', (node) => {
+  const blocks = [['系', '系统提示', 2000], ['工', '工具定义', 3000], ['1', '第 1 步', 1500], ['2', '第 2 步', 1500], ['3', '第 3 步', 1500], ['4', '第 4 步', 1500], ['5', '第 5 步', 1500]];
+  const flags = { ts: false, json: false, edit: false, tools: false };
+  const prevRow = el('div', { class: 'blk-wrap' }), curRow = el('div', { class: 'blk-wrap' });
+  const kpis = el('div', { class: 'kpis' });
+  const status = el('div', { class: 'status' });
+  const steps = el('input', { type: 'range', min: '5', max: '80', value: '50', step: '1', 'aria-label': '任务步数' });
+  const stepsOut = el('output', {}, '50');
+  const render = () => {
+    // 第一个与上一轮不同的块
+    let first = Infinity; const changed = new Set();
+    if (flags.ts) { first = Math.min(first, 0); changed.add(0); }
+    if (flags.tools) { first = Math.min(first, 1); changed.add(1); }
+    if (flags.json) { first = Math.min(first, 3); changed.add(3); }
+    if (flags.edit) { first = Math.min(first, 4); changed.add(4); }
+    prevRow.innerHTML = ''; curRow.innerHTML = '';
+    blocks.forEach(([s, t, n], i) => prevRow.append(el('div', { class: 'blk', style: `flex:${n} 1 0`, title: t + ' · ' + fmt(n) + ' token' }, s)));
+    let hit = 0, miss = 0;
+    [...blocks, ['新', '第 6 步（本轮新增）', 1500]].forEach(([s, t, n], i) => {
+      const isNew = i === blocks.length;
+      const ok = !isNew && i < first;
+      ok ? (hit += n) : (miss += n);
+      const b = el('div', { class: 'blk ' + (ok ? 'hit' : 'miss') + (changed.has(i) ? ' chg' : ''), style: `flex:${n} 1 0`, title: t + ' · ' + fmt(n) + ' token' }, s);
+      curRow.append(b);
+    });
+    const cost = (hit * PRICE_HIT + miss * PRICE_MISS) / 1e6;
+    const ideal = ((hit + miss - 1500) * PRICE_HIT + 1500 * PRICE_MISS) / 1e6;
+    // 整个任务累计：第 k 步上下文 = 5000 + 1500k
+    const K = +steps.value; stepsOut.textContent = K;
+    let good = 0, bad = 0;
+    for (let k = 1; k <= K; k++) {
+      const ctx = 5000 + 1500 * k;
+      good += ((ctx - 1500) * PRICE_HIT + 1500 * PRICE_MISS) / 1e6;
+      const brokenFrom = first === Infinity ? null : (first === 0 ? 0 : first === 1 ? 2000 : first === 3 ? 6500 : 8000);
+      const cached = brokenFrom === null ? ctx - 1500 : Math.min(brokenFrom, ctx - 1500);
+      bad += (cached * PRICE_HIT + (ctx - cached) * PRICE_MISS) / 1e6;
+    }
+    kpis.innerHTML = '';
+    const kpi = (k, v, c) => el('div', { class: 'kpi' }, el('div', { class: 'k' }, k), el('div', { class: 'v ' + (c || '') }, v));
+    kpis.append(
+      kpi('本轮命中缓存', fmt(hit) + ' tok', 'good'),
+      kpi('本轮重新预填充', fmt(miss) + ' tok', miss > 1500 ? 'bad' : ''),
+      kpi('本轮输入费用', '$' + cost.toFixed(4), miss > 1500 ? 'bad' : 'good'),
+      kpi(`${K} 步任务累计`, '$' + bad.toFixed(3) + (first === Infinity ? '' : ' / 理想 $' + good.toFixed(3)), first === Infinity ? 'good' : 'bad'));
+    const why = [];
+    if (flags.ts) why.push('系统提示第一行的时间戳每轮都不同，从第 1 个块起就对不上');
+    if (flags.tools) why.push('工具定义被改动，系统提示之后全部失效（这也是法则二要说的）');
+    if (flags.json) why.push('第 2 步的 JSON 键顺序这次排得不一样，字面上已经是另一串 token');
+    if (flags.edit) why.push('回头改了第 3 步的观察结果，违反只追加');
+    status.innerHTML = first === Infinity
+      ? `前缀完全一致：只有本轮新增的 <b>1,500</b> token 需要预填充，其余全部复用。`
+      : `缓存断点出现在第 ${first + 1} 个块：${why.join('；')}。断点之后哪怕内容一字未变，也要重算。本轮费用是理想情况的 <b>${(cost / ideal).toFixed(1)}×</b>。`;
+  };
+  const tg = el('div', { class: 'ctrl' },
+    toggle('系统提示开头加秒级时间戳', (v) => { flags.ts = v; render(); }),
+    toggle('中途增删工具定义', (v) => { flags.tools = v; render(); }),
+    toggle('JSON 键顺序不确定', (v) => { flags.json = v; render(); }),
+    toggle('回头修改历史观察', (v) => { flags.edit = v; render(); }));
+  steps.addEventListener('input', render);
+  node.append(tg,
+    el('div', { class: 'blk-row' }, el('span', { class: 'lab' }, '上一轮'), prevRow),
+    el('div', { class: 'blk-row' }, el('span', { class: 'lab' }, '本轮'), curRow),
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--t-soft);border-color:var(--t)' }), '命中缓存'), el('span', {}, el('i', { style: 'background:var(--r-soft);border-color:var(--r)' }), '重新预填充'), el('span', {}, el('i', { style: 'box-shadow:inset 0 -4px 0 var(--o)' }), '内容被改动的块'), el('span', {}, '块宽 ∝ token 数（示意）')),
+    kpis, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '任务步数', steps, stepsOut)), status);
+  render();
+});
+
+/* ---------- 02 掩码 vs 移除 ---------- */
+reg('mask', (node) => {
+  const TOOLS = ['message_user', 'browser_open', 'browser_click', 'browser_scroll', 'shell_exec', 'shell_ls', 'file_read', 'file_write'];
+  const STATES = {
+    user: { name: '用户刚发来新指令', allow: (t) => false, prefill: '<|im_start|>assistant\n', mode: '只预填回复前缀：模型必须先直接回复用户，而不是先去调用工具' },
+    browse: { name: '浏览阶段', allow: (t) => t.startsWith('browser_'), prefill: '<|im_start|>assistant\n<tool_call>{"name": "browser_', mode: '预填到函数名开头：只能从 browser_* 里选' },
+    shell: { name: '命令行阶段', allow: (t) => t.startsWith('shell_') || t.startsWith('file_'), prefill: '<|im_start|>assistant\n<tool_call>{"name": "', mode: '预填到工具调用标记，并用 logits 掩码只放行 shell_* / file_*' },
+  };
+  let strat = 'mask', st = 'browse';
+  const left = el('div', { class: 'pane' }), right = el('div', { class: 'pane' });
+  const pre = el('div', { class: 'eq' });
+  const status = el('div', { class: 'status' });
+  const render = () => {
+    const S = STATES[st];
+    left.innerHTML = ''; right.innerHTML = '';
+    left.append(el('h4', {}, '上下文里的工具定义'));
+    const defs = strat === 'mask' ? TOOLS : TOOLS.filter((t) => t === 'message_user' || S.allow(t));
+    defs.forEach((t) => left.append(el('div', { class: 'tool plain' }, t)));
+    if (strat === 'remove') TOOLS.filter((t) => !defs.includes(t)).forEach((t) => left.append(el('div', { class: 'tool off' }, t)));
+    right.append(el('h4', {}, '历史记录 · 解码时允许选择'));
+    const histOk = defs.includes('browser_click');
+    right.append(el('div', { class: 'tool ' + (histOk ? 'plain' : 'gone') }, '历史: browser_click(#login) → ok'));
+    TOOLS.forEach((t) => {
+      const allowed = st === 'user' ? false : S.allow(t);
+      if (strat === 'remove' && !defs.includes(t)) return;
+      right.append(el('div', { class: 'tool ' + (allowed ? 'ok' : 'off') }, t));
+    });
+    if (st === 'user') right.append(el('div', { class: 'tool ok' }, '（直接输出文字回复）'));
+    pre.textContent = strat === 'mask' ? '预填: ' + JSON.stringify(S.prefill).slice(1, -1) : '（不预填，靠改写工具列表限制模型）';
+    if (strat === 'mask') status.innerHTML = `工具定义在每个状态下<b>完全相同</b>，KV 缓存从系统提示一直命中到历史末尾；历史里的 browser_click 也始终有定义。约束发生在解码端：${S.mode}。`;
+    else status.innerHTML = `工具列表随状态被改写（当前只剩 ${defs.length} 个）：工具定义在上下文前部，<b>它后面的 KV 缓存全部失效</b>。` + (histOk ? '' : `<br>而且历史里调用过 <span class="mono">browser_click</span>，现在上下文里已经找不到它的定义，模型容易困惑，格式出错或幻觉出不存在的动作。`);
+  };
+  node.append(
+    el('div', { class: 'ctrl' }, segCtl([['remove', '移除（动态增删）'], ['mask', '掩码（保持不变）']], strat, (v) => { strat = v; render(); })),
+    el('div', { class: 'ctrl' }, segCtl(Object.entries(STATES).map(([k, v]) => [k, v.name]), st, (v) => { st = v; render(); })),
+    el('div', { class: 'panes' }, left, right), pre, status);
+  render();
+});
+
+/* ---------- 03 文件系统即上下文 ---------- */
+reg('fs', (node) => {
+  const CAP = 128000, BASE = 9000;
+  const KINDS = [['web', '打开网页', 'page.html', 20000], ['pdf', '读 PDF', 'report.pdf', 42000], ['json', 'API 返回 JSON', 'resp.json', 15000]];
+  let mode = 'inline', items = [], seq = 0;
+  const bar = el('div', { class: 'cap-bar' });
+  const legend = el('div', { class: 'legend' });
+  const files = el('div', { class: 'files' });
+  const ctxLog = el('div', { class: 'log' });
+  const status = el('div', { class: 'status' });
+  const used = () => BASE + items.reduce((s, it) => s + (mode === 'inline' || it.loaded ? it.n : 200), 0);
+  const render = () => {
+    const u = used();
+    bar.innerHTML = '';
+    const pct = (n) => Math.min(100, n / CAP * 100);
+    bar.append(el('span', { style: `width:${pct(BASE)}%;background:var(--p)` }));
+    let acc = BASE;
+    items.forEach((it) => { const n = mode === 'inline' || it.loaded ? it.n : 200; const w = Math.max(0, Math.min(n, CAP - acc)); acc += n; bar.append(el('span', { style: `width:${pct(w)}%;background:${it.loaded && mode === 'fs' ? 'var(--y)' : 'var(--o)'};border-left:1px solid var(--surface)` })); });
+    if (u > CAP) bar.append(el('b', { class: 'over' }, '超出窗口'));
+    legend.innerHTML = '';
+    legend.append(el('span', {}, el('i', { style: 'background:var(--p)' }), '系统提示 + 历史'), el('span', {}, el('i', { style: 'background:var(--o)' }), '观察结果'), el('span', {}, el('i', { style: 'background:var(--y)' }), '临时读回的文件'), el('span', { class: 'mono' }, `${fmt(u)} / ${fmt(CAP)} token`));
+    files.innerHTML = '';
+    if (mode === 'fs') {
+      if (!items.length) files.append(el('span', { class: 'tag' }, '（还没有文件）'));
+      items.forEach((it) => {
+        const f = el('button', { type: 'button', class: 'file' + (it.loaded ? ' loaded' : '') }, (it.loaded ? '释放 ' : '读回 ') + it.path);
+        f.addEventListener('click', () => { it.loaded = !it.loaded; render(); });
+        files.append(f);
+      });
+    } else files.append(el('span', { class: 'tag' }, '全塞模式下不使用文件系统'));
+    ctxLog.innerHTML = '';
+    ctxLog.append(el('div', { class: 'dim' }, `[系统提示 + 工具 + 历史  ${fmt(BASE)} tok]`));
+    items.forEach((it) => {
+      if (mode === 'inline' || it.loaded) ctxLog.append(el('div', { class: it.loaded ? 'hl' : '' }, `<observation> ${it.path} 全文 …… ${fmt(it.n)} tok`));
+      else ctxLog.append(el('div', { class: 'ok' }, `<observation> 已保存到 ${it.path}（${it.label}，约 ${fmt(it.n)} tok），摘要：…  200 tok`));
+    });
+    const cost = u * PRICE_MISS / 1e6, costHit = (u - 1500) * PRICE_HIT / 1e6 + 1500 * PRICE_MISS / 1e6;
+    if (!items.length) status.textContent = '点上面的按钮，让智能体遇到一份大块观察结果。';
+    else if (u > CAP) status.innerHTML = `上下文已经 <b>${fmt(u)}</b> token，<b>超过</b> ${fmt(CAP)} 的窗口，只能硬截断，被砍掉的内容再也找不回来。`;
+    else status.innerHTML = mode === 'inline'
+      ? `上下文 <b>${fmt(u)}</b> token。即使没超限，每一轮也要为这些 token 付预填充费（全命中缓存约 $${costHit.toFixed(4)}，未命中 $${cost.toFixed(4)}），而且越长越容易让模型「迷失」。`
+      : `上下文只有 <b>${fmt(u)}</b> token：大块内容在文件里，上下文只留路径和摘要。正文被丢掉也没关系，路径还在，<b>随时能读回</b>，这就是「可恢复的压缩」。`;
+  };
+  const add = (k) => { const [, label, base, n] = KINDS.find((x) => x[0] === k); seq++; const p = base.replace('.', '_' + seq + '.'); items.push({ path: p, n, label, loaded: false }); render(); };
+  node.append(
+    el('div', { class: 'ctrl' }, segCtl([['inline', '全塞进上下文'], ['fs', '外置到文件系统']], mode, (v) => { mode = v; items.forEach((it) => it.loaded = false); render(); })),
+    el('div', { class: 'ctrl' }, ...KINDS.map(([k, label, , n]) => el('button', { type: 'button', class: 'btn', onclick: () => add(k) }, `${label}（${fmt(n / 1000)}K）`)), el('button', { type: 'button', class: 'btn', onclick: () => { items = []; seq = 0; render(); } }, '清空')),
+    bar, legend,
+    el('div', { class: 'panes' }, el('div', { class: 'pane' }, el('h4', {}, '上下文里实际放着什么'), ctxLog), el('div', { class: 'pane' }, el('h4', {}, '沙箱文件系统（点文件读回 / 释放）'), files)),
+    status);
+  render();
+});
+
+/* ---------- 04 复述 ---------- */
+reg('recite', (node) => {
+  const PER = 1500, PLAN_TOK = 300;
+  const PLAN = ['搜集三家竞品的定价页', '整理成对比表格', '找出各自的免费额度', '画一张价格阶梯图', '写结论并发给用户'];
+  let on = true;
+  const input = el('input', { type: 'range', min: '1', max: '50', value: '30', step: '1', 'aria-label': '当前步数' });
+  const out = el('output', {}, '30');
+  const dists = el('div', {});
+  const todo = el('div', { class: 'todo' });
+  const status = el('div', { class: 'status' });
+  const render = () => {
+    const k = +input.value; out.textContent = k;
+    const far = k * PER, near = on ? PLAN_TOK : far;
+    const max = 50 * PER;
+    dists.innerHTML = '';
+    const row = (name, v, c) => el('div', { class: 'dist' }, el('span', {}, name), el('div', { class: 'track' }, el('span', { style: `width:${Math.max(.8, v / max * 100)}%;background:${c}` })), el('b', {}, fmt(v)));
+    dists.append(row('开头的目标', far, 'var(--muted)'), row('最近一次提醒', near, on ? 'var(--t)' : 'var(--r)'));
+    const doneN = Math.min(PLAN.length, Math.floor((k - 1) / 10));
+    todo.innerHTML = '';
+    todo.append(el('div', { class: 'dim', style: 'color:var(--muted)' }, on ? `# todo.md（第 ${k} 步重写，贴在上下文末尾）` : '# todo.md（不复述：只在第 1 步写过，留在开头）'));
+    PLAN.forEach((p, i) => {
+      const d = on ? i < doneN : false, cur = on && i === doneN;
+      todo.append(el('div', { class: d ? 'done' : cur ? 'cur' : '' }, (d ? '- [x] ' : '- [ ] ') + p + (cur ? '  ← 当前' : '')));
+    });
+    status.innerHTML = on
+      ? `第 ${k} 步：原始目标已在 ${fmt(far)} token 之外，但最新的计划和进度就在末尾 ${fmt(PLAN_TOK)} token 内，模型每一步都「刚刚」又读了一遍自己的目标。`
+      : `第 ${k} 步：关于目标的唯一描述在 <b>${fmt(far)}</b> token 之前，中间夹着 ${k} 轮工具调用和观察，${k > 15 ? '目标正在被「埋进中间」，越走越容易漂移。' : '现在还不远，但每一步都在拉远。'}`;
+  };
+  input.addEventListener('input', render);
+  node.append(el('div', { class: 'ctrl' }, segCtl([['off', '不复述'], ['on', '每轮复述 todo.md']], 'on', (v) => { on = v === 'on'; render(); }), el('label', { class: 'range' }, '步数', input, out)),
+    el('div', { class: 'cap' }, '距离上下文末尾（token）'), dists, todo, status);
+  render();
+});
+
+/* ---------- 05 保留错误 ---------- */
+reg('errors', (node) => {
+  let keep = false, round = 0;
+  const log = el('div', { class: 'log' });
+  const status = el('div', { class: 'status' });
+  const BASE = ['用户：看看 /data 目录里有哪些 CSV', '工具：shell_ls(path, pattern)'];
+  const BAD = 'shell_ls({"dir": "/data", "pattern": "*.csv"})';
+  const ERR = 'Error: unknown argument "dir" (expected "path")';
+  const GOOD = 'shell_ls({"path": "/data", "pattern": "*.csv"})';
+  const render = () => {
+    log.innerHTML = '';
+    BASE.forEach((t) => log.append(el('div', { class: 'dim' }, t)));
+    const lines = keep
+      ? [{ r: 0, call: BAD, ok: false, visible: true }].concat(round > 0 ? [{ r: 1, call: GOOD, ok: true, visible: true }] : [])
+      : [{ r: round, call: BAD, ok: false, visible: true }];
+    lines.forEach((ln) => {
+      if (!ln.visible) return;
+      log.append(el('div', {}, `助手（第 ${ln.r + 1} 次）：${ln.call}`));
+      log.append(el('div', { class: ln.ok ? 'ok' : 'er' }, ln.ok ? '观察：sales.csv  users.csv  events.csv' : '观察：' + ERR));
+    });
+    const last = lines[lines.length - 1];
+    if (!keep && round > 0) log.append(el('div', { class: 'dim' }, `（前 ${round} 次失败已被清除，上下文里看不到）`));
+    const attempts = keep ? lines.length : round + 1;
+    if (last.ok) status.innerHTML = `第 ${attempts} 次成功。模型在上下文里看到了上一次的报错 <span class="mono">unknown argument "dir"</span>，下一次自然改成 <span class="mono">path</span>。证据在，它就会「吃一堑长一智」。`;
+    else if (!keep && round > 0) status.innerHTML = `已经重试 <b>${round + 1}</b> 次，次次一样的错。错误被清掉后，模型看到的输入与第一次<b>逐字相同</b>，同样的输入给出同样的分布，它没有任何理由换做法。`;
+    else status.innerHTML = '第 1 次调用把参数名写成了 dir。点「下一轮」看两种处理方式的差别。';
+  };
+  const next = el('button', { type: 'button', class: 'btn primary', onclick: () => { round = Math.min(round + 1, 6); render(); } }, '下一轮');
+  const reset = el('button', { type: 'button', class: 'btn', onclick: () => { round = 0; render(); } }, '重来');
+  node.append(el('div', { class: 'ctrl' }, segCtl([['clean', '清掉错误再重试'], ['keep', '错误留在上下文']], 'clean', (v) => { keep = v === 'keep'; round = 0; render(); }), next, reset), log, status);
+  render();
+});
+
+/* ---------- 06 少样本陷阱 ---------- */
+reg('fewshot', (node) => {
+  const R = [['张*', 'PDF', '5 年后端'], ['李*', 'PDF', '3 年前端'], ['王*', 'PDF', '7 年算法'], ['赵*', 'PDF', '2 年测试'], ['周*', 'PDF', '6 年后端'], ['吴*', 'PDF', '4 年运维']];
+  const TPL = [
+    (r, i) => `动作: read_pdf("cv_${i}.pdf") → 观察: ${r[0]}, ${r[2]} → 动作: score(${i}, 4)`,
+    (r, i) => `打开第 ${i} 份（cv_${i}.pdf）；摘要「${r[2]}，${r[0]}」；记分 4`,
+    (r, i) => `{"step":${i},"tool":"read_pdf","file":"cv_${i}.pdf","note":"${r[2]}","then":"score"}`,
+    (r, i) => `cv_${i}.pdf 读完 · 候选人 ${r[0]} · 经历 ${r[2]} · 下一步评分`,
+  ];
+  let varied = false;
+  const log = el('div', { class: 'log' });
+  const kp = el('div', { class: 'kpis' });
+  const status = el('div', { class: 'status' });
+  const toks = (s) => new Set(s.split(/[\s"{}(),:;·→「」，；=]+/).filter(Boolean).map((w) => w.replace(/\d+/g, '#')));
+  const jac = (a, b) => { const A = toks(a), B = toks(b); let n = 0; A.forEach((x) => { if (B.has(x)) n++; }); return n / (A.size + B.size - n); };
+  const render = () => {
+    const lines = R.map((r, j) => (varied ? TPL[j % TPL.length] : TPL[0])(r, j + 1));
+    log.innerHTML = '';
+    lines.forEach((l) => log.append(el('div', {}, l)));
+    log.append(el('div', { class: 'dim' }, '第 7 份：cv_7.jpg（手机拍的扫描件，图片）'));
+    const nextAct = varied ? 'ocr_image("cv_7.jpg") → 再读取内容' : 'read_pdf("cv_7.jpg") → score(7, 4)';
+    log.append(el('div', { class: varied ? 'ok' : 'er' }, '下一步: ' + nextAct));
+    let s = 0; for (let j = 1; j < lines.length; j++) s += jac(lines[j - 1], lines[j]);
+    const sim = s / (lines.length - 1);
+    kp.innerHTML = '';
+    kp.append(el('div', { class: 'kpi' }, el('div', { class: 'k' }, '相邻历史行的词重合度（Jaccard）'), el('div', { class: 'v ' + (sim > .45 ? 'bad' : 'good') }, (sim * 100).toFixed(0) + '%')));
+    status.innerHTML = varied
+      ? '同样的语义换了四种写法，历史不再是一条可以闭眼照抄的节奏，模型更可能注意到这份是图片而不是 PDF。'
+      : '六步历史几乎一字不差，模型最省力的预测就是「照猫画虎」：继续 read_pdf、继续打 4 分，哪怕这份是图片。（示意情节）';
+  };
+  node.append(el('div', { class: 'ctrl' }, segCtl([['same', '统一模板'], ['vary', '结构化变体']], 'same', (v) => { varied = v === 'vary'; render(); })), log, kp, status);
+  render();
+});
+
+/* ---------- 07 自检清单 ---------- */
+reg('check', (node) => {
+  const Q = [
+    ['哪部分上下文会频繁变动？', '例如系统提示里的时间戳、每轮重排的工具列表、不确定的序列化', '前缀里没有每轮都会变的内容吗？', 'kv', 'bad'],
+    ['哪个状态是隐式的？', '目标、进度只存在于模型「记得」里，而没有写成 todo.md 这类显式文件', '有显式的计划文件并每轮复述吗？', 'recite', 'bad'],
+    ['错误有没有暴露给模型？', '失败的调用和报错是被清掉了，还是留在上下文里', '报错留在上下文里吗？', 'errors', 'good'],
+    ['工具调用是否具备 mask 控制能力？', '限制工具靠改写定义列表，还是靠解码端的掩码 / 预填', '用掩码而非增删吗？', 'mask', 'good'],
+    ['记忆系统是全塞还是挂载？', '大块观察是整段塞进上下文，还是外置到文件、只留路径', '大块内容外置吗？', 'fs', 'good'],
+  ];
+  const ans = Q.map(() => null);
+  const status = el('div', { class: 'status' });
+  const wrap = el('div', { class: 'qa' });
+  const NAMES = { kv: '法则一', recite: '法则四', errors: '法则五', mask: '法则二', fs: '法则三' };
+  const upd = () => {
+    const todo = [];
+    Q.forEach((q, i) => { if (ans[i] === 'no') todo.push(`<a href="#${q[3]}">${NAMES[q[3]]}</a>`); });
+    const n = ans.filter((a) => a !== null).length;
+    status.innerHTML = n < Q.length ? `已回答 ${n} / ${Q.length}。` + (todo.length ? ` 目前建议回头看：${todo.join('、')}。` : '')
+      : todo.length ? `建议回头看：${todo.join('、')}。另外别忘了<a href="#fewshot">法则六</a>：历史记录是不是整齐得像模板？` : '五个问题都过关。再检查一下<a href="#fewshot">法则六</a>：历史记录是不是整齐得像模板？';
+  };
+  Q.forEach((q, i) => {
+    wrap.append(el('div', { class: 'qrow' }, el('div', { class: 'q' }, q[0], el('small', {}, q[1] + '。'), el('b', { style: 'display:block;font-size:13px;margin-top:4px' }, q[2])),
+      segCtl([['yes', '是'], ['no', '否']], null, (v) => { ans[i] = v; upd(); })));
+  });
+  node.append(wrap, status);
+  upd();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>关于 Mooncake 的碎碎念</title>
+<meta name="description" content="许欣然谈 Kimi 推理系统 Mooncake：为什么 Prefill/Decoding 分离是长期趋势、KVCache 为何是瓶颈、集群与芯片该如何准备。含 Roofline、显存账本、异构采购、KV 压缩与变数推演等交互。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* 本页追加 */
+.claims{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.claims li{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 12px;font-size:14px}
+.claims li .k{font-family:var(--mono);font-size:12px;color:var(--p);margin-right:6px}
+.claims ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--muted)}
+.claims ul li{border:0;background:none;padding:2px 0}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:10px}
+.kv div{background:var(--surface-2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.kv b{display:block;font-family:var(--mono);font-size:17px;color:var(--text)}
+.cards{display:grid;grid-template-columns:1fr;gap:8px}
+@media (min-width:640px){ .cards{grid-template-columns:1fr 1fr} }
+.card{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;font-size:14px}
+.card:hover,.card:focus{border-color:var(--p);outline:none}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.verdict{margin-top:12px;border-radius:10px;padding:12px 14px;background:var(--surface-2);font-size:14px}
+.verdict .lay{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.lay span{font-size:12px;padding:2px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.lay span.hit{background:var(--t-soft);border-color:var(--t);color:var(--text)}
+.ctrl .range input{width:170px}
+.cmt{font-size:13.5px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface-2);margin-top:8px}
+.cmt .who{font-size:12px;color:var(--muted);margin-bottom:2px}
+.flow .nd rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.flow .nd.on rect{fill:var(--p-soft);stroke:var(--p)}
+.flow .nd text{fill:var(--text);font-size:13px;text-anchor:middle;dominant-baseline:central}
+.flow .nd .s{fill:var(--muted);font-size:11px}
+.flow .ar{stroke:var(--line);stroke-width:2;fill:none;transition:stroke .3s}
+.flow .ar.on{stroke:var(--p)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">关于 Mooncake 的碎碎念</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI Infra · 大模型推理 · Mooncake 系列</div>
+  <h1>关于 Mooncake 的碎碎念：给硬件厂商和云厂商的几条「暴论」</h1>
+  <p class="sub">Kimi 底层推理系统 Mooncake 发布技术报告的同一周，团队成员许欣然写了这篇短文：为什么 Prefill/Decoding 分离会是长期趋势，为什么要围绕 KVCache 做优化，以及集群和芯片现在该怎么准备。本页把每条论断拆成能拖、能点的小模型。</p>
+  <div class="thesis">只要自回归（AR）模型还是主流、KVCache 还这么大，decoding 的成本就和显存带宽强相关，prefill 则吃算力；而「算力/$」和「带宽/$」同时最优的芯片从没出现过，所以推理集群迟早要拆成异构的两半。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>许</i>许欣然（月之暗面 AI Infra）</span>
+  </div>
+  <p class="meta">原文：「关于 Mooncake 的碎碎念」，许欣然，知乎专栏（编辑于 2024-06-28）。它与 ZHANG Mingxing（章明星）的「Mooncake (1)」「Mooncake (2)」属同一系列，那两篇讲架构细节，本篇是作者对行业的观点小结。本页忠实于原文的叙述顺序，并加了几处标注为「本页补充」的核对与延伸；页面里的数值模型均为示意，用于看清趋势，不是 Kimi 的真实数据。</p>
+</header>
+
+<section class="ch" id="s1" data-title="先验证，再发表">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一个先上线、后发论文的系统</h2>
+    <p class="lead">Mooncake 和那么多 Prefill/Decoding 分离的论文有什么不同？</p>
+  </div>
+  <p>作者开篇说：这周把 Kimi 底层用的推理系统方案写成了一份简单的 Tech Report（开源在 GitHub 的 kvcache-ai/Mooncake）。团队坚信「一个系统方案只有实际在场景中验证过的，才有分享出来的必要性」。和很多 P/D 分离论文不同，这套方案<b>已经在大规模集群上验证了几个月</b>；这也是为什么一个 POC 写在所有业内论文之前的系统，直到现在才发布。</p>
+  <div class="kv">
+    <div><b>&gt; 80%</b>Kimi 线上流量由这套系统承载</div>
+    <div><b>数月</b>大规模集群上的验证时长</div>
+    <div><b>2</b>件事希望各方早点接受：硬件厂商、云厂商</div>
+  </div>
+  <p style="margin-top:12px">作者说，系统需要跟着应用快速变化，也需要硬件厂商和云厂商早点接受新理念才能跟上浪潮。发这篇论文，是想给各方一些信心，提供「推理规模足够大的场景下的必然优化思路」。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>一个请求在 Mooncake 里怎么走？</b>（本页补充的示意图，依据系列文章与 FAST'25 论文的公开描述）点「下一步」逐段点亮。</div>
+    <div data-demo="flow"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这份报告后来以「Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot」为题发表在 USENIX FAST 2025，并获该会议最佳论文奖。论文把 prefill 与 decoding 集群分开，并利用推理集群里闲置的 CPU、DRAM、SSD 和网卡资源组成分布式 KVCache 池。<sup class="c">[2][3]</sup> 架构细节见同系列「Mooncake (1)」。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="s2" data-title="暴论一：分离是长期趋势">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>暴论一：分离策略是长期趋势</h2>
+    <p class="lead">同一个模型，为什么 prefill 和 decoding 要放到两拨机器上？</p>
+  </div>
+  <p>作者给硬件厂商和云厂商的第一条「暴论」：Mooncake 这类分离策略会是一个长期趋势。他列了几条理由（原文列表层级按语义复原如下）：</p>
+  <ol class="claims" style="margin-top:10px">
+    <li><span class="k">1.1</span>现在、立刻、马上真能省很多钱。「毕竟不能公开规模和每日请求的 pattern，如果你说省不了那你都对。」</li>
+    <li><span class="k">1.2</span><b>KVCache 的容量会长期保持高位</b>，因此围绕 KVCache 来优化非常有必要。</li>
+    <li><span class="k">1.3</span>「private memory per request」是整个推理系统优化的关键瓶颈（否则 groq 万岁）。会有很多努力降低 KVCache 大小，但同时会有更多动力去增大它。</li>
+    <li><span class="k">1.4</span>分离之后，整个系统可以往<b>「算力/$」和「带宽/$」两个方向独立发展</b>，对硬件优化更友好：
+      <ul>
+        <li>AR 模型架构的惯性短期难以颠覆，所以 decoding 的成本总会和带宽成本强正相关；</li>
+        <li>「带宽/$」低一个数量级的硬件方案已经在肉眼可见的范围内；</li>
+        <li>纵观历史，「算力/$」和「带宽/$」同时最优的芯片似乎还没出现过，集群上必然要拆成异构的两部分。</li>
+      </ul>
+    </li>
+  </ol>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>Roofline 小模型：</b>切换阶段、拖动批大小和上下文长度，看每读 1 字节显存能做多少次计算（算术强度），以及它落在「屋脊」哪一侧。屋脊左边是带宽瓶颈，右边是算力瓶颈。</div>
+    <div data-demo="roofline"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：模型取 70 亿参数、FP16 权重；硬件屋脊取「约 990 TFLOPS / 3.35 TB/s ≈ 296 FLOP/字节」，量级接近一张主流训练卡。为简化，忽略了注意力本身的计算量（对普通多头注意力约每字节 KV 1 次运算，不改变结论）。Prefill 一次处理整段提示词，几千个 token 共享同一份权重读取，强度轻松越过屋脊；decoding 每步每个请求只出 1 个 token，权重和 KVCache 都要整份读一遍，强度常常只有个位数到几十。两种负载放在同一张卡上，总有一边的资源闲着，这就是分离的出发点。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="s3" data-title="KVCache 为什么是瓶颈">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Private memory per request</h2>
+    <p class="lead">「KVCache 容量会长期保持高位」，它到底有多大，又卡住了什么？</p>
+  </div>
+  <p>暴论 1.2 和 1.3 说的是同一件事：每个请求都要在显存里占一块<b>只属于自己</b>的 KVCache（private memory per request），上下文越长占得越多。这块内存决定了一张卡能同时服务几个请求，也就决定了 decoding 能凑多大的 batch。作者说「否则 groq 万岁」：如果没有这块随请求增长的私有内存，把权重全放进片上 SRAM 的方案就能通吃了。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>显存账本：</b>选一种注意力结构、拖动上下文长度与显存总量，看权重占掉多少、剩下的空间能装几个请求的 KVCache。</div>
+    <div data-demo="kvcalc"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：每 token 的 KVCache 字节数 = 2（K 和 V）× 层数 × KV 头数 × 头维度 × 每元素字节数。三种配置按公开模型结构取近似值：MHA 类似 Llama-2-7B（32 层、32 个 KV 头、128 维）；GQA 类似 Llama-3-70B（80 层、8 个 KV 头）；MLA 类似 DeepSeek-V2（60 层，每层缓存 512 维潜向量 + 64 维 RoPE 分量）。<sup class="c">[6]</sup> 关于 Groq：它的 LPU 主要依靠片上 SRAM 而非 HBM，SRAM 容量很小，装不下大量随请求增长的 KVCache，这正是作者那句括号的意思。</div>
+</section>
+
+<section class="ch" id="s4" data-title="两条 $ 曲线">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>「算力/$」与「带宽/$」各走各的路</h2>
+    <p class="lead">为什么作者断言「集群上必然要拆分成异构的两个部分」？</p>
+  </div>
+  <p>暴论 1.4 的逻辑链：decoding 成本跟带宽强相关（AR 惯性）→ 带宽便宜一个数量级的硬件快来了 → 但从没有一颗芯片在两项上同时最优 → 所以 prefill 交给「算力/$」最好的芯片，decoding 交给「带宽/$」最好的芯片。不分离，就只能挑一种芯片同时干两种活。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>采购账：</b>两种假想芯片，A 算力便宜、B 带宽便宜。拖动负载里 prefill 的占比、B 芯片的「带宽/$」倍率，比较「全买 A」「全买 B」「分离后 A 管 prefill、B 管 decoding」三种方案的花费。</div>
+    <div data-demo="hetero"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：这是一个只为说明结构的玩具模型，芯片参数是相对单位，不对应任何真实产品。它忽略了 P 与 D 之间传输 KVCache 的网络成本（Mooncake 论文里这部分靠 RDMA 与分布式缓存池解决）。评论区也有读者举例「Prefill 用 H100，Decoding 用 H20」，思路相同。</div>
+</section>
+
+<section class="ch" id="s5" data-title="与 MLA、压缩正交">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>KVCache 变小了，Mooncake 还有用吗？</h2>
+    <p class="lead">MLA 和各种 KVCache 压缩方案，会不会让分离变得没必要？</p>
+  </div>
+  <p>作者的第二条（原文编号 3）：Mooncake 方案和 MLA、各种 KVCache 压缩方案都是<b>正交</b>的，KVCache 变小意味着 Mooncake 的收益会更明显：同样的缓存池能存更多前缀，P 与 D 之间要搬的数据也更少。</p>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>压缩倍率滑块：</b>以 MHA-7B、32k 上下文、80 GB 显存为起点，把 KVCache 压缩 1× 到 1024×，看 decoding 能凑的 batch、此时的算术强度，以及每个请求要从 P 搬到 D 的数据量。</div>
+    <div data-demo="compress"></div>
+  </div>
+  <p style="margin-top:12px">评论区有人追问到了边界：</p>
+  <div class="cmt"><div class="who">读者 hzmzh</div>「KVCache 变小了 Mooncake 方案收益会更明显」，如果 KVCache 小到 decode 都是 compute bound 了，是不是也没有 PD 分离的必要了？</div>
+  <div class="cmt"><div class="who">作者 许欣然</div>确实，如果小到了这种地步那就是另外的 topic 了。</div>
+  <p class="src">在上面的滑块里把倍率拉到最大，就能看到这个「另外的 topic」：强度越过屋脊，decoding 也变成算力瓶颈。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：MLA（Multi-head Latent Attention）出自 DeepSeek-V2（2024 年 5 月），把每层的 K/V 压缩成一个低维潜向量缓存。<sup class="c">[6]</sup> 注意本页模型里 batch 再大，decoding 的强度也有上限 ≈ 2×参数量 ÷（上下文长度 × 每 token KV 字节数），因为每个请求的 KV 都得单独读，没法在请求之间复用。压缩直接抬高的正是这个上限。</div>
+</section>
+
+<section class="ch" id="s6" data-title="什么会让它过时">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>的确，有很多方向会让 Mooncake 变得没必要</h2>
+    <p class="lead">既然架构可能被颠覆，现在还值得为分离改集群、改芯片吗？</p>
+  </div>
+  <p>作者的第三条（原文编号 4）很坦诚：确实有很多方向可能让 Mooncake 的架构变得没必要。但是：</p>
+  <ol class="claims" style="margin-top:10px">
+    <li><span class="k">4.1</span>given hardware lottery，新架构演进会相当缓慢（不 AR、用 RAG 做 Attention 等方案），不能因噎废食。</li>
+    <li><span class="k">4.2</span>包括我们自己也在投入很多资源 break 现有框架，因此有理由相信在可见的未来推理方案还会变动。</li>
+    <li><span class="k">4.3</span>由于目前海量的推理压力，软件系统作为迭代速度极快的方案，就应该一代模型一次跟进。</li>
+    <li><span class="k">4.4</span>预测这个状态至少会持续 2~3 年，因此集群层面现在已经值得做拆分了。</li>
+    <li><span class="k">4.5</span>芯片层面值得作为一个重要的设计考量，在芯片的 IO 能力上要多预留一些。</li>
+  </ol>
+  <div class="fig" style="margin-top:14px">
+    <div class="cap"><b>变数推演：</b>点一个「可能的变数」，看它对分离架构意味着什么、按原文的思路该由哪一层（软件 / 集群 / 芯片）来应对。</div>
+    <div data-demo="scenario"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：「hardware lottery（硬件彩票）」是 Sara Hooker 2020 年提出的说法：一个研究想法能否胜出，很大程度取决于它是否恰好适合当时已有的硬件和软件。<sup class="c">[7]</sup> 套到这里：现有 GPU 和软件栈都为 Transformer + AR 优化过，新架构要先赢过这张「彩票」，所以替代会很慢。</div>
+</section>
+
+<section class="ch" id="s7" data-title="致谢与评论区">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>致谢、招聘与评论区</h2>
+    <p class="lead">读者们怎么看「分离是趋势」？</p>
+  </div>
+  <p>原文最后感谢了团队里几位同学和 ZHANG Mingxing 老师的付出，并附上月之暗面 AI Infra 团队的招聘信息（北京/上海，希望候选人代码能力强、有分布式系统或 CUDA 经验，「能从第一性原理出发，独立发现系统关键瓶颈并做出设计决策」）。</p>
+  <p style="margin-top:10px">评论区里几条与正文论点直接相关的讨论（剪藏时截取的部分）：</p>
+  <div class="cmt"><div class="who">读者 手抓饼熊（要点摘录）</div>P/D 分离会成为推理框架的必备能力：复杂度封装在引擎内部、用户可选独立或分离部署；此前华为的 TetriInfer（Inference without Interference）、微软的 Splitwise、北大的 DistServe 已证明方向；就像传统互联网把订单和购物车拆成不同服务；两类负载天然可选不同硬件和不同分布式策略；调度层很复杂，适合像 K8S 一样开放接口。</div>
+  <div class="cmt"><div class="who">读者 进击的Bruce</div>短期内 KV cache 的地位动不了，就算架构变了，大部分落地架构实际都留着 attention；会话只会越来越多，对长轮会话的应用，KV cache 就是核心优化对象。</div>
+  <div class="cmt"><div class="who">读者 无名 / 一块橡皮擦</div>问：论文里看不到独立的 KVCache 层，Distributed KVCache pool 体现在哪？答：Conductor 有全局视图，调度时挑缓存命中高、负载低的 prefill 与 decode 实例，在调度器视角下就是一个 cache pool，只是不像传统存储那样服务化、解耦。</div>
+  <div class="cmt"><div class="who">读者 大头</div>作为某厂商之一，不自觉地对号入座：「毕竟不能公开规模和每日请求的 pattern，如果你说省不了那你都对」。</div>
+  <div class="final">一句话：AR 惯性让 decoding 绑死在带宽上，KVCache 又长期偏大，而芯片从来不会在算力和带宽上同时最便宜。所以软件一代模型一跟进，集群现在就拆，芯片多留 IO。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据许欣然在知乎专栏发表的《<a href="https://zhuanlan.zhihu.com/p/705910725">关于 Mooncake 的碎碎念</a>》（编辑于 2024-06-28）制作；评论区内容按知乎昵称署名。同系列另有 ZHANG Mingxing 的「Mooncake (1)」「Mooncake (2)」。原文中的插图均已用内联 SVG 和 JS 重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>许欣然，《关于 Mooncake 的碎碎念》，知乎专栏（2024-06-28），<a href="https://zhuanlan.zhihu.com/p/705910725">zhuanlan.zhihu.com/p/705910725</a>，及其评论区。</li>
+    <li>Qin, R. et al. (2025). Mooncake: Trading More Storage for Less Computation — A KVCache-centric Architecture for Serving LLM Chatbot. <i>23rd USENIX Conference on File and Storage Technologies (FAST '25)</i>, 155–170. <a href="https://www.usenix.org/conference/fast25/presentation/qin">USENIX</a></li>
+    <li>kvcache-ai/Mooncake，GitHub 仓库 README（技术报告与 FAST'25 最佳论文说明）。<a href="https://github.com/kvcache-ai/Mooncake">github.com/kvcache-ai/Mooncake</a></li>
+    <li>ZHANG Mingxing，《Mooncake (1): 在月之暗面做月饼，Kimi 以 KVCache 为中心的分离式推理架构》，知乎专栏（2024）。<a href="https://zhuanlan.zhihu.com/p/705754254">zhuanlan.zhihu.com/p/705754254</a></li>
+    <li>Williams, S., Waterman, A. &amp; Patterson, D. (2009). Roofline: An Insightful Visual Performance Model for Multicore Architectures. <i>Communications of the ACM</i> 52(4), 65–76.</li>
+    <li>DeepSeek-AI (2024). DeepSeek-V2: A Strong, Economical, and Efficient Mixture-of-Experts Language Model. arXiv:2405.04434（MLA）。</li>
+    <li>Hooker, S. (2020). The Hardware Lottery. arXiv:2009.06489；后刊于 <i>Communications of the ACM</i> 64(12), 2021.</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；页面里的芯片参数、模型配置与成本都是示意数值并在页面内用 JS 现场计算，技术细节以原文与论文为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const slider = (label, min, max, val, step, fmt, onInput) => {
+  const out = el('output');
+  const input = el('input', { type: 'range', min, max, value: val, step, 'aria-label': label });
+  const upd = () => { out.textContent = fmt(+input.value); onInput(); };
+  input.addEventListener('input', upd);
+  return { node: el('label', { class: 'range' }, label, input, out), input, sync: () => { out.textContent = fmt(+input.value); } };
+};
+const seg = (opts, init, onPick) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  let cur = init;
+  const bs = opts.map(([v, t]) => el('button', { type: 'button', class: v === init ? 'on' : '', onclick: () => { cur = v; bs.forEach((b, i) => b.classList.toggle('on', opts[i][0] === v)); onPick(v); } }, t));
+  box.append(...bs);
+  return { node: box, get: () => cur };
+};
+const fmtB = (b) => b >= 1e12 ? (b / 1e12).toFixed(2) + ' TB' : b >= 1e9 ? (b / 1e9).toFixed(2) + ' GB' : b >= 1e6 ? (b / 1e6).toFixed(1) + ' MB' : (b / 1e3).toFixed(1) + ' KB';
+const fmtK = (n) => n >= 1024 ? (n / 1024) + 'k' : String(n);
+
+/* 共用：示意模型与硬件 */
+const PARAMS = 7e9, WBYTES = 2 * PARAMS;            // 7B FP16
+const PEAK = 990e12, BW = 3.35e12, RIDGE = PEAK / BW;   // ≈ 295 FLOP/B
+const CFG = {
+  mha: { name: 'MHA（类 Llama-2-7B）', kv: 2 * 32 * 32 * 128 * 2, wGB: 14 },
+  gqa: { name: 'GQA（类 Llama-3-70B）', kv: 2 * 80 * 8 * 128 * 2, wGB: 140 },
+  mla: { name: 'MLA（类 DeepSeek-V2）', kv: 60 * (512 + 64) * 2, wGB: 472 },
+};
+const decodeAI = (b, L, kv) => (2 * PARAMS * b) / (WBYTES + b * L * kv);
+
+/* 强度轴（对数）：0.5 ~ 20000 */
+const axis = (W, x0, x1) => { const lo = Math.log10(0.5), hi = Math.log10(20000); return (v) => x0 + (Math.log10(Math.max(0.5, Math.min(20000, v))) - lo) / (hi - lo) * (x1 - x0); };
+
+/* ---------- 01 请求流程 ---------- */
+reg('flow', (node) => {
+  const S = svg('svg', { viewBox: '0 0 640 230', class: 'flow', style: 'min-width:520px', role: 'img', 'aria-label': 'Mooncake 请求流程示意：Conductor 调度、Prefill 节点、KVCache 池、Decode 节点' });
+  const box = (id, x, y, w, t, s) => { const g = svg('g', { class: 'nd', 'data-id': id }, svg('rect', { x, y, width: w, height: 56, rx: 10 }), svg('text', { x: x + w / 2, y: y + 22 }, t), svg('text', { class: 's', x: x + w / 2, y: y + 40 }, s)); S.append(g); return g; };
+  const arr = (d) => { const p = svg('path', { class: 'ar', d, 'marker-end': 'url(#mk)' }); S.append(p); return p; };
+  S.append(svg('defs', {}, svg('marker', { id: 'mk', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, svg('path', { d: 'M0 0L10 5L0 10z', fill: 'var(--muted)' }))));
+  const n = {
+    req: box('req', 10, 87, 100, '用户请求', '长提示词'),
+    con: box('con', 150, 87, 120, 'Conductor', '全局调度'),
+    pre: box('pre', 310, 10, 140, 'Prefill 集群', '算力密集'),
+    pool: box('pool', 310, 164, 140, 'KVCache 池', 'CPU DRAM / SSD'),
+    dec: box('dec', 500, 87, 130, 'Decode 集群', '带宽密集'),
+  };
+  const a = {
+    rc: arr('M110 115 L148 115'), cp: arr('M270 105 L308 50'), pp: arr('M380 66 L380 162'),
+    pd: arr('M450 38 L560 38 L560 85'), od: arr('M450 192 L565 192 L565 145'),
+  };
+  const steps = [
+    [['req', 'con'], ['rc'], '请求到达全局调度器 Conductor。'],
+    [['con', 'pre', 'pool'], ['cp'], 'Conductor 根据前缀缓存命中情况与各节点负载，挑一个 prefill 实例（评论区读者也是这么理解「缓存池」的）。'],
+    [['pre', 'pool'], ['pp'], 'Prefill 复用池中已有的前缀 KVCache，只计算新增部分；新算出的 KVCache 写回池里，留给以后的请求复用。'],
+    [['pre', 'pool', 'dec'], ['pd', 'od'], 'KVCache 经高速网络传给选定的 decode 实例。'],
+    [['dec'], [], 'Decode 实例把它并入正在运行的大 batch，逐 token 生成回复。prefill 的突发长计算不再打断 decoding。'],
+  ];
+  let k = -1;
+  const status = el('div', { class: 'status' }, '点「下一步」开始。');
+  const show = () => {
+    Object.entries(n).forEach(([id, g]) => g.classList.toggle('on', k >= 0 && steps[k][0].includes(id)));
+    Object.entries(a).forEach(([id, p]) => p.classList.toggle('on', k >= 0 && steps[k][1].includes(id)));
+    status.innerHTML = k < 0 ? '点「下一步」开始。' : `<b>第 ${k + 1} / ${steps.length} 步</b>：${steps[k][2]}`;
+    next.disabled = k >= steps.length - 1;
+  };
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { k++; show(); } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { k = -1; show(); } }, '重置');
+  node.append(el('div', { class: 'scrollx' }, S), el('div', { class: 'ctrl' }, next, reset), status);
+  show();
+});
+
+/* ---------- 02 Roofline ---------- */
+reg('roofline', (node) => {
+  const W = 640, H = 170, X0 = 30, X1 = 610, ax = axis(W, X0, X1);
+  const S = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '算术强度对数轴与屋脊位置' });
+  const status = el('div', { class: 'status' });
+  const phase = seg([['pre', 'Prefill'], ['dec', 'Decoding']], 'dec', () => draw());
+  const sb = slider("批大小", 1, 256, 8, 1, (v) => v, () => draw());
+  const sl = slider('上下文', 9, 17, 13, 1, (v) => fmtK(2 ** v), () => draw());
+  const draw = () => {
+    sb.sync(); sl.sync();
+    const b = +sb.input.value, L = 2 ** +sl.input.value, kv = CFG.mha.kv;
+    let I, desc;
+    if (phase.get() === 'pre') { I = (2 * PARAMS * L) / (WBYTES + L * kv); desc = `一次 prefill 处理 ${fmtK(L)} 个 token，权重只读一遍`; }
+    else { I = decodeAI(b, L, kv); desc = `${b} 个请求各出 1 个 token，权重读一遍 + ${b} 份 KVCache（共 ${fmtB(b * L * kv)}）`; }
+    const util = Math.min(1, I / RIDGE);
+    S.replaceChildren();
+    S.append(svg('rect', { x: X0, y: 60, width: ax(RIDGE) - X0, height: 40, fill: 'var(--o-soft)' }), svg('rect', { x: ax(RIDGE), y: 60, width: X1 - ax(RIDGE), height: 40, fill: 'var(--t-soft)' }));
+    S.append(svg('text', { class: 'lbl', x: X0 + 6, y: 55 }, '带宽瓶颈区'), svg('text', { class: 'lbl', x: X1 - 6, y: 55, 'text-anchor': 'end' }, '算力瓶颈区'));
+    [1, 10, 100, 1000, 10000].forEach((v) => S.append(svg('line', { x1: ax(v), x2: ax(v), y1: 100, y2: 106, stroke: 'var(--muted)' }), svg('text', { class: 'lbl mid', x: ax(v), y: 122 }, v)));
+    S.append(svg('line', { x1: ax(RIDGE), x2: ax(RIDGE), y1: 40, y2: 108, stroke: 'var(--r)', 'stroke-width': 2, 'stroke-dasharray': '4 3' }), svg('text', { class: 'lbl mid', x: ax(RIDGE), y: 34, fill: 'var(--r)' }, `屋脊 ≈ ${RIDGE.toFixed(0)}`));
+    const cx = ax(I);
+    S.append(svg('circle', { cx, cy: 80, r: 9, fill: phase.get() === 'pre' ? 'var(--t)' : 'var(--o)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    S.append(svg('text', { class: 'lbl big mid', x: Math.min(X1 - 40, Math.max(X0 + 40, cx)), y: 150 }, `强度 ${I.toFixed(1)} FLOP/字节`));
+    status.innerHTML = `${desc}。算力利用率上限约 <b>${(util * 100).toFixed(util < .1 ? 1 : 0)}%</b>，${I < RIDGE ? '卡在<b>显存带宽</b>上：再贵的算力也闲着。' : '卡在<b>算力</b>上：带宽有富余。'}`;
+  };
+  node.append(el('div', { class: 'ctrl' }, phase.node), el('div', { class: 'ctrl' }, sb.node, sl.node), el('div', { class: 'scrollx' }, S), status);
+  draw();
+});
+
+/* ---------- 03 显存账本 ---------- */
+reg('kvcalc', (node) => {
+  const S = svg('svg', { viewBox: '0 0 640 90', role: 'img', 'aria-label': '显存占用条：权重与各请求的 KVCache' });
+  const status = el('div', { class: 'status' });
+  const stats = el('div', { class: 'kv' });
+  const arch = seg([['mha', 'MHA'], ['gqa', 'GQA'], ['mla', 'MLA']], 'mha', () => draw());
+  const sl = slider('上下文', 10, 17, 15, 1, (v) => fmtK(2 ** v), () => draw());
+  const sh = slider('显存总量', 1, 8, 1, 1, (v) => v * 80 + ' GB', () => draw());
+  const draw = () => {
+    sl.sync(); sh.sync();
+    const c = CFG[arch.get()], L = 2 ** +sl.input.value, hbm = +sh.input.value * 80e9, w = c.wGB * 1e9;
+    const per = L * c.kv, free = hbm - w, nReq = free > 0 ? Math.floor(free / per) : 0;
+    S.replaceChildren();
+    const X0 = 10, X1 = 630, sc = (X1 - X0) / hbm;
+    S.append(svg('rect', { x: X0, y: 20, width: X1 - X0, height: 36, rx: 6, fill: 'var(--surface-2)', stroke: 'var(--line)' }));
+    S.append(svg('rect', { x: X0, y: 20, width: Math.min(X1 - X0, w * sc), height: 36, rx: 6, fill: 'var(--p)', opacity: .75 }));
+    const show = Math.min(nReq, 120);
+    for (let i = 0; i < show; i++) {
+      const x = X0 + w * sc + i * per * sc; const ww = per * sc;
+      if (x + ww > X1 + .5) break;
+      S.append(svg('rect', { x: x + .5, y: 22, width: Math.max(.6, ww - 1), height: 32, fill: i % 2 ? 'var(--o)' : 'var(--y)', opacity: .8 }));
+    }
+    S.append(svg('text', { class: 'lbl', x: X0, y: 74 }, '■ 权重（蓝） ■ 每块一个请求的 KVCache（橙/黄交替）'));
+    stats.replaceChildren(
+      el('div', {}, el('b', {}, fmtB(c.kv)), '每 token KVCache'),
+      el('div', {}, el('b', {}, fmtB(per)), `单个 ${fmtK(L)} 上下文请求`),
+      el('div', {}, el('b', {}, free > 0 ? fmtB(free) : '不够'), '扣掉权重后可用'),
+      el('div', {}, el('b', {}, String(nReq)), '能同时驻留的请求数'));
+    status.innerHTML = free <= 0 ? `${c.name} 的权重约 ${c.wGB} GB，<b>显存连权重都放不下</b>，加卡试试。`
+      : `${c.name}：最多 <b>${nReq}</b> 个 ${fmtK(L)} 上下文的请求同时在显存里，decoding 的 batch 就被卡在这里。上下文翻倍，这个数就减半。`;
+  };
+  node.append(el('div', { class: 'ctrl' }, arch.node), el('div', { class: 'ctrl' }, sl.node, sh.node), el('div', { class: 'scrollx' }, S), stats, status);
+  draw();
+});
+
+/* ---------- 04 异构采购 ---------- */
+reg('hetero', (node) => {
+  const S = svg('svg', { viewBox: '0 0 640 170', role: 'img', 'aria-label': '三种采购方案的成本条形图' });
+  const status = el('div', { class: 'status' });
+  const sp = slider('Prefill 占算力需求', 10, 90, 50, 5, (v) => v + '%', () => draw());
+  const sbw = slider('B 的带宽/$ 倍率', 1, 10, 3, 0.5, (v) => v + '×', () => draw());
+  const draw = () => {
+    sp.sync(); sbw.sync();
+    const share = +sp.input.value / 100, m = +sbw.input.value;
+    const A = { c: 1, b: 1 }, B = { c: 0.4, b: m };   // 每 $ 能买到的算力 / 带宽（相对单位）
+    const Cp = share * 100, Bd = (1 - share) * 100;   // prefill 需算力，decoding 需带宽
+    const cost = (ch) => Cp / ch.c + Bd / ch.b;       // 同一种芯片分时干两种活
+    const rows = [['全买 A（算力型）', cost(A), 'var(--p)'], ['全买 B（带宽型）', cost(B), 'var(--y)'], ['分离：A 做 prefill，B 做 decoding', Cp / A.c + Bd / B.b, 'var(--t)']];
+    const mx = Math.max(...rows.map((r) => r[1]));
+    S.replaceChildren();
+    rows.forEach(([t, v, col], i) => {
+      const y = 12 + i * 52, w = (v / mx) * 400;
+      S.append(svg('text', { class: 'lbl', x: 0, y: y + 12 }, t));
+      S.append(svg('rect', { x: 0, y: y + 18, width: Math.max(2, w), height: 20, rx: 4, fill: col }));
+      S.append(svg('text', { class: 'lbl', x: w + 8, y: y + 33, fill: 'var(--text)' }, v.toFixed(0) + ' 单位 $'));
+    });
+    const best = Math.min(cost(A), cost(B)), het = Cp / A.c + Bd / B.b;
+    status.innerHTML = `分离后比最便宜的单一方案再省 <b>${((1 - het / best) * 100).toFixed(0)}%</b>。${m >= 9.5 ? '「带宽/$」降一个数量级时，decoding 那半边的成本几乎可以忽略，节省全部来自拆分。' : '把 B 的倍率拉到 10×，模拟作者说的「带宽/$ 低一个数量级的硬件」。'}`;
+  };
+  node.append(el('div', { class: 'ctrl' }, sp.node, sbw.node), el('div', { class: 'scrollx' }, S), status);
+  draw();
+});
+
+/* ---------- 05 压缩 ---------- */
+reg('compress', (node) => {
+  const W = 640, X0 = 30, X1 = 610, ax = axis(W, X0, X1);
+  const S = svg('svg', { viewBox: `0 0 ${W} 120`, role: 'img', 'aria-label': '压缩后 decoding 的算术强度相对屋脊' });
+  const stats = el('div', { class: 'kv' });
+  const status = el('div', { class: 'status' });
+  const sc = slider('KV 压缩', 0, 10, 0, 1, (v) => (2 ** v) + '×', () => draw());
+  const draw = () => {
+    sc.sync();
+    const f = 2 ** +sc.input.value, kv = CFG.mha.kv / f, L = 32768, free = 80e9 - WBYTES;
+    const b = Math.max(1, Math.floor(free / (L * kv)));
+    const I = decodeAI(b, L, kv), cap = 2 * PARAMS / (L * kv);
+    S.replaceChildren();
+    S.append(svg('rect', { x: X0, y: 30, width: ax(RIDGE) - X0, height: 34, fill: 'var(--o-soft)' }), svg('rect', { x: ax(RIDGE), y: 30, width: X1 - ax(RIDGE), height: 34, fill: 'var(--t-soft)' }));
+    [1, 10, 100, 1000, 10000].forEach((v) => S.append(svg('text', { class: 'lbl mid', x: ax(v), y: 84 }, v)));
+    S.append(svg('line', { x1: ax(RIDGE), x2: ax(RIDGE), y1: 18, y2: 70, stroke: 'var(--r)', 'stroke-width': 2, 'stroke-dasharray': '4 3' }), svg('text', { class: 'lbl mid', x: ax(RIDGE), y: 13 }, '屋脊'));
+    S.append(svg('line', { x1: ax(cap), x2: ax(cap), y1: 26, y2: 68, stroke: 'var(--muted)', 'stroke-width': 1.5 }), svg('text', { class: 'lbl mid', x: ax(cap), y: 104 }, '强度上限'));
+    S.append(svg('circle', { cx: ax(I), cy: 47, r: 9, fill: I >= RIDGE ? 'var(--t)' : 'var(--o)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+    stats.replaceChildren(
+      el('div', {}, el('b', {}, String(b)), '80 GB 能凑的 batch'),
+      el('div', {}, el('b', {}, I.toFixed(1)), 'decoding 强度 FLOP/字节'),
+      el('div', {}, el('b', {}, fmtB(L * kv)), '每请求 P→D 搬运量'));
+    status.innerHTML = I >= RIDGE
+      ? '压到这个程度，decoding 也越过屋脊变成<b>算力瓶颈</b>：这就是评论里说的「另外的 topic」，P/D 分离的理由大大削弱。'
+      : f === 1 ? '未压缩：batch 很小，强度个位数，decoding 被显存带宽卡死。往右拖。'
+      : `压缩 ${f}×：同样显存能装更多请求、搬运更少，<b>Mooncake 的缓存池与传输都更划算</b>；但 decoding 仍在带宽瓶颈区，分离依然有意义。`;
+  };
+  node.append(el('div', { class: 'ctrl' }, sc.node), el('div', { class: 'scrollx' }, S), stats, status);
+  draw();
+});
+
+/* ---------- 06 变数推演 ---------- */
+reg('scenario', (node) => {
+  const L3 = ['软件：一代模型一次跟进', '集群：现在就拆分', '芯片：多留 IO 能力'];
+  const items = [
+    ['非 AR 的新架构', '不再逐 token 自回归生成', '若真成功，decoding 不再与带宽强绑定，分离的核心理由会动摇。但作者判断：given hardware lottery，新架构演进会相当缓慢，不能因噎废食。', [0, 1]],
+    ['用 RAG 做 Attention', '不再把全部上下文存成 KVCache', '可能让「private memory per request」大幅缩小。作者把它和非 AR 并列为可能颠覆现有框架的方向，自己团队也在投入资源去 break 现有框架，所以推理方案还会变。', [0]],
+    ['KVCache 压到极小', 'MLA 等压缩走到极端', '中间阶段反而让 Mooncake 收益更明显（第 05 章）；只有小到 decoding 变成算力瓶颈时，才是「另外的 topic」。', [0, 1]],
+    ['两项同时最优的芯片', '算力/$ 与带宽/$ 都最好', '作者说「纵观历史似乎还没出现过」。只要没出现，异构拆分就有成本优势；芯片厂商能做的是在 IO 上多预留。', [1, 2]],
+    ['模型每代都在变', '结构、上下文长度频繁变化', '软件是迭代最快的一层，应该一代模型一次跟进；而作者预测这种状态至少持续 2~3 年，集群层面现在就值得拆。', [0, 1, 2]],
+  ];
+  const v = el('div', { class: 'verdict' }, '点上面任意一张卡片。');
+  const cards = items.map(([t, s, txt, lay], i) => {
+    const c = el('button', { class: 'card', type: 'button', onclick: () => {
+      cards.forEach((x) => x.classList.remove('on')); c.classList.add('on');
+      v.replaceChildren(el('div', {}, el('b', {}, t + '：'), txt), el('div', { class: 'lay' }, ...L3.map((l, j) => el('span', { class: lay.includes(j) ? 'hit' : '' }, l))));
+    } }, t, el('small', {}, s));
+    return c;
+  });
+  node.append(el('div', { class: 'cards' }, ...cards), v);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

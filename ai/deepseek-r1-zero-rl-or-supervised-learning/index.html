@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>R1-Zero 的纯 RL 是监督学习吗</title>
+<meta name="description" content="DeepSeek-R1-Zero 的纯强化学习为什么看起来像监督学习？用数据流对比、GRPO 组内优势演示、「RL = 加权 SFT」的公式推导和一个玩具策略模拟，讲清两者在梯度形式上的相同与在数据来源、负样本、探索上的不同。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13px;color:var(--muted)}
+.panel b{color:var(--text)}
+.rows{display:grid;gap:6px;margin-top:10px}
+.row3{display:grid;grid-template-columns:7.5em 1fr;gap:8px;font-size:13px;padding:6px 10px;border-radius:8px;background:var(--surface-2)}
+.row3 span:first-child{color:var(--muted)}
+.status .bad{color:var(--r)}
+.status .good{color:var(--t)}
+.node rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.node.on rect{fill:var(--p-soft);stroke:var(--p);stroke-width:2}
+.node text{font-family:var(--font);text-anchor:middle;dominant-baseline:central;fill:var(--text);font-size:13px}
+.node text.s{font-size:11px;fill:var(--muted)}
+.edge{fill:none;stroke:var(--line);stroke-width:2}
+.edge.on{stroke:var(--p)}
+.edge.dash{stroke-dasharray:5 5}
+.dot-g{fill:var(--t)}
+.dot-r{fill:var(--r)}
+.dot-n{fill:var(--p)}
+.smp{cursor:pointer}
+.smp circle{stroke-width:2;transition:fill .2s}
+.smp.ok circle{fill:var(--t-soft);stroke:var(--t)}
+.smp.no circle{fill:var(--r-soft);stroke:var(--r)}
+.smp text{font-size:13px;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:var(--font)}
+.smp.ok text{fill:var(--t)}
+.smp.no text{fill:var(--r)}
+.smp:focus{outline:none}
+.smp:focus circle{stroke-width:3.5}
+.bar-pos{fill:var(--t)}
+.bar-neg{fill:var(--r)}
+.bar-zero{fill:var(--line)}
+.axis{stroke:var(--ink);stroke-width:1;opacity:.5}
+.gridl{stroke:var(--grid);stroke-width:1}
+.eqs{display:grid;gap:8px}
+.eqrow{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:var(--surface-2);opacity:.35;transition:opacity .4s,border-color .4s}
+.eqrow.on{opacity:1;border-color:var(--p)}
+.eqrow.cur{box-shadow:0 0 0 2px var(--p-soft)}
+.eqrow .eq{margin:4px 0;background:var(--surface)}
+.eqrow p{font-size:13px;color:var(--muted)}
+.eqrow b.k{font-size:12px;color:var(--p)}
+.hl{background:var(--y-soft);border-radius:4px;padding:0 3px}
+.hl2{background:var(--t-soft);border-radius:4px;padding:0 3px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:4px;border-radius:2px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:10px}
+.kv div{background:var(--surface-2);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.kv b{display:block;font-family:var(--mono);font-size:18px;color:var(--text)}
+.verdict{display:grid;gap:10px;margin-top:10px}
+.verdict .v{border-radius:12px;padding:12px 14px;font-size:14px;border:1px solid var(--line);background:var(--surface-2)}
+.verdict .v.sl{border-color:var(--o);background:var(--o-soft)}
+.verdict .v.rl{border-color:var(--t);background:var(--t-soft)}
+.verdict .v h3{font-size:15px;margin-bottom:4px}
+table.cmp{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
+table.cmp th,table.cmp td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+table.cmp th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">R1-Zero：RL 还是 SFT</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 强化学习 · 推理模型</div>
+  <h1>R1-Zero 的纯 RL，为什么看起来像监督学习？</h1>
+  <p class="sub">DeepSeek-R1-Zero 号称「不用 SFT，直接在基座模型上做强化学习」，可一推公式，它的更新又长得和监督微调几乎一样。这一页把两者摆在一起：哪里真的一样，哪里根本不同。</p>
+  <div class="thesis">把 R1-Zero 用的 GRPO 去掉裁剪和 KL 项，梯度就是「在模型自己生成的答案上做 SFT，每条答案乘一个可正可负的权重」。形式上它确实是加权的最大似然；它和普通监督学习的区别在于：训练数据由当前策略现采（on-policy）、错误答案被主动压低（负权重）、能学到什么受限于模型自己能探索到什么。<sup class="c">[2][3]</sup></div>
+  <div class="authors">
+    <span class="au"><i>本</i>本仓库整理</span>
+    <span class="au"><i style="background:var(--o)">卡</i>命题来源：卡卡罗特（知乎）</span>
+  </div>
+  <p class="meta">本页为本仓库整理，非某篇文章的转述。命题来自知乎问题「为什么我还是觉得 DeepSeek-R1-Zero 的纯 RL 也不是“真的”RL，就是监督学习？」下卡卡罗特的回答；该回答正文未能获取（知乎对抓取返回 403），本页只看到了它的开头摘要：「我大概能 get 你问问题的点。……首先强化学习常需要“行为克…」。剪藏记录里同时列有路橙LuChengTHU、俞扬两个名字，推测是同问题下的其他答主，他们的回答同样未能获取，本页没有引用。正文内容以 DeepSeek-R1 论文为主要依据<sup class="c">[2]</sup>，橙色虚线框是争议点或需要注意的地方。</p>
+</header>
+
+<section class="ch" id="what" data-title="R1-Zero 做了什么">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>R1-Zero 到底做了什么</h2>
+    <p class="lead">先把事实摆清楚：没有人工写的推理示范，模型靠什么学会长链推理？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">R1-Zero 的一轮训练。点「下一步」逐步走一遍，或点「自动」让它循环。注意第 2 步：<b>答案是模型自己写的</b>；第 3 步：<b>判对错的是规则，不是神经网络</b>。<sup class="c">[2]</sup></div>
+    <div data-demo="loop"></div>
+  </div>
+  <div class="grid2" style="margin-top:14px">
+    <div class="fig">
+      <div class="cap"><b>论文报告的结果</b>（AIME 2024）<sup class="c">[2]</sup></div>
+      <div class="kv">
+        <div>训练开始 pass@1<b>15.6%</b></div>
+        <div>训练结束 pass@1<b>71.0%</b></div>
+        <div>64 次多数投票<b>86.7%</b></div>
+      </div>
+      <p class="src">论文称后者超过 OpenAI-o1-0912 在该基准上的成绩。训练中回答长度持续变长，并出现了「Wait, wait. Wait. That's an aha moment」式的自我反思。</p>
+    </div>
+    <div class="fig">
+      <div class="cap"><b>奖励只有两种，都是规则</b><sup class="c">[2]</sup></div>
+      <div class="rows">
+        <div class="row3"><span>准确率奖励</span><span>数学题：按指定格式（如方框）给出最终答案，与标准答案比对；编程题：编译运行测试用例。</span></div>
+        <div class="row3"><span>格式奖励</span><span>推理过程必须写在 &lt;think&gt; 与 &lt;/think&gt; 之间。</span></div>
+        <div class="row3"><span>没用什么</span><span>没有神经网络奖励模型：论文说它在大规模 RL 中容易被「奖励黑客」（reward hacking）钻空子，而且重训代价高。</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="flow" data-title="数据流对比">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>监督学习和 R1-Zero，数据从哪来、往哪去</h2>
+    <p class="lead">「像监督学习」的直觉从哪来？因为两者最后都在做同一件事：提高某些答案的概率。差别在于「某些答案」是谁给的。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">切换三种训练方式，看小圆点（一条条训练样本）怎么流动。<b style="color:var(--t)">绿</b>是判为正确的样本，<b style="color:var(--r)">红</b>是错误样本，<b style="color:var(--p)">紫</b>是不经判定的示范数据。下方三行是关键差异。</div>
+    <div data-demo="flow"></div>
+  </div>
+  <div class="note-add"><b>行为克隆（behavior cloning）</b>：模仿学习里最直接的做法，把专家的「状态 → 动作」当成监督数据拟合，和 SFT 是同一回事。经典的 RL 系统也常先做行为克隆再做 RL，例如 AlphaGo 先用人类棋谱训练策略网络，再自我对弈强化<sup class="c">[8]</sup>。卡卡罗特回答的摘要停在「首先强化学习常需要“行为克…」，大概也是从这里切入的，但他的具体论证本页无法得知。</div>
+</section>
+
+<section class="ch" id="grpo" data-title="GRPO 组内优势">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>GRPO：没有「标准答案」，只有「比同组好多少」</h2>
+    <p class="lead">R1-Zero 不训练价值网络（critic）。那么一条答案该加多少分、减多少分，由什么决定？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">同一道题采样 G 条答案，每条按规则得 1 分（对）或 0 分（错）。GRPO 把每条的奖励减去组内均值、除以组内标准差，得到<b>优势</b> A<sub>i</sub> = (r<sub>i</sub> − mean) / std。<sup class="c">[2][3]</sup> 拖动滑块重新采样，或者<b>直接点圆圈切换对错</b>，看柱子怎么变。</div>
+    <div data-demo="grpo"></div>
+  </div>
+  <div class="note-add"><b>注意</b>：论文没有给出 R1-Zero 的组大小 G、裁剪系数 ε、KL 系数 β 的具体数值，本演示的 G 只是示意。std 的具体算法（总体 / 样本标准差）在不同开源实现里也不一致，这里用总体标准差。Liu 等人（2025）指出 GRPO 的「除以 std」和「按回答长度平均」会引入偏差（例如让错误回答越写越长），并提出去掉这两项的 Dr. GRPO，切到「不除 std」可以看到它的效果。<sup class="c">[4]</sup></div>
+</section>
+
+<section class="ch" id="formula" data-title="RL = 加权 SFT">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>把 RL 一步步写成「加权 SFT」</h2>
+    <p class="lead">说「它就是监督学习」到底对在哪里？推几步公式就清楚了。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点「下一步」逐行推导。π<sub>θ</sub> 是模型（策略），x 是题目，y 是完整回答，r 是奖励。</div>
+    <div data-demo="formula"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>同一组 6 条采样，不同方法给的权重。</b>形式都是 Σ w<sub>i</sub>·∇log π<sub>θ</sub>(y<sub>i</sub>)，区别只在 w<sub>i</sub>。点圆圈改对错，切换方法看权重柱。</div>
+    <div data-demo="weights"></div>
+  </div>
+  <div class="note-add"><b>延伸</b>：「把 RL 写成按奖励加权的回归 / 最大似然」不是新发现。Williams（1992）的 REINFORCE 就是这个形式<sup class="c">[6]</sup>；Peters 与 Schaal（2007）的奖励加权回归（reward-weighted regression）把它当作一种 EM 式算法<sup class="c">[10]</sup>；STaR（2022）则是「只保留做对的、反复 SFT」的版本，相当于下图的拒绝采样权重<sup class="c">[7]</sup>。DeepSeek-R1 的第二阶段也用了拒绝采样：从 RL 检查点采了约 60 万条推理样本，加上约 20 万条非推理样本，共约 80 万条做两轮 SFT。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="sim" data-title="on-policy 与探索">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>真正的区别：数据会动，以及探不到的地方学不到</h2>
+    <p class="lead">既然梯度形式一样，为什么 on-policy 的 RL 和固定数据的 SFT 训练出的模型会不同？RL 又为什么不能凭空学会新解法？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>玩具模型（非真实 LLM）。</b>一个「模型」在 6 种解题套路 A–F 里按概率挑一种，4 道题各自只有某些套路能做对（下方表格）。套路 E、F 在初始模型里概率极低。切换三种训练方式，点「训练」看概率条和指标怎么变：<b>pass@1</b> 是随手答一次的平均正确率，<b>pass@64</b> 是答 64 次至少对一次的平均概率（衡量「能力边界」）。所有数字在你的浏览器里现场模拟。</div>
+    <div data-demo="sim"></div>
+  </div>
+  <div class="note-add"><b>和真实研究的对应</b>：Yue 等人（2025）在多个模型与基准上发现，RLVR（可验证奖励的 RL）训练后的模型在小 k 时 pass@k 更高，但 k 足够大时基座模型反而更高，因此认为当前的 RLVR 主要是在基座已有的推理路径上提高采样效率，没有引入根本性的新推理模式；而从更强的教师模型蒸馏则能带来新模式。<sup class="c">[5]</sup> DeepSeek-R1 论文也报告：在 Qwen-32B 上直接做大规模 RL（AIME 2024 pass@1 47.0%）不如从 R1 蒸馏（72.6%）。<sup class="c">[2]</sup> Liu 等人（2025）还发现 DeepSeek-V3-Base 本身就已经会出现「aha moment」式的反思。<sup class="c">[4]</sup> 玩具模型只为说明机制，没有上下文、套路数极少，不代表真实比例。</div>
+</section>
+
+<section class="ch" id="verdict" data-title="所以算不算 RL">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>所以，它算不算「真的」RL？</h2>
+    <p class="lead">答案取决于你用哪把尺子量。换一把尺子，看结论怎么变。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一个角度。</div>
+    <div data-demo="verdict"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>四种做法一览</b></div>
+    <div class="scrollx">
+      <table class="cmp">
+        <thead><tr><th></th><th>SFT / 行为克隆</th><th>拒绝采样 + SFT</th><th>R1-Zero（GRPO）</th><th>经典深度 RL（如 AlphaZero）</th></tr></thead>
+        <tbody>
+          <tr><th>样本来源</th><td>固定的人类 / 教师数据</td><td>模型自己采，通常一次或几轮</td><td>当前策略每步现采</td><td>当前策略与环境交互</td></tr>
+          <tr><th>错误样本</th><td>不存在</td><td>丢掉</td><td>负权重，主动压低</td><td>负回报</td></tr>
+          <tr><th>判定</th><td>无</td><td>规则 / 模型</td><td>规则（可验证奖励）</td><td>环境规则（输赢）</td></tr>
+          <tr><th>信用分配</th><td>逐 token 有标签</td><td>整条回答一个标签</td><td>整条回答一个奖励，组内相对化</td><td>价值网络 + 搜索，逐步估计</td></tr>
+          <tr><th>环境状态转移</th><td>无</td><td>无</td><td>无（生成即动作，单轮）</td><td>有（对手、棋盘）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="final">更贴切的说法也许是：R1-Zero 是一个「结果奖励 + on-policy 策略梯度」的 RL，问题结构接近序列级的上下文老虎机（contextual bandit）；它的更新写出来就是加权 SFT，所以看起来像监督学习；真正让它不同于 SFT 的，是数据随模型变化和负样本，而它能走多远，很大程度上由预训练（本身就是对海量文本的行为克隆）决定。</div>
+  <div class="note-add"><b>注意</b>：「上下文老虎机」的定性是本页的理解，用来说明 R1-Zero 没有多步环境交互；严格说每个 token 也可视为一步动作、整个回答是一条轨迹，只是奖励只在末尾出现。论文中也记录了他们试过过程奖励模型（PRM）和蒙特卡洛树搜索（MCTS）但没有成功：前者难以定义与评判中间步骤且会被奖励黑客利用，后者因为 token 生成的搜索空间比棋类大得多、价值模型难训练。<sup class="c">[2]</sup></div>
+</section>
+
+<footer>
+  <div>出处：本仓库整理，参考：卡卡罗特（知乎）回答摘要、DeepSeek-R1 论文、DeepSeekMath（GRPO）、Liu 等（2025）、Yue 等（2025）等。命题来自知乎问题<a href="https://www.zhihu.com/question/10461963294/answer/86847459236">「为什么我还是觉得 DeepSeek-R1-Zero 的纯 RL 也不是“真的”RL，就是监督学习？」卡卡罗特的回答</a>；该回答正文未能获取，本页仅使用了其开头一句摘要，其余观点均不代表原答主。页面中的图示均为内联 SVG 与 JS 绘制，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>卡卡罗特，知乎回答：为什么我还是觉得 DeepSeek-R1-Zero 的纯 RL 也不是“真的”RL，就是监督学习？（仅见摘要）。<a href="https://www.zhihu.com/question/10461963294/answer/86847459236">链接</a></li>
+    <li>DeepSeek-AI (2025). DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning. arXiv:2501.12948. <a href="https://arxiv.org/abs/2501.12948">链接</a></li>
+    <li>Shao, Z. et al. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models.（提出 GRPO）arXiv:2402.03300. <a href="https://arxiv.org/abs/2402.03300">链接</a></li>
+    <li>Liu, Z. et al. (2025). Understanding R1-Zero-Like Training: A Critical Perspective. arXiv:2503.20783. <a href="https://arxiv.org/abs/2503.20783">链接</a></li>
+    <li>Yue, Y. et al. (2025). Does Reinforcement Learning Really Incentivize Reasoning Capacity in LLMs Beyond the Base Model? arXiv:2504.13837. <a href="https://arxiv.org/abs/2504.13837">链接</a></li>
+    <li>Williams, R. J. (1992). Simple statistical gradient-following algorithms for connectionist reinforcement learning. <i>Machine Learning</i> 8, 229–256.</li>
+    <li>Zelikman, E. et al. (2022). STaR: Bootstrapping Reasoning With Reasoning. <i>NeurIPS 2022</i>. arXiv:2203.14465.</li>
+    <li>Silver, D. et al. (2016). Mastering the game of Go with deep neural networks and tree search. <i>Nature</i> 529, 484–489.</li>
+    <li>Ross, S., Gordon, G., Bagnell, J. A. (2011). A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning (DAgger). <i>AISTATS 2011</i>.</li>
+    <li>Peters, J., Schaal, S. (2007). Reinforcement learning by reward-weighted regression for operational space control. <i>ICML 2007</i>.</li>
+  </ol>
+  <p>本页由 Claude Code 基于上述公开资料生成，仅供学习；技术细节以论文原文为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const keyAct = (n, f) => { n.addEventListener('click', f); n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); f(); } }); };
+const seg = (labels, on, cb) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = labels.map((t, i) => el('button', { type: 'button', class: i === on ? 'on' : '', onclick: () => { bs.forEach((b) => b.classList.remove('on')); bs[i].classList.add('on'); cb(i); } }, t));
+  box.append(...bs); return box;
+};
+const mulberry = (seed) => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const f2 = (x) => (Math.abs(x) < 0.005 ? 0 : x).toFixed(2);
+const mean = (a) => a.reduce((s, x) => s + x, 0) / a.length;
+const stdp = (a) => { const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / a.length); };
+
+/* ---------- 01 训练循环 ---------- */
+reg('loop', (node) => {
+  const steps = [
+    ['取题', '从带标准答案的数学题 / 带测试用例的编程题里取一道题 x，套上模板：先在 <think> 里推理，再在 <answer> 里给答案。模板刻意不规定「怎么想」。'],
+    ['采样', '用当前模型 π_θ 对同一道题生成 G 条完整回答（推理过程 + 最终答案）。没有任何人写的示范。'],
+    ['判分', '规则检查：答案对不对（比对标准答案 / 跑测试用例），格式对不对。得到 G 个奖励 r₁ … r_G。'],
+    ['算优势', '每条的优势 A_i = (r_i − 组均值) / 组标准差。比同组好的为正，比同组差的为负。'],
+    ['更新', '提高 A > 0 的回答里每个 token 的概率，压低 A < 0 的；裁剪单步更新幅度，并用 KL 项拉住它别离参考模型太远。然后回到第 1 步，下一轮用的已经是更新后的模型。'],
+  ];
+  const W = 360, H = 190, cx = 180, cy = 95, rx = 140, ry = 68;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': 'R1-Zero 训练循环示意：取题、采样、判分、算优势、更新，循环往复', style: 'max-width:420px;margin:0 auto' });
+  root.append(svg('ellipse', { cx, cy, rx, ry, class: 'edge', id: 'loopRing' }));
+  const pos = steps.map((_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / steps.length; return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)]; });
+  const nodes = steps.map(([t], i) => {
+    const g = svg('g', { class: 'node' },
+      svg('rect', { x: pos[i][0] - 38, y: pos[i][1] - 17, width: 76, height: 34, rx: 10 }),
+      svg('text', { x: pos[i][0], y: pos[i][1] }, `${i + 1} ${t}`));
+    root.append(g); return g;
+  });
+  const items = steps.map(([f, p], i) => el('div', { class: 'tl-step' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, f), el('p', {}, p))));
+  let k = -1, timer = null, round = 0;
+  const status = el('div', { class: 'status' }, '点「下一步」开始。');
+  const show = () => {
+    nodes.forEach((n, i) => n.classList.toggle('on', i === k));
+    items.forEach((n, i) => n.classList.toggle('on', i === k));
+    status.innerHTML = k < 0 ? '点「下一步」开始。' : `第 <b>${round + 1}</b> 轮 · 第 <b>${k + 1}</b> 步：${steps[k][0]}` + (k === 4 ? '。下一步将用更新后的模型重新采样。' : '');
+  };
+  const step = () => { k++; if (k >= steps.length) { k = 0; round++; } show(); };
+  const stopT = () => { if (timer) { clearInterval(timer); timer = null; auto.textContent = '自动'; } };
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { stopT(); step(); } }, '下一步');
+  const auto = el('button', { class: 'btn', type: 'button', onclick: () => { if (timer) stopT(); else { step(); timer = setInterval(step, RM ? 2600 : 1500); auto.textContent = '暂停'; } } }, '自动');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { stopT(); k = -1; round = 0; show(); } }, '重置');
+  node.append(root, el('div', { class: 'ctrl' }, next, auto, reset), status, el('div', { class: 'steps', style: 'margin-top:8px' }, ...items));
+  return { stop: stopT };
+});
+
+/* ---------- 02 数据流对比 ---------- */
+reg('flow', (node) => {
+  const modes = [
+    { name: 'SFT / 行为克隆', src: ['固定数据集', '人类 / 教师写的'], judge: ['不判定', '照单全收'], upd: ['提高这些', '答案的概率'], loop: '数据集固定，不随模型变化', loopOn: false, red: 0, kind: 'n',
+      rows: ['人（或更强的模型）事先写好', '不存在错误样本', '不变：训练前就定了'],
+      st: '监督学习：目标答案 y* 由外部给定，模型只负责模仿。训练越久，越接近数据集的分布。' },
+    { name: '拒绝采样 + SFT', src: ['模型自己采', '某个固定版本'], judge: ['规则判定', '错的丢掉'], upd: ['在对的上', '做 SFT'], loop: '离线：采一次（或几轮）后固定', loopOn: false, red: 0.6, kind: 'drop',
+      rows: ['模型自己生成，再按规则筛选', '直接丢掉，不参与训练', '采样时的模型版本；每轮之间才更新'],
+      st: '拒绝采样微调：数据是模型自己写的，但筛完就是一份普通的 SFT 数据集。R1 的第二阶段就这样用了约 80 万条样本。' },
+    { name: 'R1-Zero（GRPO）', src: ['当前模型', '每一步现采'], judge: ['规则打分', '组内相对化'], upd: ['对的拉高', '错的压低'], loop: '每一步都用最新模型重新采样', loopOn: true, red: 0.6, kind: 'keep',
+      rows: ['当前模型现采，规则给奖励', '负优势：主动压低其概率', '每一步都变（on-policy）'],
+      st: 'R1-Zero：数据由当前策略现采，好的加权、坏的减权，更新后的模型立刻产生下一批数据。这个「自己出题自己练、越练越不一样」的闭环，是它与 SFT 的根本差别。' },
+  ];
+  const W = 600, H = 240;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '三种训练方式的数据流动示意' });
+  const boxes = [[20, 30], [225, 30], [430, 30]];
+  const mk = (x, y) => { const t1 = svg('text', { x: x + 75, y: y + 26, style: 'font-size:17px;font-weight:600' }); const t2 = svg('text', { x: x + 75, y: y + 52, class: 's', style: 'font-size:14px' }); const g = svg('g', { class: 'node on' }, svg('rect', { x, y, width: 150, height: 78, rx: 12 }), t1, t2); root.append(g); return [t1, t2]; };
+  const e1 = svg('path', { d: 'M170 69 L225 69', class: 'edge on' }), e2 = svg('path', { d: 'M375 69 L430 69', class: 'edge on' });
+  const loopP = svg('path', { d: 'M505 108 L505 180 Q505 196 489 196 L111 196 Q95 196 95 180 L95 108', class: 'edge' });
+  const loopT = svg('text', { x: 300, y: 222, style: 'font-size:15px;text-anchor:middle;fill:var(--muted);font-family:var(--font)' });
+  const arrow = svg('path', { d: 'M88 120 L95 106 L102 120', class: 'edge' });
+  root.append(e1, e2, loopP, arrow, loopT);
+  const T = boxes.map(([x, y]) => mk(x, y));
+  const dotG = svg('g'); root.append(dotG);
+  const rowsBox = el('div', { class: 'rows' });
+  const status = el('div', { class: 'status' });
+  let m = 0, dots = [], raf = 0, last = 0, spawn = 0, dash = 0, rnd = mulberry(3);
+  const set = (i) => {
+    m = i; const M = modes[i];
+    [M.src, M.judge, M.upd].forEach((a, j) => { T[j][0].textContent = a[0]; T[j][1].textContent = a[1]; });
+    loopT.textContent = M.loop;
+    loopP.setAttribute('class', 'edge' + (M.loopOn ? ' on' : ' dash')); arrow.setAttribute('class', 'edge' + (M.loopOn ? ' on' : ''));
+    const lab = ['样本从哪来', '错的怎么办', '数据会不会变'];
+    rowsBox.replaceChildren(...M.rows.map((r, j) => el('div', { class: 'row3' }, el('span', {}, lab[j]), el('span', {}, r))));
+    status.textContent = M.st;
+    dots.forEach((d) => d.n.remove()); dots = [];
+    if (RM) drawStatic();
+  };
+  const xAt = (t) => t < 1 ? 95 + t * 205 : 300 + (t - 1) * 205;
+  const newDot = () => { const M = modes[m]; const bad = M.kind !== 'n' && rnd() < M.red; const c = M.kind === 'n' ? 'dot-n' : bad ? 'dot-r' : 'dot-g'; const n = svg('circle', { r: 7, class: c, cx: 95, cy: 69 }); dotG.append(n); dots.push({ n, t: 0, bad, y: 58 + rnd() * 22 }); };
+  const drawStatic = () => { dotG.replaceChildren(); dots = []; const M = modes[m]; [0.3, 0.7, 1.3, 1.7].forEach((t, j) => { const bad = M.kind !== 'n' && j % 2 === 1; if (bad && M.kind === 'drop' && t > 1) return; dotG.append(svg('circle', { r: 7, class: M.kind === 'n' ? 'dot-n' : bad ? 'dot-r' : 'dot-g', cx: xAt(t), cy: 69 })); }); };
+  const tick = (ts) => {
+    const dt = Math.min(50, ts - (last || ts)); last = ts;
+    spawn += dt; if (spawn > 420) { spawn = 0; newDot(); }
+    const M = modes[m];
+    dots = dots.filter((d) => {
+      d.t += dt / 1300;
+      if (M.kind === 'drop' && d.bad && d.t > 1) { const o = Math.max(0, 1 - (d.t - 1) * 4); d.n.setAttribute('opacity', o); d.n.setAttribute('cy', d.y + (d.t - 1) * 80); if (o <= 0) { d.n.remove(); return false; } return true; }
+      if (d.t >= 2) { d.n.remove(); return false; }
+      d.n.setAttribute('cx', xAt(d.t)); d.n.setAttribute('cy', d.y); return true;
+    });
+    if (M.loopOn) { dash = (dash + dt / 25) % 20; loopP.style.strokeDasharray = '10 10'; loopP.style.strokeDashoffset = -dash; } else { loopP.style.strokeDasharray = ''; loopP.style.strokeDashoffset = ''; }
+    raf = requestAnimationFrame(tick);
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(modes.map((x) => x.name), 0, set)), root, rowsBox, status);
+  set(0);
+  return { start() { if (RM || raf) return; last = 0; raf = requestAnimationFrame(tick); }, stop() { cancelAnimationFrame(raf); raf = 0; } };
+});
+
+/* ---------- 03 GRPO 组内优势 ---------- */
+reg('grpo', (node) => {
+  let G = 8, p = 0.3, useStd = true, r = [], rnd = mulberry(11);
+  const W = 600, H = 250, base = 175;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '一组采样回答的奖励与 GRPO 优势柱状图' });
+  const gOut = svg('g'); root.append(gOut);
+  const status = el('div', { class: 'status' });
+  const gIn = el('input', { type: 'range', min: '2', max: '16', value: '8', step: '1', 'aria-label': '组大小 G' });
+  const gO = el('output', {}, '8');
+  const pIn = el('input', { type: 'range', min: '0', max: '100', value: '30', step: '5', 'aria-label': '模型在这道题上的正确率' });
+  const pO = el('output', {}, '30%');
+  const resample = () => { r = Array.from({ length: G }, () => (rnd() < p ? 1 : 0)); draw(); };
+  const draw = () => {
+    gOut.replaceChildren();
+    const m = mean(r), s = stdp(r);
+    const A = r.map((x) => (useStd ? (s > 1e-9 ? (x - m) / s : 0) : x - m));
+    const step = W / G, rad = Math.min(20, step * 0.36), sc = useStd ? 26 : 70;
+    gOut.append(svg('line', { x1: 10, x2: W - 10, y1: base, y2: base, class: 'axis' }));
+    gOut.append(svg('text', { x: 6, y: base - 4, class: 'lbl', style: 'font-size:13px' }, 'A = 0'));
+    r.forEach((x, i) => {
+      const cxp = step * (i + 0.5);
+      const g = svg('g', { class: 'smp ' + (x ? 'ok' : 'no'), tabindex: '0', role: 'button', 'aria-label': `第 ${i + 1} 条回答，${x ? '正确' : '错误'}，点击切换` },
+        svg('circle', { cx: cxp, cy: 34, r: rad }), svg('text', { x: cxp, y: 34, style: `font-size:${Math.max(11, rad * 0.9)}px` }, x ? '✓' : '✗'));
+      keyAct(g, () => { r[i] = 1 - r[i]; draw(); });
+      gOut.append(g);
+      const h = Math.max(-80, Math.min(80, A[i] * sc));
+      const bw = Math.min(34, step * 0.6);
+      gOut.append(svg('rect', { x: cxp - bw / 2, y: h >= 0 ? base - h : base, width: bw, height: Math.max(1.5, Math.abs(h)), class: Math.abs(A[i]) < 1e-9 ? 'bar-zero' : A[i] > 0 ? 'bar-pos' : 'bar-neg', rx: 3 }));
+      if (G <= 10) gOut.append(svg('text', { x: cxp, y: h >= 0 ? base - h - 8 : base - h + 18, class: 'lbl mid', style: 'font-size:15px;font-family:var(--mono)' }, f2(A[i])));
+    });
+    const nOk = r.reduce((a, b) => a + b, 0);
+    const tot = A.reduce((a, b) => a + Math.abs(b), 0);
+    let msg = `对 <b>${nOk}</b> / ${G} 条 · 均值 ${m.toFixed(2)} · 标准差 ${s.toFixed(2)} · 本组学习信号 Σ|A| = <b>${tot.toFixed(2)}</b>。`;
+    if (nOk === 0 || nOk === G) msg += ` <span class="bad">全${nOk ? '对' : '错'}：所有优势都是 0，这道题这一步不产生任何梯度。</span>太难或太简单的题对 GRPO 都没用，只有「有时做对」的题才有信号。`;
+    else if (useStd && nOk === 1) msg += ` 只有一条做对时，它拿到最大的正优势 ${f2(A[r.indexOf(1)])}：越是「稀有的成功」，被奖励得越多。`;
+    else if (useStd && nOk === G - 1) msg += ` 只有一条做错时，它被重重压低（${f2(A[r.indexOf(0)])}）。`;
+    else msg += useStd ? ' 除以标准差后，难题和易题的优势被拉到相近的尺度。' : ' 不除标准差（Dr. GRPO 的做法）时，优势只是 r − 均值，接近一半对一半的题信号最强。';
+    status.innerHTML = msg;
+  };
+  gIn.addEventListener('input', () => { G = +gIn.value; gO.textContent = G; resample(); });
+  pIn.addEventListener('input', () => { p = +pIn.value / 100; pO.textContent = pIn.value + '%'; resample(); });
+  node.append(
+    el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '组大小 G', gIn, gO), el('label', { class: 'range' }, '正确率', pIn, pO)),
+    el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: resample }, '重新采样'), seg(['除以 std（GRPO）', '不除 std（Dr. GRPO）'], 0, (i) => { useStd = i === 0; draw(); })),
+    root, status);
+  resample();
+});
+
+/* ---------- 04 公式推导 ---------- */
+reg('formula', (node) => {
+  const rows = [
+    ['① 监督微调（SFT）', '∇L = − E<sub>(x, y*)~数据集</sub> [ ∇log π<sub>θ</sub>(<span class="hl">y*</span> | x) ]', '让外部给定的目标答案 y* 概率变大。每条样本权重都是 1。'],
+    ['② RL 的目标', 'J(θ) = E<sub>x</sub> E<sub><span class="hl2">y~π<sub>θ</sub></span></sub> [ r(x, y) ]', '要最大化的是「模型自己答出来的回答」的期望奖励。注意 y 从模型自己采。'],
+    ['③ 策略梯度（REINFORCE）', '∇J = E<sub><span class="hl2">y~π<sub>θ</sub></span></sub> [ <span class="hl">r(x, y)</span> · ∇log π<sub>θ</sub>(y | x) ]', '用 ∇π = π·∇log π 的恒等式得到。形状已经和 ① 一样了：∇log π 前面多了个系数 r。'],
+    ['④ 减去基线', '∇J = E<sub>y~π<sub>θ</sub></sub> [ <span class="hl">(r − b)</span> · ∇log π<sub>θ</sub>(y | x) ]', '减去一个与 y 无关的 b 不改变期望，只降低方差。系数现在可正可负：差于基线的回答会被压低。'],
+    ['⑤ GRPO（略去裁剪与 KL）', '∇J ≈ (1/G) Σ<sub>i</sub> <span class="hl">A<sub>i</sub></span> · ∇log π<sub>θ</sub>(o<sub>i</sub> | q)，A<sub>i</sub> = (r<sub>i</sub> − mean) / std', '用同一道题的 G 条采样估计基线（组均值），不需要价值网络。真实目标里还有重要性比率的裁剪和对参考模型的 KL 惩罚。'],
+    ['⑥ 对照 ①', '∇J ≈ − ∇ [ − (1/G) Σ<sub>i</sub> <span class="hl">A<sub>i</sub></span> · log π<sub>θ</sub>(<span class="hl2">o<sub>i</sub></span> | q) ]', '这就是「在模型自己生成的 o<sub>i</sub> 上做 SFT，每条样本的损失乘以权重 A<sub>i</sub>」（A<sub>i</sub> 视为常数，不求导）。所谓「像监督学习」，指的正是这一点。'],
+  ];
+  const items = rows.map(([k, f, p]) => el('div', { class: 'eqrow' }, el('b', { class: 'k' }, k), el('div', { class: 'eq', html: f }), el('p', { html: p })));
+  let k = 0;
+  const status = el('div', { class: 'status' });
+  const show = () => {
+    items.forEach((n, i) => { n.classList.toggle('on', i < k); n.classList.toggle('cur', i === k - 1); });
+    status.innerHTML = k === 0 ? '点「下一步」开始推导。' : k < rows.length ? `第 ${k} / ${rows.length} 步。` : '<b>推完了</b>：RL 与 SFT 的区别被压缩成两处高亮——黄色的权重（外部标签的 1 换成了可正可负的优势），绿色的数据来源（外部数据集换成了模型自己的采样）。';
+    next.disabled = k >= rows.length;
+  };
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { k++; show(); } }, '下一步');
+  const all = el('button', { class: 'btn', type: 'button', onclick: () => { k = rows.length; show(); } }, '全部展开');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { k = 0; show(); } }, '重置');
+  node.append(el('div', { class: 'eqs' }, ...items), el('div', { class: 'ctrl' }, next, all, reset), status);
+  show();
+});
+
+/* ---------- 04b 不同方法的权重 ---------- */
+reg('weights', (node) => {
+  const r = [1, 0, 1, 0, 0, 0];
+  const methods = [
+    { n: 'SFT', f: () => r.map(() => 0), teacher: 1, t: 'SFT 根本不看模型的采样：6 条权重都是 0，只有外部给的示范 y* 权重为 1。' },
+    { n: '拒绝采样', f: () => r.map((x) => x), t: '做对的权重 1，做错的 0（丢弃）。只往上拉，不往下压。全错的题什么也学不到。' },
+    { n: 'REINFORCE', f: () => r.map((x) => x), t: '奖励只有 0/1 时，朴素 REINFORCE 的权重与拒绝采样完全相同；区别只在于样本是不是当前模型现采的。' },
+    { n: '减均值', f: () => { const m = mean(r); return r.map((x) => x - m); }, t: '减去组均值后，错的样本拿到负权重，被主动压低；全对或全错时权重全为 0。' },
+    { n: 'GRPO', f: () => { const m = mean(r), s = stdp(r); return r.map((x) => (s > 1e-9 ? (x - m) / s : 0)); }, t: '再除以组内标准差：尺度被归一化，稀有的对（或稀有的错）被放大。' },
+  ];
+  let mi = 4;
+  const W = 600, H = 210, base = 130;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '六条采样在不同方法下的样本权重' });
+  const g = svg('g'); root.append(g);
+  const status = el('div', { class: 'status' });
+  const draw = () => {
+    g.replaceChildren();
+    const M = methods[mi], w = M.f(), n = 7, step = W / n;
+    g.append(svg('line', { x1: 8, x2: W - 8, y1: base, y2: base, class: 'axis' }));
+    r.forEach((x, i) => {
+      const cxp = step * (i + 0.5);
+      const s = svg('g', { class: 'smp ' + (x ? 'ok' : 'no'), tabindex: '0', role: 'button', 'aria-label': `采样 ${i + 1}，${x ? '正确' : '错误'}，点击切换` }, svg('circle', { cx: cxp, cy: 26, r: 18 }), svg('text', { x: cxp, y: 26 }, x ? '✓' : '✗'));
+      keyAct(s, () => { r[i] = 1 - r[i]; draw(); });
+      g.append(s);
+      const h = Math.max(-70, Math.min(70, w[i] * 40));
+      g.append(svg('rect', { x: cxp - 16, y: h >= 0 ? base - h : base, width: 32, height: Math.max(1.5, Math.abs(h)), rx: 3, class: Math.abs(w[i]) < 1e-9 ? 'bar-zero' : w[i] > 0 ? 'bar-pos' : 'bar-neg' }));
+      g.append(svg('text', { x: cxp, y: h >= 0 ? base - h - 7 : base - h + 17, class: 'lbl mid', style: 'font-size:13px;font-family:var(--mono)' }, f2(w[i])));
+      g.append(svg('text', { x: cxp, y: H - 6, class: 'lbl mid', style: 'font-size:13px' }, 'o' + (i + 1)));
+    });
+    const cx7 = step * 6.5;
+    g.append(svg('rect', { x: cx7 - 20, y: 8, width: 40, height: 36, rx: 8, style: `fill:var(--p-soft);stroke:var(--p);opacity:${M.teacher ? 1 : 0.3}` }));
+    g.append(svg('text', { x: cx7, y: 27, class: 'lbl mid', style: 'font-size:14px;fill:var(--p);dominant-baseline:central' }, 'y*'));
+    const ht = (M.teacher || 0) * 40;
+    g.append(svg('rect', { x: cx7 - 16, y: base - ht, width: 32, height: Math.max(1.5, ht), rx: 3, style: 'fill:var(--p)', opacity: M.teacher ? 1 : 0.3 }));
+    g.append(svg('text', { x: cx7, y: base - ht - 7, class: 'lbl mid', style: 'font-size:13px;font-family:var(--mono)' }, M.teacher ? '1.00' : '—'));
+    g.append(svg('text', { x: cx7, y: H - 6, class: 'lbl mid', style: 'font-size:13px' }, '示范'));
+    status.innerHTML = `<b>${M.n}</b>：${M.t}`;
+  };
+  node.append(el('div', { class: 'ctrl' }, seg(methods.map((x) => x.n), mi, (i) => { mi = i; draw(); })), root, status,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--t)' }), '正权重：概率拉高'), el('span', {}, el('i', { style: 'background:var(--r)' }), '负权重：概率压低'), el('span', {}, el('i', { style: 'background:var(--p)' }), '外部示范')));
+  draw();
+});
+
+/* ---------- 05 玩具模拟：on-policy、离线、教师示范 ---------- */
+reg('sim', (node) => {
+  const S = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const BASE = [0.25, 0.2, 0.3, 0.23, 0.018, 0.002];
+  const SOLVE = [[1, 1, 0, 0], [1, 1, 1, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 1]];
+  const MAXT = 200, G = 8, LR = 0.3;
+  const sm = (l) => { const m = Math.max(...l); const e = l.map((x) => Math.exp(x - m)); const s = e.reduce((a, b) => a + b); return e.map((x) => x / s); };
+  const samp = (p, r) => { let u = r(), c = 0; for (let i = 0; i < p.length; i++) { c += p[i]; if (u < c) return i; } return p.length - 1; };
+  const met = (p) => { const q = [0, 1, 2, 3].map((j) => p.reduce((a, x, i) => a + x * SOLVE[i][j], 0)); return { p1: mean(q), p64: mean(q.map((x) => 1 - Math.pow(1 - x, 64))), q }; };
+  const modes = ['GRPO（on-policy）', '拒绝采样一次（离线）', '教师示范 SFT'];
+  let mode = 0, L, t, rnd, data, hist, timer = null;
+  const reset = () => {
+    L = BASE.map(Math.log); t = 0; rnd = mulberry(7); hist = [met(BASE)];
+    data = [];
+    if (mode === 1) for (let j = 0; j < 4; j++) for (let k = 0; k < 16; k++) { const a = samp(BASE, rnd); if (SOLVE[a][j]) data.push(a); }
+    if (mode === 2) data = [1, 1, 5, 5, 1, 5, 5, 5];
+    draw();
+  };
+  const train = (n) => {
+    for (let s = 0; s < n && t < MAXT; s++) {
+      const p = sm(L), g = new Array(6).fill(0);
+      if (mode === 0) {
+        for (let j = 0; j < 4; j++) {
+          const a = [], rw = [];
+          for (let i = 0; i < G; i++) { const x = samp(p, rnd); a.push(x); rw.push(SOLVE[x][j]); }
+          const m = mean(rw), sd = stdp(rw); if (sd < 1e-9) continue;
+          for (let i = 0; i < G; i++) { const A = (rw[i] - m) / sd; for (let k = 0; k < 6; k++) g[k] += A * ((k === a[i]) - p[k]) / (G * 4); }
+        }
+      } else {
+        for (let i = 0; i < 8; i++) { const a = data[Math.floor(rnd() * data.length)]; for (let k = 0; k < 6; k++) g[k] += ((k === a) - p[k]) / 8; }
+      }
+      L = L.map((x, k) => x + LR * g[k]); t++; hist.push(met(sm(L)));
+    }
+    draw();
+  };
+  // 概率条
+  const W = 600, H = 190;
+  const bars = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '六种解题套路的当前概率与初始概率' });
+  const gb = svg('g'); bars.append(gb);
+  // 曲线
+  const CW = 600, CH = 200, pl = 48, pr = 12, pt = 12, pb = 28;
+  const chart = svg('svg', { viewBox: `0 0 ${CW} ${CH}`, role: 'img', 'aria-label': 'pass@1 与 pass@64 随训练步数变化的曲线' });
+  const gc = svg('g'); chart.append(gc);
+  const kv = el('div', { class: 'kv' });
+  const status = el('div', { class: 'status' });
+  const tbl = el('div', { class: 'scrollx' });
+  const head = el('tr', {}, el('th', {}, '套路'), ...[1, 2, 3, 4].map((j) => el('th', {}, '题 ' + j)), el('th', {}, '初始概率'));
+  const body = S.map((s, i) => el('tr', {}, el('th', {}, s), ...SOLVE[i].map((x) => el('td', { style: x ? 'color:var(--t);font-weight:700' : 'color:var(--muted)' }, x ? '✓' : '·')), el('td', { class: 'mono' }, (BASE[i] * 100).toFixed(1) + '%')));
+  tbl.append(el('table', { class: 'cmp', style: 'min-width:0' }, el('thead', {}, head), el('tbody', {}, ...body)));
+  const draw = () => {
+    const p = sm(L), m = hist[hist.length - 1], m0 = hist[0];
+    gb.replaceChildren();
+    const step = W / 6, top = 26, hmax = 130, sc = (v) => Math.sqrt(v) * hmax; // 平方根刻度，小概率也看得见
+    S.forEach((s, i) => {
+      const x = step * (i + 0.5), bw = Math.min(50, step * 0.55);
+      const good = SOLVE[i].some(Boolean);
+      gb.append(svg('rect', { x: x - bw / 2, y: top + hmax - sc(BASE[i]), width: bw, height: sc(BASE[i]), rx: 4, style: 'fill:none;stroke:var(--muted);stroke-dasharray:4 3;stroke-width:1.5' }));
+      gb.append(svg('rect', { x: x - bw / 2 + 5, y: top + hmax - sc(p[i]), width: bw - 10, height: Math.max(1, sc(p[i])), rx: 3, style: `fill:${good ? 'var(--t)' : 'var(--muted)'};opacity:.85` }));
+      gb.append(svg('text', { x, y: top + hmax - sc(Math.max(p[i], BASE[i])) - 6, class: 'lbl mid', style: 'font-size:17px;font-family:var(--mono)' }, (p[i] * 100).toFixed(p[i] < 0.1 ? 1 : 0) + '%'));
+      gb.append(svg('text', { x, y: H - 12, class: 'lbl big mid', style: 'font-size:19px' }, s));
+    });
+    gc.replaceChildren();
+    const X = (i) => pl + (CW - pl - pr) * i / MAXT, Y = (v) => pt + (CH - pt - pb) * (1 - v);
+    [0, 0.25, 0.5, 0.75, 1].forEach((v) => { gc.append(svg('line', { x1: pl, x2: CW - pr, y1: Y(v), y2: Y(v), class: 'gridl' })); gc.append(svg('text', { x: pl - 6, y: Y(v) + 4, class: 'lbl', style: 'text-anchor:end;font-size:15px' }, (v * 100) + '%')); });
+    gc.append(svg('text', { x: CW - pr, y: CH - 8, class: 'lbl', style: 'text-anchor:end;font-size:15px' }, `训练步数（共 ${MAXT}）`));
+    const line = (key, color) => gc.append(svg('polyline', { points: hist.map((h, i) => `${X(i).toFixed(1)},${Y(h[key]).toFixed(1)}`).join(' '), style: `fill:none;stroke:${color};stroke-width:2.5` }));
+    line('p64', 'var(--o)'); line('p1', 'var(--p)');
+    kv.replaceChildren(
+      el('div', {}, '已训练', el('b', {}, `${t} 步`)),
+      el('div', {}, 'pass@1（平均）', el('b', { style: 'color:var(--p)' }, `${(m.p1 * 100).toFixed(1)}%`)),
+      el('div', {}, 'pass@64（平均）', el('b', { style: 'color:var(--o)' }, `${(m.p64 * 100).toFixed(1)}%`)),
+      el('div', {}, '题 4 的 pass@64', el('b', {}, `${((1 - Math.pow(1 - m.q[3], 64)) * 100).toFixed(1)}%`)));
+    const d1 = m.p1 - m0.p1, d64 = m.p64 - m0.p64;
+    let msg = '';
+    if (t === 0) msg = mode === 0 ? '初始模型。点「训练」看 on-policy 的 GRPO 会把概率推向哪里。' : mode === 1 ? `离线数据集已从初始模型采好并筛选：${S.map((s, i) => [s, data.filter((x) => x === i).length]).filter((x) => x[1]).map((x) => x[0] + '×' + x[1]).join('、')}。之后只在这份数据上做 SFT，它不会再变。` : '教师示范数据里大量使用了套路 F（初始模型几乎不会用的解法）。';
+    else {
+      msg = `相比初始：pass@1 ${d1 >= 0 ? '+' : ''}${(d1 * 100).toFixed(1)} 个百分点，pass@64 ${d64 >= 0 ? '+' : ''}${(d64 * 100).toFixed(1)} 个百分点。`;
+      if (mode === 0) msg += ' GRPO 把概率集中到最常奏效的套路 B 上，随手答的正确率大涨；但只有 E、F 能解的题 4，因为 E、F 太少被采到、又在其他题上被判错而压低，几乎再也解不出来——「能力边界」反而缩小了。';
+      if (mode === 1) msg += ' 离线数据是从初始模型采的，分布固定：模型最终收敛到数据集的样子（A、B 混合），不会像 on-policy 那样继续把概率往更好的套路上推。';
+      if (mode === 2) msg += ' 外部示范把初始模型几乎不会的套路 F「教」了进来，题 4 被解开，pass@64 升到接近 100%。这对应「蒸馏能带来新推理模式」。';
+    }
+    status.innerHTML = msg;
+    run1.disabled = t >= MAXT; if (t >= MAXT) stopT();
+  };
+  const stopT = () => { if (timer) { clearInterval(timer); timer = null; autoB.textContent = '自动训练'; } };
+  const run1 = el('button', { class: 'btn primary', type: 'button', onclick: () => { stopT(); train(10); } }, '训练 10 步');
+  const autoB = el('button', { class: 'btn', type: 'button', onclick: () => { if (timer) { stopT(); return; } if (t >= MAXT) reset(); if (RM) { train(MAXT); return; } timer = setInterval(() => train(2), 40); autoB.textContent = '暂停'; } }, '自动训练');
+  const resetB = el('button', { class: 'btn', type: 'button', onclick: () => { stopT(); reset(); } }, '重置');
+  node.append(
+    el('div', { class: 'ctrl' }, seg(modes, 0, (i) => { stopT(); mode = i; reset(); })),
+    el('div', { class: 'ctrl' }, run1, autoB, resetB),
+    el('div', { class: 'grid2' },
+      el('div', {}, el('div', { class: 'cap', style: 'margin-bottom:4px' }, '各套路的概率（实心 = 当前，虚线框 = 初始；纵轴为平方根刻度；绿色 = 至少能解一道题）'), bars),
+      el('div', {}, el('div', { class: 'cap', style: 'margin-bottom:4px' }, '能解哪道题'), tbl)),
+    kv,
+    el('div', { class: 'cap', style: 'margin:12px 0 4px' }, '训练曲线'), chart,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), 'pass@1'), el('span', {}, el('i', { style: 'background:var(--o)' }), 'pass@64')),
+    status);
+  reset();
+  return { stop: stopT };
+});
+
+/* ---------- 06 换一把尺子 ---------- */
+reg('verdict', (node) => {
+  const V = [
+    ['看梯度形式', 'sl', '像监督学习', '去掉裁剪和 KL 后，GRPO 的梯度是 Σ A<sub>i</sub>·∇log π(o<sub>i</sub>)，就是样本加权的最大似然。如果只盯着「每一步在优化什么形式的损失」，说它是加权 SFT 并没有错。'],
+    ['看数据来源', 'rl', '是 RL', '训练样本由当前策略现采，模型一变，下一批数据就变；这正是 on-policy 策略梯度的定义特征。模仿学习的理论也早就指出，在固定数据上模仿与在自己产生的状态分布上学习是两回事（DAgger 一类方法就是为了补这个差）。<sup class="c">[9]</sup>'],
+    ['看错误样本', 'rl', '是 RL', 'SFT 只会把示范答案的概率拉高；GRPO 会把比同组差的回答主动压低。负信号让概率在「自己会犯的错」上重新分配，这是纯模仿做不到的。'],
+    ['看探索', 'sl', '更像在筛选', 'R1-Zero 唯一的探索来源是采样的随机性，它只能强化基座本来就有一定概率产生的推理路径。大 k 时 pass@k 不如基座的现象说明，它更像是在已有能力里挑出好的、放大它，而不是学到新东西。<sup class="c">[5]</sup>'],
+    ['看问题结构', 'rl', '简化版的 RL', '奖励只在整条回答末尾给一次，没有环境状态转移、没有价值网络，最接近序列级的上下文老虎机。它是 RL，但是 RL 里结构最简单的那一类；论文尝试过的 PRM 与 MCTS 这类更「像 RL」的做法反而没成功。<sup class="c">[2]</sup>'],
+  ];
+  const box = el('div', { class: 'verdict' });
+  const show = (i) => { const [, c, h, t] = V[i]; box.replaceChildren(el('div', { class: 'v ' + c }, el('h3', {}, h), el('p', { html: t }))); };
+  node.append(el('div', { class: 'ctrl' }, seg(V.map((x) => x[0]), 0, show)), box);
+  show(0);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

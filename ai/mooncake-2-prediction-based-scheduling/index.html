@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Mooncake (2)：分离架构下基于预测的过载调度</title>
+<meta name="description" content="Kimi 在过载时如何调度：Early Reject、负载跷跷板效应与基于预测的拒绝策略。含 TTFT/TBT 体验对比、时间差两难步进图、可调参数的过载调度模拟器。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页专用 ===== */
+.hero-art{margin-top:22px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.pcap{text-align:center;font-size:13px;color:var(--muted);margin-top:6px}
+.prose{font-size:15.5px;margin:14px 0}
+.prose + .prose{margin-top:10px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted);margin:6px 0}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;margin-right:6px;vertical-align:middle}
+.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+@media (min-width:640px){ .metrics{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.metric{background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.metric .k{font-size:12px;color:var(--muted)}
+.metric .v{font-family:var(--mono);font-size:18px;font-weight:600}
+.cmp{width:100%;border-collapse:collapse;font-size:13px;min-width:520px}
+.cmp th,.cmp td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp th{color:var(--muted);font-weight:600;font-size:12px}
+.cmp tr.on td{background:var(--p-soft)}
+.cmp td.good{color:var(--t);font-weight:600}
+.cmp td.bad{color:var(--r);font-weight:600}
+.chat{background:var(--surface-2);border-radius:12px;padding:12px 14px;min-height:118px;font-size:15px}
+.chat .u{display:block;text-align:right;margin-bottom:8px}
+.chat .u span{display:inline-block;background:var(--p);color:#fff;border-radius:12px 12px 2px 12px;padding:5px 10px;font-size:14px}
+.chat .a{display:block;background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:8px 10px;min-height:2.6em;white-space:pre-wrap}
+.chat .a.tired{border-color:var(--o);color:var(--o)}
+.wait{height:4px;border-radius:2px;background:var(--line);margin:6px 0 0;overflow:hidden}
+.wait b{display:block;height:100%;width:0;background:var(--o)}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.kv .card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2)}
+.kv .card h4{margin:0 0 4px;font-size:14px}
+.kv .card p{font-size:13px;color:var(--muted)}
+.verdict{display:inline-block;font-weight:700;padding:2px 10px;border-radius:999px;font-size:13px;margin-top:6px}
+.verdict.ok{background:var(--t-soft);color:var(--t)}
+.verdict.no{background:var(--r-soft);color:var(--r)}
+.verdict.warn{background:var(--o-soft);color:var(--o)}
+@media (max-width:520px){ .kv{grid-template-columns:1fr} }
+.stage{cursor:pointer}
+.stage rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.stage.sel rect{fill:var(--p-soft);stroke:var(--p)}
+.stage:focus{outline:none}
+.stage:focus rect{stroke:var(--p)}
+.stage text{fill:var(--text);font-size:13px;pointer-events:none}
+.box rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5}
+.box.hot rect{stroke:var(--r);fill:var(--r-soft)}
+.box.ok rect{stroke:var(--t);fill:var(--t-soft)}
+.box text{fill:var(--text)}
+.types{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+@media (min-width:700px){ .types{grid-template-columns:repeat(4,minmax(0,1fr))} }
+.type{border:1px solid var(--line);background:var(--surface-2);border-radius:12px;padding:10px;cursor:pointer;text-align:left;font-size:14px}
+.type small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.type.on{border-color:var(--p);background:var(--p-soft)}
+.slo-row{display:grid;grid-template-columns:7em 1fr;gap:8px;align-items:center;font-size:13px;margin:6px 0}
+.slo-row .bar{height:10px;border-radius:5px;background:var(--surface-2);border:1px solid var(--line);overflow:hidden}
+.slo-row .bar b{display:block;height:100%;background:var(--p);transition:width .3s}
+canvas.chart{width:100%;height:230px;border-radius:10px;background:var(--surface-2)}
+.seg button{white-space:nowrap}
+.wide{min-width:540px}
+.toc-sheet{visibility:hidden;transition:transform .3s ease,visibility 0s .3s}
+.toc-sheet.open{visibility:visible;transition:transform .3s ease}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Mooncake (2) · 过载调度</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 大模型推理 · 调度</div>
+  <h1>Kimi 的「泼天流量」怎么接：分离架构下基于预测的调度</h1>
+  <p class="sub">Prefill 和 Decode 拆成两个集群之后，吞吐上去了，但过载时「收不收这个请求」变成了一个带时间差的控制问题。照着当前负载去拒绝，两个集群会像跷跷板一样此起彼伏；改成预测未来的负载，系统才平稳下来。</p>
+  <div class="thesis">过载时与其让所有人排长队或一字一顿，不如在请求进门时就拒绝一小部分（Early Reject）；而判断依据不能是 Decode 集群「现在」的负载，要预测新请求完成 Prefill 那一刻 Decode 集群的负载，才能消掉 Prefill 与 Decode 之间的时间差。<sup class="c">[1][2]</sup></div>
+  <div class="hero-art">
+    <div data-demo="hero"></div>
+    <div class="pcap">示意：同一股过载流量下，按「当前负载」拒绝（左）与按「预测负载」拒绝（右）时两个集群的负载曲线。本页第 4、5 章可以亲手调参数。</div>
+  </div>
+  <div class="authors">
+    <span class="au"><i>Z</i>ZHANG Mingxing（清华大学助理教授）</span>
+  </div>
+  <p class="meta">原文：「Mooncake (2)：Kimi “泼天的流量”怎么接，分离架构下基于预测的调度策略」，ZHANG Mingxing，知乎专栏《KVCache.AI》（编辑于 2024-11-28）。原文开头说明：本文夹带个人观点，不代表作者单位，也不代表 Moonshot。本页忠实于原文的叙述顺序，并加了几处标注为「本页补充」的核对与延伸，主要取自 Mooncake 论文。页面里的模拟器是本页为说明机制搭的玩具模型，数字不代表 Kimi 线上系统。</p>
+</header>
+
+<section class="ch" id="tired" data-title="Kimi 也会累">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>Kimi 也会累：过载时为什么要「喊累」</h2>
+    <p class="lead">负载已经超过系统能按 SLO 服务的上限时，是让所有人一起变慢，还是先暂停一小部分人？</p>
+  </div>
+  <p class="prose">传统的调度工作按峰值容量规划集群，调度器要解决的是「怎样把闲置资源用起来」。Kimi 破圈之后面对的是反过来的问题：一边不断扩容，一边天天过载，要在这种情况下尽可能保住用户体验。原文的判断是：负载已经无法按 SLO（服务等级目标）响应时，提供一个完全没有保障的长时间排队（违反 <b>TTFT</b> SLO），或者一字一顿的慢速回答（违反 <b>TBT</b> SLO），都会极大地伤害体验，不如先暂停一小部分服务。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一个问题，四种回答方式。</b>选一个场景再点「发送」，看首字等多久（TTFT，Time To First Token）、后面每个字隔多久（TBT，Time Between Tokens）。也可以自己拖滑块。虚线阈值是本页设的示意值，不是 Kimi 的真实 SLO。</div>
+    <div data-demo="chat"></div>
+  </div>
+  <p class="prose">至于为什么显示的是「Kimi 累了」而不是 <span class="mono">429 Too Many Requests</span>，原文的说法是：Kimi 是大家的智能<em>伙伴</em>，伙伴累了要休息一下，希望大家体谅。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：TTFT 由 Prefill 阶段决定，即把整段输入一次性算完、产出第一个 token 所需的时间（加上排队）；TBT 由 Decode 阶段决定，即之后逐个生成 token 时相邻两个 token 的间隔。Decode 通常把很多请求拼成一个批次一起算，批次越大，吞吐越高，但每一步越慢，所以 TBT 随 Decode 实例上同时处理的请求数上升。Mooncake 论文正是用「预测的 TTFT / TBT 离 SLO 上限有多近」而不是「处理了多少请求」来定义负载的。<sup class="c">[2]</sup> HTTP 429 是「请求过多」的标准状态码（RFC 6585）。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="gap" data-title="分离架构的时间差">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>分离式架构在过载场景下的新挑战</h2>
+    <p class="lead">调度器在 Prefill 之前判断「两个 SLO 都能满足」，为什么到 Prefill 结束时却可能食言？</p>
+  </div>
+  <p class="prose">Mooncake 大幅提升了 Kimi 能承载的总吞吐，但 Prefill 和 Decode 分离的架构在过载调度上引入了新挑战：Prefill 集群对 TTFT 负责，Decode 集群对 TBT 负责，而两者之间有一个关键的<b>时间差</b>。坏情况下，Prefill 之前调度器觉得 TTFT 和 TBT 都能满足；Prefill 之后，Decode 集群已经过载，TBT 满足不了了。系统由此陷入两难：是违反 SLO，还是浪费已经花掉的 Prefill 资源？<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>一步一步走一个请求。</b>点「下一步」，看请求从进门到抵达 Decode 集群之间发生了什么；走到最后一步时，替调度器做一次两难选择。</div>
+    <div data-demo="gap"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：在 Mooncake 架构里，Prefill 节点算出的 KVCache 要经网络传到 Decode 节点，之后才能开始逐 token 生成，这正是两边之间时间差的来源之一；架构本身见同系列前一篇《Mooncake (1)》。<sup class="c">[3]</sup> 把 Prefill 与 Decode 拆到不同机器上的思路，同期还有 DistServe、Splitwise 等工作。<sup class="c">[6][7]</sup></div>
+</section>
+
+<section class="ch" id="early" data-title="Early Reject">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>Early Reject：用两个集群里更危险的那个来决定</h2>
+    <p class="lead">Prefill 集群明明还有空闲，为什么调度器要提前拒绝请求？</p>
+  </div>
+  <p class="prose">一个自然的、也被 Mooncake 采用的方案是：同时综合 Prefill 和 Decode 两个集群的情况，以两者中负载更高、更危险的那个为准，判断能不能接这个请求。因为它会在 Prefill 集群有空闲时，由于 Decode 集群未来的负载问题<b>提前</b>拒绝一些请求，所以叫 Early Reject。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一个请求，两种门卫。</b>拖动两个集群当前的负载，比较「只看 Prefill」和「Early Reject」的判断，以及各自的后果。拒绝阈值本页取 0.85（负载 1.0 = 刚好压线 SLO）。</div>
+    <div data-demo="early"></div>
+  </div>
+</section>
+
+<section class="ch" id="seesaw" data-title="跷跷板效应">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>上线之后：负载像跷跷板一样此起彼伏</h2>
+    <p class="lead">规则这么直接，为什么部署之后两个集群的负载会交替颠簸？</p>
+  </div>
+  <p class="prose">实际部署 Early Reject 之后，团队观测到集群负载出现了奇怪的颠簸：Prefill 和 Decode 集群的负载像跷跷板一样，一边上去一边下来，然后交替。原因在于两个集群负载之间的时间差：如果简单参考<b>当前</b> Decode 集群的负载去拒绝请求，那么当 Decode 集群的负载被消化掉时，Prefill 没有及时跟上，于是产生了跷跷板效应。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>跷跷板的一圈。</b>原文用一张图解释这个现象，这里重绘成四个阶段。点任意阶段（或按「下一阶段」），看两条曲线此刻在做什么。</div>
+    <div data-demo="cycle"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>亲手复现跷跷板。</b>一个玩具模拟：请求以「过载倍数 × Decode 容量」的速度到达，Prefill 要花「时间差」那么多步才能把请求交给 Decode。门卫按 Early Reject（当前 Decode 负载）拒绝。拉长时间差，看波动变大；缩短它，跷跷板几乎消失。</div>
+    <div data-demo="sim" data-policy="current"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Mooncake 论文第 7.3 节在 20 台机器的集群上观察到这种反相波动，并指出 Prefill 机器越少、Prefill 越慢，波动越严重；论文把它描述为一个四阶段循环：系统在「收多了」与「拒多了」之间来回摆。<sup class="c">[2]</sup> 从控制的角度看，这是一个带延迟的反馈回路：调度器看到的负载信号滞后于它自己的决策一个时间差，滞后越长越容易过冲。上面的模拟器参数都是本页自设的。</div>
+</section>
+
+<section class="ch" id="predict" data-title="基于预测的调度">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>基于预测的调度：看的是未来那一刻的 Decode 负载</h2>
+    <p class="lead">如果能预测新请求完成 Prefill 那一刻 Decode 集群的负载，时间差还会造成跷跷板吗？</p>
+  </div>
+  <p class="prose">为此团队进一步设计并上线了基于预测的调度策略。原理很直观：能预测未来（特别是新加入的请求完成 Prefill 阶段的时刻）Decode 集群的负载，自然就能打消时间差的问题，平滑整个系统的负载。具体分三步：<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>拆开预测的三步。</b>拖动「未来时刻 t」，看哪些请求在 t 时刻还在 Decode 集群里。橙色是还在 Prefill 的请求（菱形是预测的 Prefill 完成时刻），紫色是已在 Decode 的请求（虚线是统一假设的 decode 时长 t<sub>d</sub> 走完的地方）。点「新请求到达」，让调度器用 t = 它的 Prefill 完成时刻做一次判断。</div>
+    <div data-demo="anatomy"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>把预测接进门卫。</b>与上一章同一个模拟器，换个门卫策略试试。下方表格用当前参数把五种策略各跑一遍（4 个随机种子取平均），可以直接横向比较。</div>
+    <div data-demo="sim" data-policy="pred" data-compare="1"></div>
+  </div>
+  <p class="prose">原文还提到，第二步里「每个请求的 decode 时长都是 t<sub>d</sub>」只是一个简化，团队也在尝试预测每个请求实际会输出多少 token，以得到更精确的预测。上面的模拟器里，「预测·逐请求长度」策略假设能完全猜中输出长度，可以看作这条路线的上限。</p>
+  <div class="note-add"><b>本页补充（非原文）</b>：论文把这两条路线称为请求级（request-level）预测和系统级（system-level）预测：前者预测每个请求的输出长度，论文认为成本高或准确度低，尤其在过载时，留作未来工作；Mooncake 实际采用的是后者，只预测一段时间之后整体的批次数或 TBT 状态，对精度要求低得多。论文第 8 节用 8 个 Prefill 实例、8 个 Decode 实例回放 2.3 万条真实请求（2 倍速，制造过载），被拒绝的请求数为：基线 4183、Early Reject 3771、基于预测的 Early Reject 3589。拒绝得越少，说明同样的资源接住了越多的请求。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="future" data-title="调度的未来">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>未来：调度会越来越复杂，也越来越重要</h2>
+    <p class="lead">当请求不再「生而平等」，调度器要同时守住哪些 SLO？</p>
+  </div>
+  <p class="prose">从趋势看，LLM 服务的负载会愈发复杂和多元。原本地位相同的请求，会在厂商和用户的驱动下按不同诉求进一步分化；再加上 Agent 任务和代码执行器之类的外部环境交互，整个系统会更复杂。作者说团队在这些方向上刚刚起步，需要研究的还很多。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>四类请求，四种「快」。</b>点一类请求，看它在意哪个指标、原文怎么说。指标条的长短表示「这类请求对该指标的在意程度」，是本页的示意。</div>
+    <div data-demo="types"></div>
+  </div>
+  <div class="final">分离式架构把 Prefill 和 Decode 拆开，吞吐上去了，但调度也多了一个时间差。过载时 Mooncake 的做法是在门口就拒绝一小部分请求（Early Reject），并用预测的未来 Decode 负载而不是当前负载来做判断，跷跷板由此被抹平。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 ZHANG Mingxing 在知乎专栏《KVCache.AI》发表的「<a href="https://zhuanlan.zhihu.com/p/706204757">Mooncake (2)：Kimi “泼天的流量”怎么接，分离架构下基于预测的调度策略</a>」（编辑于 2024-11-28）制作。原文中的插图（负载颠簸曲线、跷跷板成因示意）均已用内联 SVG 和 JS 重绘，未引用外链图片；模拟器为本页自建的玩具模型。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>ZHANG Mingxing，《Mooncake (2)：Kimi “泼天的流量”怎么接，分离架构下基于预测的调度策略》，知乎专栏 KVCache.AI（编辑于 2024-11-28）。<a href="https://zhuanlan.zhihu.com/p/706204757">zhuanlan.zhihu.com/p/706204757</a></li>
+    <li>Qin, R., Li, Z., He, W., Zhang, M., Wu, Y., Zheng, W. &amp; Xu, X. (2024). Mooncake: A KVCache-centric Disaggregated Architecture for LLM Serving. arXiv:2407.00079（第 7 节 Overload-oriented Scheduling，第 8 节实验）。正式版以 “Mooncake: Trading More Storage for Less Computation” 为题发表于 USENIX FAST 2025，获最佳论文奖。<a href="https://arxiv.org/abs/2407.00079">arXiv</a> · <a href="https://www.usenix.org/conference/fast25/presentation/qin">USENIX</a></li>
+    <li>ZHANG Mingxing，《Mooncake (1): 在月之暗面做月饼，Kimi 以 KVCache 为中心的分离式推理架构》，知乎专栏 KVCache.AI。<a href="https://zhuanlan.zhihu.com/p/705754254">zhuanlan.zhihu.com/p/705754254</a></li>
+    <li>kvcache-ai/Mooncake，GitHub 仓库（原文指向的论文、作者列表与概念引用）。<a href="https://github.com/kvcache-ai/Mooncake">github.com/kvcache-ai/Mooncake</a></li>
+    <li>Nottingham, M. &amp; Fielding, R. (2012). RFC 6585: Additional HTTP Status Codes（429 Too Many Requests）。</li>
+    <li>Zhong, Y. et al. (2024). DistServe: Disaggregating Prefill and Decoding for Goodput-optimized Large Language Model Serving. <i>OSDI 2024</i>.</li>
+    <li>Patel, P. et al. (2024). Splitwise: Efficient Generative LLM Inference Using Phase Splitting. <i>ISCA 2024</i>.</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；模拟器与示意数值均为本页自设，不代表 Kimi 线上系统，技术细节以原文与论文为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { box.set(i); onPick(i, o); } }, o));
+  box.append(...bs);
+  box.set = (i) => bs.forEach((b, j) => b.classList.toggle('on', j === i));
+  return box;
+};
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step, 'aria-label': label });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp;
+  w.set = (v) => { inp.value = v; out.textContent = show(v); };
+  return w;
+};
+const cv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const pct = (x) => (x * 100).toFixed(0) + '%';
+const f2 = (x) => x.toFixed(2);
+
+/* ================= 玩具模拟器 =================
+   Decode 容量 Cd = 100 个并发请求（负载 1.0 = TBT 刚好压线 SLO）；
+   每个请求 decode 时长在 0.4～1.6 倍 Dm 之间均匀分布；Prefill 需要 L 步，容量按 1.3 倍需求配置，超出排队。 */
+const Dm = 30, Cd = 100;
+function rngOf(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeSim(o) {
+  const r = rngOf(o.seed || 1), L = o.L, thr = o.thr, pol = o.policy;
+  const lam = o.k * Cd / Dm, Cp = Math.max(4, Math.round(1.3 * Cd / Dm * L));
+  let pre = [], queue = [], dec = [];
+  const pois = () => { const l = Math.exp(-lam); let p = 1, n = 0; do { n++; p *= r(); } while (p > l); return n - 1; };
+  const dur = () => Math.round(Dm * (0.4 + 1.2 * r()));
+  function predicted() {
+    const oracle = pol === 'oracle';
+    const h = (pre.length >= Cp ? Math.ceil((queue.length + 1) / Cp) * L : 0) + L; /* 新请求预计何时完成 Prefill */
+    let c = 1;
+    for (const d of dec) { const rem = oracle ? d.D - d.age : Dm - d.age; if (rem > h) c++; }
+    for (const p of pre) { const rem = oracle ? p.D : Dm; if (p.left <= h && p.left + rem > h) c++; }
+    queue.forEach((q, j) => { const f = Math.ceil((j + 1) / Cp) * L; const rem = oracle ? q.D : Dm; if (f <= h && f + rem > h) c++; });
+    return c / Cd;
+  }
+  function step() {
+    dec.forEach((d) => d.age++); dec = dec.filter((d) => d.age < d.D);
+    pre.forEach((p) => p.left--); const done = pre.filter((p) => p.left <= 0); pre = pre.filter((p) => p.left > 0);
+    done.forEach((p) => dec.push({ age: 0, D: p.D }));
+    while (pre.length < Cp && queue.length) pre.push(queue.shift());
+    const n = pois(); let acc = 0;
+    const dNow = dec.length / Cd;
+    for (let i = 0; i < n; i++) {
+      let ok = true;
+      if (pol !== 'none') {
+        const pl = (pre.length + queue.length + 1) / Cp;
+        let dl = 0;
+        if (pol === 'current') dl = dNow;
+        else if (pol === 'pred' || pol === 'oracle') dl = predicted();
+        ok = Math.max(pl, dl) <= thr;
+      }
+      if (ok) { acc++; const it = { left: L, D: dur() }; if (pre.length < Cp) pre.push(it); else queue.push(it); }
+    }
+    return { p: (pre.length + queue.length) / Cp, d: dec.length / Cd, n, acc };
+  }
+  return { step };
+}
+const mean = (a) => a.reduce((u, v) => u + v, 0) / Math.max(1, a.length);
+function stats(rows) {
+  const ds = rows.map((x) => x.d), ps = rows.map((x) => x.p);
+  const arr = rows.reduce((u, x) => u + x.n, 0), acc = rows.reduce((u, x) => u + x.acc, 0);
+  const md = mean(ds);
+  return { acc: arr ? acc / arr : 1, viol: ds.filter((v) => v > 1).length / Math.max(1, ds.length), sd: Math.sqrt(mean(ds.map((v) => (v - md) ** 2))), idle: ps.filter((v) => v < 0.2).length / Math.max(1, ps.length), pmax: Math.max(0, ...ps) };
+}
+function runStats(o, T = 600, warm = 100) {
+  const s = makeSim(o); const rows = [];
+  for (let t = 0; t < T; t++) { const x = s.step(); if (t >= warm) rows.push(x); }
+  return stats(rows);
+}
+const POL = [['none', '不拒绝'], ['prefill', '只看 Prefill'], ['current', 'Early Reject·当前负载'], ['pred', '预测·统一 t_d'], ['oracle', '预测·逐请求长度']];
+
+/* ---------- 标题区：两种策略的负载曲线 ---------- */
+reg('hero', (node) => {
+  const W = 640, H = 190, pw = 300;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '左图：按当前负载拒绝时 Prefill 与 Decode 负载反相波动；右图：按预测负载拒绝时两条曲线平稳' });
+  [['current', '按「当前」Decode 负载拒绝', 10], ['pred', '按「预测」Decode 负载拒绝', 330]].forEach(([pol, title, x0]) => {
+    const s = makeSim({ k: 1.5, L: 16, thr: 0.85, policy: pol, seed: 3 });
+    const rows = []; for (let t = 0; t < 280; t++) { const r = s.step(); if (t >= 100) rows.push(r); }
+    const y = (v) => 165 - Math.min(1.3, v) * 110, x = (i) => x0 + i / (rows.length - 1) * pw;
+    root.append(svg('rect', { x: x0, y: 30, width: pw, height: 135, rx: 8, style: 'fill:var(--surface-2)' }));
+    root.append(svg('line', { x1: x0, x2: x0 + pw, y1: y(1), y2: y(1), style: 'stroke:var(--r);stroke-dasharray:4 4;stroke-width:1' }));
+    root.append(svg('text', { x: x0 + pw - 4, y: y(1) - 4, class: 'lbl', 'text-anchor': 'end', style: 'fill:var(--r);font-size:11px' }, 'SLO 线'));
+    for (const [key, col] of [['p', '--o'], ['d', '--p']]) root.append(svg('polyline', { points: rows.map((r, i) => `${x(i).toFixed(1)},${y(r[key]).toFixed(1)}`).join(' '), style: `fill:none;stroke:var(${col});stroke-width:2;stroke-linejoin:round` }));
+    root.append(svg('text', { x: x0 + 4, y: 20, class: 'lbl big' }, title));
+  });
+  root.append(svg('text', { x: 10, y: 184, class: 'lbl', style: 'fill:var(--o)' }, '━ Prefill 负载'), svg('text', { x: 120, y: 184, class: 'lbl', style: 'fill:var(--p)' }, '━ Decode 负载'));
+  node.append(root);
+});
+
+/* ---------- 01 TTFT / TBT 体验 ---------- */
+reg('chat', (node) => {
+  const SLO_TTFT = 5, SLO_TBT = 100;
+  const ANSWER = 'Mooncake 把 Prefill 和 Decode 拆到不同的机器上，中间靠 KVCache 接力。';
+  const PRE = [[1, 50, false], [18, 50, false], [1, 400, false], [0, 0, true]];
+  let ttft = 1, tbt = 50, tired = false, timers = [];
+  const clear = () => { timers.forEach(clearTimeout); timers = []; };
+  const ans = el('div', { class: 'a' }, '（点「发送」）');
+  const bar = el('b'); const wait = el('div', { class: 'wait' }, bar);
+  const chat = el('div', { class: 'chat' }, el('div', { class: 'u' }, el('span', {}, 'Mooncake 是什么？')), ans, wait);
+  const rowT = el('div', { class: 'slo-row' }, el('span', {}, 'TTFT'), el('div', { class: 'bar' }, el('b')));
+  const rowB = el('div', { class: 'slo-row' }, el('span', {}, 'TBT'), el('div', { class: 'bar' }, el('b')));
+  const status = el('div', { class: 'status' });
+  const rT = range('首字等待 TTFT', 0.2, 30, ttft, 0.1, (v) => { ttft = v; tired = false; sg.set(-1); upd(); }, (v) => v.toFixed(1) + ' s');
+  const rB = range('字间隔 TBT', 20, 600, tbt, 10, (v) => { tbt = v; tired = false; sg.set(-1); upd(); }, (v) => v + ' ms');
+  const sg = seg(['正常', '全部接收·排长队', '全部接收·一字一顿', '暂停一部分（喊累）'], (i) => { [ttft, tbt, tired] = PRE[i]; if (!tired) { rT.set(ttft); rB.set(tbt); } upd(); send(); });
+  function upd() {
+    const okT = ttft <= SLO_TTFT, okB = tbt <= SLO_TBT;
+    rowT.querySelector('b').style.cssText = `width:${Math.min(100, ttft / 30 * 100)}%;background:var(${okT ? '--t' : '--r'})`;
+    rowB.querySelector('b').style.cssText = `width:${Math.min(100, tbt / 600 * 100)}%;background:var(${okB ? '--t' : '--r'})`;
+    rowT.firstChild.textContent = `TTFT ${tired ? '—' : ttft.toFixed(1) + ' s'}`;
+    rowB.firstChild.textContent = `TBT ${tired ? '—' : tbt + ' ms'}`;
+    if (tired) status.innerHTML = '这位用户这次被<b>暂停服务</b>，换来的是其余已接收的请求都能按 SLO 正常响应（示意阈值：TTFT ≤ 5 s，TBT ≤ 100 ms）。';
+    else if (okT && okB) status.innerHTML = '<b>两个 SLO 都满足</b>：首字快，后面也流畅。';
+    else status.innerHTML = `${okT ? '' : '违反 <b style="color:var(--r)">TTFT SLO</b>（排队太久）'}${!okT && !okB ? '，' : ''}${okB ? '' : '违反 <b style="color:var(--r)">TBT SLO</b>（一字一顿）'}。过载时如果谁都不拒绝，所有人都会落到这里。`;
+  }
+  function send() {
+    clear(); ans.classList.toggle('tired', tired); bar.style.transition = 'none'; bar.style.width = '0';
+    if (tired) { ans.textContent = 'Kimi 现在有点累了，休息一下，稍后再来问我吧。'; return; }
+    ans.textContent = '…';
+    requestAnimationFrame(() => { bar.style.transition = `width ${ttft}s linear`; bar.style.width = '100%'; });
+    let i = 0;
+    const tick = () => { i++; ans.textContent = ANSWER.slice(0, i); if (i < ANSWER.length) timers.push(setTimeout(tick, tbt)); };
+    timers.push(setTimeout(() => { bar.style.transition = 'none'; bar.style.width = '0'; tick(); }, ttft * 1000));
+  }
+  const go = el('button', { class: 'btn primary', type: 'button', onclick: send }, '发送');
+  node.append(el('div', { class: 'ctrl' }, sg), el('div', { class: 'ctrl' }, rT, rB, go), chat, rowT, rowB, status);
+  upd();
+  return { stop() { clear(); } };
+});
+
+/* ---------- 02 时间差两难 ---------- */
+reg('gap', (node) => {
+  const W = 640, H = 220;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '调度器、Prefill 集群、Decode 集群三个方框，一个请求依次经过' });
+  const boxes = {}, bars = {};
+  [['sch', '调度器', '决定收不收', 10], ['pre', 'Prefill 集群', '对 TTFT 负责', 235], ['dec', 'Decode 集群', '对 TBT 负责', 460]].forEach(([k, t, s, x]) => {
+    const g = svg('g', { class: 'box' }, svg('rect', { x, y: 40, width: 170, height: 86, rx: 12 }),
+      svg('text', { x: x + 85, y: 78, 'text-anchor': 'middle', style: 'font-size:21px;font-weight:700' }, t),
+      svg('text', { x: x + 85, y: 106, 'text-anchor': 'middle', class: 'lbl', style: 'font-size:16px' }, s));
+    boxes[k] = g; root.append(g);
+    if (k !== 'sch') {
+      root.append(svg('rect', { x, y: 146, width: 170, height: 12, rx: 6, style: 'fill:var(--surface-2);stroke:var(--line)' }));
+      const b = svg('rect', { x, y: 146, width: 0, height: 12, rx: 6, style: 'fill:var(--t);transition:width .6s,fill .3s' });
+      const lab = svg('text', { x: x + 85, y: 182, 'text-anchor': 'middle', class: 'lbl', style: 'font-size:16px' }, '');
+      root.append(b, lab); bars[k] = { b, lab, x };
+      root.append(svg('line', { x1: x + 170 * 0.85, x2: x + 170 * 0.85, y1: 140, y2: 164, style: 'stroke:var(--muted);stroke-dasharray:3 3' }));
+    }
+  });
+  root.append(svg('path', { d: 'M182 83 H230 M224 77 L232 83 L224 89', style: 'fill:none;stroke:var(--muted);stroke-width:2' }));
+  root.append(svg('path', { d: 'M407 83 H455 M449 77 L457 83 L449 89', style: 'fill:none;stroke:var(--muted);stroke-width:2' }));
+  root.append(svg('text', { x: 431, y: 70, 'text-anchor': 'middle', class: 'lbl', style: 'font-size:11px' }, 'KVCache'));
+  root.append(svg('text', { x: 320, y: 212, 'text-anchor': 'middle', class: 'lbl', style: 'font-size:14px' }, '负载条：虚线 = 拒绝阈值 0.85，满格 = 1.2'));
+  const clock = svg('text', { x: 320, y: 26, 'text-anchor': 'middle', class: 'lbl big' }, '');
+  const dot = svg('circle', { cx: -20, cy: 83, r: 9, style: 'fill:var(--p);transition:cx .7s ease' });
+  root.append(clock, dot);
+  if (RM) dot.style.transition = 'none';
+  const S = [
+    { dot: -20, P: 0.5, D: 0.7, hot: [], t: '', s: '点「下一步」。此刻 Prefill 负载 0.50，Decode 负载 0.70，都在阈值以下。' },
+    { dot: 95, P: 0.5, D: 0.7, hot: ['sch'], ok: true, t: 't = 0 s', s: '<b>请求到达</b>。调度器看两边当前负载都低于阈值：TTFT 和 TBT 应该都能满足，<b>接收</b>。' },
+    { dot: 320, P: 0.82, D: 0.95, hot: [], t: 't = 0 ～ 8 s', s: '<b>排队 + Prefill 计算</b>花了好几秒。这期间调度器又接收了很多请求，更早完成 Prefill 的请求也陆续进入 Decode，Decode 负载一路上涨。' },
+    { dot: 545, P: 0.6, D: 1.12, hot: ['dec'], t: 't = 8 s', s: '<b>KVCache 传到 Decode 集群</b>时，Decode 负载已是 1.12，TBT SLO 守不住了。8 秒前的判断，现在食言了。' },
+    { dot: 545, P: 0.6, D: 1.12, hot: ['dec'], t: '两难', s: '现在怎么办？选一个：', choice: true },
+  ];
+  let k = 0;
+  const status = el('div', { class: 'status' });
+  const choice = el('div', { class: 'ctrl', style: 'display:none' },
+    el('button', { class: 'btn', type: 'button', onclick: () => { setBar('dec', 1.13); status.innerHTML = '<b style="color:var(--r)">硬塞进 Decode</b>：Decode 上所有请求一起变慢，这个请求和已经在跑的请求都违反 TBT SLO。'; } }, '硬塞进去'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { setBar('dec', 1.12); status.innerHTML = '<b style="color:var(--o)">丢弃这个请求</b>：它已经用掉的约 8 秒 Prefill 算力全部白费，用户还是被拒了，只是晚了 8 秒才知道。'; } }, '丢弃它'));
+  function setBar(key, v) {
+    const { b, lab } = bars[key];
+    b.setAttribute('width', Math.min(170, v / 1.2 * 170));
+    b.style.fill = `var(${v > 1 ? '--r' : v > 0.85 ? '--o' : '--t'})`;
+    lab.textContent = `${key === 'pre' ? 'Prefill' : 'Decode'} 负载 ${f2(v)}`;
+  }
+  function render() {
+    const s = S[k];
+    dot.setAttribute('cx', s.dot);
+    setBar('pre', s.P); setBar('dec', s.D);
+    Object.entries(boxes).forEach(([n, g]) => { g.classList.toggle('hot', s.hot.includes(n)); g.classList.toggle('ok', !!s.ok && n === 'sch'); });
+    clock.textContent = s.t; status.innerHTML = s.s;
+    choice.style.display = s.choice ? '' : 'none';
+    next.disabled = k >= S.length - 1;
+  }
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => { if (k < S.length - 1) { k++; render(); } } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { k = 0; render(); } }, '重置');
+  node.append(root, el('div', { class: 'ctrl' }, next, reset), status, choice);
+  render();
+});
+
+/* ---------- 03 Early Reject ---------- */
+reg('early', (node) => {
+  const THR = 0.85; let P = 0.4, Dl = 0.95;
+  const eq = el('div', { class: 'eq' });
+  const c1 = el('div', { class: 'card' }), c2 = el('div', { class: 'card' });
+  const status = el('div', { class: 'status' });
+  const rp = range('Prefill 负载', 0, 1.3, P, 0.01, (v) => { P = v; upd(); }, f2);
+  const rd = range('Decode 负载', 0, 1.3, Dl, 0.01, (v) => { Dl = v; upd(); }, f2);
+  const v = (ok, t) => `<span class="verdict ${ok === true ? 'ok' : ok === 'warn' ? 'warn' : 'no'}">${t}</span>`;
+  function upd() {
+    const m = Math.max(P, Dl), ok1 = P <= THR, ok2 = m <= THR;
+    eq.textContent = `max(P ${f2(P)}, D ${f2(Dl)}) = ${f2(m)} ${ok2 ? '≤' : '>'} ${THR}`;
+    let r1 = ok1 ? (Dl > THR ? v('warn', '接收，但埋了雷') : v(true, '接收')) : v(false, '拒绝');
+    c1.innerHTML = `<h4>只看 Prefill</h4><p>Prefill ${f2(P)} ${ok1 ? '≤' : '>'} ${THR}</p>${r1}<p style="margin-top:6px">${ok1 ? (Dl > THR ? '几秒后请求带着 KVCache 来到已经很满的 Decode：违约，或者白算一场。' : 'Decode 也有余量，没问题。') : 'Prefill 自己已经忙不过来。'}</p>`;
+    c2.innerHTML = `<h4>Early Reject</h4><p>取两者中更危险的：${f2(m)}（${P >= Dl ? 'Prefill' : 'Decode'}）</p>${ok2 ? v(true, '接收') : v(false, '提前拒绝')}<p style="margin-top:6px">${ok2 ? '两个集群都有余量。' : (P <= THR ? '<b>Prefill 明明还有空</b>，但 Decode 太满，进门就拒，不浪费 Prefill 算力。' : 'Prefill 已经过线。')}</p>`;
+    status.innerHTML = ok1 && !ok2 ? '这就是「Early」的含义：<b>Prefill 有空闲，却因为 Decode 的负载提前拒绝</b>。' : '试试把 Prefill 拉低、Decode 拉过 0.85。';
+  }
+  node.append(el('div', { class: 'ctrl' }, rp, rd), eq, el('div', { class: 'kv' }, c1, c2), status);
+  upd();
+});
+
+/* ---------- 04 跷跷板的四个阶段 ---------- */
+reg('cycle', (node) => {
+  const W = 640, H = 190, x0 = 20, x1 = 620, per = (x1 - x0) / 2;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '两个周期的示意曲线，Decode 与 Prefill 负载反相波动，四个阶段可点选高亮' });
+  const yv = (v) => 160 - v * 120;
+  const band = [svg('rect', { y: 20, height: 145, style: 'fill:var(--p-soft);transition:x .3s' }), svg('rect', { y: 20, height: 145, style: 'fill:var(--p-soft);transition:x .3s' })];
+  band.forEach((b) => { b.setAttribute('width', per / 4); root.append(b); });
+  root.append(svg('line', { x1: x0, x2: x1, y1: yv(0.85), y2: yv(0.85), style: 'stroke:var(--muted);stroke-dasharray:4 4' }));
+  root.append(svg('text', { x: x0 + 300, y: yv(0.85) - 5, 'text-anchor': 'end', class: 'lbl', style: 'font-size:11px' }, '拒绝阈值'));
+  const dF = (th) => 0.8 + 0.22 * Math.cos(th), pF = (th) => 0.48 + 0.4 * Math.cos(th - 1.5 * Math.PI);
+  for (const [f, col] of [[pF, '--o'], [dF, '--p']]) {
+    const pts = []; for (let i = 0; i <= 200; i++) { const x = x0 + i / 200 * (x1 - x0); const th = (x - x0) / per * 2 * Math.PI; pts.push(`${x.toFixed(1)},${yv(f(th)).toFixed(1)}`); }
+    root.append(svg('polyline', { points: pts.join(' '), style: `fill:none;stroke:var(${col});stroke-width:2.5` }));
+  }
+  const nums = [];
+  for (let c = 0; c < 2; c++) for (let s = 0; s < 4; s++) { const t = svg('text', { x: x0 + c * per + (s + 0.5) * per / 4, y: 182, 'text-anchor': 'middle', class: 'lbl' }, '①②③④'[s]); nums.push(t); root.append(t); }
+  root.append(svg('text', { x: x0 + 4, y: 14, class: 'lbl', style: 'fill:var(--p)' }, '━ Decode'), svg('text', { x: x0 + 84, y: 14, class: 'lbl', style: 'fill:var(--o)' }, '━ Prefill'), svg('text', { x: x0 + 164, y: 14, class: 'lbl' }, '（示意曲线）'));
+  const ST = [
+    ['Decode 满，门卫开拒', 'Decode 负载在阈值之上，调度器按<b>当前</b> Decode 负载拒绝新请求；没有新请求进来，Prefill 集群的活越来越少。'],
+    ['Decode 消化，Prefill 没跟上', 'Decode 里的请求陆续生成完毕，负载下降；可上一阶段拒掉了新请求，Prefill 里没有足够的请求能及时补上，Decode 跌进低谷，资源被闲置。'],
+    ['门卫放行，Prefill 挤满', '调度器看到 Decode 很闲，开始大量接收；这些请求先挤进 Prefill，Decode 一时还「看不见」它们，于是继续放行。'],
+    ['时间差后一起涌入 Decode', '一个时间差之后，这一大批请求集中完成 Prefill，一起涌进 Decode，Decode 冲过阈值，回到阶段 ①。'],
+  ];
+  let cur = 0;
+  const status = el('div', { class: 'status' });
+  const btns = ST.map(([t], i) => el('button', { class: 'type', type: 'button', onclick: () => pick(i) }, '①②③④'[i] + ' ' + t));
+  function pick(i) {
+    cur = i; btns.forEach((b, j) => b.classList.toggle('on', j === i));
+    band.forEach((b, c) => b.setAttribute('x', x0 + c * per + i * per / 4));
+    nums.forEach((t, j) => { t.style.fill = j % 4 === i ? 'var(--p)' : ''; t.style.fontWeight = j % 4 === i ? '700' : ''; });
+    status.innerHTML = `阶段 ${'①②③④'[i]}：${ST[i][1]}`;
+  }
+  node.append(root, el('div', { class: 'types', style: 'margin-top:10px' }, ...btns), el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: () => pick((cur + 1) % 4) }, '下一阶段')), status);
+  pick(0);
+});
+
+/* ---------- 04/05 模拟器 ---------- */
+reg('sim', (node) => {
+  const compare = node.dataset.compare === '1';
+  let pi = POL.findIndex((p) => p[0] === node.dataset.policy);
+  let k = 1.5, L = 12, thr = 0.85, seed = 1, sim, hist, running = false, raf = 0, last = 0, paused = false;
+  const canvas = el('canvas', { class: 'chart', role: 'img', 'aria-label': 'Prefill 与 Decode 负载随时间变化的曲线' });
+  const legend = el('div', { class: 'legend', html: '<span><i style="background:var(--o)"></i>Prefill 负载（含排队）</span><span><i style="background:var(--p)"></i>Decode 负载</span><span><i style="background:var(--r)"></i>1.0 = TBT 压线 SLO</span><span><i style="background:var(--muted)"></i>拒绝阈值</span>' });
+  const mk = (k) => { const v = el('div', { class: 'v' }, '—'); return [el('div', { class: 'metric' }, el('div', { class: 'k' }, k), v), v]; };
+  const [m1, v1] = mk('接收率'), [m2, v2] = mk('Decode 超载时间'), [m3, v3] = mk('Decode 负载波动（标准差）'), [m4, v4] = mk('Prefill 近乎空转时间');
+  const status = el('div', { class: 'status' });
+  const sg = seg(POL.map((p) => p[1]), (i) => { pi = i; restart(); }, pi);
+  const rk = range('过载倍数', 1, 3, k, 0.1, (v) => { k = v; restart(); }, (v) => v.toFixed(1) + '×');
+  const rl = range('时间差', 2, 30, L, 1, (v) => { L = v; restart(); }, (v) => v + ' 步');
+  const rt = range('拒绝阈值', 0.6, 1, thr, 0.01, (v) => { thr = v; restart(); }, f2);
+  const pb = el('button', { class: 'btn', type: 'button', onclick: () => { paused = !paused; pb.textContent = paused ? '继续' : '暂停'; if (!paused) loop(); } }, '暂停');
+  const rb = el('button', { class: 'btn', type: 'button', onclick: () => { seed++; restart(); } }, '换一组随机请求');
+  let table = null, tbody = null;
+  if (compare) {
+    tbody = el('tbody');
+    table = el('div', { class: 'scrollx', style: 'margin-top:12px' }, el('table', { class: 'cmp' }, el('thead', {}, el('tr', {}, ...['门卫策略', '接收率', 'Decode 超载时间', '负载波动', 'Prefill 空转'].map((h) => el('th', {}, h)))), tbody));
+  }
+  let ctimer = 0;
+  function recompute() {
+    if (!compare) return;
+    clearTimeout(ctimer);
+    ctimer = setTimeout(() => {
+      const res = POL.map(([p]) => { const a = { acc: 0, viol: 0, sd: 0, idle: 0 }; for (let s = 1; s <= 4; s++) { const r = runStats({ k, L, thr, policy: p, seed: s }); for (const x in a) a[x] += r[x] / 4; } return a; });
+      const best = Math.min(...res.slice(2).map((r) => r.sd));
+      tbody.replaceChildren(...res.map((r, i) => el('tr', { class: i === pi ? 'on' : '' },
+        el('td', {}, POL[i][1]), el('td', {}, pct(r.acc)),
+        el('td', { class: r.viol > 0.05 ? 'bad' : r.viol < 0.01 ? 'good' : '' }, pct(r.viol)),
+        el('td', { class: i >= 2 && r.sd === best ? 'good' : '' }, f2(r.sd)),
+        el('td', { class: r.idle > 0.05 ? 'bad' : '' }, pct(r.idle)))));
+    }, 120);
+  }
+  function restart() {
+    sim = makeSim({ k, L, thr, policy: POL[pi][0], seed }); hist = [];
+    for (let t = 0; t < 120; t++) sim.step(); /* 预热 */
+    if (RM || !running) { for (let t = 0; t < 200; t++) hist.push(sim.step()); }
+    draw(); recompute();
+    if (tbody) [...tbody.children].forEach((tr, i) => tr.classList.toggle('on', i === pi));
+  }
+  function draw() {
+    const dpr = devicePixelRatio || 1, w = canvas.clientWidth || 600, h = canvas.clientHeight || 230;
+    if (canvas.width !== Math.round(w * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+    const c = canvas.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+    const N = 200, top = 10, bot = h - 18, ymax = 1.5, y = (v) => bot - Math.min(ymax, v) / ymax * (bot - top), x = (i) => 6 + i / (N - 1) * (w - 12);
+    c.font = '11px ' + cv('--font'); c.lineWidth = 1;
+    c.strokeStyle = cv('--grid'); for (const g of [0.5, 1.5]) { c.beginPath(); c.moveTo(0, y(g)); c.lineTo(w, y(g)); c.stroke(); }
+    c.setLineDash([5, 4]); c.strokeStyle = cv('--muted'); c.beginPath(); c.moveTo(0, y(thr)); c.lineTo(w, y(thr)); c.stroke();
+    c.strokeStyle = cv('--r'); c.beginPath(); c.moveTo(0, y(1)); c.lineTo(w, y(1)); c.stroke(); c.setLineDash([]);
+    c.fillStyle = cv('--muted'); c.fillText('1.5', 4, y(1.5) + 12); c.fillText('0.5', 4, y(0.5) - 3); c.fillText('时间 →', w - 50, h - 4);
+    const hs = hist.slice(-N), off = N - hs.length;
+    for (const [key, col] of [['p', '--o'], ['d', '--p']]) {
+      c.strokeStyle = cv(col); c.lineWidth = 2; c.beginPath();
+      hs.forEach((r, i) => { const X = x(i + off), Y = y(r[key]); i ? c.lineTo(X, Y) : c.moveTo(X, Y); }); c.stroke();
+    }
+    const st = stats(hs);
+    v1.textContent = pct(st.acc); v2.textContent = pct(st.viol); v3.textContent = f2(st.sd); v4.textContent = pct(st.idle);
+    v2.style.color = st.viol > 0.05 ? 'var(--r)' : ''; v4.style.color = st.idle > 0.05 ? 'var(--r)' : '';
+    const p = POL[pi][0];
+    status.innerHTML = p === 'none' ? `不拒绝：Prefill 排队无限变长（峰值 ${f2(st.pmax)}，图上封顶 1.5），TTFT 失控；放进 Decode 的请求也让它<b style="color:var(--r)">持续超载</b>。`
+      : p === 'prefill' ? '只看 Prefill：Prefill 自己守住了，但它放行的速度超过 Decode 能消化的速度，<b style="color:var(--r)">Decode 长期压线甚至超载</b>，正是第 2 章的两难。'
+      : p === 'current' ? `按当前 Decode 负载拒绝：两条曲线<b>此起彼伏</b>，波动 ${f2(st.sd)}；Prefill 有 ${pct(st.idle)} 的时间几乎空转。把时间差拉到 25 以上看看。`
+      : p === 'pred' ? `按预测的 Decode 负载拒绝：曲线平稳很多（波动 ${f2(st.sd)}），接收率 ${pct(st.acc)}。统一 t<sub>d</sub> 的假设有误差，偶尔仍会擦线。`
+      : `假设每个请求的输出长度都能猜中：Decode 负载几乎贴着阈值走（波动 ${f2(st.sd)}），这是请求级预测的理想上限。`;
+  }
+  function loop(t) {
+    if (!running || paused) return;
+    raf = requestAnimationFrame(loop);
+    if (t && t - last < 70) return; last = t || 0;
+    hist.push(sim.step()); if (hist.length > 400) hist.splice(0, hist.length - 200);
+    draw();
+  }
+  node.append(el('div', { class: 'ctrl' }, sg), el('div', { class: 'ctrl' }, rk, rl, rt), el('div', { class: 'ctrl' }, pb, rb), canvas, legend, el('div', { class: 'metrics' }, m1, m2, m3, m4), status);
+  if (table) node.append(table);
+  restart();
+  addEventListener('resize', () => draw());
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => draw());
+  return {
+    start() { if (RM) return; running = true; if (!paused) { cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); } },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+});
+
+/* ---------- 05 预测三步拆解 ---------- */
+reg('anatomy', (node) => {
+  const TD = 30, SLO = 100, THR = 0.85, tbtOf = (n) => 20 + 8 * n;
+  const DEC = [1, 4, 8, 12, 16, 20, 23, 26, 27, 29]; /* 已在 Decode 的请求「已运行时长」 */
+  const PRE = [3, 7, 11, 15, 22];                     /* 还在 Prefill 的请求：预测完成时刻 */
+  const NEWF = 18;
+  let t = 10, withNew = false;
+  const rows = DEC.length + PRE.length + 1, rh = 15, top = 30, ax0 = 120, ax1 = 620, TMAX = 40;
+  const H = top + rows * rh + 30;
+  const X = (v) => ax0 + Math.max(0, Math.min(TMAX, v)) / TMAX * (ax1 - ax0);
+  const root = svg('svg', { viewBox: `0 0 640 ${H}`, class: 'wide', role: 'img', 'aria-label': '时间轴：Prefill 中与 Decode 中的请求在未来时刻 t 是否仍在 Decode 集群' });
+  root.append(svg('text', { x: ax0, y: 16, class: 'lbl' }, '现在'), svg('text', { x: ax1, y: 16, class: 'lbl', 'text-anchor': 'end' }, `+${TMAX} 步`));
+  const items = [];
+  PRE.forEach((f, i) => {
+    const y = top + i * rh;
+    const g = svg('g', {},
+      svg('text', { x: 4, y: y + 10, class: 'lbl' }, `Prefill #${i + 1}`),
+      svg('rect', { x: X(0), y: y + 2, width: X(f) - X(0), height: 9, rx: 3, style: 'fill:var(--o-soft)' }),
+      svg('rect', { x: X(f), y: y + 2, width: X(f + TD) - X(f), height: 9, rx: 3, style: 'fill:var(--p);opacity:.35' }),
+      svg('path', { d: `M${X(f)} ${y + 1} l5 5.5 -5 5.5 -5 -5.5z`, style: 'fill:var(--o)' }));
+    items.push({ g, act: (tt) => f <= tt && f + TD > tt, kind: 'pre' }); root.append(g);
+  });
+  DEC.forEach((a, i) => {
+    const y = top + (PRE.length + i) * rh;
+    const g = svg('g', {},
+      svg('text', { x: 4, y: y + 10, class: 'lbl' }, `Decode 已跑 ${a}`),
+      svg('rect', { x: X(0), y: y + 2, width: X(TD - a) - X(0), height: 9, rx: 3, style: 'fill:var(--p)' }),
+      svg('line', { x1: X(TD - a), x2: X(TD - a), y1: y, y2: y + 13, style: 'stroke:var(--p);stroke-dasharray:2 2' }));
+    items.push({ g, act: (tt) => TD - a > tt, kind: 'dec' }); root.append(g);
+  });
+  const yN = top + (rows - 1) * rh;
+  const ng = svg('g', { style: 'display:none' },
+    svg('text', { x: 4, y: yN + 10, class: 'lbl', style: 'fill:var(--t)' }, '新请求'),
+    svg('rect', { x: X(0), y: yN + 2, width: X(NEWF) - X(0), height: 9, rx: 3, style: 'fill:var(--t-soft)' }),
+    svg('path', { d: `M${X(NEWF)} ${yN + 1} l5 5.5 -5 5.5 -5 -5.5z`, style: 'fill:var(--t)' }));
+  root.append(ng);
+  const tl = svg('line', { y1: top - 6, y2: top + rows * rh, style: 'stroke:var(--r);stroke-width:2' });
+  const tt = svg('text', { y: H - 8, 'text-anchor': 'middle', class: 'lbl', style: 'fill:var(--r);font-weight:700' }, '');
+  root.append(tl, tt);
+  const status = el('div', { class: 'status' });
+  const rT = range('未来时刻 t', 0, TMAX, t, 1, (v) => { t = v; upd(); }, (v) => '+' + v);
+  function upd() {
+    tl.setAttribute('x1', X(t)); tl.setAttribute('x2', X(t)); tt.setAttribute('x', Math.min(600, Math.max(140, X(t)))); tt.textContent = 't = +' + t;
+    let addP = 0, keepD = 0, dropD = 0;
+    items.forEach((it) => { const a = it.act(t); it.g.style.opacity = a ? 1 : 0.28; if (it.kind === 'pre' && a) addP++; if (it.kind === 'dec') a ? keepD++ : dropD++; });
+    const self = withNew && NEWF <= t ? 1 : 0;
+    ng.style.display = withNew ? '' : 'none';
+    const n = addP + keepD + self, tb = tbtOf(n), load = tb / SLO;
+    const nowN = DEC.length, nowLoad = tbtOf(nowN) / SLO;
+    let s = `① Prefill 中、t 前完成（且还没走完 t<sub>d</sub>）的请求：<b>+${addP}</b>　② Decode 中、到 t 已走完 t<sub>d</sub> = ${TD} 的请求：<b>−${dropD}</b>${self ? '　新请求自己：<b>+1</b>' : ''}<br>③ t 时刻仍在 Decode 的请求 n = ${n}，用拟合模型 TBT ≈ 20 + 8n = <b>${tb} ms</b>，预测负载 = ${tb}/${SLO} = <b>${f2(load)}</b>`;
+    if (withNew) s += `<br>新请求预计在 t = +${NEWF} 完成 Prefill。按<b>预测</b>：${t === NEWF ? (load <= THR ? '<span class="verdict ok">接收</span>' : '<span class="verdict no">拒绝</span>') : `把 t 拖到 +${NEWF} 看结论`}；按<b>当前</b> Decode 负载（${nowN} 个请求，${f2(nowLoad)}）：<span class="verdict no">拒绝</span>。当前很满，但等它算完 Prefill 时，Decode 已经腾出位置了。`;
+    status.innerHTML = s;
+  }
+  const nb = el('button', { class: 'btn primary', type: 'button', onclick: () => { withNew = true; t = NEWF; rT.set(t); upd(); } }, '新请求到达');
+  const cb = el('button', { class: 'btn', type: 'button', onclick: () => { withNew = false; t = 10; rT.set(t); upd(); } }, '重置');
+  node.append(el('div', { class: 'scrollx' }, root), el('div', { class: 'ctrl' }, rT, nb, cb), status);
+  upd();
+});
+
+/* ---------- 06 请求分化 ---------- */
+reg('types', (node) => {
+  const M = ['TTFT', 'TBT', 'JCT', 'Workflow 整体 SLO'];
+  const T = [
+    ['在线对话', '本文的主角', [0.9, 0.9, 0.2, 0], '首字要快、后面要流畅：TTFT 与 TBT 两个 SLO，就是本文全部调度策略守护的对象。'],
+    ['批处理', '离线跑一批任务', [0.1, 0.1, 0.9, 0], '原文：有些批处理请求可以完全不考虑 TTFT / TBT，只需要保障作业完成时间（Job Completion Time，JCT）SLO。'],
+    ['高级 / 付费用户', '要更可靠的承诺', [1, 1, 0.4, 0], '原文：高级 / 付费用户无疑需要保证更加可靠和更高的 SLO。'],
+    ['Agent 任务', '一串请求 + 外部工具', [0.4, 0.4, 0.6, 1], '原文：基于 Agent 的任务不仅看单个请求，而是看整个工作流（Workflow）的综合 SLO；再加上与代码执行器（Code Executor）等外部环境的交互，整个系统会更复杂。'],
+  ];
+  const bars = M.map((m) => { const b = el('b'); return [el('div', { class: 'slo-row' }, el('span', {}, m), el('div', { class: 'bar' }, b)), b]; });
+  const status = el('div', { class: 'status' });
+  const btns = T.map(([t, s], i) => el('button', { class: 'type', type: 'button', onclick: () => pick(i) }, t, el('small', {}, s)));
+  function pick(i) { btns.forEach((b, j) => b.classList.toggle('on', i === j)); bars.forEach(([, b], j) => { b.style.width = (T[i][2][j] * 100) + '%'; }); status.innerHTML = T[i][3]; }
+  node.append(el('div', { class: 'types' }, ...btns), el('div', { style: 'margin-top:12px' }, ...bars.map((x) => x[0])), status);
+  pick(0);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

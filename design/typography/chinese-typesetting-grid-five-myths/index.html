@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>中文排版网格系统的五大迷思</title>
+<meta name="description" content="The Type「孔雀计划」系列《中文排版网格系统的五大迷思》可视化讲解：用真实中文与 CSS 现场排版，演示基线网格与字格网格、先算版心再余白、占字占行、em 与 rem、纵横对齐与易读性、奇数半宽标点的两种调整。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet{visibility:hidden}
+.toc-sheet.open{transform:none;visibility:visible}
+@media (min-width:1024px){ .toc-sheet,.toc-mask{display:none} }
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ================= 本页组件 ================= */
+.tg{position:relative;margin:4px auto 0}
+.tg svg.gl{position:absolute;inset:0;overflow:visible}
+.tg .gc{fill:var(--surface-2);stroke:var(--line);stroke-width:1}
+.tg .gb{stroke:var(--p);stroke-width:1;opacity:.55;fill:none}
+.tg .gm{fill:none;stroke:var(--o);stroke-width:1;opacity:.7}
+.tg .gu{stroke:var(--p);stroke-width:1.5;fill:none}
+.tg .hl{fill:var(--t-soft)}
+.tg .hl2{fill:var(--r-soft)}
+.tg span{position:absolute;white-space:pre;color:var(--text);font-family:var(--font)}
+.tg span.off{color:var(--t)}
+.tg span.bad{color:var(--r);font-weight:700}
+.tg .pg{position:absolute;border:1px solid var(--line);background:var(--surface)}
+.tg .bx{position:absolute;border:1px dashed var(--p)}
+.tg .dim{position:absolute;font-size:10px;color:var(--o);font-family:var(--mono);white-space:nowrap}
+.kv{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:8px}
+.kv b{font-family:var(--mono);color:var(--text);font-size:14px}
+.kv b.warn{color:var(--r)} .kv b.ok{color:var(--t)}
+.chk{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.chk input{accent-color:var(--p)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.css-live{font-family:var(--mono);font-size:12px;background:var(--surface-2);border-radius:8px;padding:6px 10px;margin-top:8px;overflow-x:auto;white-space:pre;color:var(--muted)}
+/* 占行：两栏真实 CSS */
+.cols2{display:flex;gap:2em;margin:6px auto 0;width:max-content;max-width:100%;position:relative}
+.cols2 .col{width:10em;text-align:justify;position:relative}
+.cols2 .col p{margin:0}
+.cols2 .col h4{margin:0;color:var(--p);font-weight:700;letter-spacing:.02em}
+.cols2 .col h4 span{font-size:1.25em}
+.cols2 .col h4.zh{display:flex;align-items:center}
+.cols2 .col h4.zh span{line-height:1.2}
+/* em / rem 嵌套 */
+.nest{position:relative;padding:4px 0}
+.nest .lv{position:relative;border-left:2px solid var(--p);margin-top:4px}
+.nest .lv>.t{display:block;white-space:nowrap;background:var(--surface);position:relative}
+.nest .lv>.t b{color:var(--p);font-weight:600}
+/* 段首缩进：真实 CSS */
+.indent-wrap{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .indent-wrap{grid-template-columns:1fr 1fr} }
+.ip{text-align:justify;line-height:1.8;padding:6px 0;background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px);background-origin:content-box}
+.ip-h{font-size:12px;color:var(--muted);margin-bottom:2px;font-family:var(--mono)}
+/* 字身框 canvas */
+.embox-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.embox-row button{min-width:40px}
+.embox-row button.on{background:var(--p);color:#fff;border-color:var(--p)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">中文网格五大迷思</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">设计 · 字体排印 · 孔雀计划</div>
+  <h1>中文排版网格系统的五大迷思</h1>
+  <p class="sub">中文的网格不是从瑞士借来的。方块字本身就是「一字一格」，版心、栏宽、标题、缩进，都应该用「占几个字、占几行」来算。下面每个演示都用真实的中文和 CSS 现场排出来，你可以亲手调参数，看网格什么时候对齐、什么时候散架。</p>
+  <div class="thesis">网格的本质与方块汉字的「字格」一致：先定正文字号与行距画出稿纸，再按「字」与「行」定版。但网格只是工具，要「活用」而不能「死用」：既不能强求所有字符纵横对齐，也不能拿西式网格拉个文本框就放任不管。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>刘</i>Eric Q. Liu（刘庆）</span>
+    <span class="au"><i style="background:var(--t)">钱</i>钱争予</span>
+  </div>
+  <p class="meta">原文：《中文排版网格系统的五大迷思》，The Type「孔雀计划：中文字体排印的思路」系列，2020-01-28；署名据剪藏页元数据为 Eric Q. Liu 与钱争予。原文讨论的对象是「编辑设计」，即书刊杂志与长文网页的排版，不是海报类版式。本页忠实于原文的叙述顺序，原文插图均已重绘为可操作的演示，并加了几处标注为「本页补充」的核对与延伸。</p>
+</header>
+
+<section class="ch" id="m1" data-title="迷思一：网格是舶来品">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>迷思一：网格是「舶来品」</h2>
+    <p class="lead">网格真是瑞士国际主义风格带来的洋玩意儿吗？方块字自己就是一格一格的。</p>
+  </div>
+  <p style="margin-bottom:14px">原文指出，布罗克曼（Josef Müller-Brockmann）在《平面设计中的网格系统》的案例部分就专门举了日文杂志《艺术手帖》，写道「日文与中文一样，都是建立在正方形的基础上」。汉字文化圈的报刊「定版设计」历来用方格稿纸：先定「基本正文字号」「基本正文行距」画出稿纸，再让标题、分栏都以「字」「行」为单位，绝不会出现「栏宽 20.15 个字」这种尴尬的宽度。<sup class="c">[1][2]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一段文字，三种网格。</b>原文用 InDesign 对比了西式「基线网格」与中式「框架网格」。这里换成现场排版：切到<b>方形模块网格</b>再拖动边长，你会看到西式网格在什么条件下变成中式字格。文字取自鲁迅《朝花夕拾·小引》。</div>
+    <div class="ctrl"><div class="seg" id="gridSeg"></div></div>
+    <div class="ctrl" id="gridK"></div>
+    <div data-demo="grid"></div>
+    <div class="status" id="gridStatus"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>小型报纸的定版设计样（示意重绘）。</b>原文配图左边是手绘的定版样，右边是 InDesign 的复现：所有分栏、标题都落在正文字号的网格上。点任一区块，看它用「字」「行」怎么描述。</div>
+    <div class="ctrl"><label class="chk"><input type="checkbox" id="dbGrid" checked>显示字格</label></div>
+    <div data-demo="dingban"></div>
+    <div class="status" id="dbStatus">点一个区块。</div>
+  </div>
+  <p style="margin-top:14px">西文排版本没有「格」，古登堡以来很长时间只有「分栏」，后来为了更精细地控制版面才另外定义出网格。中文则相反：方块字决定了「一字一格」，网格本就蕴含在字体排印内部，可以从一个字格扩展到整个版面。会用网格的人都知道单位网格越小越灵活；<b>把西式网格的单位格做成一个正文汉字大小，中西网格就融合了</b>，中式网格只是它的一个特例。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>字格量的是哪个框？</b>点一个字符，画布上会现场测出它在本机字体里的「字身框」（虚线，排版时占的格子）与「字面」（实线，笔画实际覆盖的范围）。</div>
+    <div class="embox-row" id="emRow"></div>
+    <div data-demo="embox"></div>
+    <div class="status" id="emStatus"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：字格对应的是「字身框」（金属活字的字身、数字字体的 em 框），不是笔画的外轮廓「字面」。汉字的字身是正方形，字面略小于字身并大致居中，所以一个个字身框可以无缝拼成稿纸；西文字母的字身宽度各不相同（比例宽度），拼不成方格。上面的测量用浏览器 Canvas 的 <code>measureText()</code> 现场完成，不同系统字体结果会有出入。<sup class="c">[5]</sup></div>
+</section>
+
+<section class="ch" id="m2" data-title="迷思二：先留边距">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>迷思二：做版式先留边距</h2>
+    <p class="lead">先定页边距、剩下的给版心，为什么放在中文上就会出零碎？</p>
+  </div>
+  <p style="margin-bottom:14px">西文没有字格，习惯「先算边距，再剩下版心」，甚至用黄金分割这类无理数比例来定版心；西文字母本身比例宽度，长文多用左对齐，两端对齐时也能灵活伸缩，所以对文本框宽度没有严格要求。中文传统恰好相反，是<b>「先算版心，再余白」</b>：</p>
+  <div class="quote">以文字为主的出版物，在确定版心的尺寸时，是以排版正文字号的字数来确定行长（即版心宽度），再以行数和行间空距之和为版心长度。<small>——《实用出版与印刷工作手册》（第二版），印刷工业出版社，1998（转引自原文）</small></div>
+  <div class="fig">
+    <div class="cap"><b>一张 130 mm 宽的书页，两种工作流程。</b>选字号，再分别拖「页边距」或「每行字数」。蓝色虚线框是版心，浅灰方格是从版心左边起算的整字格。<span style="color:var(--t)">青色字</span>表示它已经偏离字格。</div>
+    <div class="ctrl"><div class="seg" id="mgSeg"></div></div>
+    <div class="ctrl"><div class="seg" id="mgFs"></div></div>
+    <div class="ctrl" id="mgCtrl"></div>
+    <div data-demo="margin"></div>
+    <div class="kv" id="mgKv"></div>
+    <div class="status" id="mgStatus"></div>
+  </div>
+  <p style="margin-top:14px">中式流程先定栏宽（比如每行 25 个字），再把版心摆上页面；天头、地脚、切口、订口这些「余白」是页面减去版心之后算出来的，是「余」出来的，不是事先「定」出来的。先定边距再套汉字，版心宽度往往不是字宽的整数倍，再加上两端对齐，字距就失控了。传统雕版与活字印刷，一直都是先在书框里「套格」，再「摆书」。<sup class="c">[1]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：上面的演示把切口与订口取成相等、天头与地脚也取成相等，只为突出「余白是算出来的」；真实书籍的四边余白通常各不相同。网页里对应的做法是把版心宽度写成字号的整数倍，例如 <code>max-width: 25em</code>，而不是写成 <code>80%</code> 这类与字号无关的值。</div>
+</section>
+
+<section class="ch" id="m3" data-title="迷思三：占字与占行">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>迷思三：不知「占字」「占行」为何物</h2>
+    <p class="lead">「空两格」「占三格」「占三行」这些中文排版里司空见惯的说法，为什么在按西文思路做的软件里那么难实现？</p>
+  </div>
+  <p style="margin-bottom:14px">有了稿纸式的基础网格，所有元素都用「占格」「占行」来定位。原文列了四组对照：段首缩进「空两格」，西文用点或毫米；花名册每个名字「占三格」，西文用 tab 对齐；小标题「占三行」，西文靠段落间距；栏间距「占两个字」，西文用绝对单位。1927 年鲁迅为《朝花夕拾》写的排版要求里，字号写「2」「5」（二号、五号），行距写「空两格」「空一格半」。国标 GB/T 15834—2011《标点符号用法》也说「句号占一个字位置」。<sup class="c">[1][6]</sup></p>
+  <h3 style="font-size:18px;margin:18px 0 10px">占字：段首空两格</h3>
+  <div class="fig">
+    <div class="cap"><b>同一段话，两种缩进写法，都是浏览器里的真实 CSS。</b>拖字号：<code>text-indent: 2em</code> 永远是两个字；<code>text-indent: 8mm</code> 只在某个字号下碰巧接近两个字，其余时候都落在字格中间。背景竖线是字格。</div>
+    <div class="ctrl" id="indCtrl"></div>
+    <div data-demo="indent"></div>
+    <div class="status" id="indStatus"></div>
+  </div>
+  <p style="margin-top:14px">原文提到，Adobe 软件「段落」面板里的「段首缩进」是按西文流程设计、以毫米为单位的；InDesign 为中文准备的段首缩进放在「中文排版设置」（2020 版之前叫「标点挤压设置」）对话框里，还能设段首缩进与前括号的关系。<sup class="c">[1]</sup></p>
+  <h3 style="font-size:18px;margin:22px 0 10px">占字：花名册「占三格」</h3>
+  <div class="fig">
+    <div class="cap"><b>人名列表。</b>正统排法是每个名字占三格：两字名中间空一格，与三字名对齐；名字过长时，下一个名字不是空一格接着排，而是从下一个网格单元起排。切换两种排法，看竖向能不能对齐。蓝色粗线是「三格 + 一格间隔」的网格单元。</div>
+    <div class="ctrl"><div class="seg" id="rsSeg"></div></div>
+    <div data-demo="roster"></div>
+    <div class="status" id="rsStatus"></div>
+  </div>
+  <h3 style="font-size:18px;margin:22px 0 10px">占字在网页里：em 与 rem</h3>
+  <p style="margin-bottom:12px">原文说，CSS 的 <code>em</code> 来自印刷里的「全角」，数值等于字号，写 <code>2em</code> 就是「空两格」。<code>rem</code>（root em）则相对根元素的字号：根上定一个正文字号，就等于定了一个「字格」，其他元素都按它的倍数定位。<code>em</code> 相对父元素，会层层继承，嵌套多了容易迷失；<code>rem</code> 直指根元素，清晰明了。原文认为这正是熟悉东亚排版的专家们极力推动导入 <code>rem</code> 的原因。<sup class="c">[1][3]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>四层嵌套，每层字号都设为 0.875，缩进都设为 2。</b>切换单位，看各层缩进是否还落在根字格（背景竖线，间距 = 1rem）上。下面的数值是从浏览器 <code>getComputedStyle</code> 读出来的。</div>
+    <div class="ctrl"><div class="seg" id="erSeg"></div></div>
+    <div data-demo="emrem"></div>
+    <div class="css-live" id="erCss"></div>
+    <div class="status" id="erStatus"></div>
+  </div>
+  <h3 style="font-size:18px;margin:22px 0 10px">占行：标题是正文行的倍数</h3>
+  <div class="quote">在排版中，所有标题都必须是正文行的倍数。<small>——《当代排版技术概论》第二版，1994（转引自原文）</small></div>
+  <div class="quote">所谓标题的占行，是指在标题排版中，它所占的版面位置应是正文行的倍数。所谓对行，就是在一个版面上和一本书中，所有对应的正文字行都处于一个水平位置上。<small>——《实用出版与印刷工作手册》第二版，1998（转引自原文）</small></div>
+  <div class="fig">
+    <div class="cap"><b>两栏正文，左栏插入一个小标题。</b>西式做法用「段落间距」控制标题上下的空，标题字号又与正文不同，于是标题之后的左栏正文与右栏错行。切到「占二行 / 占三行」，标题块高度变成正文行高的整数倍，两栏重新对行。背景横线是正文行。</div>
+    <div class="ctrl"><div class="seg" id="zhSeg"></div></div>
+    <div data-demo="zhanhang"></div>
+    <div class="css-live" id="zhCss"></div>
+    <div class="status" id="zhStatus"></div>
+  </div>
+  <p style="margin-top:14px">金属活字时代的常见做法是「一级标题约占四五行，二级标题约占二三行，三级标题约占一二行」，还有「双行题目占三行」这样的操作。当代排版工具多用西文的段落间距来控制小标题，对行不是做不到，而是标题字号与正文不同时需要认真计算。网页上的「纵向韵律」（vertical rhythm）一直是难题：W3C 的 CSS Rhythmic Sizing 已久未更新，最接近「占行」的 <code>line-grid</code> 草案仍在争论之中；行高之所以复杂，是因为前端无法预知最终在什么平台、用哪个字体的什么度量来渲染。<sup class="c">[1][4]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：上面的演示用的是最朴素的办法：把小标题块的 <code>height</code> 直接写成正文行高的整数倍，并把行高写成固定像素值。这只在标题不折行时成立；标题折成两行、字体回退导致行高变化时就会失效，这正是原文说的「每个步骤都有太多变数」。原文作者在播客「字谈字畅」第 103 期对行高问题有更多讨论。</div>
+</section>
+
+<section class="ch" id="m4" data-title="迷思四：齐就是好">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>迷思四：过犹不及地认为「齐就是好」</h2>
+    <p class="lead">只要所有字符都全宽、不调整，版面就能纵横对齐。可这样排出来真的好读吗？</p>
+  </div>
+  <p style="margin-bottom:14px">破坏纵横对齐的「非全宽元素」是三类：可调宽度的标点、比例宽度的阿拉伯数字、混排在行内的西文字母。如果执行「网格绝对优先」，可以简单粗暴地把标点都排全宽、不做避头尾，数字和西文都换成全角，自然纵横对齐。原文举了台语汉字本《圣经》为例。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一段中西混排文字。</b>先点两个预设，再单独开关三项处理，或拖动行长。<span style="color:var(--r);font-weight:700">红字</span>是落在行首的标点（违反避头尾），<span style="color:var(--t)">青色字</span>是偏离字格的字。</div>
+    <div class="ctrl"><div class="seg" id="nPreset"></div></div>
+    <div class="ctrl" id="nCtrl"></div>
+    <div data-demo="neat"></div>
+    <div class="kv" id="nKv"></div>
+    <div class="status" id="nStatus"></div>
+  </div>
+  <p style="margin-top:14px">原文的比喻：走路是为了到达目的地，路要平坦，但也不能像雪原冰面一样过于平滑，不仅容易跌跤，还会因为没有参照物而迷失方向。阅读也一样，太平整的文字列容易跳行，也容易让人困乏。The Type 早在 2013 年就撰文《纵横对齐不是现代方法》：现代中文离不开标点，就必须认真调整标点宽度、做避头尾和换行位置处理；混排的数字与西文，先在编辑层面做正字法检查（比如权衡用阿拉伯数字还是汉字数字、夹杂的西文能否改用中文词），再选择形式（比如竖排时合理采用全角字符）。<sup class="c">[1]</sup></p>
+  <div class="note-add"><b>本页补充（非原文）</b>：上面的「标点对开」是简化模型：所有标点一律排半宽，没有实现相邻标点挤压、行尾标点悬挂等完整规则；中西文之间统一加了四分之一字宽的间隙。完整规则见 W3C《中文排版需求》（clreq）。CSS Text Level 4 草案里的 <code>text-spacing-trim</code> 属性就是为网页上的标点挤压准备的，各浏览器支持程度不一。<sup class="c">[5][7]</sup></div>
+</section>
+
+<section class="ch" id="m5" data-title="迷思五：网格只定文本框">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>迷思五：一蹴而就地认为「网格只用来定文本框」</h2>
+    <p class="lead">文本框拉好了，框里每一行的字格就不用管了吗？</p>
+  </div>
+  <p style="margin-bottom:14px">《平面设计中的网格系统》日文版监修白井敬尚说过：「网格系统并不是一种单纯地对页面进行分割手法，而是要在理解字号、行距这些排版基本构造的基础之上才能成立。」原文拿三本市面印刷品举例：文艺书每段末行字距不同、甚至整段字距不同；中西对照杂志迁就西文网格，段末行字距明显不同；繁体杂志的「疏排」排法不正确。这正是迷思二演示里看到的现象：行长不是字号整数倍，正文行被拉开而段末行不拉，两种字距同处一段。InDesign 东亚版因此专门有「水平/垂直网格工具」，文本框本身就带字格。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>一行里有奇数个半宽标点，多出的半个字怎么办？</b>重绘原文的三行示意：第 1 行没有标点；第 3 行两个半宽逗号合起来正好一个字宽，逗号之后的字偏移半格（浅绿底），第二个逗号之后又回到网格上；第 2 行只有一个半宽逗号，行尾空出半个字。选一种处理方式。</div>
+    <div class="ctrl"><div class="seg" id="opSeg"></div></div>
+    <div data-demo="oddpunct"></div>
+    <div class="kv" id="opKv"></div>
+    <div class="status" id="opStatus"></div>
+  </div>
+  <p style="margin-top:14px">活字时代工序要尽量少，所以把多出的半个字宽加在逗号后面，等于把这个逗号改回全宽：空隙略显眼，但它标出了行内最大的停顿，调整只限于标点，这一行也保持了网格对齐。照排时代更多做两端对齐，把半个字宽均摊进每个字距：活字时代找不到这么薄的铅空，也不可能每个字后手动加空。均摊的空隙不显眼（行越长越不明显），但这一行的字距与上下行都不同（行越短越明显），破坏了「密排」原则，所有字都偏离网格，三行字有三种阅读节奏。原文的结论是：两种方法没有对错，只是风格之别；「优先网格对齐」选左，「打破网格制约」选右，关键是妥协是否合理、是否与设计逻辑对应。<sup class="c">[1]</sup></p>
+</section>
+
+<section class="ch" id="m6" data-title="小结">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>小结：是参考线，还是金科玉律？</h2>
+    <p class="lead">网格扎根于方块字的字格之中，但它终究是工具。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>五个迷思，一张对照表。</b>点任一行，跳到对应的演示。</div>
+    <div data-demo="recap"></div>
+  </div>
+  <div class="final">以网格为依据，以中文易读性为指标：哪些是基本原则要遵守网格，哪些需要活用去打破网格，这既是网格工具的精髓，也是用网格排版的乐趣所在。<sup class="c">[1]</sup></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 Eric Q. Liu（刘庆）、钱争予在 The Type「孔雀计划：中文字体排印的思路」系列发表的<a href="https://www.thetype.com/2020/01/16565/">《中文排版网格系统的五大迷思》</a>（2020-01-28）制作，署名取自网页剪藏的作者元数据。原文中的插图（InDesign 截图、定版设计样、鲁迅手稿、印刷品实例等）均已改为内联 SVG 与 JS 现场排版的示意演示，未引用外链图片；示例正文取自鲁迅《朝花夕拾·小引》（公有领域）与原文自身。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Eric Q. Liu、钱争予，《中文排版网格系统的五大迷思》，The Type（2020-01-28）。原文参考书目：《实用出版与印刷工作手册》（第二版，印刷工业出版社，1998）；翟铭、杨新岚《当代排版技术概论》（第二版，1994）；曹洪奎《活字排版工艺》（1979）；周承民等《活字排版工艺》（1993）；徐令德《排版基础知识》（1999）。</li>
+    <li>Müller-Brockmann, J. (1981). <i>Grid Systems in Graphic Design / Rastersysteme für die visuelle Gestaltung</i>. Niggli.（简体中文版《平面设计中的网格系统》，2016）</li>
+    <li>W3C. <i>CSS Values and Units Module Level 4</i>, §Font-relative lengths（em、rem）. <a href="https://drafts.csswg.org/css-values-4/#font-relative-lengths">drafts.csswg.org</a></li>
+    <li>W3C. <i>CSS Line Grid Module Level 1</i>（Editor's Draft）；<i>CSS Rhythmic Sizing</i>. <a href="https://drafts.csswg.org/css-line-grid/">drafts.csswg.org</a></li>
+    <li>W3C. <i>Requirements for Chinese Text Layout 中文排版需求</i>（clreq）. <a href="https://www.w3.org/TR/clreq/">w3.org/TR/clreq</a></li>
+    <li>GB/T 15834—2011《标点符号用法》。</li>
+    <li>W3C. <i>CSS Text Module Level 4</i>, <code>text-spacing-trim</code>. <a href="https://drafts.csswg.org/css-text-4/">drafts.csswg.org</a></li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；所有排版演示都在浏览器里用真实字体现场排出，不同系统字体下结果会略有差异，排版细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const $ = (id) => document.getElementById(id);
+const fmt = (x, d = 2) => (Math.round(x * 10 ** d) / 10 ** d).toFixed(d).replace(/\.?0+$/, '') || '0';
+const redraws = [];
+let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => redraws.forEach((f) => f()), 120); });
+
+/* 分段按钮 */
+function seg(host, items, init, onChange) {
+  const bs = items.map(([v, label]) => el('button', { type: 'button', 'aria-pressed': 'false' }, label));
+  let cur = init;
+  const set = (v) => { cur = v; bs.forEach((b, i) => { const on = items[i][0] === v; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }); onChange(v); };
+  bs.forEach((b, i) => b.addEventListener('click', () => set(items[i][0])));
+  host.append(...bs);
+  set(init);
+  return { set, get: () => cur };
+}
+function slider(host, label, min, max, step, val, unit, onInput) {
+  const out = el('output', {}, val + unit);
+  const input = el('input', { type: 'range', min, max, step, value: val, 'aria-label': label });
+  const upd = () => { out.textContent = input.value + unit; onInput(+input.value); };
+  input.addEventListener('input', upd);
+  const lab = el('label', { class: 'range' }, label, input, out);
+  host.append(lab);
+  return { input, lab, upd, set: (v) => { input.value = v; upd(); } };
+}
+
+/* ============== 微型中文排版引擎（单位：字宽 em） ============== */
+const CLOSE = '，。、；：？！）」』》〉';
+const OPEN = '（「『《〈';
+const LAT = /[A-Za-z0-9\/\-.%]/;
+let mctx;
+const measure = (s) => {
+  mctx = mctx || document.createElement('canvas').getContext('2d');
+  mctx.font = '100px ' + getComputedStyle(document.body).fontFamily;
+  return mctx.measureText(s).width / 100;
+};
+function tokenize(text, o = {}) {
+  const out = [];
+  let i = 0;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === '\n') { out.push({ br: true }); i++; continue; }
+    if (LAT.test(c)) {
+      let j = i;
+      while (j < text.length && (LAT.test(text[j]) || (text[j] === ' ' && LAT.test(text[j + 1] || '')))) j++;
+      const s = text.slice(i, j);
+      if (o.propLatin) out.push({ t: s, w: measure(s) + 0.5, kind: 'latin' });
+      else for (const ch of s) { if (ch !== ' ') out.push({ t: String.fromCharCode(ch.charCodeAt(0) + 0xFEE0), w: 1, kind: 'fw' }); }
+      i = j; continue;
+    }
+    const kind = CLOSE.includes(c) ? 'close' : OPEN.includes(c) ? 'open' : 'han';
+    out.push({ t: c, w: (kind !== 'han' && o.halfPunct) ? 0.5 : 1, kind });
+    i++;
+  }
+  return out;
+}
+/* 断行：kinsoku=避头尾（行首不放闭标点、行尾不放开标点，用「追出」处理）；justify=两端对齐（段末行除外） */
+function layout(text, cols, o = {}) {
+  const toks = tokenize(text, o);
+  const paras = [[]];
+  toks.forEach((t) => (t.br ? paras.push([]) : paras[paras.length - 1].push(t)));
+  const lines = [];
+  for (const p of paras) {
+    let cur = [], w = o.indent || 0, start = o.indent || 0;
+    const flush = (last) => { lines.push({ toks: cur, start, last }); cur = []; w = 0; start = 0; };
+    for (const t of p) {
+      if (w + t.w > cols + 1e-6 && cur.length) {
+        let carry = [];
+        if (o.kinsoku) {
+          if (t.kind === 'close' && cur.length > 1) carry.unshift(cur.pop());
+          while (cur.length > 1 && cur[cur.length - 1].kind === 'open') carry.unshift(cur.pop());
+        }
+        flush(false);
+        cur = carry; w = carry.reduce((a, b) => a + b.w, 0);
+      }
+      cur.push(t); w += t.w;
+    }
+    if (cur.length) flush(true);
+  }
+  for (const ln of lines) {
+    const nat = ln.start + ln.toks.reduce((a, b) => a + b.w, 0);
+    const gaps = ln.toks.length - 1;
+    const extra = (!ln.last && o.justify !== false) ? Math.max(0, cols - nat) : 0;
+    const per = gaps > 0 ? extra / gaps : 0;
+    let x = ln.start;
+    for (const t of ln.toks) {
+      t.x = x;
+      t.gx = t.kind === 'open' && t.w === 0.5 ? x - 0.5 : t.kind === 'latin' ? x + 0.25 : x;
+      x += t.w + per;
+    }
+    ln.per = per; ln.nat = nat;
+  }
+  return lines;
+}
+const offGrid = (t) => (t.kind === 'han' || t.kind === 'fw') && Math.abs(t.x - Math.round(t.x)) > 0.02;
+/* 画到 DOM：网格（整字格）+ 绝对定位的字 */
+function draw(host, lines, opt) {
+  const { cols, fs, lh = 1.6, grid = 'cells', mark = true, gridCols = Math.ceil(cols - 1e-6) } = opt;
+  const rows = lines.length;
+  const W = Math.max(cols, gridCols) * fs, H = rows * lh * fs;
+  const pad = (lh - 1) / 2 * fs;
+  const box = el('div', { class: 'tg', style: `width:${W}px;height:${H}px` });
+  const g = svg('svg', { class: 'gl', width: W, height: H, viewBox: `0 0 ${W} ${H}`, 'aria-hidden': 'true' });
+  if (grid === 'cells') {
+    let d = '';
+    for (let r = 0; r < rows; r++) for (let c = 0; c < gridCols; c++) d += `M${c * fs + .5} ${r * lh * fs + pad + .5}h${fs - 1}v${fs - 1}h${-(fs - 1)}z`;
+    g.append(svg('path', { class: 'gc', d }));
+  }
+  if (opt.extraSvg) opt.extraSvg(g, { fs, lh, pad, rows, W, H });
+  box.append(g);
+  lines.forEach((ln, r) => ln.toks.forEach((t) => {
+    const y = r * lh * fs + pad;
+    let cls = '';
+    if (mark && offGrid(t)) { cls = 'off'; g.append(svg('rect', { class: 'hl', x: t.x * fs, y, width: fs, height: fs, rx: 2 })); }
+    if (mark && opt.markBad && t === ln.toks[0] && t.kind === 'close') cls = 'bad';
+    box.append(el('span', { class: cls, style: `left:${t.gx * fs}px;top:${y}px;font-size:${fs}px;line-height:${fs}px` }, t.t));
+  }));
+  host.replaceChildren(box);
+  return box;
+}
+const fitFs = (host, units, max = 22, min = 9) => Math.max(min, Math.min(max, Math.floor((host.clientWidth || 320) / units)));
+
+const XIAOYIN = '我常想在纷扰中寻出一点闲静来，然而委实不容易。目前是这么离奇，心里是这么芜杂。一个人做到只剩了回忆的时候，生涯大概总要算是无聊了罢，但有时竟会连回忆也没有。';
+
+/* ---------- 迷思一：三种网格 ---------- */
+reg('grid', (node) => {
+  const cols = 15, lh = 1.5;
+  let mode = 'cjk', k = 0.5;
+  const st = $('gridStatus');
+  const ctrl = $('gridK');
+  const sl = slider(ctrl, '单位格边长 = 字号 ×', 0.25, 1.5, 0.05, 0.5, '', (v) => { k = v; render(); });
+  function render() {
+    sl.lab.style.display = mode === 'mod' ? '' : 'none';
+    const fs = fitFs(node, cols + 0.5, 24);
+    const lines = layout(XIAOYIN, cols, { kinsoku: true, indent: 2 });
+    draw(node, lines, {
+      cols, fs, lh, mark: false, grid: mode === 'cjk' ? 'cells' : 'none',
+      extraSvg(g, { fs, lh, pad, rows, W, H }) {
+        if (mode === 'base') {
+          for (let r = 0; r < rows; r++) { const y = r * lh * fs + pad + fs * 0.88; g.append(svg('line', { class: 'gb', x1: 0, x2: W, y1: y, y2: y })); }
+        } else if (mode === 'mod') {
+          const u = k * fs; let d = '';
+          for (let x = 0; x <= W + 0.1; x += u) d += `M${x} 0V${H}`;
+          for (let y = 0; y <= H + 0.1; y += u) d += `M0 ${y}H${W}`;
+          g.append(svg('path', { class: 'gm', d }));
+        }
+      },
+    });
+    if (mode === 'base') st.innerHTML = '西式基线网格只约束<b>纵向</b>：每一行都坐在一条基线上，但字在行内横向落在哪里，网格不管。';
+    else if (mode === 'cjk') st.innerHTML = '中式字格网格（稿纸）：<b>一字一格</b>，横向按「字」、纵向按「行」计量。段首「空两格」就是空出两个格子。';
+    else {
+      const a = 1 / k, b = lh / k, isInt = (x) => Math.abs(x - Math.round(x)) < 1e-6;
+      if (isInt(a) && isInt(b)) st.innerHTML = `单位格 = ${fmt(k)} 字：每个字恰好盖住 <b>${Math.round(a)}×${Math.round(a)}</b> 个模块，行距 ${lh} 字 = ${Math.round(b)} 个模块，横竖都对齐。中式字格是这个西式网格的<b>特例</b>。`;
+      else if (isInt(a)) st.innerHTML = `单位格 = ${fmt(k)} 字：横向每字 ${Math.round(a)} 格对齐了，但行距 ${lh} 字 ÷ ${fmt(k)} = ${fmt(b)} 不是整数，<b>行与行之间对不上</b>。`;
+      else st.innerHTML = `单位格 = ${fmt(k)} 字：一个字宽 = ${fmt(a)} 个模块，不是整数，字落在模块中间，<b>网格对文字没有约束力</b>。试试 0.25、0.5。`;
+    }
+  }
+  seg($('gridSeg'), [['base', '基线网格（西式）'], ['mod', '方形模块网格'], ['cjk', '字格网格（中式）']], 'cjk', (v) => { mode = v; render(); });
+  redraws.push(render);
+});
+
+/* ---------- 迷思一：字身框与字面 ---------- */
+reg('embox', (node) => {
+  const chars = ['永', '国', '一', '，', '「', 'g', 'M', 'i'];
+  const cv = el('canvas', { width: 600, height: 220, style: 'width:100%;max-width:600px;height:auto;margin:0 auto', role: 'img', 'aria-label': '字身框与字面的现场测量' });
+  node.append(cv);
+  let cur = '永';
+  const row = $('emRow');
+  const btns = chars.map((c) => el('button', { type: 'button', class: 'btn', onclick: () => { cur = c; render(); } }, c));
+  row.append(...btns);
+  function render() {
+    btns.forEach((b) => b.classList.toggle('on', b.textContent === cur));
+    const css = getComputedStyle(document.documentElement);
+    const C = (n) => css.getPropertyValue(n).trim();
+    const ctx = cv.getContext('2d');
+    const dpr = 2; cv.width = 600 * dpr; cv.height = 220 * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, 600, 220);
+    const fs = 160, cx = 300, cy = 110;
+    ctx.font = `${fs}px ${getComputedStyle(document.body).fontFamily}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const m = ctx.measureText(cur);
+    const adv = m.width;
+    ctx.setLineDash([6, 5]); ctx.strokeStyle = C('--p'); ctx.lineWidth = 1.5;
+    ctx.strokeRect(cx - adv / 2, cy - fs / 2, adv, fs);
+    ctx.setLineDash([]);
+    const L = cx - m.actualBoundingBoxLeft, R = cx + m.actualBoundingBoxRight, T = cy - m.actualBoundingBoxAscent, B = cy + m.actualBoundingBoxDescent;
+    ctx.fillStyle = C('--t-soft'); ctx.fillRect(L, T, R - L, B - T);
+    ctx.strokeStyle = C('--t'); ctx.strokeRect(L, T, R - L, B - T);
+    ctx.fillStyle = C('--text'); ctx.fillText(cur, cx, cy);
+    ctx.font = `12px ${getComputedStyle(document.body).fontFamily}`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = C('--p'); ctx.fillText('字身框（em 框）', 12, 22);
+    ctx.fillStyle = C('--t'); ctx.fillText('字面（墨迹范围）', 12, 40);
+    const wr = adv / fs;
+    $('emStatus').innerHTML = `「${cur}」：字身宽 = <b>${fmt(wr, 2)}</b> 个字号${Math.abs(wr - 1) < 0.02 ? '（正方形，能拼成稿纸）' : '（不是正方形，比例宽度）'}；字面占字身宽度的 <b>${fmt((R - L) / adv * 100, 0)}%</b>。`;
+  }
+  render();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', render);
+});
+
+/* ---------- 迷思一：定版设计样 ---------- */
+reg('dingban', (node) => {
+  const C = 30, R = 40, u = 10;
+  const blocks = [
+    ['报头', 0, 0, 30, 5, 'p', '报头：通栏 30 字 × 5 行'],
+    ['头条标题', 0, 6, 30, 3, 'o', '头条标题：通栏，占 3 行（标题字号再大，也按正文行的倍数占位）'],
+    ['正文', 0, 9, 14, 18, 't', '正文左栏：栏宽 14 字 × 18 行'],
+    ['正文', 16, 9, 14, 18, 't', '正文右栏：栏宽 14 字 × 18 行；两栏之间的栏距占 2 字'],
+    ['小标题', 0, 28, 14, 2, 'o', '小标题：占 2 行'],
+    ['正文', 0, 30, 14, 10, 't', '正文：14 字 × 10 行'],
+    ['图片', 16, 28, 14, 12, 'r', '图片：宽 14 字、高 12 行，同样用「字」「行」描述，不用毫米'],
+  ];
+  const root = svg('svg', { viewBox: `-2 -2 ${C * u + 4} ${R * u + 4}`, style: 'max-width:340px;margin:0 auto', role: 'img', 'aria-label': '报纸定版设计样示意' });
+  const gridG = svg('g', {});
+  let d = '';
+  for (let c = 0; c <= C; c++) d += `M${c * u} 0V${R * u}`;
+  for (let r = 0; r <= R; r++) d += `M0 ${r * u}H${C * u}`;
+  gridG.append(svg('path', { d, stroke: 'var(--grid)', 'stroke-width': .6, fill: 'none' }));
+  root.append(svg('rect', { x: 0, y: 0, width: C * u, height: R * u, fill: 'var(--surface)', stroke: 'var(--line)' }), gridG);
+  const st = $('dbStatus');
+  const gs = blocks.map(([name, c, r, w, h, col, desc]) => {
+    const g = svg('g', { class: 'pick', tabindex: '0', role: 'button', 'aria-label': desc, style: 'cursor:pointer' },
+      svg('rect', { x: c * u + 1, y: r * u + 1, width: w * u - 2, height: h * u - 2, rx: 3, fill: `var(--${col}-soft)`, stroke: `var(--${col})`, 'stroke-width': 1, 'fill-opacity': .75 }),
+      svg('text', { x: (c + w / 2) * u, y: (r + h / 2) * u, 'text-anchor': 'middle', 'dominant-baseline': 'central', 'font-size': 12, fill: `var(--${col})`, style: 'pointer-events:none;font-weight:600' }, name));
+    const pick = () => { gs.forEach((x) => x.querySelector('rect').setAttribute('stroke-width', 1)); g.querySelector('rect').setAttribute('stroke-width', 3); st.innerHTML = `<b>${desc}</b>。版面共 ${C} 字 × ${R} 行。`; };
+    g.addEventListener('click', pick);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+    root.append(g);
+    return g;
+  });
+  node.append(root);
+  $('dbGrid').addEventListener('change', (e) => { gridG.style.display = e.target.checked ? '' : 'none'; });
+});
+
+/* ---------- 迷思二：先留边距 vs 先算版心 ---------- */
+reg('margin', (node) => {
+  const PW = 130, PH = 184;
+  const P2 = '中国的做文章有轨范，世事也仍然是螺旋。前几天我离开中山大学的时候，便想起四个月以前的离开厦门大学；听到飞机在头上鸣叫，竟记得了一年前在北京城上日日旋绕的飞机。';
+  const TEXT = [XIAOYIN, P2, XIAOYIN, P2, XIAOYIN].join('\n');
+  let mode = 'west', pt = 10.5, margin = 20, n = 25;
+  const ctrl = $('mgCtrl');
+  const sM = slider(ctrl, '页边距', 10, 35, 0.5, 20, ' mm', (v) => { margin = v; render(); });
+  const sN = slider(ctrl, '每行字数', 15, 32, 1, 25, ' 字', (v) => { n = v; render(); });
+  function render() {
+    sM.lab.style.display = mode === 'west' ? '' : 'none';
+    sN.lab.style.display = mode === 'cjk' ? '' : 'none';
+    const fmm = pt * 0.3528;
+    let left, bw, cols;
+    if (mode === 'west') { left = margin; bw = PW - 2 * margin; cols = bw / fmm; }
+    else { cols = n; bw = n * fmm; left = (PW - bw) / 2; }
+    const top = mode === 'west' ? margin : Math.max(8, left);
+    const scale = Math.min(4.2, (node.clientWidth || 320) / PW);
+    const fs = fmm * scale, lh = 1.7;
+    const lines = layout(TEXT, cols, { kinsoku: true, indent: 2 });
+    const maxRows = Math.max(1, Math.floor((PH - 2 * top) / (fmm * lh)));
+    const shown = lines.slice(0, maxRows);
+    const wrap = el('div', { class: 'tg', style: `width:${PW * scale}px;height:${PH * scale}px` });
+    wrap.append(el('div', { class: 'pg', style: `left:0;top:0;width:${PW * scale}px;height:${PH * scale}px` }));
+    const inner = el('div', { style: `position:absolute;left:${left * scale}px;top:${top * scale}px` });
+    draw(inner, shown, { cols, fs, lh, gridCols: Math.ceil(cols), markBad: false });
+    inner.firstChild.style.margin = '0';
+    wrap.append(inner, el('div', { class: 'bx', style: `left:${left * scale}px;top:${top * scale}px;width:${bw * scale}px;height:${(PH - 2 * top) * scale}px` }));
+    wrap.append(el('div', { class: 'dim', style: `left:2px;top:${PH * scale / 2}px` }, `${fmt(left, 1)}mm`));
+    wrap.append(el('div', { class: 'dim', style: `left:${(left + bw / 2) * scale - 20}px;top:${(top * scale) - 14}px` }, `${fmt(bw, 1)}mm`));
+    node.replaceChildren(wrap);
+    const frac = cols - Math.floor(cols);
+    const kv = $('mgKv');
+    kv.innerHTML = `<span>字号 <b>${pt} pt = ${fmt(fmm, 2)} mm</b></span><span>版心宽 <b>${fmt(bw, 2)} mm</b></span><span>每行 <b class="${frac > 0.01 && frac < 0.99 ? 'warn' : 'ok'}">${fmt(cols, 2)} 字</b></span><span>左右余白 <b class="${left < 8 ? 'warn' : ''}">${fmt(left, 2)} mm</b></span>`;
+    const stEl = $('mgStatus');
+    if (mode === 'west') {
+      if (frac > 0.01 && frac < 0.99) {
+        const per = shown.find((l) => !l.last && l.per > 0);
+        stEl.innerHTML = `先定边距 ${margin} mm，版心剩下 ${fmt(bw, 2)} mm，只能排 <b>${fmt(cols, 2)}</b> 个字。多出的 ${fmt(frac, 2)} 字被两端对齐摊进字距${per ? `（每个字距多 ${fmt(per.per * fmm, 3)} mm）` : ''}，字逐渐偏离字格；而<b>段末行不拉伸</b>，于是同一段里出现两种字距。`;
+      } else stEl.innerHTML = `碰巧：这个边距下版心正好是 <b>${Math.round(cols)}</b> 个字宽。换个字号或边距就不成立了。`;
+    } else {
+      stEl.innerHTML = left < 8 ? `每行 ${n} 字在这个字号下太宽，余白只剩 <b>${fmt(left, 2)} mm</b>，应减少字数或换小字号。` : `先定每行 <b>${n}</b> 字，版心 = ${n} × ${fmt(fmm, 2)} = ${fmt(bw, 2)} mm；余白 (130 − ${fmt(bw, 2)}) ÷ 2 = <b>${fmt(left, 2)} mm</b> 是「余」出来的。每一行都落在整字格上。`;
+    }
+  }
+  seg($('mgSeg'), [['west', '先定边距（西式流程）'], ['cjk', '先算版心（中式流程）']], 'west', (v) => { mode = v; render(); });
+  seg($('mgFs'), [[9, '9 pt'], [10, '10 pt'], [10.5, '10.5 pt（五号）'], [12, '12 pt（小四）']], 10.5, (v) => { pt = v; render(); });
+  redraws.push(render);
+});
+
+/* ---------- 迷思三：段首缩进（真实 CSS） ---------- */
+reg('indent', (node) => {
+  const P = '然而委实不容易。目前是这么离奇，心里是这么芜杂。一个人做到只剩了回忆的时候，生涯大概总要算是无聊了罢。';
+  const mk = (rule) => {
+    const p = el('p', { class: 'ip' }, P);
+    return { p, box: el('div', {}, el('div', { class: 'ip-h' }, rule), p) };
+  };
+  const a = mk('text-indent: 2em'), b = mk('text-indent: 8mm');
+  node.append(el('div', { class: 'indent-wrap' }, a.box, b.box));
+  slider($('indCtrl'), '字号', 12, 24, 1, 16, ' px', (fs) => {
+    for (const [o, ind] of [[a, '2em'], [b, '8mm']]) {
+      o.p.style.fontSize = fs + 'px';
+      o.p.style.textIndent = ind;
+      o.p.style.backgroundSize = fs + 'px 100%';
+      const cols = Math.max(6, Math.floor(Math.min(o.box.parentNode.clientWidth / (innerWidth >= 760 ? 2 : 1) - 8, 16 * fs) / fs));
+      o.p.style.width = cols * fs + 'px';
+    }
+    const mm = 8 * 96 / 25.4;
+    const chars = mm / fs;
+    $('indStatus').innerHTML = `字号 ${fs}px：<code>2em</code> = <b>${2 * fs}px = 2 个字</b>；<code>8mm</code> ≈ ${fmt(mm, 1)}px = <b>${fmt(chars, 2)} 个字</b>${Math.abs(chars - 2) < 0.05 ? '（碰巧接近两格）' : '，首行的字全都落在字格中间，与下面各行对不齐'}。`;
+  }).upd();
+});
+
+/* ---------- 迷思三：花名册 ---------- */
+reg('roster', (node) => {
+  const names = ['王芳', '李建国', '欧阳明远', '张伟', '陈晓东', '刘洋', '周雨晴', '吴敏', '诸葛青云', '郑涛', '林慧', '黄志强', '徐静', '马丽华', '何亮', '司马文清'];
+  const cols = 16, U = 4;
+  let mode = 'zhan';
+  function render() {
+    const fs = fitFs(node, cols + 0.5, 22);
+    const lines = [];
+    let cur = [], x = 0;
+    const put = (t, at) => cur.push({ t, x: at, gx: at, w: 1, kind: 'han' });
+    let aligned = 0;
+    for (const nm of names) {
+      const chars = [...nm];
+      if (mode === 'plain') {
+        if (x + chars.length > cols) { lines.push({ toks: cur }); cur = []; x = 0; }
+        if (x % U === 0) aligned++;
+        chars.forEach((c, i) => put(c, x + i));
+        x += chars.length + 1;
+        if (x >= cols) { lines.push({ toks: cur }); cur = []; x = 0; }
+      } else {
+        const span = Math.ceil((chars.length + 1) / U) * U;
+        if (x + span - 1 > cols) { lines.push({ toks: cur }); cur = []; x = 0; }
+        aligned++;
+        if (chars.length === 2) { put(chars[0], x); put(chars[1], x + 2); } else chars.forEach((c, i) => put(c, x + i));
+        x += span;
+        if (x >= cols) { lines.push({ toks: cur }); cur = []; x = 0; }
+      }
+    }
+    if (cur.length) lines.push({ toks: cur });
+    draw(node, lines, {
+      cols, fs, lh: 1.6, mark: false,
+      extraSvg(g, { fs, H }) { let d = ''; for (let c = 0; c <= cols; c += U) d += `M${c * fs} 0V${H}`; g.append(svg('path', { class: 'gu', d })); },
+    });
+    $('rsStatus').innerHTML = mode === 'plain'
+      ? `当普通文本排：名字之间一律空一格，只有 <b>${aligned} / ${names.length}</b> 个名字从网格单元的起点开始，竖向参差不齐。`
+      : `占三格：两字名中间空一格（王　芳），四字名占两个单元，下一个名字从下一个单元起排。<b>${aligned} / ${names.length}</b> 个名字都对齐在网格单元上。`;
+  }
+  seg($('rsSeg'), [['plain', '普通文本：名字间空一格'], ['zhan', '占字法：每名占三格']], 'zhan', (v) => { mode = v; render(); });
+  redraws.push(render);
+});
+
+/* ---------- 迷思三：em 与 rem ---------- */
+reg('emrem', (node) => {
+  let unit = 'em';
+  function render() {
+    const root = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const wrap = el('div', { class: 'nest', style: `font-size:1rem;background-image:linear-gradient(to right,var(--grid) 1px,transparent 1px);background-size:1rem 100%` });
+    let parent = wrap;
+    const levels = [];
+    for (let i = 0; i < 4; i++) {
+      const lv = el('div', { class: 'lv', style: `font-size:0.875${unit};margin-left:2${unit}` }, el('span', { class: 't' }, el('b', {}, `第 ${i + 1} 层`), ' 占两格缩进'));
+      parent.append(lv); parent = lv; levels.push(lv);
+    }
+    node.replaceChildren(wrap);
+    const x0 = wrap.getBoundingClientRect().left;
+    const rows = levels.map((lv, i) => {
+      const fs = parseFloat(getComputedStyle(lv).fontSize);
+      const left = (lv.getBoundingClientRect().left - x0) / root;
+      return { i, fs, left };
+    });
+    $('erCss').textContent = `.level { font-size: 0.875${unit}; margin-left: 2${unit}; }   /* 根字号 = ${root}px */`;
+    $('erStatus').innerHTML = rows.map((r) => `第 ${r.i + 1} 层：字号 <b>${fmt(r.fs, 2)}px</b>，左缘在第 <b>${fmt(r.left, 2)}</b> 格${Math.abs(r.left - Math.round(r.left)) < 0.01 ? '' : '（偏离字格）'}`).join('<br>');
+  }
+  seg($('erSeg'), [['em', 'em（相对父元素）'], ['rem', 'rem（相对根元素）']], 'em', (v) => { unit = v; render(); });
+  redraws.push(render);
+});
+
+/* ---------- 迷思三：占行（真实 CSS 两栏） ---------- */
+reg('zhanhang', (node) => {
+  const P1 = '我常想在纷扰中寻出一点闲静来，然而委实不容易。目前是这么离奇，心里是这么芜杂。';
+  const P2 = '一个人做到只剩了回忆的时候，生涯大概总要算是无聊了罢，但有时竟会连回忆也没有。';
+  const PR = P1 + P2 + '中国的做文章有轨范，世事也仍然是螺旋。前几天我离开中山大学的时候，便想起四个月以前的离开厦门大学。';
+  let mode = 'margin';
+  function render() {
+    const fs = Math.max(11, Math.min(16, Math.floor((node.clientWidth || 320) / 22)));
+    const L = Math.round(fs * 1.75);
+    const h = el('h4', {}, el('span', {}, '小标题'));
+    if (mode === 'margin') h.style.cssText = `margin:.9em 0 .4em;line-height:1.4`;
+    else { const n = mode === 'zh2' ? 2 : 3; h.className = 'zh'; h.style.cssText = `height:${n * L}px;margin:0`; }
+    const left = el('div', { class: 'col' }, el('p', {}, P1), h, el('p', {}, P2));
+    const right = el('div', { class: 'col' }, el('p', {}, PR));
+    const cols = el('div', { class: 'cols2', style: `font-size:${fs}px;line-height:${L}px;background-image:repeating-linear-gradient(to bottom,transparent 0 ${L - 1}px,var(--line) ${L - 1}px ${L}px)` }, left, right);
+    node.replaceChildren(cols);
+    const p2 = left.lastChild;
+    const off = (p2.getBoundingClientRect().top - cols.getBoundingClientRect().top);
+    const rem = ((off % L) + L) % L;
+    const drift = Math.min(rem, L - rem);
+    const hh = h.getBoundingClientRect().height + parseFloat(getComputedStyle(h).marginTop) + parseFloat(getComputedStyle(h).marginBottom);
+    $('zhCss').textContent = mode === 'margin'
+      ? `h4 { font-size: 1.25em; line-height: 1.4; margin: .9em 0 .4em; }   /* 正文 line-height: ${L}px */`
+      : `h4 { height: ${mode === 'zh2' ? 2 : 3} * ${L}px; margin: 0; }   /* 占${mode === 'zh2' ? '二' : '三'}行 */`;
+    $('zhStatus').innerHTML = drift < 0.5
+      ? `标题块高 ${fmt(hh, 1)}px = <b>${fmt(hh / L, 2)} 行</b>，之后的正文与右栏<b>对行</b>。`
+      : `标题块高 ${fmt(hh, 1)}px = ${fmt(hh / L, 2)} 行，不是整数；之后的左栏正文比右栏<b>错开 ${fmt(drift, 1)}px</b>。`;
+  }
+  seg($('zhSeg'), [['margin', '段落间距（西式）'], ['zh2', '占二行'], ['zh3', '占三行']], 'margin', (v) => { mode = v; render(); });
+  redraws.push(render);
+});
+
+/* ---------- 迷思四：齐就是好？ ---------- */
+reg('neat', (node) => {
+  const TEXT = '1927年，鲁迅为《朝花夕拾》写下排版要求：标题用2号字，正文用5号字。今天的网页，则用CSS的em与rem来表达「占几个字」，比如段首缩进写成2em。';
+  const o = { kinsoku: false, halfPunct: false, propLatin: false };
+  let cols = 14;
+  const ctrl = $('nCtrl');
+  const boxes = {};
+  for (const [k, label] of [['kinsoku', '避头尾'], ['halfPunct', '标点对开（半宽）'], ['propLatin', '西文数字用比例宽度']]) {
+    const cb = el('input', { type: 'checkbox' });
+    cb.addEventListener('change', () => { o[k] = cb.checked; preset.set(null); render(); });
+    boxes[k] = cb;
+    ctrl.append(el('label', { class: 'chk' }, cb, label));
+  }
+  const sCols = slider(ctrl, '行长', 12, 22, 1, 14, ' 字', (v) => { cols = v; render(); });
+  function render() {
+    const fs = fitFs(node, cols + 0.5, 22);
+    const lines = layout(TEXT, cols, { ...o, justify: true });
+    draw(node, lines, { cols, fs, lh: 1.7, markBad: true });
+    const bad = lines.filter((l) => l.toks[0] && l.toks[0].kind === 'close').length;
+    const off = lines.reduce((a, l) => a + l.toks.filter(offGrid).length, 0);
+    const total = lines.reduce((a, l) => a + l.toks.filter((t) => t.kind === 'han' || t.kind === 'fw').length, 0);
+    $('nKv').innerHTML = `<span>行首标点 <b class="${bad ? 'warn' : 'ok'}">${bad}</b></span><span>偏离字格的字 <b>${off} / ${total}</b></span><span>行数 <b>${lines.length}</b></span>`;
+    const allOff = !o.kinsoku && !o.halfPunct && !o.propLatin;
+    $('nStatus').innerHTML = allOff
+      ? `网格绝对优先：每个字符一格，纵横全齐。代价是${bad ? `<b>${bad} 行以标点开头</b>、` : ''}全角数字「１９２７」与「ＣＳＳ」字母稀疏难认，标点空隙忽大忽小。整齐，但不好读。`
+      : `易读性优先：${o.kinsoku ? '标点不落行首；' : ''}${o.halfPunct ? '标点半宽让文字更紧凑；' : ''}${o.propLatin ? '数字与西文恢复原本的比例宽度；' : ''}代价是 <b>${off}</b> 个字离开了字格。这才是现代中文排版要做的取舍。`;
+  }
+  const preset = seg($('nPreset'), [['grid', '网格绝对优先'], ['read', '易读性优先']], 'grid', (v) => {
+    if (v === null) return;
+    const on = v === 'read';
+    for (const k of Object.keys(boxes)) { o[k] = on; boxes[k].checked = on; }
+    render();
+  });
+  redraws.push(render);
+  void sCols;
+});
+
+/* ---------- 迷思五：奇数个半宽标点 ---------- */
+reg('oddpunct', (node) => {
+  const ROWS = ['汉字一字一格网格就在字中', '先算版心，再把余白留出来', '占字占行，对齐，读起来更顺'];
+  const cols = 12;
+  let mode = 'type';
+  function render() {
+    const fs = fitFs(node, cols + 1, 30, 14);
+    const lines = ROWS.map((s, r) => {
+      const toks = tokenize(s, { halfPunct: true });
+      const nat = toks.reduce((a, b) => a + b.w, 0);
+      const extra = cols - nat;
+      const commas = toks.filter((t) => t.kind === 'close').length;
+      let x = 0;
+      const per = mode === 'photo' && toks.length > 1 ? extra / (toks.length - 1) : 0;
+      for (const t of toks) {
+        t.x = t.gx = x;
+        let w = t.w;
+        if (mode === 'type' && t.kind === 'close' && commas % 2 === 1 && extra > 0) w = 1;
+        x += w + per;
+      }
+      return { toks, extra, commas, per, r };
+    });
+    draw(node, lines, { cols, fs, lh: 1.7 });
+    const desc = lines.map((l) => {
+      const off = l.toks.filter(offGrid).length;
+      return `<span>第 ${l.r + 1} 行 <b>${l.commas} 个逗号</b>，偏格 <b class="${off ? 'warn' : 'ok'}">${off}</b> 字${l.per > 0 ? `，字距 +${fmt(l.per, 3)} 字` : ''}</span>`;
+    });
+    $('opKv').innerHTML = desc.join('');
+    $('opStatus').innerHTML = {
+      none: '不处理：第 2 行比其他行短半个字，右边缘参差，两端对齐的版面里这是不允许的。',
+      type: '活字法：把多出的半个字宽加在第 2 行唯一的逗号后面，等于把它恢复成全宽。逗号后的空略显眼，但标出了行内最大的停顿，其他字一个也不用动，整行仍在网格上。',
+      photo: '照排法：把半个字宽均摊进第 2 行的 11 个字距。空隙不显眼，但这一行所有字都偏离了网格，而且偏移量与第 3 行不同，三行字三种节奏，「密排」被打破。',
+    }[mode];
+  }
+  seg($('opSeg'), [['none', '不处理'], ['type', '活字法：补在逗号后'], ['photo', '照排法：均摊字距']], 'type', (v) => { mode = v; render(); });
+  redraws.push(render);
+});
+
+/* ---------- 小结 ---------- */
+reg('recap', (node) => {
+  const rows = [
+    ['m1', '网格是舶来品', '方块字一字一格，稿纸就是中文原生网格；单位格取一个正文字，中西网格融合'],
+    ['m2', '做版式先留边距', '先按字数算版心，余白是余出来的；先定边距会得到 20.15 字这种零碎行长'],
+    ['m3', '不知占字占行', '缩进、花名册、栏距按「占几个字」，标题按「占几行」；网页里用 em / rem'],
+    ['m4', '齐就是好', '全宽不调整虽然纵横对齐，却牺牲易读性；标点、数字、西文都要细调'],
+    ['m5', '网格只用来定文本框', '网格要落实到行内字格；奇数个半宽标点时，要在对齐与密排之间做合理妥协'],
+  ];
+  const list = el('div', { style: 'display:grid;gap:8px' });
+  rows.forEach(([id, myth, truth], i) => {
+    const r = el('div', { class: 'tl-row', role: 'button', tabindex: '0', style: 'display:grid;grid-template-columns:28px 1fr;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:pointer' },
+      el('span', { class: 'mono', style: 'color:var(--p);font-weight:700' }, String(i + 1).padStart(2, '0')),
+      el('div', {}, el('b', {}, '迷思：' + myth), el('div', { style: 'font-size:13px;color:var(--muted)' }, truth)));
+    const go = () => $(id).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    r.addEventListener('click', go);
+    r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    list.append(r);
+  });
+  node.append(list);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = $('sidenav'), toc = $('tocList');
+const sheet = $('tocSheet'), mask = $('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+$('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = $('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { f(nd); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+(document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => redraws.forEach((f) => f()));
+})();
+</script>
+</body>
+</html>
