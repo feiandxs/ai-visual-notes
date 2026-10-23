@@ -54,6 +54,12 @@
 | --- | --- | --- | --- |
 | TREE(3) 的规则那么简单，为什么它的值那么离谱的大？ | 知乎答主 HypCos（主）、大老李 | [`math/large-numbers/why-tree3-is-so-large/`](math/large-numbers/why-tree3-is-so-large/index.html) | 先讲 TREE 游戏与良拟序为什么保证有限，再沿 JavaScript 大数高尔夫的字符数阶梯爬上 ε₀、Γ₀、ψ(Ω_ω)。 |
 
+#### 抽象代数（`math/abstract-algebra/`）
+
+| 标题 | 原文作者 / 出处 | 页面 | 简介 |
+| --- | --- | --- | --- |
+| 用音乐体会抽象代数：ℤ₁₂、五度圈与 PLR 群 | 知乎回答「怎么让不懂数学的人体会到抽象代数的魅力？」（答主：知乎答主，页面未存档作者名；2025-03-02 编辑）；补充参考 Tymoczko (2006)、Crans–Fiore–Satyendra (2009) | [`math/abstract-algebra/music-and-abstract-algebra/`](math/abstract-algebra/music-and-abstract-algebra/index.html) | 十二平均律与五度相生律的钢琴对比、ℤ₁₂ 时钟与生成元、音网上的 P/L/R 翻转、PLR 群与二面体群 D₁₂ 的凯莱图及现场验证，附螃蟹卡农与十二音列。 |
+
 #### 决策（`math/decision/`）
 
 | 标题 | 原文作者 / 出处 | 页面 | 简介 |

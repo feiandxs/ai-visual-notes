@@ -54,6 +54,12 @@ Illustrated, animated visual explainers of articles, made for beginners. Content
 | --- | --- | --- | --- |
 | Why Is TREE(3) So Absurdly Large? | Zhihu answerers HypCos (primary), 大老李 | [`math/large-numbers/why-tree3-is-so-large/`](math/large-numbers/why-tree3-is-so-large/index.html) | From the TREE game and well-quasi-ordering to a JavaScript big-number golf ladder climbing past ε₀, Γ₀ and ψ(Ω_ω). |
 
+#### Abstract Algebra (`math/abstract-algebra/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| Music and Abstract Algebra: ℤ₁₂, the Circle of Fifths and the PLR Group | Zhihu answer "How to let people who don't know math feel the charm of abstract algebra?" (answerer: Zhihu user, name not archived; edited 2025-03-02); supplemented with Tymoczko (2006) and Crans–Fiore–Satyendra (2009) | [`math/abstract-algebra/music-and-abstract-algebra/`](math/abstract-algebra/music-and-abstract-algebra/index.html) | Equal temperament vs Pythagorean tuning on a piano, a ℤ₁₂ clock with generators, P/L/R flips on the Tonnetz, and the Cayley graph showing the PLR group is the dihedral group D₁₂ (verified live), plus crab canon and twelve-tone rows. |
+
 #### Decision (`math/decision/`)
 
 | Title | Original author / source | Page | Summary |

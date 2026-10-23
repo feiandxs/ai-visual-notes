@@ -1,0 +1,998 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>用音乐体会抽象代数：ℤ₁₂、五度圈与 PLR 群</title>
+<meta name="description" content="用音乐讲抽象代数：十二平均律与五度相生律、ℤ₁₂ 与生成元、五度圈、音网上的 P/L/R 变换，以及 PLR 群与二面体群 D₁₂ 的对偶。带可点击、可试听的钢琴、时钟、音网与凯莱图演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页补充 ===== */
+.seg{max-width:100%;overflow-x:auto}
+.sqw{max-width:440px;margin:0 auto;width:100%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:4px;border-radius:2px}
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.status .bad{color:var(--r)}
+.kb text{font-family:var(--font)}
+.key{cursor:pointer;transition:fill .15s}
+.key.w{fill:#fbfbf8;stroke:#8a8a90;stroke-width:1}
+.key.b{fill:#1c1c22;stroke:#000;stroke-width:1}
+.key.w:hover{fill:var(--p-soft)}
+.key.b:hover{fill:#3b3b5e}
+.key.sel.w{fill:var(--y-soft)}
+.key.sel.b{fill:var(--p)}
+.dev{font-family:var(--mono);font-size:11px;text-anchor:middle}
+.nd circle{fill:var(--surface);stroke:var(--line);stroke-width:1.5;transition:fill .3s,stroke .3s}
+.nd text{font-size:12px;text-anchor:middle;dominant-baseline:central;fill:var(--text);font-family:var(--font);pointer-events:none}
+.nd.lit circle{fill:var(--p-soft);stroke:var(--p)}
+.nd.cur circle{fill:var(--p);stroke:var(--p)}
+.nd.cur text{fill:#fff}
+.nd.dim{opacity:.35}
+.nd{transition:transform .8s ease,opacity .3s}
+.tn circle{fill:var(--surface);stroke:var(--line);stroke-width:1}
+.tn text{font-size:11.5px;text-anchor:middle;dominant-baseline:central;fill:var(--muted);font-family:var(--font);pointer-events:none}
+.tn.hi circle{fill:var(--p-soft);stroke:var(--p);stroke-width:2}
+.tn.hi text{fill:var(--text);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;min-height:26px}
+.chip{font-family:var(--mono);font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2)}
+.chip.maj{background:var(--p-soft);color:var(--p);border-color:transparent}
+.chip.min{background:var(--t-soft);color:var(--t);border-color:transparent}
+.chip.now{outline:2px solid var(--y)}
+.btn.pl{background:var(--p);color:#fff;border-color:var(--p)}
+.btn.ll{background:var(--t);color:#fff;border-color:var(--t)}
+.btn.rr{background:var(--o);color:#fff;border-color:var(--o)}
+.btn[disabled]{opacity:.5;cursor:default}
+.panel{border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:10px 12px;font-size:13px;color:var(--muted)}
+.panel b{color:var(--text)}
+.split{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:820px){.split{grid-template-columns:3fr 2fr;align-items:start}}
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step .f{font-family:var(--mono);font-size:13px}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+.hero-art svg{margin:0 auto;max-width:420px}
+.pcap{text-align:center;font-size:13px;color:var(--muted);margin-top:6px;min-height:1.4em}
+.logbox{font-family:var(--mono);font-size:12px;white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border-radius:10px;padding:10px 12px;margin-top:10px;min-height:2em;color:var(--text)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">音乐里的抽象代数</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">抽象代数 · 群论 · 音乐</div>
+  <h1>用音乐体会抽象代数的魅力</h1>
+  <p class="sub">一个八度里的十二个音，恰好是一个群。移调是旋转，转位是镜像，五度圈是在绕圈，三和弦之间的变换又恰好重新画出同一个对称图形。你不必先学群论，先听、先看、先点。</p>
+  <div class="thesis">十二平均律的音名构成模 12 加法群 ℤ₁₂；移调与转位生成二面体群 D₁₂；新黎曼理论里 P、L、R 三种和弦变换生成的群，同样同构于 D₁₂，而且与前者互为对偶。<sup class="c">[1][3]</sup></div>
+  <div class="hero-art">
+    <div data-demo="hero"></div>
+    <div class="pcap" id="heroCap"></div>
+  </div>
+  <p class="meta">原文：知乎问题「怎么让不懂数学的人体会到抽象代数的魅力？」下的一则回答，用音乐作答（答主昵称：知乎答主，页面未存档作者名；回答编辑于 2025-03-02）。本页忠实于原文的叙述顺序，并加了几处标注为「本页补充」的核对与延伸。所有声音都需要你点击按钮才会播放。</p>
+</header>
+
+<section class="ch" id="tuning" data-title="十二平均律">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>一、十二平均律：把八度切成十二等份</h2>
+    <p class="lead">相邻两个键的频率比都是 2 的 12 次方根 ≈ 1.05946，升高 12 个半音，频率恰好翻倍。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">一个八度的钢琴键盘（C4～C5）。选一种律制再点琴键：<b>十二平均律</b>每个半音的频率比相同；<b>五度相生律</b>（毕达哥拉斯）则由一串纯五度 3:2 折回八度得到。键下数字是五度相生律比十二平均律高出的音分（cent，1 个半音 = 100 音分）。<sup class="c">[1][8]</sup></div>
+    <div data-demo="keys"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>为什么要「平均」？</b>叠 12 个纯五度，理论上该绕回起点的同名音，实际上多出一小段，这段就是「毕达哥拉斯音差」。十二平均律把这个缺口平均摊到 12 个五度上，让圆闭合。<sup class="c">[8]</sup></div>
+    <div data-demo="comma"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：原文脚注 3 指出十二平均律最早由明代朱载堉于万历十二年（1584 年）准确提出。五度相生律的 12 个五度之和 (3/2)¹² = 531441/4096 ≈ 129.746，比 2⁷ = 128 大一点，两者之比 531441/524288 ≈ 1.01364，约 23.46 音分，约为四分之一个半音。</div>
+</section>
+
+<section class="ch" id="z12" data-title="ℤ₁₂ 与移调转位">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>回到数学：音名就是模 12 的数</h2>
+    <p class="lead">升高 12 个半音回到同一个音名，所以音级构成循环群 ℤ₁₂ = {0, 1, …, 11}。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">令 C = 0，C♯ = 1，D = 2，…，B = 11。加法表示音程叠加（C + 7 = G），模运算保证循环。把十二个音放在正十二边形的顶点上就得到「音类圆周」。<b>移调</b> T<sub>n</sub>(x) = x + n 是绕中心旋转；<b>转位</b> I<sub>n</sub>(x) = −x + n 是沿一条直径镜像。拖动滑块，看一个三和弦（原文把和弦看作 ℤ₁₂ 的子集，如 C 大三和弦 {0,4,7}）被它们怎样搬动。</div>
+    <div data-demo="circle"></div>
+    <p class="src">T<sub>n</sub> 与 I<sub>n</sub> 共 24 个操作，保持正十二边形不变，构成二面体群 D₁₂（本页按「十二边形的对称群」记，共 24 个元素；有的文献记作 D₂₄）。原文还提到：用 I₀ 作用在 C 大三和弦上得到 f 小三和弦，即 {0,4,7} ↦ {0,8,5}。</p>
+  </div>
+</section>
+
+<section class="ch" id="fifths" data-title="五度圈与生成元">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>二、五度圈：用 7 一步一步走遍十二个音</h2>
+    <p class="lead">纯五度 = 7 个半音，即 T₇。7 与 12 互素，所以只靠它就能走遍整个 ℤ₁₂。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一个步长 g，点「下一步」从 0 出发反复加 g。g = 7 时点亮的顺序就是五度圈（C G D A E B F♯ …）；g = 3 或 4（小三度、大三度）走几步就绕回去了，它们生成的只是 ℤ₁₂ 的循环子群。</div>
+    <div data-demo="clock"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：ℤ₁₂ 的生成元恰是与 12 互素的 1、5、7、11，对应半音、纯四度（5 个半音）、纯五度、下行半音。因此「四度圈」和「五度圈」是同一个圆反向读。其余步长生成子群，阶数为 12 / gcd(g,12)：2 → 全音阶（6 个音）、3 → 减七和弦（4 个音）、4 → 增三和弦（3 个音）、6 → 三全音（2 个音）。</div>
+</section>
+
+<section class="ch" id="tonnetz" data-title="音网与 PLR">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>三、新黎曼理论：三和弦在音网里翻转</h2>
+    <p class="lead">P、L、R 每次只让三和弦里的一个音移动，其余两个音不动，在音网里就是三角形绕一条边翻到邻居。<sup class="c">[4][5]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>音网（Tonnetz）</b>：横向相邻音相差纯五度（+7），向右上相差大三度（+4），向右下相差小三度（+3）。每个朝上的三角形是大三和弦，朝下的是小三和弦。点 P / L / R 试试，高亮圈出被移动的那个音。</div>
+    <div data-demo="tonnetz"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：P 平行（Parallel）：大三和弦的三音降半音，或小三和弦的三音升半音，C ↔ c，动 1 个半音。L 导音交换（Leading-tone exchange）：大三和弦的根音降半音，或小三和弦的五音升半音，C ↔ e，动 1 个半音。R 关系（Relative）：大三和弦的五音升全音，或小三和弦的根音降全音，C ↔ a，动 2 个半音。三者都是「第一原则：尽量少动」的体现。音网的想法可追溯到欧拉 1739 年的《新音乐理论的尝试》；Lewin（1987）和 Cohn（1997）把它与变换群重新联系起来，成为新黎曼理论。<sup class="c">[4][5][7]</sup></div>
+</section>
+
+<section class="ch" id="plr" data-title="PLR 群 = D₁₂">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>PLR 群：另一个 D₁₂</h2>
+    <p class="lead">P、L、R 的所有组合恰好把 24 个大小三和弦互相变来变去，这是一个 24 阶的群，同构于二面体群。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">交替使用 R、L，从 C 出发得到原文那条 24 个和弦的链：C a F d B♭ g E♭ c A♭ f D♭ b♭ G♭ e♭ B g♯ E c♯ A f♯ D b G e C。把它放成一圈，P 把圆上的点两两连起来。这就是 PLR 群的凯莱图（Cayley graph）。点任意一个和弦，看它对应群里的哪个元素、在十二边形上做了什么。</div>
+    <div data-demo="cayley"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>原文的代数证明</b>：令 s = LR，t = L。则 s¹² = t² = 1，且 tst = L(LR)L = RL = s⁻¹，这正是 D₁₂ 的生成元关系；又 R(LR)³ = P，所以只需两个生成元。本页在你的浏览器里把这些等式和「对偶」的结论真的算一遍。</div>
+    <div data-demo="verify"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：T/I 群与 PLR 群在 24 个三和弦的集合上都是「单传递」作用（任何一个和弦都能且只能用其中一个操作变成另一个和弦），所以彼此是对方的中心化子。这是 Crans–Fiore–Satyendra（2009）论文的主线：二面体群在音乐里有两种互相对偶的作用。<sup class="c">[3]</sup> Hook（2002）的均匀三和弦变换（UTT）把这套想法推广到更大的群。<sup class="c">[6]</sup></div>
+</section>
+
+<section class="ch" id="crab" data-title="螃蟹卡农与十二音">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>回头看开头：巴赫与勋伯格</h2>
+    <p class="lead">原文开头提到巴赫《螃蟹卡农》里的逆向对称。逆行，也是一种群作用。</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>螃蟹卡农（canon cancrizans）</b>：第二声部是第一声部的逆行，从最后一个音倒着唱回来。点播放，两条线相向而行，在中点交会。下图是示意旋律，并非巴赫原谱。</div>
+    <div data-demo="crab"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>勋伯格十二音技法</b>：一个音列（把十二个音各用一次）可以做移调 T、逆行 R、转位 I、逆行转位 RI，共 4 × 12 = 48 种形态。这里用勋伯格《钢琴组曲》Op. 25 的音列作示例（据通行资料）。<sup class="c">[10]</sup></div>
+    <div data-demo="row"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：逆行 R 与转位 I 各自做两次回到原样，且 R 与 I 可交换，二者合起来是克莱因四元群 ℤ₂ × ℤ₂；再加上 12 种移调，音列的 48 种形态也是一个群作用。《螃蟹卡农》出自巴赫《音乐的奉献》（BWV 1079，1747 年）。</div>
+</section>
+
+<section class="ch" id="geometry" data-title="和弦几何">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>延伸：和弦的几何（Tymoczko 2006）</h2>
+    <p class="lead">原文开头提到 2006 年 Science 上的论文。它的核心想法也和「对称」有关。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">两个音的和弦 {x, y}：次序无关，所以 (x, y) 和 (y, x) 是同一个和弦。点方格里任意一点，看它的镜像点。沿对角线对折后，只剩下一半就够表示所有二音和弦。<sup class="c">[2]</sup></div>
+    <div data-demo="fold"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：Tymoczko（2006）把 n 个音的和弦看成 n 维环面 ℝⁿ/12ℤⁿ 再除以音的排列 Sₙ 得到的空间，数学上叫「轨形」（orbifold），它在对角线、对称轴处有「折叠」形成的奇点。两音和弦空间是一条莫比乌斯带；三音和弦空间是一个扭转的三棱柱，三和弦聚集在中心附近，很「接近」的和弦在空间里也靠得近，这正是「声部进行尽量少动」的几何表述。他据此指出，西方音乐里许多不同风格共享几条几何原则。<sup class="c">[2]</sup></div>
+</section>
+
+<section class="ch" id="summary" data-title="总结">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>一句话带走</h2>
+  </div>
+  <div class="fig">
+    <div data-demo="summary"></div>
+    <div class="final">抽象代数不抽象：音名是 ℤ₁₂，移调是旋转，转位是镜像；7 与 12 互素，所以五度圈走遍十二个音；PLR 把 24 个三和弦连成一个同样是 D₁₂ 的世界，而且与移调转位互为对偶。</div>
+    <p class="src">原文「后话」：音乐与数学的联系远不止于此，它能帮助音乐家理解旋律和声的结构，也为计算机音乐与自动作曲提供理论基础。国际上有音乐数学与计算学会（SMCM），每两年举办一次音乐数学与计算会议（MCM），上一届（第九届）在 2024 年 6 月。</p>
+  </div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据知乎问题「<a href="https://www.zhihu.com/question/7738456942">怎么让不懂数学的人体会到抽象代数的魅力？</a>」下的<a href="https://www.zhihu.com/question/7738456942/answer/113921535758">一则回答</a>制作（答主：知乎答主，页面未存档作者名；编辑于 2025-03-02）。原文中的插图均已用内联 SVG 和 JS 重绘，未引用外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>知乎回答原文，及其脚注：基础乐理、朱载堉 1584 年提出十二平均律、五度圈 17 世纪末出现、新黎曼理论以 Hugo Riemann 命名等。</li>
+    <li>Tymoczko, D. (2006). The Geometry of Musical Chords. <i>Science</i> 313, 72–74.</li>
+    <li>Crans, A. S., Fiore, T. M. &amp; Satyendra, R. (2009). <a href="https://arxiv.org/abs/0711.1873">Musical Actions of Dihedral Groups</a>. <i>American Mathematical Monthly</i> 116(6), 479–495（arXiv:0711.1873）。</li>
+    <li>Lewin, D. (1987). <i>Generalized Musical Intervals and Transformations</i>. Yale University Press.</li>
+    <li>Cohn, R. (1997). Neo-Riemannian Operations, Parsimonious Trichords, and Their "Tonnetz" Representations. <i>Journal of Music Theory</i> 41(1), 1–66.</li>
+    <li>Hook, J. (2002). Uniform Triadic Transformations. <i>Journal of Music Theory</i> 46(1/2), 57–126.</li>
+    <li>Euler, L. (1739). <i>Tentamen novae theoriae musicae</i>.</li>
+    <li>Wikipedia 条目 Pythagorean comma、Pythagorean tuning、Equal temperament：毕达哥拉斯音差 531441/524288 ≈ 23.46 音分；五度相生律与十二平均律的音分对照。</li>
+    <li>郑中（2014）. 转换与抽象——新里曼主义音乐分析的理论与方法. 《音乐艺术（上海音乐学院学报）》(03), 150–158（原文脚注 7）。</li>
+    <li>Wikipedia 条目 Twelve-tone technique、The Musical Offering（BWV 1079）：十二音技法的 P/R/I/RI 与 48 种形态；《螃蟹卡农》。</li>
+  </ol>
+  <p>本页由 Claude Code 基于原文与上述公开资料生成，仅供学习；本页的所有数值（音分、群的验证）在页面内用 JS 现场计算，数学细节以原文与文献为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const mod = (a, n = 12) => ((a % n) + n) % n;
+const gcd = (a, b) => b ? gcd(b, a % b) : a;
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  box.set = (i) => bs.forEach((b, j) => b.classList.toggle('on', j === i));
+  return box;
+};
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; w.out = out; w.show = show;
+  w.set = (v) => { inp.value = v; out.textContent = show(v); };
+  return w;
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+const tween = (dur, fn, done) => {
+  if (RM) { fn(1); done && done(); return; }
+  const t0 = performance.now();
+  const f = (t) => { const k = Math.min(1, (t - t0) / dur); fn(k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2); if (k < 1) requestAnimationFrame(f); else done && done(); };
+  requestAnimationFrame(f);
+};
+
+/* ---------- 音乐基础 ---------- */
+const NOTE = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+const chordName = (r, t) => t ? NOTE[mod(r)].toLowerCase() : NOTE[mod(r)];
+const chordFull = (r, t) => chordName(r, t) + (t ? ' 小三和弦' : ' 大三和弦');
+const idx = (r, t) => mod(r) * 2 + t;
+const unidx = (i) => [i >> 1, i & 1];
+const C4 = 261.6256;
+const etFreq = (semi) => C4 * Math.pow(2, semi / 12);
+/* 五度相生律：以 C 为 1，由 n 个纯五度折回八度；n 取 -3..8（E♭..G♯） */
+const pythN = (p) => { let n = mod(7 * p); if (n > 8) n -= 12; return n; };
+const pythRatio = (p) => { const n = pythN(p); let r = Math.pow(1.5, n); while (r >= 2) r /= 2; while (r < 1) r *= 2; return r; };
+const pythFrac = (p) => {
+  const n = pythN(p); let num = n >= 0 ? Math.pow(3, n) : Math.pow(2, -n), den = n >= 0 ? Math.pow(2, n) : Math.pow(3, -n);
+  while (num / den >= 2) den *= 2; while (num / den < 1) num *= 2; return num + '/' + den;
+};
+const cents = (r) => 1200 * Math.log2(r);
+let AC = null;
+const ac = () => { if (!AC) { const C = window.AudioContext || window.webkitAudioContext; AC = new C(); } if (AC.state === 'suspended') AC.resume(); return AC; };
+const tone = (f, when = 0, dur = .9, vol = .13, pan = 0) => {
+  try {
+    const a = ac(), o = a.createOscillator(), g = a.createGain(); o.type = 'triangle'; o.frequency.value = f;
+    const t = a.currentTime + when; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    o.connect(g); let n = g; if (a.createStereoPanner) { const p = a.createStereoPanner(); p.pan.value = pan; g.connect(p); n = p; }
+    n.connect(a.destination); o.start(t); o.stop(t + dur + .05);
+  } catch (e) { /* 无音频环境时静默 */ }
+};
+const triadSemis = (r, t) => { const b = r > 6 ? r - 12 : r; return [b, b + (t ? 3 : 4), b + 7]; };
+const playTriad = (r, t, when = 0, dur = .9) => triadSemis(r, t).forEach((s) => tone(etFreq(s), when, dur, .1));
+const polar = (cx, cy, R, p) => { const a = (p * 30 - 90) * Math.PI / 180; return [cx + R * Math.cos(a), cy + R * Math.sin(a)]; };
+const chordOf = (set) => { const s = new Set(set.map((x) => mod(x))); for (let r = 0; r < 12; r++) { if (s.size === 3 && s.has(r) && s.has(mod(r + 4)) && s.has(mod(r + 7))) return [r, 0]; if (s.size === 3 && s.has(r) && s.has(mod(r + 3)) && s.has(mod(r + 7))) return [r, 1]; } return null; };
+
+/* ---------- 24 个三和弦上的置换 ---------- */
+const mk = (f) => { const a = []; for (let r = 0; r < 12; r++) for (let t = 0; t < 2; t++) { const [r2, t2] = f(r, t); a[idx(r, t)] = idx(r2, t2); } return a; };
+const Pm = mk((r, t) => [r, 1 - t]);
+const Lm = mk((r, t) => t ? [r + 8, 0] : [r + 4, 1]);
+const Rm = mk((r, t) => t ? [r + 3, 0] : [r + 9, 1]);
+const then = (f, g) => f.map((x) => g[x]);          /* 先 f 后 g */
+const ID = Array.from({ length: 24 }, (_, i) => i);
+const same = (a, b) => a.every((x, i) => x === b[i]);
+const Tm = (n) => mk((r, t) => [r + n, t]);
+const Im = (n) => mk((r, t) => [n - r - 7, 1 - t]);
+
+/* ======================= 演示 ======================= */
+/* ---- Hero：音类圆周上的三角形，T7 一步步转 ---- */
+reg('hero', (node) => {
+  const W = 360, H = 300, cx = 180, cy = 150, R = 110;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': '音类圆周上 C 大三和弦每次转 7 个半音' });
+  s.append(svg('circle', { cx, cy, r: R, fill: 'none', stroke: 'var(--line)', 'stroke-width': 1.5 }));
+  for (let p = 0; p < 12; p++) {
+    const [x, y] = polar(cx, cy, R, p), [lx, ly] = polar(cx, cy, R + 24, p);
+    s.append(svg('circle', { cx: x, cy: y, r: 4, fill: 'var(--muted)' }), svg('text', { x: lx, y: ly, class: 'lbl mid', 'dominant-baseline': 'central' }, NOTE[p]));
+  }
+  const pts = [0, 4, 7].map((p) => polar(cx, cy, R, p));
+  const g = svg('g', { style: `transform-origin:${cx}px ${cy}px;transition:transform 1s ease` });
+  g.append(svg('polygon', { points: pts.map((q) => q.join(',')).join(' '), fill: 'var(--p-soft)', stroke: 'var(--p)', 'stroke-width': 2.5, 'stroke-linejoin': 'round', opacity: .9 }));
+  pts.forEach((q) => g.append(svg('circle', { cx: q[0], cy: q[1], r: 6, fill: 'var(--p)' })));
+  s.append(g);
+  s.append(svg('text', { x: cx, y: cy, class: 'lbl big mid', 'dominant-baseline': 'central', id: 'heroChord' }, ''));
+  node.append(s);
+  const cap = document.getElementById('heroCap'); let k = 0; let rot = 0;
+  const lab = s.lastChild;
+  const tick = () => {
+    const root = mod(7 * k); rot += 210; g.style.transform = `rotate(${rot}deg)`;
+    lab.textContent = NOTE[root];
+    cap.textContent = k === 0 ? '起点：C 大三和弦 {0, 4, 7}' : `T₇ 作用 ${k} 次：${NOTE[root]} 大三和弦，三个音都升了 ${7 * k % 12} 个半音（模 12）`;
+    k = (k + 1) % 12;
+  };
+  return every(1700, tick);
+});
+
+/* ---- 01 钢琴键盘：十二平均律 vs 五度相生律 ---- */
+reg('keys', (node) => {
+  const W = 560, H = 230, ww = 70, bw = 40, bh = 120, top = 8;
+  let mode = 0, selected = null;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'kb', role: 'img', 'aria-label': '一个八度的钢琴键盘' });
+  const whites = [0, 2, 4, 5, 7, 9, 11, 12];
+  const blacks = [[1, 0], [3, 1], [6, 3], [8, 4], [10, 5]];
+  const dev = (p) => (p === 12 ? 0 : cents(pythRatio(p)) - 100 * p);
+  const keyEls = {};
+  whites.forEach((p, i) => {
+    const r = svg('rect', { x: i * ww + 1, y: top, width: ww - 2, height: 170, rx: 5, class: 'key w', tabindex: 0, role: 'button', 'aria-label': NOTE[p % 12] });
+    s.append(r); keyEls[p] = r; r.addEventListener('click', () => press(p)); r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(p); } });
+    s.append(svg('text', { x: i * ww + ww / 2, y: top + 156, class: 'lbl mid', style: 'pointer-events:none' }, NOTE[p % 12]));
+    const d = dev(p); s.append(svg('text', { x: i * ww + ww / 2, y: top + 196, class: 'dev', fill: Math.abs(d) < .05 ? 'var(--muted)' : d > 0 ? 'var(--o)' : 'var(--t)' }, (d > 0.05 ? '+' : '') + d.toFixed(1)));
+  });
+  blacks.forEach(([p, li]) => {
+    const x = (li + 1) * ww - bw / 2;
+    const r = svg('rect', { x, y: top, width: bw, height: bh, rx: 4, class: 'key b', tabindex: 0, role: 'button', 'aria-label': NOTE[p] });
+    s.append(r); keyEls[p] = r; r.addEventListener('click', () => press(p)); r.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); press(p); } });
+    const d = dev(p); s.append(svg('text', { x: x + bw / 2, y: top + bh + 14, class: 'dev', fill: d > 0 ? 'var(--o)' : 'var(--t)', style: 'pointer-events:none' }, (d > 0 ? '+' : '') + d.toFixed(1)));
+  });
+  s.append(svg('text', { x: 4, y: H - 4, class: 'lbl' }, '键下数字 = 五度相生律 − 十二平均律（音分）'));
+  const info = el('div', { class: 'panel', style: 'margin-top:8px' }, '点任意琴键。');
+  const f2 = (x) => x.toFixed(2);
+  function press(p) {
+    selected = p; Object.values(keyEls).forEach((k) => k.classList.remove('sel')); keyEls[p].classList.add('sel');
+    const q = p % 12, oct = p === 12 ? 12 : 0;
+    const fe = etFreq(q + oct), fp = C4 * pythRatio(q) * (p === 12 ? 2 : 1);
+    const pr = pythFrac(q), d = dev(p);
+    info.innerHTML = `<b>${NOTE[q]}${p === 12 ? '（高八度）' : ''}</b>　十二平均律：2<sup>${q + oct}/12</sup> = ${(Math.pow(2, (q + oct) / 12)).toFixed(5)} → <b>${f2(fe)} Hz</b>　｜　五度相生律：${p === 12 ? '2/1' : pr}（${pythN(q) >= 0 ? pythN(q) + ' 个纯五度上行' : -pythN(q) + ' 个纯五度下行'}）= ${(p === 12 ? 2 : pythRatio(q)).toFixed(5)} → <b>${f2(fp)} Hz</b>　｜　差 <b>${d.toFixed(2)}</b> 音分${mode === 2 && Math.abs(fe - fp) > .01 ? `，两音同响时拍频约 ${Math.abs(fe - fp).toFixed(2)} Hz` : ''}`;
+    if (mode === 0) tone(fe, 0, 1.3); else if (mode === 1) tone(fp, 0, 1.3); else { tone(fe, 0, 1.6, .09); tone(fp, 0, 1.6, .09); }
+  }
+  const scale = (m) => { const seq = whites; seq.forEach((p, i) => { const q = p % 12, o = p === 12 ? 2 : 1; tone(m ? C4 * pythRatio(q) * (p === 12 ? 2 : 1) : etFreq(p), i * .38, .6); }); return seq.length * .38 + .6; };
+  const ctrl = el('div', { class: 'ctrl' },
+    seg(['十二平均律', '五度相生律', '两种同时（听拍音）'], (i) => { mode = i; if (selected != null) press(selected); }),
+    el('button', { class: 'btn primary', type: 'button', onclick: () => { scale(mode === 1 ? 1 : 0); if (mode === 2) setTimeout(() => scale(1), 3600); } }, '▶ 播放 C 大调音阶'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { const m = mode === 1 ? 1 : 0; [0, 4, 7].forEach((q) => tone(m ? C4 * pythRatio(q) : etFreq(q), 0, 2, .1)); if (mode === 2) [0, 4, 7].forEach((q) => tone(C4 * pythRatio(q), 2.3, 2, .1)); } }, '▶ C 大三和弦'));
+  node.append(el('div', { class: 'scrollx' }, s), ctrl, info, el('p', { class: 'src' }, '听感提示：五度相生律的大三度（81/64，≈ 407.8 音分）比十二平均律的 400 音分高约 8 音分，所以纯五度很干净、三度略「尖」。选「两种同时」再点 E，可以听到两个很接近的 E 叠在一起产生的缓慢起伏（拍音）。'));
+});
+
+/* ---- 01b 毕达哥拉斯音差：12 个五度的螺旋 ---- */
+reg('comma', (node) => {
+  const W = 360, H = 330, cx = 180, cy = 165;
+  let tuning = 0, step = 0, timer = 0;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  const info = el('div', { class: 'status' });
+  const stepCents = () => (tuning ? 701.955 : 700);
+  const ang = (k) => (k * stepCents() / 1200 * 360 - 90) * Math.PI / 180;
+  const rad = (k) => 55 + k * 7;
+  function draw() {
+    s.replaceChildren();
+    s.append(svg('circle', { cx, cy, r: 55, fill: 'none', stroke: 'var(--line)', 'stroke-dasharray': '3 4' }));
+    s.append(svg('line', { x1: cx, y1: cy, x2: cx, y2: cy - 160, stroke: 'var(--line)', 'stroke-width': 1 }));
+    s.append(svg('text', { x: cx + 6, y: cy - 150, class: 'lbl' }, 'C（起点方向）'));
+    let d = '';
+    for (let k = 0; k <= step; k++) { const x = cx + rad(k) * Math.cos(ang(k)), y = cy + rad(k) * Math.sin(ang(k)); d += (k ? 'L' : 'M') + x.toFixed(1) + ' ' + y.toFixed(1) + ' '; }
+    s.append(svg('path', { d, fill: 'none', stroke: 'var(--p)', 'stroke-width': 2 }));
+    for (let k = 0; k <= step; k++) {
+      const x = cx + rad(k) * Math.cos(ang(k)), y = cy + rad(k) * Math.sin(ang(k));
+      s.append(svg('circle', { cx: x, cy: y, r: k === 12 ? 6 : 5, fill: k === 12 ? 'var(--r)' : 'var(--p)' }));
+      s.append(svg('text', { x: x + (x > cx ? 9 : -9), y: y, class: 'lbl', 'text-anchor': x > cx ? 'start' : 'end', 'dominant-baseline': 'central' }, NOTE[mod(7 * k)]));
+    }
+    if (step === 12) {
+      const gapDeg = tuning ? (12 * 701.955 - 8400) / 1200 * 360 : 0;
+      info.innerHTML = tuning ? `走了 12 个纯五度（3:2）：<b class="bad" style="color:var(--r)">没有回到起点</b>。(3/2)¹² ≈ 129.746，而 2⁷ = 128，比值 531441/524288 ≈ <b>1.01364</b>，相当于 <b>${(cents(531441 / 524288)).toFixed(2)} 音分</b>（图上约 ${gapDeg.toFixed(1)}°）。这就是毕达哥拉斯音差。` : `走了 12 个平均律五度（各 700 音分）：12 × 700 = 8400 = 7 × 1200，<b>恰好绕回起点</b>。每个五度比纯五度窄 ${(701.955 - 700).toFixed(3)} 音分，12 个加起来正好吃掉这 ${(cents(531441 / 524288)).toFixed(2)} 音分。`;
+    } else info.textContent = `已走 ${step} 个五度，累计 ${(step * stepCents()).toFixed(1)} 音分。`;
+  }
+  function go() { if (step >= 12) { step = 0; } timer = setInterval(() => { step++; draw(); if (step >= 12) { clearInterval(timer); timer = 0; } }, RM ? 10 : 450); }
+  const ctrl = el('div', { class: 'ctrl' },
+    seg(['五度相生（纯五度 3:2）', '十二平均律（700 音分）'], (i) => { tuning = i; clearInterval(timer); timer = 0; step = 0; draw(); }),
+    el('button', { class: 'btn primary', type: 'button', onclick: () => { clearInterval(timer); step = 0; draw(); go(); } }, '▶ 叠 12 个五度'),
+    el('button', { class: 'btn', type: 'button', onclick: () => { clearInterval(timer); timer = 0; step = Math.min(12, step + 1); draw(); } }, '下一步'));
+  draw(); node.append(el('div', { class: 'sqw' }, s), ctrl, info);
+  return { stop() { clearInterval(timer); timer = 0; } };
+});
+
+/* ---- 02 音类圆周：T_n / I_n ---- */
+reg('circle', (node) => {
+  const W = 360, H = 340, cx = 180, cy = 170, R = 120;
+  let op = 'T', n = 0, qual = 0, cur = null, busy = 0;
+  const base = () => (qual ? [0, 3, 7] : [0, 4, 7]);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  s.append(svg('polygon', { points: Array.from({ length: 12 }, (_, p) => polar(cx, cy, R, p).join(',')).join(' '), fill: 'none', stroke: 'var(--line)', 'stroke-width': 1.5 }));
+  const axis = svg('line', { stroke: 'var(--r)', 'stroke-width': 1.5, 'stroke-dasharray': '5 4', opacity: 0 });
+  s.append(axis);
+  for (let p = 0; p < 12; p++) {
+    const [x, y] = polar(cx, cy, R, p), [lx, ly] = polar(cx, cy, R + 26, p);
+    s.append(svg('circle', { cx: x, cy: y, r: 4.5, fill: 'var(--muted)' }), svg('text', { x: lx, y: ly - 5, class: 'lbl mid big' }, NOTE[p]), svg('text', { x: lx, y: ly + 9, class: 'lbl m mid' }, p));
+  }
+  const ghost = svg('polygon', { fill: 'none', stroke: 'var(--muted)', 'stroke-width': 1.5, 'stroke-dasharray': '4 4' });
+  const poly = svg('polygon', { fill: 'var(--p-soft)', 'fill-opacity': .8, stroke: 'var(--p)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' });
+  const dots = [0, 1, 2].map(() => svg('circle', { r: 6.5, fill: 'var(--p)' }));
+  s.append(ghost, poly, ...dots);
+  const out = el('div', { class: 'status' });
+  const coords = (set) => set.map((p) => polar(cx, cy, R, p));
+  const paint = (pts) => { poly.setAttribute('points', pts.map((q) => q.join(',')).join(' ')); pts.forEach((q, i) => { dots[i].setAttribute('cx', q[0]); dots[i].setAttribute('cy', q[1]); }); };
+  function update(anim = true) {
+    const b = base(); const img = b.map((x) => (op === 'T' ? mod(x + n) : mod(-x + n)));
+    ghost.setAttribute('points', coords(b).map((q) => q.join(',')).join(' '));
+    if (op === 'I') { const a = polar(cx, cy, R + 8, n / 2), c = polar(cx, cy, R + 8, n / 2 + 6); axis.setAttribute('x1', a[0]); axis.setAttribute('y1', a[1]); axis.setAttribute('x2', c[0]); axis.setAttribute('y2', c[1]); axis.setAttribute('opacity', 1); } else axis.setAttribute('opacity', 0);
+    const from = cur || coords(b), to = coords(img); const my = ++busy;
+    tween(anim ? 550 : 0, (k) => { if (my !== busy) return; paint(from.map((f, i) => [f[0] + (to[i][0] - f[0]) * k, f[1] + (to[i][1] - f[1]) * k])); }, () => { if (my === busy) cur = to; });
+    cur = to;
+    const ch = chordOf(img);
+    const sym = op === 'T' ? `T<sub>${n}</sub>(x) = x + ${n}` : `I<sub>${n}</sub>(x) = −x + ${n}`;
+    out.innerHTML = `${sym}（mod 12）：{${b.join(', ')}} ↦ {${img.join(', ')}}${ch ? ` = <b>${chordFull(ch[0], ch[1])}</b>` : ''}${op === 'I' && n === 0 && qual === 0 ? '，这就是原文说的「I₀(C 大三) = f 小三」。' : op === 'I' ? '。转位会把大三和弦变成小三和弦。' : '。移调保持大/小不变。'}`;
+  }
+  const ctrl = el('div', { class: 'ctrl' },
+    seg(['移调 Tₙ（旋转）', '转位 Iₙ（镜像）'], (i) => { op = i ? 'I' : 'T'; update(); }),
+    seg(['C 大三 {0,4,7}', 'c 小三 {0,3,7}'], (i) => { qual = i; cur = null; update(false); }),
+    range('n =', 0, 11, 0, 1, (v) => { n = v; update(); }));
+  const play = el('button', { class: 'btn primary', type: 'button', onclick: () => { const b = base(); const img = b.map((x) => (op === 'T' ? mod(x + n) : mod(-x + n))); const c0 = chordOf(b), c1 = chordOf(img); playTriad(c0[0], c0[1], 0, 1.1); if (c1) playTriad(c1[0], c1[1], 1.2, 1.1); } }, '▶ 听：变换前 → 变换后');
+  ctrl.append(play);
+  update(false);
+  node.append(el('div', { class: 'sqw' }, s), ctrl, out);
+});
+
+/* ---- 03 ℤ₁₂ 时钟：生成元 ---- */
+reg('clock', (node) => {
+  const W = 380, H = 380, cx = 190, cy = 190, R = 140;
+  let g = 7, pos = 0, order = [0], edges = [], names = true, ringMode = false, timer = 0, done = false;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  const eg = svg('g'); s.append(eg);
+  const nodes = [];
+  for (let p = 0; p < 12; p++) {
+    const gg = svg('g', { class: 'nd dim' }); gg.append(svg('circle', { r: 17 }), svg('text', {}, '')); s.append(gg); nodes.push(gg);
+  }
+  const center = svg('text', { x: cx, y: cy, class: 'lbl big mid', 'dominant-baseline': 'central' }, '');
+  s.append(center);
+  const info = el('div', { class: 'status' });
+  const MEAN = { 1: '半音阶（所有半音）', 2: '全音阶，只有 6 个音', 3: '减七和弦 C E♭ G♭ A，只有 4 个音', 4: '增三和弦 C E G♯，只有 3 个音', 5: '纯四度，逆着五度圈走', 6: '三全音 C F♯，只有 2 个音', 7: '纯五度，五度圈', 11: '下行半音' };
+  function where(p) { if (!ringMode) return polar(cx, cy, R, p); const k = order.indexOf(p); return k < 0 ? polar(cx, cy, R, p) : polar(cx, cy, R, k * (12 / Math.max(order.length, 1)) ); }
+  function lay() {
+    nodes.forEach((gg, p) => {
+      const lit = order.includes(p); let q;
+      if (ringMode && lit) { const m = order.length; const k = order.indexOf(p); const a = (k * 360 / m - 90) * Math.PI / 180; q = [cx + R * Math.cos(a), cy + R * Math.sin(a)]; } else q = polar(cx, cy, R, p);
+      gg.style.transform = `translate(${q[0]}px,${q[1]}px)`; gg.dataset.x = q[0]; gg.dataset.y = q[1];
+      gg.classList.toggle('lit', lit); gg.classList.toggle('cur', p === pos); gg.classList.toggle('dim', !lit && !(p === pos));
+      gg.lastChild.textContent = names ? NOTE[p] : p;
+    });
+    setTimeout(drawEdges, RM ? 0 : 820);
+    drawEdges();
+  }
+  function drawEdges() {
+    eg.replaceChildren();
+    edges.forEach(([a, b]) => {
+      const A = nodes[a], B = nodes[b]; const ax = +A.dataset.x, ay = +A.dataset.y, bx = +B.dataset.x, by = +B.dataset.y;
+      const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
+      const x1 = ax + ux * 19, y1 = ay + uy * 19, x2 = bx - ux * 21, y2 = by - uy * 21;
+      eg.append(svg('line', { x1, y1, x2, y2, stroke: 'var(--p)', 'stroke-width': 2, opacity: .8 }));
+      eg.append(svg('polygon', { points: `${x2},${y2} ${x2 - ux * 9 - uy * 5},${y2 - uy * 9 + ux * 5} ${x2 - ux * 9 + uy * 5},${y2 - uy * 9 - ux * 5}`, fill: 'var(--p)' }));
+    });
+  }
+  function report() {
+    const d = gcd(g, 12), ord = 12 / d;
+    if (done) info.innerHTML = `g = ${g}：gcd(${g}, 12) = ${d}，走 ${edges.length} 步回到 0，只点亮了 <b>${order.length}</b> 个音。${d === 1 ? `<b>${g} 是生成元</b>，生成整个 ℤ₁₂（12 阶循环群）。` : `<span class="bad">${g} 不是生成元</span>，它生成 ${ord} 阶循环子群 ⟨${g}⟩。`} 音乐含义：${MEAN[g]}。`;
+    else info.innerHTML = `g = ${g}（${MEAN[g]}）。已点亮 ${order.length} 个音，当前在 <b>${NOTE[pos]}</b>。点「下一步」。`;
+    center.textContent = `⟨${g}⟩ = ${ord} 阶`;
+  }
+  function step() {
+    if (done) return false;
+    const nx = mod(pos + g); edges.push([pos, nx]); pos = nx;
+    if (nx === 0) done = true; else if (!order.includes(nx)) order.push(nx);
+    lay(); report(); return !done;
+  }
+  function reset() { clearInterval(timer); timer = 0; pos = 0; order = [0]; edges = []; done = false; lay(); report(); }
+  const gs = [1, 2, 3, 4, 5, 6, 7, 11];
+  const ctrl = el('div', { class: 'ctrl' },
+    seg(gs.map((x) => '+' + x), (i) => { g = gs[i]; reset(); }, 6),
+    el('button', { class: 'btn', type: 'button', onclick: () => { clearInterval(timer); timer = 0; step(); } }, '下一步'),
+    el('button', { class: 'btn primary', type: 'button', onclick: () => { clearInterval(timer); if (done) reset(); timer = setInterval(() => { if (!step()) { clearInterval(timer); timer = 0; } }, RM ? 20 : 650); } }, '▶ 自动走完'),
+    el('button', { class: 'btn', type: 'button', onclick: reset }, '重置'));
+  const ctrl2 = el('div', { class: 'ctrl' },
+    seg(['显示音名', '显示数字'], (i) => { names = i === 0; lay(); }),
+    seg(['按音高排列', '按步数排成一圈'], (i) => { ringMode = i === 1; lay(); }));
+  const seq = el('div', { class: 'status mono', style: 'color:var(--muted)' });
+  const oldReport = report;
+  node.append(el('div', { class: 'sqw' }, s), ctrl, ctrl2, info, seq);
+  const upd = () => { seq.textContent = '走过的顺序：' + order.map((p) => NOTE[p]).join(' → ') + (done ? ' → ' + NOTE[0] : ''); };
+  const _lay = lay; lay = function () { _lay(); upd(); };
+  reset();
+  return { stop() { clearInterval(timer); timer = 0; } };
+});
+
+/* ---- 04 音网 Tonnetz ---- */
+reg('tonnetz', (node) => {
+  const W = 640, H = 340, S = 66, K = .866;
+  const pitch = (a, b) => mod(7 * a + 4 * b);
+  const X = (a, b) => S * (a + b / 2), Y = (b) => -S * K * b;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': '音网：点 P L R 翻转三角形' });
+  const world = svg('g', { style: 'transition:transform .5s ease' });
+  const lines = { f: '', M: '', m: '' };
+  const A0 = 12, B0 = 9, tnodes = {};
+  for (let a = -A0; a <= A0; a++) for (let b = -B0; b <= B0; b++) {
+    lines.f += `M${X(a, b)} ${Y(b)}L${X(a + 1, b)} ${Y(b)}`;
+    lines.M += `M${X(a, b)} ${Y(b)}L${X(a, b + 1)} ${Y(b + 1)}`;
+    lines.m += `M${X(a, b)} ${Y(b)}L${X(a + 1, b - 1)} ${Y(b - 1)}`;
+  }
+  world.append(svg('path', { d: lines.f, stroke: 'var(--line)', 'stroke-width': 1.6, fill: 'none' }), svg('path', { d: lines.M, stroke: 'var(--o)', 'stroke-width': 1.2, fill: 'none', opacity: .45 }), svg('path', { d: lines.m, stroke: 'var(--t)', 'stroke-width': 1.2, fill: 'none', opacity: .5 }));
+  const hl = svg('polygon', { fill: 'var(--p)', 'fill-opacity': .22, stroke: 'var(--p)', 'stroke-width': 3, 'stroke-linejoin': 'round' });
+  world.append(hl);
+  for (let a = -A0; a <= A0; a++) for (let b = -B0; b <= B0; b++) {
+    const g = svg('g', { class: 'tn', transform: `translate(${X(a, b)},${Y(b)})` }); g.append(svg('circle', { r: 15 }), svg('text', {}, NOTE[pitch(a, b)])); world.append(g); tnodes[a + ',' + b] = g;
+  }
+  const ring = svg('circle', { r: 21, fill: 'none', stroke: 'var(--r)', 'stroke-width': 3, opacity: 0 });
+  const rlab = svg('text', { class: 'lbl big', 'text-anchor': 'middle', fill: 'var(--r)', opacity: 0 }, '');
+  world.append(ring, rlab);
+  s.append(world);
+  const verts = (t) => (t.up ? [[t.a, t.b], [t.a + 1, t.b], [t.a, t.b + 1]] : [[t.a, t.b], [t.a + 1, t.b], [t.a + 1, t.b - 1]]);
+  const chordT = (t) => [pitch(t.a, t.b), t.up ? 0 : 1];
+  const nextT = (t, op) => {
+    if (t.up) return op === 'P' ? { a: t.a, b: t.b, up: 0 } : op === 'L' ? { a: t.a, b: t.b + 1, up: 0 } : { a: t.a - 1, b: t.b + 1, up: 0 };
+    return op === 'P' ? { a: t.a, b: t.b, up: 1 } : op === 'L' ? { a: t.a, b: t.b - 1, up: 1 } : { a: t.a + 1, b: t.b - 1, up: 1 };
+  };
+  const pos = (t) => { const v = verts(t).map(([a, b]) => [X(a, b), Y(b)]); return [(v[0][0] + v[1][0] + v[2][0]) / 3, (v[0][1] + v[1][1] + v[2][1]) / 3]; };
+  let t = { a: 0, b: 0, up: 1 }, hist = [], sound = false, curPts = null, autoTimer = 0;
+  const OPM = { P: Pm, L: Lm, R: Rm };
+  const chips = el('div', { class: 'chips' });
+  const info = el('div', { class: 'status' });
+  const ptsOf = (tr) => verts(tr).map(([a, b]) => [X(a, b), Y(b)]);
+  function paintHL(p) { hl.setAttribute('points', p.map((q) => q.join(',')).join(' ')); }
+  function mark(tr) { Object.values(tnodes).forEach((g) => g.classList.remove('hi')); verts(tr).forEach(([a, b]) => tnodes[a + ',' + b]?.classList.add('hi')); }
+  function pan(tr, instant) {
+    const [x, y] = pos(tr); if (instant) world.style.transition = 'none';
+    world.style.transform = `translate(${W / 2 - x}px,${H / 2 - y}px)`;
+    if (instant) { void world.getBoundingClientRect(); world.style.transition = 'transform .5s ease'; }
+  }
+  function normalize() {
+    let moved = false;
+    for (let i = 0; i < 20; i++) {
+      if (t.b > 4) { t.b -= 3; moved = true; } else if (t.b < -4) { t.b += 3; moved = true; } else if (t.a > 6) { t.a -= 4; t.b -= 2; moved = true; } else if (t.a < -6) { t.a += 4; t.b += 2; moved = true; } else break;
+    }
+    if (moved) { curPts = ptsOf(t); paintHL(curPts); mark(t); pan(t, true); ring.setAttribute('opacity', 0); rlab.setAttribute('opacity', 0); }
+  }
+  function renderChips() {
+    chips.replaceChildren(...hist.map(([r, ty], i) => el('span', { class: 'chip ' + (ty ? 'min' : 'maj') + (i === hist.length - 1 ? ' now' : '') }, chordName(r, ty))));
+  }
+  function move(op, silent) {
+    const old = t, nt = nextT(t, op);
+    const ov = verts(old).map(String), nv = verts(nt).map(String);
+    const leave = verts(old).find((v) => !nv.includes(String(v))), arrive = verts(nt).find((v) => !ov.includes(String(v)));
+    t = nt; const [r, ty] = chordT(t);
+    const [r0, t0] = chordT(old);
+    console.assert(idx(r, ty) === OPM[op][idx(r0, t0)], 'Tonnetz 与置换不一致', op);
+    const from = curPts || ptsOf(old), to = ptsOf(nt);
+    tween(RM ? 0 : 450, (k) => paintHL(from.map((f, i) => [f[0] + (to[i][0] - f[0]) * k, f[1] + (to[i][1] - f[1]) * k])));
+    curPts = to; mark(t); pan(t);
+    const pl = pitch(...leave), pa = pitch(...arrive); let dlt = mod(pa - pl); if (dlt > 6) dlt -= 12;
+    ring.setAttribute('cx', X(...arrive)); ring.setAttribute('cy', Y(arrive[1])); ring.setAttribute('opacity', 1);
+    rlab.setAttribute('x', X(...arrive)); rlab.setAttribute('y', Y(arrive[1]) - 28); rlab.setAttribute('opacity', 1); rlab.textContent = `${NOTE[pl]} → ${NOTE[pa]}`;
+    hist.push([r, ty]); if (hist.length > 14) hist.shift(); renderChips();
+    info.innerHTML = `<b>${op}</b>：${chordFull(r0, t0)} → <b>${chordFull(r, ty)}</b>。只有一个音动了：${NOTE[pl]} → ${NOTE[pa]}（${dlt > 0 ? '升' : '降'} ${Math.abs(dlt)} 个半音），另外两个音留在原地。`;
+    if (sound && !silent) playTriad(r, ty, 0, 1);
+    setTimeout(normalize, RM ? 0 : 560);
+  }
+  function reset() { clearInterval(autoTimer); autoTimer = 0; t = { a: 0, b: 0, up: 1 }; hist = [[0, 0]]; curPts = ptsOf(t); paintHL(curPts); mark(t); pan(t, true); ring.setAttribute('opacity', 0); rlab.setAttribute('opacity', 0); renderChips(); info.innerHTML = '起点：<b>C 大三和弦</b>（C E G）。点 P / L / R。'; }
+  function run(seq) { clearInterval(autoTimer); reset(); let i = 0; if (sound) playTriad(0, 0, 0, .9); autoTimer = setInterval(() => { if (i >= seq.length) { clearInterval(autoTimer); autoTimer = 0; return; } move(seq[i++]); }, RM ? 60 : 1000); }
+  const ctrl = el('div', { class: 'ctrl' },
+    el('button', { class: 'btn pl', type: 'button', onclick: () => move('P') }, 'P 平行'),
+    el('button', { class: 'btn ll', type: 'button', onclick: () => move('L') }, 'L 导音交换'),
+    el('button', { class: 'btn rr', type: 'button', onclick: () => move('R') }, 'R 关系'),
+    el('button', { class: 'btn', type: 'button', onclick: reset }, '回到 C'));
+  const soundBtn = el('button', { class: 'btn', type: 'button', onclick: () => { sound = !sound; soundBtn.textContent = '声音：' + (sound ? '开' : '关'); if (sound) { const [r, ty] = chordT(t); playTriad(r, ty, 0, .9); } } }, '声音：关');
+  const ctrl2 = el('div', { class: 'ctrl' }, el('span', { class: 'tag' }, '自动演示'),
+    el('button', { class: 'btn primary', type: 'button', onclick: () => run(['R', 'L', 'R', 'L', 'R', 'L', 'R', 'L']) }, '▶ R-L 交替链'),
+    el('button', { class: 'btn', type: 'button', onclick: () => run(['P', 'L', 'R', 'P', 'L', 'R']) }, '▶ P→L→R 两轮'),
+    el('button', { class: 'btn', type: 'button', onclick: () => run(['P', 'L', 'P', 'L', 'P', 'L']) }, '▶ P-L 交替'), soundBtn);
+  const legend = el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--line);height:4px' }), '横向：纯五度 +7'), el('span', {}, el('i', { style: 'background:var(--o)' }), '右上：大三度 +4'), el('span', {}, el('i', { style: 'background:var(--t)' }), '右下：小三度 +3'));
+  node.append(s, legend, ctrl, ctrl2, chips, info, el('p', { class: 'src' }, '在十二平均律里，音网不是无限的：横向、纵向走到头会遇到同名音，所以整个音网首尾相接，是一个甜甜圈形的环面。这里的视图会在你走远时无缝「绕回」，因为相隔 (0,3) 或 (4,2) 个格点的位置音名完全相同。R-L 交替链走满 24 步回到起点；P→L→R 走两轮（6 步）围成一个六边形——它们都是原文提到的现象。'));
+  reset();
+  return { stop() { clearInterval(autoTimer); autoTimer = 0; } };
+});
+
+/* ---- 05 凯莱图：PLR = D12 ---- */
+reg('cayley', (node) => {
+  const W = 400, H = 400, cx = 200, cy = 200, R = 160;
+  /* R-L 交替链：位置 k 的和弦；k=0 是 C */
+  const chain = [idx(0, 0)]; { let c = chain[0]; for (let k = 1; k < 24; k++) { c = (k % 2 ? Rm : Lm)[c]; chain.push(c); } }
+  const posOf = new Map(chain.map((c, k) => [c, k]));
+  const ang = (k) => (k * 15 - 90) * Math.PI / 180;
+  const XY = (k, r = R) => [cx + r * Math.cos(ang(k)), cy + r * Math.sin(ang(k))];
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': 'PLR 群的凯莱图' });
+  for (let k = 0; k < 24; k++) { const j = posOf.get(Pm[chain[k]]); if (j > k) { const a = XY(k), b = XY(j); s.append(svg('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: 'var(--p)', 'stroke-width': 1, opacity: .28 })); } }
+  for (let k = 0; k < 24; k++) { const a = XY(k), b = XY((k + 1) % 24); s.append(svg('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1], stroke: k % 2 ? 'var(--t)' : 'var(--o)', 'stroke-width': 2.5 })); }
+  const els = [];
+  for (let k = 0; k < 24; k++) {
+    const [x, y] = XY(k), [r, ty] = unidx(chain[k]);
+    const g = svg('g', { class: 'nd', style: 'cursor:pointer;transform:translate(' + x + 'px,' + y + 'px)', tabindex: 0, role: 'button', 'aria-label': chordFull(r, ty) });
+    g.append(svg('circle', { r: 15, style: ty ? 'stroke:var(--t)' : 'stroke:var(--p)' }), svg('text', { style: 'font-size:11.5px' }, chordName(r, ty)));
+    g.addEventListener('click', () => select(k)); g.addEventListener('keydown', (e) => { if (e.key === 'Enter') select(k); }); s.append(g); els.push(g);
+  }
+  s.append(svg('text', { x: cx, y: cy - 8, class: 'lbl big mid' }, 'PLR 群'), svg('text', { x: cx, y: cy + 12, class: 'lbl mid' }, '橙边 = R　青边 = L　淡线 = P'));
+  /* 十二边形面板 */
+  const D = svg('svg', { viewBox: '0 0 200 200', width: '100%', style: 'max-width:240px;margin:0 auto' });
+  D.append(svg('polygon', { points: Array.from({ length: 12 }, (_, p) => polar(100, 100, 80, p).join(',')).join(' '), fill: 'var(--surface)', stroke: 'var(--line)', 'stroke-width': 1.5 }));
+  const flag = svg('g', { style: 'transform-origin:100px 100px;transition:transform .7s ease' });
+  const f0 = polar(100, 100, 80, 0), f1 = polar(100, 100, 80, 1), f2 = polar(100, 100, 80, 11);
+  flag.append(svg('polygon', { points: `100,100 ${f0.join(',')} ${f1.join(',')}`, fill: 'var(--p-soft)', stroke: 'var(--p)', 'stroke-width': 2 }), svg('circle', { cx: f0[0], cy: f0[1], r: 6, fill: 'var(--o)' }), svg('circle', { cx: f1[0], cy: f1[1], r: 4, fill: 'var(--t)' }), svg('text', { x: 100, y: 100, class: 'lbl mid', 'dominant-baseline': 'central', style: 'font-size:10px' }, ''));
+  D.append(flag);
+  const panel = el('div', { class: 'panel' });
+  let curK = 0, rotAcc = 0;
+  const word = (k) => { if (k === 0) return 'e（恒等）'; if (k <= 12) return Array.from({ length: k }, (_, i) => (i % 2 ? 'L' : 'R')).join('·'); return Array.from({ length: 24 - k }, (_, i) => (i % 2 ? 'R' : 'L')).join('·'); };
+  function d12(k) {
+    /* 偶位置 2j：s^j（旋转）；奇位置 2j+1：s^-(j+1) t（反射） */
+    if (k % 2 === 0) { const j = k / 2; return { name: j === 0 ? '1' : `s${j === 1 ? '' : '^' + j}`, rot: j * 30, flip: false, kind: `旋转 ${j * 30}°` }; }
+    const j = (k - 1) / 2, m = mod(-(j + 1)); return { name: `s^${m} t`, rot: -(j + 1) * 30, flip: true, kind: '反射（先翻转，再旋转 ' + (-(j + 1) * 30) + '°）' };
+  }
+  function select(k) {
+    curK = k; els.forEach((g, i) => g.classList.toggle('cur', i === k));
+    const [r, ty] = unidx(chain[k]); const d = d12(k);
+    flag.style.transform = `rotate(${d.rot}deg) ${d.flip ? 'scaleX(-1)' : ''}`;
+    panel.innerHTML = `<b>${chordFull(r, ty)}</b>　位置 k = ${k}<br>群元素 = 对 C 大三和弦做的变换：<b>${word(k)}</b><br>在 D₁₂ 里对应：<b>${d.name}</b>，${d.kind}<br><span style="font-size:12px">偶数位置（大三和弦）是旋转，奇数位置（小三和弦）是反射。24 个元素与 24 个三和弦一一对应。</span>`;
+  }
+  function apply(X) { const c = X[chain[curK]]; select(posOf.get(c)); }
+  const ctrl = el('div', { class: 'ctrl' },
+    el('button', { class: 'btn pl', type: 'button', onclick: () => apply(Pm) }, 'P'),
+    el('button', { class: 'btn ll', type: 'button', onclick: () => apply(Lm) }, 'L'),
+    el('button', { class: 'btn rr', type: 'button', onclick: () => apply(Rm) }, 'R'),
+    el('button', { class: 'btn', type: 'button', onclick: () => select(0) }, '回到 C'),
+    el('button', { class: 'btn primary', type: 'button', onclick: () => { const [r, ty] = unidx(chain[curK]); playTriad(r, ty, 0, 1.2); } }, '▶ 听这个和弦'));
+  select(0);
+  node.append(el('div', { class: 'split' }, el('div', { class: 'sqw' }, s), el('div', {}, D, panel)), ctrl);
+});
+
+/* ---- 05b 验证：代数关系与对偶 ---- */
+reg('verify', (node) => {
+  const log = el('div', { class: 'logbox' }, '点击「现场验证」。');
+  const pow = (f, k) => { let r = ID; for (let i = 0; i < k; i++) r = then(r, f); return r; };
+  const btn = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    const out = []; const ok = (b) => (b ? '✓' : '✗');
+    const s = then(Rm, Lm), t = Lm;                 /* s = LR（先 R 后 L），t = L */
+    out.push(`${ok(same(pow(s, 12), ID))} s¹² = 1　　${ok(same(then(t, t), ID))} t² = 1`);
+    out.push(`${ok(same(then(then(t, s), t), pow(s, 11)))} tst = s⁻¹（= RL）`);
+    const plr = then(then(Pm, Lm), Rm);
+    out.push(`${ok(same(then(pow(s, 3), Rm), Pm))} R(LR)³ = P　　${ok(same(then(plr, plr), ID))} (PLR)² = 1（6 步回到起点）`);
+    const els = []; for (let k = 0; k < 12; k++) { els.push(pow(s, k)); els.push(then(t, pow(s, k))); }
+    const keyset = new Set(els.map(String));
+    out.push(`${ok(keyset.size === 24)} s^k 与 s^k t 共 24 个互不相同的元素 → |PLR| = 24`);
+    const orbit = new Set(els.map((e) => e[0])); out.push(`${ok(orbit.size === 24)} 它们把 C 大三和弦分别送到 24 个不同的和弦：作用是「单传递」的`);
+    const TI = []; for (let n = 0; n < 12; n++) { TI.push(Tm(n)); TI.push(Im(n)); }
+    out.push(`${ok(new Set(TI.map(String)).size === 24)} T_n、I_n 共 24 个互不相同的置换，也是 24 阶（≅ D₁₂）`);
+    let comm = 0, total = 0; for (const g of TI) for (const x of [Pm, Lm, Rm]) { total++; if (same(then(g, x), then(x, g))) comm++; }
+    out.push(`${ok(comm === total)} T/I 群里的每个元素与 P、L、R 都可交换：${comm} / ${total} 对`);
+    /* 中心化子：T/I 群传递，故由 h(C)=c 唯一确定 */
+    const cen = []; for (let c = 0; c < 24; c++) { const h = []; let good = true; for (const g of TI) { h[g[0]] = g[c]; } if (h.some((v) => v === undefined)) good = false; if (good && TI.every((g) => same(then(g, h), then(h, g)))) cen.push(h); }
+    const plrSet = new Set(els.map(String));
+    out.push(`${ok(cen.length === 24)} T/I 群在 S₂₄ 中的中心化子恰有 ${cen.length} 个元素，${ok(cen.every((h) => plrSet.has(String(h))))} 且全部属于 PLR 群：C(T/I) = PLR`);
+    let cen2 = 0; for (let c = 0; c < 24; c++) { const h = []; for (const g of els) h[g[0]] = g[c]; if (h.every((v) => v !== undefined) && els.every((g) => same(then(g, h), then(h, g)))) { cen2++; if (!new Set(TI.map(String)).has(String(h))) cen2 -= 100; } }
+    out.push(`${ok(cen2 === 24)} 反过来，PLR 群的中心化子恰是 T/I 群`);
+    const sq = then(Tm(1), Lm), sq2 = then(Lm, Tm(1)); out.push(`${ok(same(sq, sq2))} 原文交换图：先 T₁ 后 L = 先 L 后 T₁`);
+    log.textContent = out.join('\n');
+  } }, '▶ 现场验证');
+  node.append(btn, log);
+});
+
+/* ---- 06 螃蟹卡农 ---- */
+reg('crab', (node) => {
+  const m = [0, 3, 7, 8, 11, 7, 5, 3, 2, 5, 3, 0]; const N = m.length;
+  const W = 640, H = 250, L = 40, Rr = 600, T = 20, B = 220;
+  const X = (i) => L + (Rr - L) * (i + .5) / N, Y = (p) => B - (p + 1) * (B - T) / 13;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  for (let p = 0; p <= 12; p += 1) s.append(svg('line', { x1: L, x2: Rr, y1: Y(p), y2: Y(p), class: 'gr' }));
+  const line = (arr, col, dash) => svg('polyline', { points: arr.map((p, i) => X(i) + ',' + Y(p)).join(' '), fill: 'none', stroke: col, 'stroke-width': 2.5, 'stroke-dasharray': dash || '', opacity: .85 });
+  const rev = m.slice().reverse();
+  s.append(line(m, 'var(--p)'), line(rev, 'var(--o)', '6 4'));
+  m.forEach((p, i) => s.append(svg('circle', { cx: X(i), cy: Y(p), r: 4, fill: 'var(--p)' }), svg('circle', { cx: X(i), cy: Y(rev[i]), r: 4, fill: 'var(--o)' })));
+  s.append(svg('line', { x1: (L + Rr) / 2, x2: (L + Rr) / 2, y1: T - 8, y2: B + 6, stroke: 'var(--muted)', 'stroke-dasharray': '2 5' }), svg('text', { x: (L + Rr) / 2, y: H - 12, class: 'lbl mid' }, '对称轴（时间中点）'));
+  s.append(svg('text', { x: L, y: H - 12, class: 'lbl' }, '时间 →'), svg('text', { x: Rr, y: H - 12, class: 'lbl', 'text-anchor': 'end' }, '← 时间'));
+  const h1 = svg('rect', { y: T - 6, width: 5, height: B - T + 12, fill: 'var(--p)', rx: 2, opacity: 0 }), h2 = svg('rect', { y: T - 6, width: 5, height: B - T + 12, fill: 'var(--o)', rx: 2, opacity: 0 });
+  s.append(h1, h2);
+  const info = el('div', { class: 'status' }, '紫色实线 = 声部 1 正着唱；橙色虚线 = 声部 2 倒着唱（逆行）。两声部在第 i 拍分别唱 m[i] 与 m[N−1−i]。');
+  let timer = 0;
+  const play = () => {
+    clearInterval(timer); let i = 0; h1.setAttribute('opacity', 1); h2.setAttribute('opacity', 1);
+    timer = setInterval(() => {
+      if (i >= N) { clearInterval(timer); timer = 0; h1.setAttribute('opacity', 0); h2.setAttribute('opacity', 0); info.textContent = '播完了。注意：把整首曲子从后往前放，听到的还是这首曲子。'; return; }
+      h1.setAttribute('x', X(i) - 2.5); h2.setAttribute('x', X(N - 1 - i) - 2.5);
+      tone(etFreq(m[i]), 0, .5, .09, -.6); tone(etFreq(m[N - 1 - i]), 0, .5, .09, .6);
+      info.innerHTML = `第 ${i + 1} 拍：声部 1 唱第 ${i + 1} 个音（${m[i]}），声部 2 唱第 ${N - i} 个音（${m[N - 1 - i]}）。` + (i === N / 2 - 1 || i === N / 2 ? '<b> 两个声部正在中点交会。</b>' : '');
+      i++;
+    }, RM ? 40 : 480);
+  };
+  node.append(el('div', { class: 'scrollx' }, s), el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: play }, '▶ 播放两个声部（左右声道）')), info);
+  return { stop() { clearInterval(timer); timer = 0; h1.setAttribute('opacity', 0); h2.setAttribute('opacity', 0); } };
+});
+
+/* ---- 06b 十二音列：P / R / I / RI ---- */
+reg('row', (node) => {
+  const row = [4, 5, 7, 1, 6, 3, 8, 2, 11, 0, 9, 10];
+  let form = 0, tn = 0;
+  const W = 640, H = 330, L = 50, Rr = 620, T = 14, B = 300;
+  const X = (i) => L + (Rr - L) * (i + .5) / 12, Y = (p) => B - (p + .5) * (B - T) / 12;
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  for (let p = 0; p < 12; p++) { s.append(svg('line', { x1: L, x2: Rr, y1: Y(p), y2: Y(p), class: 'gr' }), svg('text', { x: 8, y: Y(p), class: 'lbl', 'dominant-baseline': 'central' }, NOTE[p])); }
+  const ghost = svg('polyline', { fill: 'none', stroke: 'var(--muted)', 'stroke-dasharray': '4 4', 'stroke-width': 1.5, opacity: .7 });
+  const pl = svg('polyline', { fill: 'none', stroke: 'var(--p)', 'stroke-width': 2.5, 'stroke-linejoin': 'round' });
+  const dots = Array.from({ length: 12 }, () => svg('circle', { r: 5.5, fill: 'var(--p)' }));
+  s.append(ghost, pl, ...dots);
+  const info = el('div', { class: 'status' });
+  const make = () => {
+    const f = [['P', (x, i) => x], ['R', (x, i) => row[11 - i]], ['I', (x, i) => 2 * row[0] - x], ['RI', (x, i) => 2 * row[0] - row[11 - i]]][form];
+    return row.map((x, i) => mod(f[1](x, i) + tn));
+  };
+  const NAMES = ['P（原形）', 'R（逆行）', 'I（转位）', 'RI（逆行转位）'];
+  function update() {
+    const r = make(); const pts = r.map((p, i) => [X(i), Y(p)]);
+    pl.setAttribute('points', pts.map((q) => q.join(',')).join(' ')); dots.forEach((d, i) => { d.setAttribute('cx', pts[i][0]); d.setAttribute('cy', pts[i][1]); });
+    ghost.setAttribute('points', row.map((p, i) => X(i) + ',' + Y(p)).join(' '));
+    info.innerHTML = `<b>${NAMES[form]}${tn ? ' + 移调 T' + tn : ''}</b>：${r.map((p) => NOTE[p]).join(' ')}　（${new Set(r).size === 12 ? '仍然十二音各出现一次' : '出错'}）`;
+  }
+  let timer = 0;
+  const play = () => { clearInterval(timer); const r = make(); let i = 0; timer = setInterval(() => { if (i >= 12) { clearInterval(timer); timer = 0; return; } tone(etFreq(r[i] + (r[i] > 6 ? -12 : 0)), 0, .4, .11); i++; }, RM ? 40 : 330); };
+  node.append(el('div', { class: 'scrollx' }, s), el('div', { class: 'ctrl' }, seg(['P 原形', 'R 逆行', 'I 转位', 'RI 逆行转位'], (i) => { form = i; update(); }), range('T =', 0, 11, 0, 1, (v) => { tn = v; update(); }), el('button', { class: 'btn primary', type: 'button', onclick: play }, '▶ 播放这一形态')), info, el('p', { class: 'src' }, '虚线是原形。逆行 R 是把图左右翻转（时间反向）；转位 I 是把图上下翻转（音高反向，以第一个音为轴）。'));
+  update();
+  return { stop() { clearInterval(timer); timer = 0; } };
+});
+
+/* ---- 07 和弦几何：二音和弦折叠 ---- */
+reg('fold', (node) => {
+  const W = 300, c = 22, o = 30;
+  let px = 0, py = 4, folded = false;
+  const s = svg('svg', { viewBox: `0 0 ${W + 40} ${W + 50}`, width: '100%', style: 'max-width:380px;margin:0 auto' });
+  const X = (x) => o + x * c + c / 2, Y = (y) => 10 + (11 - y) * c + c / 2;
+  const tri = svg('polygon', { points: `${o},${Y(11) - c / 2} ${o + 12 * c},${Y(11) - c / 2} ${o + 12 * c},${10 + 12 * c}`, fill: 'var(--r)', opacity: .12, style: 'transition:opacity .5s' });
+  s.append(svg('rect', { x: o, y: 10, width: 12 * c, height: 12 * c, fill: 'var(--surface)', stroke: 'var(--line)', 'stroke-width': 1.5 }), tri);
+  for (let i = 0; i < 12; i++) { s.append(svg('text', { x: X(i), y: 10 + 12 * c + 14, class: 'lbl mid m', style: 'font-size:10px' }, i), svg('text', { x: o - 8, y: Y(i), class: 'lbl m', 'text-anchor': 'end', 'dominant-baseline': 'central', style: 'font-size:10px' }, i)); }
+  s.append(svg('line', { x1: o, y1: 10 + 12 * c, x2: o + 12 * c, y2: 10, stroke: 'var(--r)', 'stroke-width': 2, 'stroke-dasharray': '6 4' }));
+  const link = svg('line', { stroke: 'var(--muted)', 'stroke-dasharray': '3 3' });
+  const A = svg('circle', { r: 7, fill: 'var(--p)' }), B = svg('circle', { r: 7, fill: 'var(--o)' });
+  const hit = svg('rect', { x: o, y: 10, width: 12 * c, height: 12 * c, fill: 'transparent', style: 'cursor:crosshair' });
+  s.append(link, A, B, hit);
+  const info = el('div', { class: 'status' });
+  function upd() {
+    A.setAttribute('cx', X(px)); A.setAttribute('cy', Y(py)); B.setAttribute('cx', X(py)); B.setAttribute('cy', Y(px));
+    link.setAttribute('x1', X(px)); link.setAttribute('y1', Y(py)); link.setAttribute('x2', X(py)); link.setAttribute('y2', Y(px));
+    B.setAttribute('opacity', px === py ? 0 : 1);
+    const it = mod(py - px); info.innerHTML = `点 (${px}, ${py})：${NOTE[px]} 与 ${NOTE[py]} 同时响；镜像点 (${py}, ${px}) 是同一个和弦 {${NOTE[px]}, ${NOTE[py]}}。` + (px === py ? ' 在对角线上，两个音相同（折叠处的「奇点」）。' : ` 两音相差 ${Math.min(it, 12 - it)} 个半音。`);
+  }
+  hit.addEventListener('click', (e) => { const r = s.getBoundingClientRect(), k = r.width / (W + 40); px = Math.max(0, Math.min(11, Math.floor(((e.clientX - r.left) / k - o) / c))); py = Math.max(0, Math.min(11, 11 - Math.floor(((e.clientY - r.top) / k - 10) / c))); upd(); });
+  node.append(s, el('div', { class: 'ctrl' }, el('button', { class: 'btn', type: 'button', onclick: () => { folded = !folded; tri.setAttribute('opacity', folded ? .45 : .12); } }, '标出重复的那一半'), el('button', { class: 'btn primary', type: 'button', onclick: () => { const a = px, b = py; [a, b].forEach((q) => tone(etFreq(q), 0, 1.4, .1)); } }, '▶ 听这个二音和弦')), info);
+  upd();
+});
+
+/* ---- 08 总结 ---- */
+reg('summary', (node) => {
+  const steps = [
+    ['ℤ₁₂ = {0,…,11}', '音名模 12，升 12 个半音回到原音名'],
+    ['Tₙ 与 Iₙ 生成 D₁₂', '移调 = 旋转，转位 = 镜像，共 24 个元素'],
+    ['gcd(7,12) = 1', '7 是生成元：五度圈走遍十二个音；3、4 只生成子群'],
+    ['音网与 P、L、R', '每次只动一个音，三角形翻到邻居'],
+    ['PLR 群 ≅ D₁₂', 's = LR，t = L：s¹² = t² = 1，tst = s⁻¹'],
+    ['T/I 与 PLR 互为中心化子', '同一个 D₁₂ 的两种对偶的音乐作用'],
+  ];
+  const items = steps.map(([f, p], i) => el('div', { class: 'tl-step' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('div', { class: 'f' }, f), el('p', {}, p))));
+  node.append(el('div', { class: 'steps' }, ...items));
+  let timer = 0;
+  return { start() { let i = 0; timer = setInterval(() => { if (i >= items.length) { clearInterval(timer); return; } items[i++].classList.add('on'); }, RM ? 0 : 450); }, stop() { clearInterval(timer); } };
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>
