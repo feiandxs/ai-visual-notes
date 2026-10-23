@@ -54,6 +54,12 @@ Illustrated, animated visual explainers of articles, made for beginners. Content
 | --- | --- | --- | --- |
 | Why Is TREE(3) So Absurdly Large? | Zhihu answerers HypCos (primary), 大老李 | [`math/large-numbers/why-tree3-is-so-large/`](math/large-numbers/why-tree3-is-so-large/index.html) | From the TREE game and well-quasi-ordering to a JavaScript big-number golf ladder climbing past ε₀, Γ₀ and ψ(Ω_ω). |
 
+#### Decision (`math/decision/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| The 37% Rule: The Secretary Problem and Optimal Stopping | Personal study note, drawing on Ferguson (1989), Christian & Griffiths "Algorithms to Live By" and others | [`math/decision/optimal-stopping-37-percent-rule/`](math/decision/optimal-stopping-37-percent-rule/index.html) | From the four rules of the secretary problem to the 1/e derivation, with a playable Monte Carlo simulator, eight variants, and a check of which everyday "37%" uses are real and which are misuses. |
+
 #### General (`math/general/`)
 
 | Title | Original author / source | Page | Summary |

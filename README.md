@@ -54,6 +54,12 @@
 | --- | --- | --- | --- |
 | TREE(3) 的规则那么简单，为什么它的值那么离谱的大？ | 知乎答主 HypCos（主）、大老李 | [`math/large-numbers/why-tree3-is-so-large/`](math/large-numbers/why-tree3-is-so-large/index.html) | 先讲 TREE 游戏与良拟序为什么保证有限，再沿 JavaScript 大数高尔夫的字符数阶梯爬上 ε₀、Γ₀、ψ(Ω_ω)。 |
 
+#### 决策（`math/decision/`）
+
+| 标题 | 原文作者 / 出处 | 页面 | 简介 |
+| --- | --- | --- | --- |
+| 37% 法则：秘书问题与最优停止 | 个人学习笔记，参考 Ferguson (1989)、Christian & Griffiths《Algorithms to Live By》等 | [`math/decision/optimal-stopping-37-percent-rule/`](math/decision/optimal-stopping-37-percent-rule/index.html) | 从秘书问题的四条规则到 1/e 的推导，可玩的蒙特卡洛模拟器、八种变体对比，并逐条审视"相亲、租房、读书 37 页"哪些是真应用、哪些是误用。 |
+
 #### 通识（`math/general/`）
 
 | 标题 | 原文作者 / 出处 | 页面 | 简介 |

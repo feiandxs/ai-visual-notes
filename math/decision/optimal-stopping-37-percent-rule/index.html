@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>37% 法则：什么时候该停止寻找</title>
+<meta name="description" content="秘书问题与最优停止的可视化讲解：37% 法则从哪来、怎么推、什么时候适用、什么时候是误用。带可玩的模拟器、面试动画、变体对比与历史时间线。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页补充 ===== */
+.rule-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (min-width:760px){.rule-cards{grid-template-columns:repeat(4,1fr)}}
+.rule-cards .card{position:relative;padding-top:34px}
+.rule-cards .card .k{position:absolute;top:10px;left:14px}
+.people{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end}
+.person{width:14px;height:22px;border-radius:7px 7px 3px 3px;background:var(--muted);opacity:.35;position:relative;transition:all .25s}
+.person::before{content:"";position:absolute;top:-9px;left:3px;width:8px;height:8px;border-radius:50%;background:inherit}
+.person.look{opacity:.6;background:var(--o)}
+.person.cand{opacity:1;background:var(--p)}
+.person.hire{opacity:1;background:var(--t);transform:scale(1.25)}
+.person.best{box-shadow:0 0 0 2px var(--y)}
+.person.miss{opacity:1;background:var(--r)}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.status .bad{color:var(--r)}
+.tally{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:6px}
+.tally b{font-family:var(--mono);font-size:16px;color:var(--text)}
+.steps{display:grid;gap:8px}
+.step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.step.on{opacity:1;border-color:var(--p)}
+.step>div{min-width:0}
+.step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.step .f{font-family:var(--mono);font-size:14px;margin-top:4px;white-space:normal;word-break:break-word}
+.step p{font-size:13px;color:var(--muted)}
+table.tbl{border-collapse:collapse;font-size:13px;width:100%}
+table.tbl th,table.tbl td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;font-family:var(--mono)}
+table.tbl th{color:var(--muted);font-weight:500;font-family:var(--font)}
+table.tbl td:first-child,table.tbl th:first-child{text-align:left;font-family:var(--font)}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:minmax(120px,1.2fr) 3fr;gap:10px;align-items:center;font-size:13px}
+@media (max-width:600px){.bar{grid-template-columns:1fr;gap:4px}}
+.bar .nm{color:var(--text);font-weight:500}
+.bar .nm small{display:block;color:var(--muted);font-weight:400;font-size:12px}
+.bar .tr{position:relative;height:26px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.bar .fl{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:6px;transition:width 1s ease}
+.bar .fl.a{background:var(--o)}
+.bar .fl.b{background:var(--t)}
+.bar .vl{position:absolute;right:8px;top:0;line-height:26px;font-family:var(--mono);font-size:12px;color:var(--text)}
+.bar .lg{position:absolute;left:8px;top:0;line-height:26px;font-size:11px;color:#fff;font-weight:600;text-shadow:0 0 2px rgba(0,0,0,.35)}
+.bar .lg.dark{color:var(--text);font-weight:500;text-shadow:none}
+.judge{display:grid;gap:12px}
+@media (min-width:760px){.judge{grid-template-columns:1fr 1fr}}
+.jcard{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2);display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.jcard .mark{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:16px}
+.jcard.ok .mark{background:var(--t)}
+.jcard.no .mark{background:var(--r)}
+.jcard.half .mark{background:var(--o)}
+.jcard h3{font-size:15px}
+.jcard p{font-size:13px;color:var(--muted);margin-top:4px}
+.jcard .why{font-size:12px;margin-top:6px;padding:6px 8px;border-radius:8px;background:var(--surface)}
+.checklist{display:grid;gap:8px}
+.q{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:14px}
+.q .n{font-family:var(--mono);color:var(--p);font-weight:700}
+.q small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.timeline{position:relative;padding-left:22px}
+.timeline::before{content:"";position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--line)}
+.tl{position:relative;padding:6px 0 10px 10px;opacity:.35;transition:opacity .5s}
+.tl.on{opacity:1}
+.tl::before{content:"";position:absolute;left:-19px;top:12px;width:10px;height:10px;border-radius:50%;background:var(--muted);border:2px solid var(--bg)}
+.tl.on::before{background:var(--p)}
+.tl .yr{font-family:var(--mono);color:var(--p);font-size:12px}
+.tl .t{font-weight:600;font-size:14px}
+.tl p{font-size:13px;color:var(--muted)}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
+.legend i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:4px;border-radius:2px}
+.hero-people{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:10px 0}
+.hero-people .person{width:10px;height:16px;border-radius:5px 5px 2px 2px}
+.hero-people .person::before{top:-7px;left:2px;width:6px;height:6px}
+.hero-caption{text-align:center;font-size:13px;color:var(--muted);margin-top:6px;min-height:1.4em}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">37% 法则</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">最优停止 · Optimal Stopping</div>
+  <h1>37% 法则：什么时候该停止寻找？</h1>
+  <p class="sub">它来自一道叫「秘书问题」的数学题：候选人一个个来，每个都得当场拍板，拒绝了就不能回头。数学家算出了一条漂亮的规则，但它的适用范围比网上流传的窄得多。</p>
+  <div class="thesis">先看前 37%，一个都不要，只记住最好的那个有多好；之后第一个超过它的，立刻拿下。这样选中「全场最佳」的概率也约等于 37%。<sup class="c">[1][2]</sup></div>
+  <div class="hero-art">
+    <div class="hero-people" data-demo="heroPeople"></div>
+    <div class="hero-caption"></div>
+  </div>
+  <p class="meta">本页以一则个人笔记为起点，结合公开文献与本页自带的模拟器写成；所有数字在页末列出处。术语首次出现附英文。</p>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="setup" data-title="问题设定">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>秘书问题的四条规则</h2>
+    <p class="lead">规则少一条，答案就不再是 37%。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">秘书问题（Secretary problem）的标准设定<sup class="c">[1]</sup>。点击卡片看它对应的现实含义。</div>
+    <div class="rule-cards" data-demo="rules"></div>
+    <p class="src">还有一条隐含规则：候选人的到来顺序是完全随机的。如果好的总在后面，策略就不一样了。</p>
+  </div>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="dilemma" data-title="两种失败">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>停得太早，或停得太晚</h2>
+    <p class="lead">不「看」一会儿，就不知道什么算好；看太久，好的已经被你放走了。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">同一批候选人，三种停止时机。黄框 = 全场最佳。</div>
+    <div data-demo="dilemma"></div>
+  </div>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="walk" data-title="一次面试过程">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>看它跑一遍</h2>
+    <p class="lead">前 37% 只抬高「标杆」；之后第一个越过标杆的人被录用。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">20 位候选人随机排列。橙色 = 观察期（只记录，不录用），紫色 = 刷新了标杆，绿色 = 录用，红色 = 全场最佳被错过。多跑几次，会看到三种结局。</div>
+    <div data-demo="walk"></div>
+  </div>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="sim" data-title="模拟器">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>为什么偏偏是 37%</h2>
+    <p class="lead">让电脑替你面试几十万次：每个观察比例都试一遍，画出成功率曲线。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">横轴 = 观察期占总人数的比例 k/n，纵轴 = 选中全场最佳的概率。灰点是蒙特卡洛模拟，紫线是精确公式，青色虚线是极限曲线 −x·ln x。<sup class="c">[1][12]</sup></div>
+    <div data-demo="sim"></div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="derive" data-title="推导思路">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>推导只要四步</h2>
+    <p class="lead">把「第 i 个人是最佳、且他能被选中」的概率加起来，再让 n 趋于无穷。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">策略：跳过前 r−1 个，之后录用第一个比他们都好的人。<sup class="c">[1]</sup> 点击「下一步」逐步展开。</div>
+    <div data-demo="derive"></div>
+  </div>
+  <div class="fig">
+    <div class="cap">n 很小时，最优的 r 和成功率（精确值）<sup class="c">[1]</sup>。n=100 时最优是跳过前 37 个，成功率 37.10%；本页用同一公式算出。</div>
+    <div data-demo="smallTable"></div>
+  </div>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="two37" data-title="两个 37%">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>两个 37% 不是巧合</h2>
+    <p class="lead">观察比例是 1/e，成功概率也是 1/e，而且几乎不随人数变化。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">用最优策略时，选中全场最佳的概率随 n 的变化。n 越大越接近 1/e ≈ 36.8%，但从来不会低于它。<sup class="c">[1]</sup></div>
+    <div class="bars" data-demo="byN"></div>
+    <p class="src">对照：如果闭着眼睛随便选一个，选中最佳的概率是 1/n。100 个人里就是 1%。37% 是靠「先看后跳」挣来的。</p>
+  </div>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="variants" data-title="换一条规则会怎样">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>换一条规则，数字就变</h2>
+    <p class="lead">对方可能拒绝你？可以回头？知道绝对分数？每种情况都有人算过。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">橙色 = 该先观察（不出手）的比例，青色 = 最终选中最佳的概率。点击一行看说明与出处。</div>
+    <div data-demo="variants"></div>
+  </div>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="human" data-title="人类实际怎么做">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>真人实验：大家都停得太早</h2>
+    <p class="lead">十几项实验得到同一个结果：人们在远未看到 37% 时就出手了。<sup class="c">[10][11]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="cap">示意图：最优停止点 vs 实验中观察到的典型停止点分布。曲线为示意，不是某一项实验的原始数据。</div>
+    <div data-demo="human"></div>
+    <ul class="notes">
+      <li><b>为什么会这样</b>：每多看一个候选人都有代价（时间、精力、焦虑），而数学模型假设看人是免费的。<sup class="c">[1][11]</sup></li>
+      <li><b>一个有用的推论</b>：如果你知道自己会提前出手，刻意逼自己「多看几个」通常是对的。</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="examples" data-title="五个例子逐条审视">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>笔记里的五个例子，哪些真的成立？</h2>
+    <p class="lead">只有「从一串候选里挑一个」的问题才是秘书问题。「看了 37% 还不喜欢就放弃」是另一回事。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">原笔记给出的应用，以及流传很广的「样本取 37% 刚刚好」梗图。逐条对照四条规则。</div>
+    <div class="judge" data-demo="judge"></div>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="checklist" data-title="口语化判断标准">
+  <div class="ch-head">
+    <span class="num">10</span>
+    <h2>四个问题，判断能不能用</h2>
+    <p class="lead">四个都答「是」，37% 才成立；有一个「否」，去第 07 节找对应的变体。</p>
+  </div>
+  <div class="fig">
+    <div class="checklist" data-demo="checklist"></div>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="ch" id="history" data-title="历史">
+  <div class="ch-head">
+    <span class="num">11</span>
+    <h2>从开普勒到《算法之美》</h2>
+    <p class="lead">这道题有名字之前就有人在用。谁第一个解出来，至今还有争论。<sup class="c">[2]</sup></p>
+  </div>
+  <div class="fig">
+    <div class="timeline" data-demo="timeline"></div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="ch" id="summary" data-title="总结">
+  <div class="ch-head">
+    <span class="num">12</span>
+    <h2>一句话带走</h2>
+  </div>
+  <div class="fig">
+    <div data-demo="summary"></div>
+    <div class="final">37% 法则回答的是「该看多少个再出手」，不是「看了多少就该放弃」。当候选人依次出现、拒绝不可回头、目标是全场最佳、人数大致已知时，先看 1/e，再抓第一个超过标杆的；换掉任何一条，就去查对应的变体。</div>
+  </div>
+</section>
+
+<footer>
+  <b>参考资料</b>
+  <ol id="refs">
+    <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Secretary_problem">Secretary problem</a>：标准设定、P(r) 公式、小 n 精确表、各变体与历史。</li>
+    <li>Ferguson, T. S. (1989). <a href="https://projecteuclid.org/euclid.ss/1177012493">Who Solved the Secretary Problem?</a> <i>Statistical Science</i> 4(3), 282–289。历史综述：Cayley 1875、Kepler 1613、Gardner 1960、Lindley 1961、Dynkin 1963。</li>
+    <li>Gardner, M. (1960). Mathematical Games, <i>Scientific American</i>, 1960 年 2 月（「googol 游戏」）。转引自 [1][2]。</li>
+    <li>Lindley, D. V. (1961). Dynamic programming and decision theory. <i>Applied Statistics</i> 10, 39–51。</li>
+    <li>Dynkin, E. B. (1963). The optimum choice of the instant for stopping a Markov process. <i>Soviet Math. Dokl.</i> 4, 627–629。</li>
+    <li>Gilbert, J. P. &amp; Mosteller, F. (1966). Recognizing the maximum of a sequence. <i>J. Amer. Statist. Assoc.</i> 61, 35–73。完全信息变体，成功率极限约 0.58。</li>
+    <li>Chow, Y. S., Moriguti, S., Robbins, H. &amp; Samuels, S. M. (1964). Optimal selection based on relative rank. <i>Israel J. Math.</i> 2, 81–90。期望排名极限 ≈ 3.8695。</li>
+    <li>Smith, M. H. (1975). A secretary problem with uncertain employment. <i>J. Appl. Probab.</i> 12, 620–624。对方以概率 p 接受录用的模型。</li>
+    <li>Bruss, F. T. (1984). A unified approach to a class of best choice problems with an unknown number of options. <i>Ann. Probab.</i> 12, 882–889。1/e 定律。</li>
+    <li>Seale, D. A. &amp; Rapoport, A. (1997). Sequential decision making with relative ranks: An experimental investigation of the "secretary problem". <i>Organizational Behavior and Human Decision Processes</i> 69(3), 221–236。实验：人们停得太早。</li>
+    <li>Christian, B. &amp; Griffiths, T. (2016). <i>Algorithms to Live By</i>（中译《算法之美》），第 1 章 Optimal Stopping。可拒绝 → 25%、可回头 → 61%、完全信息 → 58%、「约十几项研究发现人们停得太早」。</li>
+    <li>Weisstein, E. W., <a href="https://mathworld.wolfram.com/SecretaryProblem.html">Secretary Problem</a>, MathWorld。P(r) 与 −x ln x 近似。</li>
+    <li>Krulwich, R. (2014). <a href="https://www.npr.org/sections/krulwich/2014/05/15/312537965/how-to-marry-the-right-girl-a-mathematical-solution">How To Marry The Right Girl: A Mathematical Solution</a>, NPR。开普勒 11 位候选人的故事（通俗转述）。</li>
+    <li>Freeman, P. R. (1983). The secretary problem and its extensions: a review. <i>Int. Statist. Rev.</i> 51, 189–206。</li>
+  </ol>
+  <p>第 07 节中「可拒绝 25%」「可回头 61%」「完全信息 58%」三组数字除引自 [11] 外，也由本页内置的蒙特卡洛模拟独立复现（n=100，各 2 万次）。本页由 Claude Code 基于一则个人笔记与上述资料生成，仅供学习。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+/* ======================================================================
+   37% 法则 · 演示模块
+   ====================================================================== */
+const E = Math.E;
+const shuffle = (n) => { const a = Array.from({ length: n }, (_, i) => i + 1); for (let i = n - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+/* 精确成功率：跳过前 r-1 个 */
+const exactP = (r, n) => { if (r <= 1) return 1 / n; let s = 0; for (let i = r; i <= n; i++) s += 1 / (i - 1); return (r - 1) / n * s; };
+const bestR = (n) => { let b = { r: 1, p: 0 }; for (let r = 1; r <= n; r++) { const p = exactP(r, n); if (p > b.p) b = { r, p }; } return b; };
+const pct = (x, d = 1) => (x * 100).toFixed(d) + '%';
+const personRow = (n, cls = '') => { const w = el('div', { class: 'people ' + cls }); const ps = []; for (let i = 0; i < n; i++) { const p = el('span', { class: 'person', title: '第 ' + (i + 1) + ' 位' }); ps.push(p); w.append(p); } return { w, ps }; };
+
+/* ---------- Hero ---------- */
+reg('heroPeople', (node) => {
+  const n = 60, cap = node.parentElement.querySelector('.hero-caption');
+  const ps = []; for (let i = 0; i < n; i++) { const p = el('span', { class: 'person' }); ps.push(p); node.append(p); }
+  let timer = 0, step = 0, ranks = shuffle(n), k = Math.round(n / E), bar = Infinity, done = false;
+  const reset = () => { ranks = shuffle(n); bar = Infinity; done = false; step = 0; ps.forEach(p => p.className = 'person'); };
+  const tick = () => {
+    if (done) { reset(); return; }
+    const i = step;
+    if (i >= n) { cap.textContent = '没人越过标杆，只能录用最后一位。'; done = true; return; }
+    if (i < k) { if (ranks[i] < bar) bar = ranks[i]; ps[i].className = 'person look'; cap.textContent = `观察期 ${i + 1}/${k}：只记录，不录用。目前标杆：第 ${bar} 名`; }
+    else if (ranks[i] < bar) { ps[i].className = 'person hire' + (ranks[i] === 1 ? ' best' : ''); cap.textContent = ranks[i] === 1 ? '第一个越过标杆的人，恰好是全场最佳。成功。' : `录用了第 ${ranks[i]} 名。全场最佳在观察期里被放走了。`; const bi = ranks.indexOf(1); if (ranks[i] !== 1) ps[bi].className = 'person miss'; done = true; }
+    else ps[i].className = 'person cand';
+    step++;
+  };
+  return { start() { if (RM) { for (let i = 0; i < n; i++) tick(); return; } timer = setInterval(tick, 110); }, stop() { clearInterval(timer); timer = 0; } };
+});
+
+/* ---------- 01 规则 ---------- */
+reg('rules', (node) => {
+  const rules = [
+    ['规则 1', '候选人依次出现', '每面试完一位，必须当场决定录用或放弃。', '现实里：机会稍纵即逝，比如二手房、求职 offer、限时报价。'],
+    ['规则 2', '放弃了不能回头', '被拒绝的候选人不会再接受你。', '现实里：你三个月前放弃的人，不会等你。'],
+    ['规则 3', '只知道相对排名', '你能说「这位比前面都好」，但说不出他在全体里排第几。', '现实里：没有打分表，只能和见过的人比。'],
+    ['规则 4', '目标是全场最佳', '选到第二好也算失败，奖励只有 1 或 0。', '现实里：这条最苛刻。多数时候我们要的是「够好」。'],
+  ];
+  rules.forEach(([k, t, d, real]) => {
+    const c = el('div', { class: 'card' }, el('span', { class: 'k' }, k), el('h3', {}, t), el('p', {}, d));
+    const r = el('p', { style: 'display:none;margin-top:6px;color:var(--text)' }, real);
+    c.append(r); c.style.cursor = 'pointer';
+    c.addEventListener('click', () => { const on = c.classList.toggle('on'); r.style.display = on ? 'block' : 'none'; });
+    node.append(c);
+  });
+});
+
+/* ---------- 02 两种失败 ---------- */
+reg('dilemma', (node) => {
+  const n = 20, ranks = [9, 14, 5, 17, 11, 3, 15, 8, 1, 12, 19, 6, 13, 4, 10, 2, 18, 7, 16, 20];
+  const rows = [
+    { stop: 1, title: '停得太早：只看了 1 个就出手', note: '标杆太低（第 9 名），第 3 位稍好一点就被录用，其实只排第 5。' },
+    { stop: 15, title: '停得太晚：看了 15 个才出手', note: '全场最佳在第 9 位，早就被放走了，后面没人能越过标杆。' },
+    { stop: 7, title: '先看 37%（7 个），再抓第一个越过标杆的', note: '标杆 = 第 3 名；第 9 位（第 1 名）越过它，被录用。' },
+  ];
+  const parts = [];
+  rows.forEach((r) => {
+    const { w, ps } = personRow(n); const bi = ranks.indexOf(1); ps[bi].classList.add('best');
+    const st = el('div', { class: 'status' });
+    node.append(el('div', { style: 'margin:10px 0 16px' }, el('div', { style: 'font-weight:600;font-size:14px;margin-bottom:6px' }, r.title), w, st));
+    parts.push({ r, ps, st });
+  });
+  const play = () => {
+    parts.forEach(({ r, ps, st }) => {
+      ps.forEach(p => { p.className = 'person' + (p.classList.contains('best') ? ' best' : ''); }); st.textContent = '';
+      let bar = Infinity, i = 0;
+      const step = () => {
+        if (i >= n) { st.innerHTML = '<span class="bad">没人越过标杆，只能录用最后一位（第 ' + ranks[n - 1] + ' 名）。</span>'; return; }
+        if (i < r.stop) { if (ranks[i] < bar) bar = ranks[i]; ps[i].classList.add('look'); }
+        else if (ranks[i] < bar) { ps[i].classList.add('hire'); st.innerHTML = (ranks[i] === 1 ? '<b>录用第 1 名。</b>' : '<span class="bad">录用了第 ' + ranks[i] + ' 名。</span>') + ' ' + r.note; return; }
+        else ps[i].classList.add('cand');
+        i++; setTimeout(step, RM ? 0 : 90);
+      };
+      step();
+    });
+  };
+  node.append(el('div', { class: 'ctrl' }, el('button', { class: 'btn', type: 'button', onclick: play }, '重播')));
+  let played = false;
+  return { start() { if (!played) { played = true; play(); } } };
+});
+
+/* ---------- 03 一次面试过程 ---------- */
+reg('walk', (node) => {
+  const n = 20, k = bestR(n).r - 1; // n=20 最优：跳过 7
+  const W = 640, H = 220, pad = { l: 36, r: 12, t: 16, b: 30 };
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  const bw = (W - pad.l - pad.r) / n;
+  const y = (rank) => pad.t + (rank - 1) / (n - 1) * (H - pad.t - pad.b);
+  s.append(svg('line', { x1: pad.l, y1: y(1), x2: pad.l, y2: y(n), class: 'ax' }));
+  s.append(svg('text', { x: pad.l - 6, y: y(1) + 4, class: 'lbl', 'text-anchor': 'end' }, '最好'));
+  s.append(svg('text', { x: pad.l - 6, y: y(n) + 4, class: 'lbl', 'text-anchor': 'end' }, '最差'));
+  const zone = svg('rect', { x: pad.l, y: pad.t - 6, width: bw * k, height: H - pad.t - pad.b + 12, fill: 'var(--o-soft)', opacity: .6, rx: 6 });
+  s.append(zone);
+  s.append(svg('text', { x: pad.l + bw * k / 2, y: H - 8, class: 'lbl mid' }, `观察期：前 ${k} 位（${pct(k / n, 0)}）`));
+  s.append(svg('text', { x: pad.l + bw * (k + (n - k) / 2), y: H - 8, class: 'lbl mid' }, '出手期：第一个越过标杆的'));
+  const barLine = svg('line', { x1: pad.l, x2: W - pad.r, y1: -10, y2: -10, stroke: 'var(--p)', 'stroke-width': 2, 'stroke-dasharray': '6 4', opacity: 0 });
+  const barTxt = svg('text', { x: W - pad.r, y: -10, class: 'lbl m', 'text-anchor': 'end', fill: 'var(--p)' }, '');
+  s.append(barLine, barTxt);
+  const dots = []; for (let i = 0; i < n; i++) { const g = svg('g', { opacity: 0 }); const c = svg('circle', { cx: pad.l + bw * (i + .5), cy: y(10), r: 7, fill: 'var(--muted)' }); const t = svg('text', { x: pad.l + bw * (i + .5), y: y(10) + 4, class: 'lbl', 'font-size': 9, 'text-anchor': 'middle', fill: '#fff' }, ''); g.append(c, t); s.append(g); dots.push({ g, c, t }); }
+  s.style.minWidth = '560px'; const wrap = el('div', { class: 'scrollx' }, s); node.append(wrap);
+  const st = el('div', { class: 'status' }), tally = el('div', { class: 'tally' });
+  const T = { win: 0, miss: 0, other: 0 };
+  const renderTally = () => { tally.innerHTML = ''; tally.append(el('span', {}, '选中最佳 ', el('b', {}, T.win)), el('span', {}, '最佳被放走 ', el('b', {}, T.miss)), el('span', {}, '其他 ', el('b', {}, T.other)), el('span', {}, '成功率 ', el('b', {}, (T.win + T.miss + T.other) ? pct(T.win / (T.win + T.miss + T.other), 0) : '—'))); };
+  renderTally();
+  let ranks, i, bar, timer = 0, auto = false, running = false;
+  const reset = () => { ranks = shuffle(n); i = 0; bar = Infinity; dots.forEach(d => { d.g.setAttribute('opacity', 0); d.c.setAttribute('fill', 'var(--muted)'); d.c.setAttribute('r', 7); d.c.removeAttribute('stroke'); }); barLine.setAttribute('opacity', 0); barTxt.textContent = ''; st.textContent = ''; };
+  const finish = (kind, msg) => { T[kind]++; renderTally(); st.innerHTML = msg; running = false; if (auto) timer = setTimeout(run, RM ? 50 : 900); };
+  const step = () => {
+    if (i >= n) { const bi = ranks.indexOf(1); dots[bi].c.setAttribute('fill', 'var(--r)'); dots[n - 1].c.setAttribute('fill', 'var(--t)'); finish('other', '<span class="bad">没人越过标杆，只能录用最后一位（第 ' + ranks[n - 1] + ' 名）。</span>'); return; }
+    const rk = ranks[i], d = dots[i]; d.g.setAttribute('opacity', 1); d.c.setAttribute('cy', y(rk)); d.t.setAttribute('y', y(rk) + 3.5); d.t.textContent = rk;
+    if (i < k) { d.c.setAttribute('fill', 'var(--o)'); if (rk < bar) { bar = rk; barLine.setAttribute('y1', y(bar)); barLine.setAttribute('y2', y(bar)); barLine.setAttribute('opacity', 1); barTxt.setAttribute('y', y(bar) - 5); barTxt.textContent = '标杆：第 ' + bar + ' 名'; } st.textContent = `第 ${i + 1} 位：排第 ${rk}。观察期，不录用。`; }
+    else if (rk < bar) { d.c.setAttribute('fill', 'var(--t)'); d.c.setAttribute('r', 9); if (rk === 1) finish('win', `<b>第 ${i + 1} 位越过标杆，录用。他正是全场第 1 名。</b>`); else { const bi = ranks.indexOf(1); dots[bi].c.setAttribute('fill', 'var(--r)'); dots[bi].g.setAttribute('opacity', 1); finish('miss', `<span class="bad">第 ${i + 1} 位越过标杆，录用，但他只排第 ${rk}。全场第 1 名在观察期（红点）被放走了。</span>`); } return; }
+    else { d.c.setAttribute('fill', 'var(--p)'); st.textContent = `第 ${i + 1} 位：排第 ${rk}，没越过标杆，放弃。`; }
+    i++; timer = setTimeout(step, RM ? 0 : 260);
+  };
+  const run = () => { if (running) return; running = true; reset(); step(); };
+  const autoBtn = el('button', { class: 'btn', type: 'button', onclick: () => { auto = !auto; autoBtn.textContent = auto ? '停止连跑' : '自动连跑'; if (auto && !running) run(); } }, '自动连跑');
+  node.append(el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: () => { clearTimeout(timer); running = false; run(); } }, '再跑一次'), autoBtn, el('button', { class: 'btn', type: 'button', onclick: () => { T.win = T.miss = T.other = 0; renderTally(); } }, '清零统计')), st, tally);
+  reset();
+  let first = true;
+  return { start() { if (first) { first = false; run(); } }, stop() { clearTimeout(timer); running = false; auto = false; autoBtn.textContent = '自动连跑'; } };
+});
+
+/* ---------- 04 模拟器 ---------- */
+reg('sim', (node) => {
+  const cv = el('canvas', { style: 'width:100%;height:auto;border-radius:10px' }); const ctx = cv.getContext('2d');
+  let n = 100, results = [], running = false, raf = 0;
+  const info = el('div', { class: 'kv' });
+  const draw = () => {
+    const dpr = Math.min(2, devicePixelRatio || 1), cw = Math.max(320, node.clientWidth - 32), ch = Math.round(cw * 0.55);
+    cv.width = cw * dpr; cv.height = ch * dpr; cv.style.height = ch + 'px'; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pad = { l: 44, r: 14, t: 18, b: 34 }, X = (x) => pad.l + x * (cw - pad.l - pad.r), Y = (p) => ch - pad.b - p / 0.5 * (ch - pad.t - pad.b);
+    ctx.clearRect(0, 0, cw, ch); ctx.font = '12px ' + cssVar('--font'); ctx.fillStyle = cssVar('--muted'); ctx.strokeStyle = cssVar('--grid'); ctx.lineWidth = 1;
+    for (let p = 0; p <= 0.5; p += 0.1) { ctx.beginPath(); ctx.moveTo(pad.l, Y(p)); ctx.lineTo(cw - pad.r, Y(p)); ctx.stroke(); ctx.textAlign = 'right'; ctx.fillText(pct(p, 0), pad.l - 6, Y(p) + 4); }
+    for (let x = 0; x <= 1; x += 0.2) { ctx.beginPath(); ctx.moveTo(X(x), pad.t); ctx.lineTo(X(x), ch - pad.b); ctx.stroke(); ctx.textAlign = 'center'; ctx.fillText(pct(x, 0), X(x), ch - pad.b + 16); }
+    ctx.fillText('观察期比例 k / n', (pad.l + cw - pad.r) / 2, ch - 4);
+    // −x ln x
+    ctx.strokeStyle = cssVar('--t'); ctx.setLineDash([5, 4]); ctx.lineWidth = 1.5; ctx.beginPath();
+    for (let x = 0.002; x <= 1; x += 0.004) { const p = -x * Math.log(x); const px = X(x), py = Y(p); x < 0.003 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); } ctx.stroke(); ctx.setLineDash([]);
+    // exact
+    ctx.strokeStyle = cssVar('--p'); ctx.lineWidth = 2; ctx.beginPath();
+    for (let r = 1; r <= n; r++) { const px = X((r - 1) / n), py = Y(exactP(r, n)); r === 1 ? ctx.moveTo(px, py) : ctx.lineTo(px, py); } ctx.stroke();
+    // MC points
+    ctx.fillStyle = cssVar('--muted');
+    results.forEach(({ k, p }) => { ctx.beginPath(); ctx.arc(X(k / n), Y(p), 3, 0, Math.PI * 2); ctx.fill(); });
+    // peak
+    const b = bestR(n); ctx.strokeStyle = cssVar('--o'); ctx.setLineDash([3, 3]); ctx.beginPath(); ctx.moveTo(X((b.r - 1) / n), pad.t); ctx.lineTo(X((b.r - 1) / n), ch - pad.b); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = cssVar('--o'); ctx.textAlign = 'left'; ctx.fillText(`峰值：跳过 ${b.r - 1} 人 (${pct((b.r - 1) / n, 1)})，成功率 ${pct(b.p, 1)}`, Math.min(X((b.r - 1) / n) + 6, cw - 230), pad.t + 12);
+    ctx.fillStyle = cssVar('--t'); ctx.fillText('1/e ≈ 36.8%', X(1 / E) + 6, Y(1 / E) - 8);
+  };
+  const simulate = () => {
+    if (running) return; running = true; results = [];
+    const stepK = Math.max(1, Math.round(n / 40)), T = n <= 50 ? 3000 : n <= 200 ? 1500 : 600; let k = 0;
+    const chunk = () => {
+      const t0 = performance.now();
+      while (k <= n && performance.now() - t0 < 24) {
+        let win = 0; for (let t = 0; t < T; t++) { const a = shuffle(n); let bar = Infinity, hired = -1; for (let i = 0; i < n; i++) { if (a[i] < bar) { bar = a[i]; if (i >= k) { hired = a[i]; break; } } } if (hired === -1) hired = a[n - 1]; if (hired === 1) win++; }
+        results.push({ k, p: win / T }); k += stepK;
+      }
+      draw(); info.innerHTML = `<span>已模拟 <b>${results.length}</b> 个 k 值 · 每个 <b>${T.toLocaleString()}</b> 次</span>`;
+      if (k <= n) raf = requestAnimationFrame(chunk); else running = false;
+    };
+    raf = requestAnimationFrame(chunk);
+  };
+  const rg = range('候选人数 n', 10, 500, 100, 10, (v) => { n = v; results = []; cancelAnimationFrame(raf); running = false; draw(); });
+  node.append(el('div', { class: 'ctrl' }, rg, el('button', { class: 'btn primary', type: 'button', onclick: simulate }, '开始模拟')), cv, info,
+    el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--muted)' }), '蒙特卡洛'), el('span', {}, el('i', { style: 'background:var(--p)' }), '精确公式 P(r)'), el('span', {}, el('i', { style: 'background:var(--t)' }), '极限 −x·ln x'), el('span', {}, el('i', { style: 'background:var(--o)' }), '最优 k')));
+  addEventListener('resize', draw);
+  let first = true;
+  return { start() { draw(); if (first) { first = false; simulate(); } }, stop() { cancelAnimationFrame(raf); running = false; } };
+});
+
+/* ---------- 05 推导 ---------- */
+reg('derive', (node) => {
+  const steps = [
+    ['第 i 位恰好是全场最佳的概率', 'P(第 i 位是最佳) = 1 / n', '顺序完全随机，所以最佳落在任何一个位置的概率都相同。'],
+    ['他能被录用的条件', 'P(被录用 | 第 i 位是最佳) = (r − 1) / (i − 1)', '他之前的 i−1 位里，最好的那位必须落在观察期（前 r−1 位）。否则在他之前就已经有人越过标杆、被录用了。'],
+    ['把所有可能的 i 加起来', 'P(r) = Σ_{i=r}^{n} (1/n)·(r−1)/(i−1) = (r−1)/n · Σ_{i=r}^{n} 1/(i−1)', 'i 从 r 开始，因为观察期内的人不会被录用。这就是精确公式，第 04 节的紫线。'],
+    ['令 x = (r−1)/n，n → ∞', 'P(x) → x · ∫_x^1 dt/t = −x·ln x ；令 dP/dx = −ln x − 1 = 0 ⇒ x = 1/e', '求和变成积分，极值点在 x = 1/e ≈ 0.368。代回去，P(1/e) = 1/e。观察比例和成功率是同一个数。'],
+  ];
+  const box = el('div', { class: 'steps' }); const nodes = steps.map(([t, f, d], i) => el('div', { class: 'step' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('div', { style: 'font-weight:600;font-size:14px' }, t), el('div', { class: 'f' }, f), el('p', {}, d))));
+  box.append(...nodes); let cur = 0; const show = (k) => { nodes.forEach((s, i) => s.classList.toggle('on', i <= k)); };
+  const btn = el('button', { class: 'btn primary', type: 'button', onclick: () => { cur = (cur + 1) % steps.length; show(cur); btn.textContent = cur === steps.length - 1 ? '从头开始' : '下一步'; } }, '下一步');
+  node.append(box, el('div', { class: 'ctrl' }, btn)); show(0);
+  return { start() { if (RM) show(steps.length - 1); } };
+});
+
+reg('smallTable', (node) => {
+  const t = el('table', { class: 'tbl' }); const head = el('tr', {}, el('th', {}, 'n')); const r1 = el('tr', {}, el('td', {}, '跳过几个')); const r2 = el('tr', {}, el('td', {}, '成功率'));
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 50, 100]) { const b = bestR(n); head.append(el('th', {}, n)); r1.append(el('td', {}, b.r - 1)); r2.append(el('td', {}, pct(b.p, 1))); }
+  t.append(head, r1, r2); node.append(el('div', { class: 'scrollx' }, t));
+});
+
+/* ---------- 06 两个 37% ---------- */
+reg('byN', (node) => {
+  const rows = [5, 10, 20, 50, 100, 1000, 10000].map(n => ({ n, b: bestR(n) }));
+  const fills = [];
+  rows.forEach(({ n, b }) => {
+    const fl = el('div', { class: 'fl b' }); fills.push([fl, b.p]);
+    node.append(el('div', { class: 'bar' }, el('div', { class: 'nm' }, `n = ${n.toLocaleString()}`, el('small', {}, `跳过 ${b.r - 1} 人（${pct((b.r - 1) / n, 1)}）`)), el('div', { class: 'tr' }, fl, el('span', { class: 'vl' }, pct(b.p, 2)))));
+  });
+  return { start() { fills.forEach(([f, p]) => { f.style.width = (p / 0.5 * 100) + '%'; }); } };
+});
+
+/* ---------- 07 变体 ---------- */
+reg('variants', (node) => {
+  const V = [
+    { nm: '经典秘书问题', sub: '只知相对排名 · 不可回头 · 对方必接受', look: 1 / E, win: 1 / E, src: '[1][2]', why: '基准。观察 1/e，成功 1/e。' },
+    { nm: '对方可能拒绝你', sub: '每次录用只有 50% 会被接受', look: 0.25, win: 0.25, src: '[8][11]', why: '既然出手可能落空，就得更早、更多次出手。接受率 p 时，观察比例与成功率都变成 p^{1/(1−p)}；p = 50% 时是 25%。本页模拟复现：观察约 22–25%，成功约 25%。' },
+    { nm: '可以回头', sub: '最后可以回去找之前最好的，对方 50% 会答应', look: 0.61, win: 0.61, src: '[11]', why: '有了「后路」，就敢看更久：看到 61% 再出手，只抓最后 39% 里的「史上最佳」；没抓到就回头。成功率也升到约 61%。本页模拟复现：观察约 60%，成功约 61%。' },
+    { nm: '知道绝对分数', sub: '完全信息：每位候选人有可比较的分数', look: 0, win: 0.58, src: '[6][11]', why: '不需要观察期：从第一位开始就按「还剩多少人」设一条分数线，超过就要。Gilbert & Mosteller 1966 算出成功率约 58%。本页模拟复现：n = 100 时约 58%。' },
+    { nm: '最佳或次佳都行', sub: '选到前两名之一就算赢', look: null, win: 0.574, src: '[6]', why: '放宽目标后成功率大幅上升：Gilbert & Mosteller 给出约 57.4%。策略分两段，先只接受「史上最佳」，后期也接受「史上次佳」。' },
+    { nm: '可以录用两个人', sub: '两次机会，有一个是最佳就算赢', look: null, win: Math.exp(-1) + Math.exp(-1.5), src: '[1][6]', why: '极限成功率 e^{−1} + e^{−3/2} ≈ 59.1%。' },
+    { nm: '人数未知，只知道截止时间', sub: '候选人在一段时间内随机到来', look: 1 / E, win: 1 / E, src: '[9]', why: 'Bruss 的 1/e 定律：按时间算，前 1/e 的时间只看不要。它保证成功率不低于 1/e，但代价是有 1/e 的概率谁也没选上。' },
+    { nm: '目标改为「平均排名尽量靠前」', sub: '不再执着全场最佳', look: null, win: null, text: '期望排名 ≈ 3.87', src: '[7]', why: '策略变成一条逐渐放宽的线：越到后面，越能接受排名靠后的人。不论 n 多大，最终录用者的期望排名都约为 3.87（Chow 等 1964）。这更接近多数人「够好就行」的真实目标。' },
+  ];
+  const list = el('div', { class: 'bars' }), why = el('div', { class: 'quote', style: 'margin-top:12px' }, '点击上面任意一行。');
+  const fills = [];
+  V.forEach((v) => {
+    const row = el('div', { class: 'bar', style: 'cursor:pointer' });
+    const nm = el('div', { class: 'nm' }, v.nm, el('small', {}, v.sub));
+    const tr = el('div', { class: 'tr' });
+    if (v.text) tr.append(el('span', { class: 'lg dark' }, v.text));
+    else {
+      if (v.look != null) { const fa = el('div', { class: 'fl a', style: 'height:50%;top:0;bottom:auto' }); fills.push([fa, v.look]); tr.append(fa, el('span', { class: 'lg' + (v.look === 0 ? ' dark' : ''), style: 'line-height:13px;top:0' }, v.look === 0 ? '无需观察期' : '观察 ' + pct(v.look, 0))); }
+      const fb = el('div', { class: 'fl b', style: v.look != null ? 'height:50%;top:auto;bottom:0' : '' }); fills.push([fb, v.win]);
+      tr.append(fb, el('span', { class: 'lg', style: v.look != null ? 'line-height:13px;top:13px' : '' }, '成功 ' + pct(v.win, 0)));
+    }
+    row.append(nm, tr); row.addEventListener('click', () => { why.innerHTML = ''; why.append(el('b', {}, v.nm + ' '), el('span', {}, v.why), el('small', {}, '出处 ' + v.src)); [...list.children].forEach(c => c.style.outline = ''); row.style.outline = '2px solid var(--p)'; row.style.borderRadius = '8px'; });
+    list.append(row);
+  });
+  node.append(list, why);
+  return { start() { fills.forEach(([f, p]) => { f.style.width = (p * 100) + '%'; }); } };
+});
+
+/* ---------- 08 人类实验 ---------- */
+reg('human', (node) => {
+  const W = 640, H = 210, pad = { l: 20, r: 20, t: 24, b: 40 };
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  const X = (x) => pad.l + x * (W - pad.l - pad.r), Y = (y) => H - pad.b - y * (H - pad.t - pad.b);
+  s.append(svg('line', { x1: pad.l, x2: W - pad.r, y1: Y(0), y2: Y(0), class: 'ax' }));
+  for (const x of [0, .25, .5, .75, 1]) s.append(svg('text', { x: X(x), y: H - 22, class: 'lbl mid' }, pct(x, 0)));
+  s.append(svg('text', { x: W / 2, y: H - 4, class: 'lbl mid' }, '出手时已看过的候选人比例'));
+  // skewed curve centered ~0.2
+  let d = ''; for (let x = 0; x <= 1; x += 0.01) { const y = Math.exp(-Math.pow((x - 0.2) / 0.11, 2) / 2) * 0.9 + Math.exp(-Math.pow((x - 0.37) / 0.2, 2) / 2) * 0.25; d += (x === 0 ? 'M' : 'L') + X(x) + ' ' + Y(Math.min(1, y)) + ' '; }
+  const area = svg('path', { d: d + `L${X(1)} ${Y(0)} L${X(0)} ${Y(0)} Z`, fill: 'var(--r-soft)', opacity: 0 });
+  const curve = svg('path', { d, fill: 'none', stroke: 'var(--r)', 'stroke-width': 2, 'stroke-dasharray': 2000, 'stroke-dashoffset': 2000, style: 'transition:stroke-dashoffset 2.2s ease' });
+  const opt = svg('line', { x1: X(1 / E), x2: X(1 / E), y1: Y(0), y2: Y(1), stroke: 'var(--t)', 'stroke-width': 2, 'stroke-dasharray': '6 4' });
+  s.append(area, curve, opt, svg('text', { x: X(1 / E) + 6, y: Y(1) + 4, class: 'lbl', fill: 'var(--t)' }, '最优：37%'), svg('text', { x: X(0.2), y: Y(0.95) - 6, class: 'lbl mid', fill: 'var(--r)' }, '真人典型停止点（示意）'));
+  node.append(el('div', { class: 'scrollx' }, s));
+  return { start() { curve.style.strokeDashoffset = 0; area.style.transition = 'opacity 1s 1.5s'; area.setAttribute('opacity', 1); } };
+});
+
+/* ---------- 09 逐条审视 ---------- */
+reg('judge', (node) => {
+  const J = [
+    { k: 'ok', m: '✓', t: '相亲：10 个对象，前 3～4 个只看不定', p: '结构对：对象依次出现、拒绝后难以回头、目标是选最好的。', why: '但要注意两点：对方也可能拒绝你（那就用 25% 版本）；多数人要的是「够好」而不是「全场最佳」（那期望排名版本更贴切）。n = 10 的精确最优是跳过 3 个，成功率 39.9%。' },
+    { k: 'ok', m: '✓', t: '租房：30 天里先看 11 天', p: '结构对：房源依次出现，好房子不等人，看房有时间成本。', why: '这是按时间算的版本（Bruss 1/e 定律）：前 37% 的时间只看不租。前提是房源在这 30 天里均匀随机出现。' },
+    { k: 'no', m: '✗', t: '读书：读了 37 页还没兴趣就放弃', p: '不是秘书问题。这里没有「从一串候选里挑一个」，只有「要不要继续」。', why: '秘书问题里的 37% 是「观察期长度」，之后还要继续找；而这里的 37% 被用成了「放弃阈值」。书的前 37 页也不是随机抽样的独立候选人。它可能是条好用的经验法则，但和 1/e 没有数学关系。' },
+    { k: 'no', m: '✗', t: '电视剧：第 4 集是最佳弃剧时间', p: '同上：这是「止损」问题，不是「选最佳」问题。', why: '如果硬要套，秘书问题的说法应该是「看完前 4 集记住最好看的一集，之后遇到更好看的一集就……」，这显然没有意义。' },
+    { k: 'no', m: '✗', t: '视频：看到 3 分 42 秒还不好看就关', p: '同上。10 分钟 × 37% 只是把数字套上去。', why: '一段视频不是一串独立的候选人。什么时候关掉取决于你的时间价值和内容的分布，不是 1/e。' },
+    { k: 'no', m: '✗', t: '梗图：样本取总体的 37% 刚刚好', p: '样本量由想要的精度和置信度决定，和 1/e 无关。', why: '抽样调查里，总体 100 万人时几百到几千的样本就够；总体 10 人时抽 4 个意义不大。37% 法则讲的是「序贯决策」，梗图讲的是「抽样」，两件事只是都出现了 37。' },
+  ];
+  J.forEach((j) => { const c = el('div', { class: 'jcard ' + j.k }, el('div', { class: 'mark' }, j.m), el('div', {}, el('h3', {}, j.t), el('p', {}, j.p), el('div', { class: 'why' }, j.why))); node.append(c); });
+});
+
+/* ---------- 10 判断标准 ---------- */
+reg('checklist', (node) => {
+  const Q = [
+    ['候选人是一个一个来的吗？', '如果能把所有选项摊在桌上一起比，直接挑最好的就行，不需要停止规则。'],
+    ['放弃了就真的回不去吗？', '能回头的话，观察期可以拉长到约 61%（第 07 节）。'],
+    ['你要的是「全场最佳」，还是「够好」？', '要「够好」的话，用放宽的阈值策略；执着最佳才是 37%。'],
+    ['大概知道一共有多少个（或多长时间）吗？', '不知道人数但知道截止时间，按时间的 37% 来算（Bruss 1/e 定律）。'],
+  ];
+  Q.forEach(([q, s], i) => node.append(el('div', { class: 'q' }, el('span', { class: 'n' }, 'Q' + (i + 1)), el('div', {}, q, el('small', {}, s)))));
+});
+
+/* ---------- 11 时间线 ---------- */
+reg('timeline', (node) => {
+  const T = [
+    ['1613', '开普勒选第二任妻子', '两年里考察了 11 位候选人，最后娶了第 5 位。Ferguson 把它当作这个问题的史前案例。[2][13]'],
+    ['1875', 'Cayley 的「彩票问题」', '依次翻开 n 张彩票、随时可停的问题，被视为最早的近亲。[2]'],
+    ['1949', 'Flood 的「未婚妻问题」', 'Merrill Flood 在讨论中提出并给出最优策略的证明。[1]'],
+    ['1960', 'Gardner 在《科学美国人》发表', '以「googol 游戏」形式刊出，问题由此出圈。分析由 Leo Moser 等人提供。[1][3]'],
+    ['1961', 'Lindley 用动态规划求解', '最早的正式解之一。[2][4]'],
+    ['1963', 'Dynkin：马尔可夫过程的最优停止', '把它纳入最优停止理论的框架。[2][5]'],
+    ['1964', 'Chow 等：改为最小化期望排名', '得到著名常数 3.8695。[7]'],
+    ['1966', 'Gilbert & Mosteller 的系统研究', '完全信息、多次选择等变体的系统结果。[6]'],
+    ['1975', 'Smith：对方可能拒绝', '「不确定录用」模型。[8]'],
+    ['1984', 'Bruss 的 1/e 定律', '候选人人数未知时的统一解法。[9]'],
+    ['1989', 'Ferguson：谁解决了秘书问题？', '历史综述，结论是「看你怎么定义问题」。[2]'],
+    ['1997', 'Seale & Rapoport 的真人实验', '发现人们系统性地停得太早。[10]'],
+    ['2016', '《Algorithms to Live By》', 'Christian & Griffiths 把它写成第一章，「37% 法则」从此成为流行说法。[11]'],
+  ];
+  const items = T.map(([y, t, p]) => el('div', { class: 'tl' }, el('div', { class: 'yr' }, y), el('div', { class: 't' }, t), el('p', {}, p)));
+  node.append(...items); let timer = 0;
+  return { start() { let i = 0; timer = setInterval(() => { if (i >= items.length) { clearInterval(timer); return; } items[i++].classList.add('on'); }, RM ? 0 : 220); }, stop() { clearInterval(timer); } };
+});
+
+/* ---------- 12 总结 ---------- */
+reg('summary', (node) => {
+  const steps = ['候选人依次出现', '先看 n/e 个，一个不要', '记住其中最好的 = 标杆', '之后第一个越过标杆的', '立刻录用', '选中最佳的概率 ≈ 37%'];
+  const W = 720, H = 90; const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' }); const bw = 108, gap = (W - bw * steps.length) / (steps.length - 1);
+  const gs = steps.map((t, i) => { const x = i * (bw + gap); const g = svg('g', { opacity: .3, style: 'transition:opacity .4s' }); g.append(svg('rect', { x, y: 18, width: bw, height: 54, rx: 10, fill: i === steps.length - 1 ? 'var(--t-soft)' : 'var(--p-soft)' })); const words = t.length > 7 ? [t.slice(0, Math.ceil(t.length / 2)), t.slice(Math.ceil(t.length / 2))] : [t]; words.forEach((w, j) => g.append(svg('text', { x: x + bw / 2, y: 40 + j * 16 + (words.length === 1 ? 8 : 0), class: 'lbl big mid', 'font-size': 12 }, w))); if (i < steps.length - 1) g.append(svg('text', { x: x + bw + gap / 2, y: 50, class: 'lbl mid', 'font-size': 16 }, '→')); s.append(g); return g; });
+  node.append(el('div', { class: 'scrollx' }, s)); let timer = 0;
+  return { start() { let i = 0; timer = setInterval(() => { if (i >= gs.length) { clearInterval(timer); return; } gs[i++].setAttribute('opacity', 1); }, RM ? 0 : 350); }, stop() { clearInterval(timer); } };
+});
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>
