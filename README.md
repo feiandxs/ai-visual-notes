@@ -44,9 +44,9 @@
 | 标题 | 原文作者 / 出处 | 页面 | 简介 |
 | --- | --- | --- | --- |
 | 数学是真理吗？古典柏拉图主义的困境（数学哲学系列 7） | 贾明子，知乎专栏《何为现实？拉普拉斯之妖与薛定谔猫之决战》 | [`math/philosophy-of-math/is-math-truth-platonism-dilemma/`](math/philosophy-of-math/is-math-truth-platonism-dilemma/index.html) | 从毕达哥拉斯、柏拉图、欧几里得到微积分、无穷、虚数与非欧几何，讲“数学是绝对真理”的信念如何建立又如何被动摇。 |
-| 数学的三个纲领：逻辑、形式语言，以及直觉（数学哲学系列 8） | 同上 | [`math/philosophy-of-math/three-programs-logic-formalism-intuition/`](math/philosophy-of-math/three-programs-logic-formalism-intuition/index.html) | 逻辑主义、形式主义、直觉主义三条路各自撞上罗素悖论、哥德尔不完备与“令人汗颜的尴尬”。 |
-| 数学是实在还是工具？工作日的柏拉图主义和周末的形式主义（数学哲学系列 9） | 同上 | [`math/philosophy-of-math/platonist-weekdays-formalist-weekends/`](math/philosophy-of-math/platonist-weekdays-formalist-weekends/index.html) | 从“发现还是发明”到三个纲领的困境，用 Mandelbrot 集、弗雷格与哥德尔的论证讲数学柏拉图主义及其两大诘难。 |
-| 客观宇宙的唯一可能是数学？（数学哲学系列 10） | 同上 | [`math/philosophy-of-math/is-the-universe-mathematics/`](math/philosophy-of-math/is-the-universe-mathematics/index.html) | 结构主义、一首曲子的无数载体、一朵黄花的五种现实，一路走到 Tegmark 的数学宇宙假说，再绕回老子的“道”与康德。 |
+| 数学的三个纲领：逻辑、形式语言，以及直觉（数学哲学系列 8） | 贾明子，知乎专栏《何为现实？拉普拉斯之妖与薛定谔猫之决战》 | [`math/philosophy-of-math/three-programs-logic-formalism-intuition/`](math/philosophy-of-math/three-programs-logic-formalism-intuition/index.html) | 逻辑主义、形式主义、直觉主义三条路各自撞上罗素悖论、哥德尔不完备与“令人汗颜的尴尬”。 |
+| 数学是实在还是工具？工作日的柏拉图主义和周末的形式主义（数学哲学系列 9） | 贾明子，知乎专栏《何为现实？拉普拉斯之妖与薛定谔猫之决战》 | [`math/philosophy-of-math/platonist-weekdays-formalist-weekends/`](math/philosophy-of-math/platonist-weekdays-formalist-weekends/index.html) | 从“发现还是发明”到三个纲领的困境，用 Mandelbrot 集、弗雷格与哥德尔的论证讲数学柏拉图主义及其两大诘难。 |
+| 客观宇宙的唯一可能是数学？（数学哲学系列 10） | 贾明子，知乎专栏《何为现实？拉普拉斯之妖与薛定谔猫之决战》 | [`math/philosophy-of-math/is-the-universe-mathematics/`](math/philosophy-of-math/is-the-universe-mathematics/index.html) | 结构主义、一首曲子的无数载体、一朵黄花的五种现实，一路走到 Tegmark 的数学宇宙假说，再绕回老子的“道”与康德。 |
 
 #### 大数（`math/large-numbers/`）
 
