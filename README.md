@@ -73,6 +73,12 @@
 | --- | --- | --- | --- |
 | 哲学上从 0 到 1 这个奇点是如何发生的？ | 知乎答主 高大早，及同一问题下另一位答主 | [`philosophy/general/from-zero-to-one-singularity/`](philosophy/general/from-zero-to-one-singularity/index.html) | 冯·诺伊曼序数用「空集 → {空集}」造出 0 和 1；拉康说 0 是体系的自指。 |
 
+### 语言（`language/`）
+
+| 标题 | 原文作者 / 出处 | 页面 | 简介 |
+| --- | --- | --- | --- |
+| 汉语名字怎样读起来好听？声调、声母与韵母的搭配规律 | 个人学习笔记，参考公安部《全国姓名报告》2019–2021、Cao et al. (2002)、van de Weijer et al. (2020) 等 | [`language/chinese-name-phonetics/`](language/chinese-name-phonetics/index.html) | 可输入名字的声调试验台、声母与韵母矩阵、热门名字的声调统计，讲清平仄、变调、拗口的三种来源，并修正常见的"清浊对比"等误解。 |
+
 ### 设计（`design/`）
 
 | 标题 | 原文作者 / 出处 | 页面 | 简介 |

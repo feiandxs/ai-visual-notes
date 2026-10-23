@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>名字怎样才好听</title>
+<meta name="description" content="用语音学拆解汉语名字的读音规律：四声与平仄、变调、声母部位、韵母四呼与开口度、响音与阻塞音，配真实姓名大数据与实证研究，并修正常见起名说法。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+a{color:var(--p)}
+
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+  nav.side .back{display:block;padding:0 10px 10px;font-size:12px;color:var(--muted);text-decoration:none}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= Hero ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.hero-art{margin-top:26px;background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;overflow:hidden}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700}
+
+/* ================= 章节 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head .who{display:inline-block;font-size:12px;color:var(--muted);margin-left:8px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);color:var(--text);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.notes{margin:14px 0 0;padding:0 0 0 18px;color:var(--muted);font-size:14px}
+.notes li{margin:4px 0}
+.notes li b{color:var(--text);font-weight:600}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.grid3{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){ .grid3{grid-template-columns:repeat(3,1fr)} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scrollx>svg{min-width:460px}
+
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+.tag.p{background:var(--p-soft);color:var(--p);border-color:transparent}
+.tag.t{background:var(--t-soft);color:var(--t);border-color:transparent}
+.tag.o{background:var(--o-soft);color:var(--o);border-color:transparent}
+.tag.r{background:var(--r-soft);color:var(--r);border-color:transparent}
+.kv{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.kv b{font-family:var(--mono);color:var(--text);font-size:15px}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq .hl{color:var(--p);font-weight:700}
+.eq .hl2{color:var(--o);font-weight:700}
+.eq .hl3{color:var(--t);font-weight:700}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.quote small{display:block;color:var(--muted);margin-top:4px}
+
+.cards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:680px){ .cards{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))} }
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--surface-2)}
+.card h3{font-size:15px;margin-bottom:6px}
+.card p{font-size:13px;color:var(--muted)}
+.card.on{border-color:var(--p);background:var(--p-soft)}
+.card .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+
+.vs{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:700px){ .vs{grid-template-columns:1fr auto 1fr;align-items:stretch} }
+.vs .mid{display:flex;align-items:center;justify-content:center;font-family:var(--mono);color:var(--muted);font-size:13px}
+.vs .side-card{border-radius:12px;padding:14px;border:1px solid var(--line)}
+.vs .side-card h3{font-size:15px;margin-bottom:6px}
+.vs .side-card p{font-size:14px}
+.vs .a{background:var(--p-soft);border-color:transparent}
+.vs .b{background:var(--t-soft);border-color:transparent}
+.vs .c{background:var(--o-soft);border-color:transparent}
+
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ul{padding-left:18px;margin:8px 0}
+
+/* SVG 通用 */
+.ax{stroke:var(--muted);stroke-width:1}
+.gr{stroke:var(--grid);stroke-width:1}
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.m{font-family:var(--mono)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* 入场 */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页补充 ===== */
+.syl{display:inline-flex;align-items:flex-end;gap:2px;font-family:var(--mono)}
+.syl .pc{display:inline-block;padding:4px 7px;border-radius:8px;font-weight:700;font-size:15px;line-height:1}
+.pc.i{background:var(--p-soft);color:var(--p)}
+.pc.f{background:var(--t-soft);color:var(--t)}
+.pc.t{background:var(--o-soft);color:var(--o)}
+.pc.z{background:var(--surface-2);color:var(--muted);font-weight:500}
+.bench{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:860px){ .bench{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr)} }
+.bench .in{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.bench input[type=text]{font:inherit;font-size:20px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text);width:9em;letter-spacing:.15em}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:4px 10px;font-size:13px;cursor:pointer}
+.chip:hover{border-color:var(--p);color:var(--p)}
+.chip.on{background:var(--p);color:#fff;border-color:var(--p)}
+.verdict{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.verdict .row{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
+.verdict .row.ok{background:var(--t-soft)}
+.verdict .row.warn{background:var(--o-soft)}
+.verdict .row.bad{background:var(--r-soft)}
+.verdict .row .ic{font-weight:700;min-width:1.2em}
+.verdict .row small{display:block;color:var(--muted)}
+.pz{font-family:var(--mono);font-size:22px;letter-spacing:.3em;margin:4px 0}
+.pz .ping{color:var(--t)} .pz .ze{color:var(--o)} .pz .qing{color:var(--muted)}
+.mat{border-collapse:collapse;font-size:13px;width:100%}
+.mat th,.mat td{border:1px solid var(--line);padding:5px 4px;text-align:center}
+.mat th{background:var(--surface-2);font-weight:600;color:var(--muted);font-size:12px}
+.mat th.rh{text-align:left;white-space:nowrap}
+.mat td{font-family:var(--mono);font-size:15px;color:var(--text);min-width:34px;transition:background .25s,color .25s,box-shadow .25s}
+.mat td.son{color:var(--t)}
+.mat td.hit{background:var(--p);color:#fff;font-weight:700;box-shadow:0 0 0 2px var(--p)}
+.mat td.hit2{background:var(--o);color:#fff;font-weight:700}
+.mat td.same{outline:2px dashed var(--r);outline-offset:-2px}
+.mat td.dim{opacity:.35}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.pair{display:grid;grid-template-columns:1fr;gap:10px}
+@media (min-width:700px){ .pair{grid-template-columns:1fr 1fr} }
+.pair .ex{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--surface-2);cursor:pointer;transition:border-color .2s,background .2s}
+.pair .ex.on{border-color:var(--p);background:var(--p-soft)}
+.pair .ex .nm{font-size:22px;font-weight:700;letter-spacing:.1em}
+.pair .ex .py{font-family:var(--mono);color:var(--muted);font-size:13px}
+.pair .ex .why{font-size:13px;margin-top:4px}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:7em 1fr 3.5em;align-items:center;gap:8px;font-size:13px}
+.bar .lab{font-family:var(--mono);text-align:right;color:var(--text)}
+.bar .tr{height:16px;background:var(--surface-2);border-radius:6px;overflow:hidden}
+.bar .fl{height:100%;background:var(--p);width:0;transition:width .9s cubic-bezier(.2,.7,.2,1)}
+.bar .fl.t{background:var(--t)}
+.bar .fl.o{background:var(--o)}
+.bar .v{font-family:var(--mono);color:var(--muted)}
+.namelist{display:flex;flex-wrap:wrap;gap:6px}
+.namelist .nm{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:10px;padding:4px 8px;background:var(--surface);font-size:14px}
+.namelist .nm .tp{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.namelist .nm.hl{border-color:var(--p);background:var(--p-soft)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.fixlist{display:grid;gap:10px}
+.fix{border-left:4px solid var(--r);background:var(--surface-2);border-radius:0 12px 12px 0;padding:10px 14px}
+.fix .say{font-size:14px;color:var(--muted);text-decoration:line-through;text-decoration-color:var(--r)}
+.fix .ok{font-size:14px;margin-top:4px}
+.fix .ok b{color:var(--t)}
+.fix.amber{border-left-color:var(--o)}
+.fix.amber .say{text-decoration:none;color:var(--text)}
+.check{display:grid;gap:8px}
+.check .it{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);font-size:14px}
+.check .it .box{width:22px;height:22px;border-radius:6px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:13px;font-weight:700}
+.check .it.pass .box{background:var(--t);border-color:var(--t);color:#fff}
+.check .it.fail .box{background:var(--r);border-color:var(--r);color:#fff}
+.check .it.skip .box{background:var(--surface);color:var(--muted)}
+.check .it small{display:block;color:var(--muted)}
+sup.ref{font-size:10px;color:var(--p);margin-left:1px}
+.refs{font-size:13px;color:var(--muted);padding-left:22px}
+.refs li{margin:5px 0;word-break:break-all}
+.refs li a{color:var(--p);text-decoration:none}
+.refs li a:hover{text-decoration:underline}
+.sono{position:relative;height:150px}
+.bump{min-width:560px}
+.small-note{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="章节">
+  <div class="brand">名字怎样才好听</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">可视化笔记 · 语音学 · 姓名大数据</div>
+  <h1>名字怎样才「好听」？</h1>
+  <p class="sub">起名的经验法则很多：平仄相间、开口音配闭口音、别用相同声母……这些说法哪些站得住，哪些只是口口相传？这一页用<b>普通话语音学</b>把它们拆开，再对照<b>真实的姓名大数据</b>和<b>实证研究</b>来看。</p>
+  <div class="thesis">一个汉字音节 = <b>声母</b> + <b>韵母</b> + <b>声调</b>。名字好不好读，就看相邻音节在这三个层面上是「有变化」还是「撞车」。绝大多数起名口诀，本质上都是在说这件事。</div>
+  <div class="meta">本页由一则个人学习笔记扩展而来，结合公开报告与论文重新核实；笔记里不严谨的说法在第 11 节单独列出修正。数据与结论处标有角标，出处见页末「参考资料」。</div>
+  <div class="hero-art" data-demo="hero"></div>
+</header>
+
+<!-- 01 -->
+<section class="ch" id="tones" data-title="四声与平仄">
+  <div class="ch-head"><span class="num">01</span>
+    <h2>四声与平仄：名字的「旋律」从哪来</h2>
+    <p class="lead">普通话有四个声调。按传统分法，<b>阴平、阳平</b>（一声、二声）是「平」，<b>上声、去声</b>（三声、四声）是「仄」。「平仄相间」说的就是让名字的音高有起有落。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">五度标记法把音高分成 1～5 五级<sup class="ref">[1]</sup>：阴平 55 高而平，阳平 35 上扬，上声 214 先降后升，去声 51 急降。点任一声调听「形状」，再看它属平还是仄。</div>
+    <div data-demo="tonechart"></div>
+  </div>
+  <ul class="notes">
+    <li><b>平不等于「平淡」</b>：阳平是明显的上扬调，只是传统音韵学把它和阴平归为一类。</li>
+    <li><b>上声最「长」</b>：214 要先降到底再升上去，是四声里耗时最久、最容易被压缩的一个，所以它在连读里会变调（见第 3 节）。</li>
+    <li><b>「平仄」只是声调的粗分类</b>。真正决定顺口与否的是相邻音节的音高走势是否重复，这一点试验台里看得更清楚。</li>
+  </ul>
+</section>
+
+<!-- 02 -->
+<section class="ch" id="bench" data-title="声调试验台">
+  <div class="ch-head"><span class="num">02</span>
+    <h2>声调试验台：把名字的音高画出来</h2>
+    <p class="lead">输入 2～3 个字的名字（内置约 300 个常用姓名用字），页面会画出每个音节的音高曲线、标出平仄模式，并按语音学规则给出提示。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">可以直接点下面的例子对比：<b>李白</b>（仄平）、<b>王维</b>（平平）、<b>苏轼</b>（平仄）、<b>周瑜</b>（平平）。右侧的判定只看读音，不评价字义。遇到字库没有的字，可以用「拼音+数字」手动输入，如 <span class="mono">li3 bai2</span>。</div>
+    <div data-demo="bench"></div>
+  </div>
+  <ul class="notes">
+    <li><b>曲线按实际读法画</b>：两个三声相连，前一个会自动变成二声；「一」在四声前读 yí，在其他声调前读 yì；叠字名的第二个字按轻声处理。</li>
+    <li><b>「全平」或「全仄」不一定难听</b>：笔记里举的「周瑜」（平平）、「苏轼」（仄仄）都很顺口，因为它们的声母、韵母各不相同。声调只是三个层面之一。</li>
+  </ul>
+</section>
+
+<!-- 03 -->
+<section class="ch" id="sandhi" data-title="变调：名字不按字典读">
+  <div class="ch-head"><span class="num">03</span>
+    <h2>变调：名字真正的读法，常常不是字典上的声调</h2>
+    <p class="lead">普通话有几条稳定的连读变调规则<sup class="ref">[1]</sup>。起名时只看单字声调，会漏掉这一层。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">三条最常影响名字的规则。点「播放」看单字声调如何在连读中变形。</div>
+    <div data-demo="sandhi"></div>
+  </div>
+  <ul class="notes">
+    <li><b>三声 + 三声 → 二声 + 三声</b>：「李雨」字典上是 lǐ yǔ，实际读 lí yǔ。三个三声相连（如「李晓雨」），姓单独一个字、名两个字时，通常读成 3 · 2 · 3。</li>
+    <li><b>「一」的变调</b>：「一诺」读 yí nuò（四声前变二声），「一鸣」读 yì míng。所以「一诺」的实际平仄是平仄，不是字典上的平仄。</li>
+    <li><b>叠字读轻声</b>：「丽丽」「婷婷」的第二个字在口语里是轻声，又短又弱。一项百万姓名语料的研究在处理多音字时，就把叠字名的第二字统一标为轻声<sup class="ref">[2]</sup>。笔记里说「叠字第二字多为平声」，更准确的说法是「读轻声」。</li>
+  </ul>
+</section>
+
+<!-- 04 -->
+<section class="ch" id="evidence" data-title="数据：热门名字的声调组合">
+  <div class="ch-head"><span class="num">04</span>
+    <h2>数据说话：热门名字偏爱哪些声调组合</h2>
+    <p class="lead">把公安部 2019～2021 年三份《全国姓名报告》里男女新生儿各前十的名字（共 60 个）<sup class="ref">[3][4][5]</sup>按声调模式归类，规律非常明显。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左：60 个热门双字名的<b>声调组合</b>频次（按单字字典声调统计，「一诺」等变调情况另注）。右：<b>第二个字</b>的声调分布。条形由本页根据三份报告的名单现场统计，不是报告原文给出的数字。</div>
+    <div data-demo="tally"></div>
+  </div>
+  <div class="cards" style="margin-top:14px">
+    <div class="card"><div class="k">百万姓名语料 · 2002</div><h3>人们对名字的声调模式有明显偏好</h3><p>曹文洁等人分析了约 100 万个中国人名，发现双字名的声调组合分布「规律性很强」，而且姓氏的声调对名字声调组合几乎没有影响<sup class="ref">[2]</sup>。论文只给了分布图，没有列出百分比。</p></div>
+    <div class="card"><div class="k">Lingua · 2020</div><h3>名字里阳平（二声）格外多</h3><p>van de Weijer 等人比较中文名字与普通名词，发现四个声调在男女名字中分布相似，但<b>二声在名字里比在普通词里明显更常见</b>；作者认为这是「名字」这一类词的特征，而不是性别标记<sup class="ref">[6]</sup>。上面右图里第二字二声占比最高，与此一致。</p></div>
+    <div class="card"><div class="k">公司名语料 · 旁证</div><h3>开头偏高调，回避三声</h3><p>对 122,480 个双字公司名的统计显示：首字偏好高调，两字声调倾向「相容」的组合，并且<b>两个位置都回避上声</b><sup class="ref">[7]</sup>。这是商号不是人名，只能作旁证，但方向与人名数据一致：60 个热门名里第二字是三声的只有「浩宇」一类极少数。</p></div>
+  </div>
+</section>
+
+<!-- 05 -->
+<section class="ch" id="initials" data-title="声母矩阵">
+  <div class="ch-head"><span class="num">05</span>
+    <h2>声母矩阵：「发音部位相近」到底指什么</h2>
+    <p class="lead">普通话 21 个声母按<b>发音部位</b>（嘴唇、舌尖、舌面、舌根）和<b>发音方法</b>（塞、擦、塞擦、鼻、边）排成一张表<sup class="ref">[1][8]</sup>。相邻两个字的声母落在同一格或同一列，就容易「绕」。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">点一个名字，它用到的声母会在表里亮起；同一列（同部位）的两个字会标虚线框。绿色字母是<b>响音</b>（m n l r，声带振动），其余全部是<b>清音</b>。</div>
+    <div data-demo="initials"></div>
+  </div>
+  <ul class="notes">
+    <li><b>普通话没有浊塞音</b>：b 和 p 的区别是「不送气 / 送气」，不是「浊 / 清」。b、d、g、z、zh、j 全是清音<sup class="ref">[1][8]</sup>。笔记把 b、p、d、t…叫「清音」没错，但把它们和 m、n、l、r 的对比叫「清浊对比」就不准确了，见第 8 节。</li>
+    <li><b>d 和 t 是同一个部位</b>：都是舌尖抵上齿龈，只差送气。笔记把「丹婷」当作「发音部位不同」的例子，其实 d、t 同部位，只是方法不同；它读着顺，是因为韵母和声调都有变化。</li>
+    <li><b>零声母也算「相同」</b>：「汪文威」三个字都以 w 开头。w 在拼音里其实是韵母 u 的开头写法，不是真正的声母，但连续三个同样的起始动作，一样绕口。</li>
+  </ul>
+</section>
+
+<!-- 06 -->
+<section class="ch" id="finals" data-title="韵母：四呼与开口度">
+  <div class="ch-head"><span class="num">06</span>
+    <h2>韵母：「开口音」「闭口音」说的是哪一层</h2>
+    <p class="lead">韵母有两套常用分类。<b>四呼</b>看韵头（开口呼、齐齿呼 i-、合口呼 u-、撮口呼 ü-）<sup class="ref">[9]</sup>；<b>开口度</b>看韵腹（主要元音）：a 最开，e/o 居中，i/u/ü 最闭。起名口诀说的「开口音响亮」，指的是后一种。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">横向是四呼，纵向是韵腹的开口度。点名字看每个字落在哪一格；右侧的<b>响度条</b>按语音学的响度等级<sup class="ref">[10]</sup>排列：低元音最响，高元音次之，再往下是响音辅音、擦音、塞音。</div>
+    <div data-demo="finals"></div>
+  </div>
+  <ul class="notes">
+    <li><b>「海涛」确实是两个开口音</b>：hǎi、tāo 的韵腹都是 a，四呼也都是开口呼，笔记的例子成立。</li>
+    <li><b>「雅琪」的「雅」按四呼是齐齿呼</b>（yǎ = i + a），但韵腹是 a，仍然响亮；「琪」qí 韵腹是 i，最闭。笔记说的「一放一收」指的是韵腹开口度，这一层它说对了，只是不能和四呼混用。</li>
+    <li><b>同韵母重复会「押韵」</b>：「兰珊」两个 an，读起来像顺口溜。这不一定是缺点，但多数人会觉得单调，所以热门名字里几乎看不到同韵组合（第 9 节的名单可以验证）。</li>
+  </ul>
+</section>
+
+<!-- 07 -->
+<section class="ch" id="awkward" data-title="拗口的三种来源">
+  <div class="ch-head"><span class="num">07</span>
+    <h2>「拗口」到底是什么：三种撞车</h2>
+    <p class="lead">把前面三层合起来看，几乎所有「不好读」的名字都能归到三种原因：<b>声母撞车</b>（绕口令效应）、<b>韵母撞车</b>（押韵单调）、<b>声调撞车</b>（音高没有起伏，或触发变调）。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">左右各一个名字，点击任一个看三层分析。左列是笔记里的「反例」，右列是对照。</div>
+    <div data-demo="awkward"></div>
+  </div>
+  <ul class="notes">
+    <li><b>撞一层通常没事，撞两层就明显了</b>：「李梨」声母 l-l、韵母 i-i、声调 3-2，撞了两层；「李白」只是姓与名都在舌尖部位附近，其他全不同，所以顺口。</li>
+    <li><b>连姓一起算</b>：很多口诀只看名字两个字，但实际叫的是三个字。「王伟」只有两层相同，加上姓「汪」变成「汪文威」就三层都撞。</li>
+  </ul>
+</section>
+
+<!-- 08 -->
+<section class="ch" id="sonorant" data-title="响音与阻塞音">
+  <div class="ch-head"><span class="num">08</span>
+    <h2>不是「清浊」，是「响音 vs 阻塞音」</h2>
+    <p class="lead">笔记说「明丽」是「浊音 m 配清音 l」。但 l 是浊音，而且 m、n、l、r 四个都属于<b>响音</b>（气流基本不受阻，声带持续振动）；其余 17 个声母都是<b>阻塞音</b>（塞、擦、塞擦），且在普通话里全部是清音<sup class="ref">[1][8]</sup>。所以笔记想表达的对比，正确的名字叫「响音 vs 阻塞音」。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">把 21 个声母按「气流受阻程度」排开：越靠右越通畅、越像元音。点名字看它的声母落在哪里。「明丽」两个字都在响音区，没有形成对比；「宝龙」「丹丽」才是阻塞音配响音。</div>
+    <div data-demo="sonority"></div>
+  </div>
+  <div class="cards" style="margin-top:14px">
+    <div class="card"><div class="k">跨语言 · 13 国热门名</div><h3>响音偏女性名，阻塞音偏男性名</h3><p>Ackermann 与 Zimmer 分析 13 个国家的热门人名，发现女性名字更多响音、更常以元音收尾，男性名字更多阻塞音、更常以辅音收尾；部分规律跨文化一致，部分是各语言自己的习惯<sup class="ref">[11]</sup>。</p></div>
+    <div class="card"><div class="k">粤语名 · ICPhS 2019</div><h3>音段比声调更能预测性别</h3><p>Wong 与 Kang 标注了 288 个常用粤语双字名：男性名更多阻塞音、后/圆/低元音和闭音节；而<b>声调高低与走势对性别的预测并不稳定</b><sup class="ref">[12]</sup>。</p></div>
+    <div class="card"><div class="k">普通话名 · Lingua 2020</div><h3>性别线索主要来自字义</h3><p>van de Weijer 等人指出，中文名字的性别识别主要靠汉字的语义（偏旁、意象）、少量语音象征和叠字；声调不承担性别信息<sup class="ref">[6]</sup>。这说明西方的「响音＝柔和」规律在汉语里只能算旁证，不能直接套用。</p></div>
+  </div>
+  <p class="small-note">以上三项都是关于「性别感知」而不是「好听」，放在这里是因为它们是目前能找到的、关于名字语音偏好最严格的实证；「响音更柔和、阻塞音更有力」这种感受在不同语言里有共性，但程度因语言而异。</p>
+</section>
+
+<!-- 09 -->
+<section class="ch" id="hot" data-title="热门名字读音榜">
+  <div class="ch-head"><span class="num">09</span>
+    <h2>热门名字读音榜：家长用脚投票的结果</h2>
+    <p class="lead">起名通《2019 姓名全景报告》把同音不同字的名字合并后，给出了 2018 年「最受欢迎的读音」<sup class="ref">[13]</sup>；公安部三份报告给出了按字统计的前十<sup class="ref">[3][4][5]</sup>。把它们的声调和声韵标出来，前面讲的规律一目了然。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">上：起名通 2018 年最受欢迎读音前五（男/女）。下：公安部 2019～2021 年新生儿前十名字，角标是声调模式；点任一名字可送入第 2 节的试验台。报告称高「音值」的名字应「声韵母搭配和谐，音调抑扬顿挫」<sup class="ref">[13]</sup>，但没有公布打分方法。</div>
+    <div data-demo="hot"></div>
+  </div>
+  <ul class="notes">
+    <li><b>第二个字几乎全是二声或四声</b>：辰、涵、桐、泽、然、宸、诺、汐……「平仄相间」在这里体现为「首字一/三/四声 + 末字二声」的大量组合。</li>
+    <li><b>同声母、同韵母的组合一个都没有</b>：60 个名字里找不到「兰珊」式押韵或「李梨」式同声母，经验法则在数据里得到了印证。</li>
+    <li><b>同音不同字是常态</b>：yìchén 对应奕辰、逸辰、奕宸，公安部 2021 年榜里「沐宸」「沐辰」同音并列第一和第三<sup class="ref">[5]</sup>。好听的读音会被反复使用，只能靠换字来区分。</li>
+  </ul>
+</section>
+
+<!-- 10 -->
+<section class="ch" id="trend" data-title="用字的时代趋势">
+  <div class="ch-head"><span class="num">10</span>
+    <h2>用字的时代趋势：「梓」「宇」统治了十年</h2>
+    <p class="lead">起名通统计的 2013～2018 年男女宝宝十大用字<sup class="ref">[13]</sup>，与公安部 2018～2021 年新生儿高频字<sup class="ref">[3][4][5][14]</sup>连起来看，头部用字十年几乎没换人。</p>
+  </div>
+  <div class="fig">
+    <div class="cap">折线是每个字在当年十大用字里的名次（1 为最高）。切换男/女看各自的榜单；虚线段表示该年未进前十。2019 年全国户籍人口（全年龄）高频字则是「英、华、文、玉」<sup class="ref">[3]</sup>，和新生儿榜完全是两个时代。</div>
+    <div data-demo="trend"></div>
+  </div>
+  <ul class="notes">
+    <li><b>男孩</b>：宇、子、梓、轩、泽六年稳居前列；公安部 2021 年高频字前五是泽、梓、子、宇、沐<sup class="ref">[5]</sup>。</li>
+    <li><b>女孩</b>：梓、涵、雨、欣、佳是常客；2020 年起玥、伊、昕、可，2021 年起汐、芮、霖、航开始上升<sup class="ref">[4][5]</sup>。</li>
+    <li><b>读音上的共同点</b>：这些高频字大多是二声或三声、韵母不重复、声母分散在不同部位，适合与各种姓氏搭配，这也是它们「百搭」的原因之一。</li>
+  </ul>
+</section>
+
+<!-- 11 -->
+<section class="ch" id="fixes" data-title="笔记里哪些说法要修正">
+  <div class="ch-head"><span class="num">11</span>
+    <h2>笔记里哪些说法要修正</h2>
+    <p class="lead">原笔记的大方向是对的：让声、韵、调三层都有变化。但有几处术语和例子经不起推敲。</p>
+  </div>
+  <div class="fig">
+    <div class="fixlist" data-demo="fixes"></div>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="ch" id="checklist" data-title="起名读音检查清单">
+  <div class="ch-head"><span class="num">12</span>
+    <h2>起名读音检查清单</h2>
+    <p class="lead">把整页浓缩成七条可以逐一打勾的检查项。输入一个名字，页面自动判定；判定只看读音，字义、谐音、生僻度要另外考虑。</p>
+  </div>
+  <div class="fig">
+    <div data-demo="checklist"></div>
+  </div>
+  <div class="final">好听的名字没有公式，但「不好听」几乎都有原因：声母、韵母、声调三层里撞了两层以上。先避开撞车，再谈韵味。</div>
+</section>
+
+<footer>
+  <b>参考资料</b>
+  <ol class="refs">
+    <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Standard_Chinese_phonology">Standard Chinese phonology</a>：声母表（清音、送气对立）、五度调值 55/35/214/51、三声与「一」「不」变调规则。</li>
+    <li>Wen-Jie Cao, Bo Xu, Juha Iso-Sipilä, <a href="https://www.isca-archive.org/iscslp_2002/cao02_iscslp.pdf">Linguistic and Acoustic Analysis of Chinese Person Names</a>, ISCSLP 2002：约 100 万人名语料，声调模式分布「规律性强」，姓氏声调影响很小；叠字第二字标轻声。</li>
+    <li>公安部户政管理研究中心《二〇一九年全国姓名报告》，转引自 <a href="http://society.people.com.cn/n1/2020/0120/c1008-31557357.html">人民网</a> 与 <a href="https://zhuanlan.zhihu.com/p/103632033">知乎转载</a>：2019 年新生儿前十名字、高频字，全年龄高频字「英华文玉」。</li>
+    <li>公安部《二〇二〇年全国姓名报告》，转引自 <a href="https://www.thepaper.cn/newsDetail_forward_11269670">澎湃新闻</a>：2020 年新生儿前十名字与高频字。</li>
+    <li>公安部《二〇二一年全国姓名报告》，<a href="https://www.mps.gov.cn/n2254314/n6409334/c8349265/content.html">公安部网站</a>；转引 <a href="https://www.chinanews.com.cn/sh/2022/01-24/9660203.shtml">中国新闻网</a>：沐宸 2.3 万、若汐 1.8 万，前十名单与高频字。</li>
+    <li>Jeroen van de Weijer, Guangyuan Ren, Joost van de Weijer, Weiyun Wei, Yumeng Wang, <a href="https://www.sciencedirect.com/science/article/abs/pii/S002438411930508X">Gender identification in Chinese names</a>, Lingua 234 (2020) 102759。</li>
+    <li>Yoyo Pui Yiu Tsang, Jialin Zhang, Mingxing Li, <a href="https://www.researchgate.net/publication/376303990_The_Use_of_Tone_and_Tonal_Combination_in_Naming">The Use of Tone and Tonal Combination in Naming</a>：122,480 个双字公司名的声调统计。</li>
+    <li>汉典，<a href="https://www.zdic.net/hans/浊音">「浊音」词条</a>：普通话及多数方言没有浊塞音、浊塞擦音、浊擦音；b/p 之别在送气。</li>
+    <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Four_hu">Four hu（四呼）</a>：按韵头划分开口、齐齿、合口、撮口。</li>
+    <li>Wikipedia, <a href="https://en.wikipedia.org/wiki/Sonority_hierarchy">Sonority hierarchy</a>：响度等级，低元音 &gt; 中元音 &gt; 高元音 &gt; 滑音 &gt; 流音 &gt; 鼻音 &gt; 擦音 &gt; 塞音。</li>
+    <li>Tanja Ackermann, Christian Zimmer, <a href="https://www.degruyterbrill.com/document/doi/10.1515/ling-2020-0027/html">The sound of gender – correlations of name phonology and gender across languages</a>, Linguistics (2021)。</li>
+    <li>Kristen Wing Yan Wong, Yoonjung Kang, <a href="https://www.internationalphoneticassociation.org/icphs-proceedings/ICPhS2019/papers/ICPhS_2178.pdf">Sound Symbolism of Gender in Cantonese First Names</a>, ICPhS 2019：288 个粤语双字名。</li>
+    <li>起名通，<a href="https://www.qimingtong.com/2019full.html">2019 中国姓名大数据报告（全景报告）</a>：2018 年最受欢迎读音、2013～2018 年十大用字、「音值」说法；另见 <a href="https://m.thepaper.cn/newsDetail_forward_3360061">澎湃新闻报道</a>。</li>
+    <li>公安部《2018 年全国姓名报告》，转引自 <a href="http://cn.chinadaily.com.cn/a/201901/30/WS5c516020a31010568bdc7870.html">中国日报网</a>：2018 年新生儿高频字。</li>
+    <li>AllSet Learning, <a href="https://resources.allsetlearning.com/chinese/pronunciation/ASP7512B">Tone changes for multiple consecutive third tones</a>：多个三声连读的处理。</li>
+  </ol>
+  <p style="margin-top:12px">本页由 Claude Code 基于一则个人学习笔记调研、创作，仅供学习。页面内所有图示均为自绘；第 4 节与第 9 节的声调统计由本页根据公开名单现场计算，未在原报告中出现。</p>
+</footer>
+
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+<script>
+(() => {
+'use strict';
+/* ======================================================================
+   小框架：DOM 辅助、演示注册、视口触发
+   ====================================================================== */
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'html') n.innerHTML = v; else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstElementChild; };
+const cssVar = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const fmt = (n, d = 1) => Number(n).toLocaleString('zh-CN', { maximumFractionDigits: d });
+
+/* 动画循环：返回 {start, stop}，进入视口才跑 */
+const loop = (fn) => {
+  let raf = 0, t0 = 0, running = false;
+  const tick = (ts) => { if (!running) return; if (!t0) t0 = ts; fn((ts - t0) / 1000); raf = requestAnimationFrame(tick); };
+  return {
+    start() { if (running || RM) { if (RM) fn(0); return; } running = true; raf = requestAnimationFrame(tick); },
+    stop() { running = false; cancelAnimationFrame(raf); },
+  };
+};
+const every = (ms, fn) => {
+  let id = 0;
+  return { start() { if (id) return; fn(); id = setInterval(fn, ms); }, stop() { clearInterval(id); id = 0; } };
+};
+/* 段选 */
+const seg = (opts, onPick, init = 0) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const bs = opts.map((o, i) => el('button', { type: 'button', class: i === init ? 'on' : '', onclick: () => { bs.forEach((b, j) => b.classList.toggle('on', j === i)); onPick(i, o); } }, o));
+  box.append(...bs);
+  return box;
+};
+/* 滑块 */
+const range = (label, min, max, val, step, onInput, show = (v) => v) => {
+  const out = el('output', {}, show(val));
+  const inp = el('input', { type: 'range', min, max, value: val, step });
+  inp.addEventListener('input', () => { out.textContent = show(+inp.value); onInput(+inp.value); });
+  const w = el('label', { class: 'range' }, label, inp, out);
+  w.input = inp; return w;
+};
+/* ======================================================================
+   数据：常用姓名用字 → 拼音（数字声调）
+   ====================================================================== */
+const CH = {
+  // 姓氏
+  王:'wang2',李:'li3',张:'zhang1',刘:'liu2',陈:'chen2',杨:'yang2',黄:'huang2',赵:'zhao4',周:'zhou1',吴:'wu2',徐:'xu2',孙:'sun1',朱:'zhu1',马:'ma3',胡:'hu2',郭:'guo1',林:'lin2',何:'he2',高:'gao1',罗:'luo2',郑:'zheng4',梁:'liang2',谢:'xie4',宋:'song4',唐:'tang2',许:'xu3',韩:'han2',冯:'feng2',邓:'deng4',曹:'cao2',彭:'peng2',曾:'zeng1',肖:'xiao1',田:'tian2',董:'dong3',袁:'yuan2',潘:'pan1',蔡:'cai4',蒋:'jiang3',余:'yu2',于:'yu2',杜:'du4',叶:'ye4',程:'cheng2',苏:'su1',魏:'wei4',吕:'lv3',丁:'ding1',任:'ren2',沈:'shen3',姚:'yao2',卢:'lu2',姜:'jiang1',崔:'cui1',钟:'zhong1',谭:'tan2',陆:'lu4',汪:'wang1',范:'fan4',金:'jin1',石:'shi2',廖:'liao4',贾:'jia3',夏:'xia4',韦:'wei2',付:'fu4',方:'fang1',白:'bai2',邹:'zou1',孟:'meng4',熊:'xiong2',秦:'qin2',邱:'qiu1',尹:'yin3',薛:'xue1',闫:'yan2',段:'duan4',雷:'lei2',侯:'hou2',龙:'long2',史:'shi3',陶:'tao2',黎:'li2',贺:'he4',顾:'gu4',毛:'mao2',郝:'hao3',龚:'gong1',邵:'shao4',万:'wan4',钱:'qian2',严:'yan2',覃:'qin2',武:'wu3',戴:'dai4',莫:'mo4',孔:'kong3',向:'xiang4',汤:'tang1',欧:'ou1',司:'si1',诸:'zhu1',葛:'ge3',
+  // 热门名字用字
+  梓:'zi3',涵:'han2',一:'yi1',诺:'nuo4',浩:'hao4',宇:'yu3',欣:'xin1',怡:'yi2',然:'ran2',诗:'shi1',轩:'xuan1',依:'yi1',子:'zi3',妍:'yan2',航:'hang2',铭:'ming2',泽:'ze2',墨:'mo4',豪:'hao2',睿:'rui4',佳:'jia1',琪:'qi2',萱:'xuan1',奕:'yi4',辰:'chen2',亦:'yi4',宸:'chen2',语:'yu3',桐:'tong2',可:'ke3',汐:'xi1',梦:'meng4',瑶:'yao2',沐:'mu4',茗:'ming2',阳:'yang2',若:'ruo4',艺:'yi4',苡:'yi3',沫:'mo4',雨:'yu3',晨:'chen2',彤:'tong2',悦:'yue4',玥:'yue4',馨:'xin1',心:'xin1',皓:'hao4',昊:'hao4',默:'mo4',熙:'xi1',羽:'yu3',兮:'xi1',伊:'yi1',俊:'jun4',博:'bo2',嘉:'jia1',思:'si1',雅:'ya3',昕:'xin1',锦:'jin3',煜:'yu4',安:'an1',芮:'rui4',霖:'lin2',逸:'yi4',晴:'qing2',芷:'zhi3',瑾:'jin3',
+  // 经典与常见
+  维:'wei2',轼:'shi4',瑜:'yu2',甫:'fu3',牧:'mu4',照:'zhao4',敏:'min3',静:'jing4',娜:'na4',芳:'fang1',伟:'wei3',军:'jun1',磊:'lei3',丽:'li4',婷:'ting2',圆:'yuan2',晶:'jing1',兰:'lan2',珊:'shan1',晓:'xiao3',海:'hai3',涛:'tao1',宝:'bao3',丹:'dan1',明:'ming2',文:'wen2',威:'wei1',梨:'li2',迪:'di2',杰:'jie2',强:'qiang2',勇:'yong3',艳:'yan4',秀:'xiu4',英:'ying1',华:'hua2',玉:'yu4',平:'ping2',刚:'gang1',桂:'gui4',红:'hong2',建:'jian4',国:'guo2',慧:'hui4',燕:'yan4',霞:'xia2',鹏:'peng2',飞:'fei1',超:'chao1',毅:'yi4',志:'zhi4',永:'yong3',春:'chun1',云:'yun2',山:'shan1',川:'chuan1',河:'he2',月:'yue4',星:'xing1',光:'guang1',天:'tian1',风:'feng1',雪:'xue3',花:'hua1',树:'shu4',木:'mu4',森:'sen1',清:'qing1',远:'yuan3',德:'de2',仁:'ren2',义:'yi4',礼:'li3',智:'zhi4',信:'xin4',忠:'zhong1',孝:'xiao4',康:'kang1',乐:'le4',福:'fu2',寿:'shou4',喜:'xi3',爱:'ai4',美:'mei3',善:'shan4',真:'zhen1',诚:'cheng2',新:'xin1',立:'li4',成:'cheng2',家:'jia1',宁:'ning2',泰:'tai4',和:'he2',柔:'rou2',婉:'wan3',淑:'shu1',贤:'xian2',君:'jun1',冰:'bing1',玲:'ling2',珍:'zhen1',萍:'ping2',琳:'lin2',莉:'li4',颖:'ying3',洁:'jie2',露:'lu4',蕾:'lei3',菲:'fei1',薇:'wei1',莹:'ying2',倩:'qian4',瑞:'rui4',祥:'xiang2',凯:'kai3',鑫:'xin1',亮:'liang4',波:'bo1',鸣:'ming2',青:'qing1',蓝:'lan2',紫:'zi3',翠:'cui4',岚:'lan2',溪:'xi1',江:'jiang1',湖:'hu2',洋:'yang2',帆:'fan1',舟:'zhou1',岩:'yan2',峰:'feng1',林:'lin2',松:'song1',柏:'bai3',竹:'zhu2',梅:'mei2',荷:'he2',菊:'ju2',桃:'tao2',果:'guo3',禾:'he2',稻:'dao4',麦:'mai4',米:'mi3',书:'shu1',画:'hua4',琴:'qin2',棋:'qi2',歌:'ge1',舞:'wu3',诗:'shi1',词:'ci2',章:'zhang1',学:'xue2',问:'wen4',知:'zhi1',行:'xing2',言:'yan2',语:'yu3',思:'si1',想:'xiang3',念:'nian4',记:'ji4',忆:'yi4',恩:'en1',惠:'hui4',泽:'ze2',润:'run4',滋:'zi1',育:'yu4',培:'pei2',根:'gen1',本:'ben3',源:'yuan2',泉:'quan2',流:'liu2',海:'hai3',洲:'zhou1',岸:'an4',港:'gang3',湾:'wan1',岛:'dao3',野:'ye3',原:'yuan2',田:'tian2',园:'yuan2',庭:'ting2',院:'yuan4',楼:'lou2',阁:'ge2',台:'tai2',亭:'ting2',桥:'qiao2',路:'lu4',道:'dao4',途:'tu2',程:'cheng2',步:'bu4',进:'jin4',升:'sheng1',腾:'teng2',跃:'yue4',翔:'xiang2',驰:'chi2',奔:'ben1',达:'da2',通:'tong1',顺:'shun4',利:'li4',吉:'ji2',庆:'qing4',贺:'he4',欢:'huan1',笑:'xiao4',乐:'le4',趣:'qu4',雅:'ya3',致:'zhi4',韵:'yun4',律:'lv4',节:'jie2',奏:'zou4',声:'sheng1',音:'yin1',响:'xiang3',亮:'liang4',朗:'lang3',晰:'xi1',
+};
+
+/* ======================================================================
+   语音学工具
+   ====================================================================== */
+const INI = ['zh','ch','sh','b','p','m','f','d','t','n','l','g','k','h','j','q','x','z','c','s','r'];
+const ZERO = { yi:'i', yin:'in', ying:'ing', ya:'ia', yan:'ian', yang:'iang', yao:'iao', ye:'ie', you:'iou', yong:'iong', yu:'ü', yue:'üe', yuan:'üan', yun:'ün',
+  wu:'u', wa:'ua', wai:'uai', wan:'uan', wang:'uang', wei:'uei', wen:'uen', weng:'ueng', wo:'uo' };
+const PLACE = { b:'双唇', p:'双唇', m:'双唇', f:'唇齿', z:'舌尖前', c:'舌尖前', s:'舌尖前', d:'舌尖中', t:'舌尖中', n:'舌尖中', l:'舌尖中', zh:'舌尖后', ch:'舌尖后', sh:'舌尖后', r:'舌尖后', j:'舌面', q:'舌面', x:'舌面', g:'舌根', k:'舌根', h:'舌根', '∅':'零声母' };
+const MANNER = { b:'塞·不送气', p:'塞·送气', m:'鼻', f:'擦', z:'塞擦·不送气', c:'塞擦·送气', s:'擦', d:'塞·不送气', t:'塞·送气', n:'鼻', l:'边', zh:'塞擦·不送气', ch:'塞擦·送气', sh:'擦', r:'浊擦/近音', j:'塞擦·不送气', q:'塞擦·送气', x:'擦', g:'塞·不送气', k:'塞·送气', h:'擦', '∅':'—' };
+const SONORANT = new Set(['m','n','l','r','∅']);
+const TONE_NAME = { 1:'阴平', 2:'阳平', 3:'上声', 4:'去声', 0:'轻声' };
+const PZ = (t) => t === 1 || t === 2 ? '平' : t === 0 ? '轻' : '仄';
+
+function parsePy(py) {
+  const m = /^([a-zü]+)([0-5])$/.exec(py.trim().toLowerCase().replace('v','ü'));
+  if (!m) return null;
+  let body = m[1], tone = +m[2]; if (tone === 5) tone = 0;
+  let ini = INI.find(i => body.startsWith(i)) || '';
+  let fin = body.slice(ini.length), glide = '';
+  if (!ini) { if (ZERO[body]) { glide = body[0]; fin = ZERO[body]; ini = '∅'; } else { ini = '∅'; fin = body; } }
+  if (/^[jqx]$/.test(ini)) fin = fin.replace(/^u/, 'ü');
+  if (ini !== '∅') fin = fin.replace(/^iu$/, 'iou').replace(/^ui$/, 'uei').replace(/^un$/, 'uen');
+  const apical = /^(zh|ch|sh|r|z|c|s)$/.test(ini) && fin === 'i';
+  const hu = apical ? '开口呼' : fin.startsWith('ü') ? '撮口呼' : fin.startsWith('i') ? '齐齿呼' : fin.startsWith('u') ? '合口呼' : '开口呼';
+  let nuc;
+  if (apical) nuc = 'ɿ';
+  else if (fin.includes('a')) nuc = 'a';
+  else if (/ong$/.test(fin)) nuc = 'u';
+  else if (fin.includes('o')) nuc = 'o';
+  else if (fin.includes('e')) nuc = 'e';
+  else if (fin.includes('ü')) nuc = 'ü';
+  else if (fin.includes('i')) nuc = 'i';
+  else nuc = 'u';
+  const open = nuc === 'a' ? '低（开）' : (nuc === 'e' || nuc === 'o') ? '中' : '高（闭）';
+  return { raw: py, body, ini, fin, glide, tone, hu, nuc, open, place: PLACE[ini], manner: MANNER[ini], son: SONORANT.has(ini) };
+}
+const MARKS = { a:'āáǎàa', o:'ōóǒòo', e:'ēéěèe', i:'īíǐìi', u:'ūúǔùu', ü:'ǖǘǚǜü' };
+function mark(body, tone) {
+  const t = tone === 0 ? 4 : tone - 1;
+  const b = body.replace('v', 'ü');
+  let i = b.indexOf('a'); if (i < 0) i = b.indexOf('o'); if (i < 0) i = b.indexOf('e');
+  if (i < 0) { const iu = b.indexOf('iu'), ui = b.indexOf('ui'); if (iu >= 0) i = iu + 1; else if (ui >= 0) i = ui + 1; else { i = Math.max(b.lastIndexOf('i'), b.lastIndexOf('u'), b.lastIndexOf('ü')); } }
+  if (i < 0) return b;
+  const ch = b[i]; return b.slice(0, i) + (MARKS[ch] ? MARKS[ch][t] : ch) + b.slice(i + 1);
+}
+/* 把输入（汉字或拼音串）变成音节数组 */
+function toSyls(input) {
+  input = input.trim();
+  if (!input) return [];
+  if (/^[a-zA-Züv0-5\s]+$/.test(input)) {
+    return input.split(/\s+/).map(p => { const s = parsePy(/[0-5]$/.test(p) ? p : p + '1'); return s ? { ch: s.body, ...s } : null; }).filter(Boolean);
+  }
+  return [...input.replace(/\s/g, '')].map(ch => { const py = CH[ch]; if (!py) return { ch, unknown: true }; return { ch, ...parsePy(py) }; });
+}
+/* 变调：返回每个音节的实际声调 */
+function sandhi(syls) {
+  const n = syls.length; const t = syls.map(s => s.unknown ? null : s.tone); const note = [];
+  if (n === 0) return { t, note };
+  // 叠字名
+  if (n >= 2 && syls[n - 1].ch === syls[n - 2].ch && !syls[n - 1].unknown && n - 2 >= (n === 2 ? 0 : 1)) { t[n - 1] = 0; note.push(`叠字「${syls[n-2].ch}${syls[n-1].ch}」第二字读轻声`); }
+  // 「一」的变调
+  for (let i = 0; i < n - 1; i++) if (syls[i].ch === '一' && t[i + 1] != null) { if (t[i + 1] === 4) { t[i] = 2; note.push('「一」在四声前读 yí（二声）'); } else if (t[i + 1] !== 0) { t[i] = 4; note.push('「一」在一、二、三声前读 yì（四声）'); } }
+  // 三声连读：先处理名（后两字），再处理姓与名
+  const run = (i, j) => { if (t[i] === 3 && t[j] === 3) { t[i] = 2; note.push(`「${syls[i].ch}${syls[j].ch}」两个三声相连，前字读二声`); } };
+  if (n === 2) run(0, 1);
+  if (n === 3) { run(1, 2); if (t[0] === 3 && t[1] === 3) run(0, 1); else if (t[0] === 3 && syls[1].tone === 3 && t[1] === 2) note.push('三个三声相连，按「姓 + 双字名」读 3·2·3'); }
+  if (n > 3) for (let i = 0; i < n - 1; i++) run(i, i + 1);
+  return { t, note };
+}
+/* 分析：返回标签与结论 */
+function analyze(syls) {
+  const out = []; const known = syls.filter(s => !s.unknown);
+  if (!known.length) return out;
+  const { t, note } = sandhi(syls);
+  const toneRaw = known.map(s => s.tone);
+  const pz = known.map((s, i) => PZ(t[syls.indexOf(s)] ?? s.tone));
+  // 声调
+  const uniq = new Set(toneRaw);
+  if (uniq.size === 1 && known.length >= 2) out.push({ lv: toneRaw[0] === 3 ? 'warn' : 'warn', ic: '调', txt: `每个字都是${TONE_NAME[toneRaw[0]]}`, sub: toneRaw[0] === 3 ? '连读会触发三声变调，实际读出来反而有起伏，但念起来费力。' : '音高走势重复，缺少起伏；靠声母、韵母的变化可以补救。' });
+  else if (pz.every(p => p === pz[0]) && known.length >= 2) out.push({ lv: 'ok', ic: '调', txt: `全${pz[0]}（${toneRaw.join('·')}）`, sub: '同属平或仄，但具体声调不同，仍有起伏。' });
+  else out.push({ lv: 'ok', ic: '调', txt: `平仄相间（${pz.join('')}）`, sub: '相邻音节的音高走势不同，这是口诀里最看重的一条。' });
+  note.forEach(x => out.push({ lv: 'info', ic: '变', txt: x, sub: '' }));
+  // 声母
+  for (let i = 0; i < syls.length - 1; i++) { const a = syls[i], b = syls[i + 1]; if (a.unknown || b.unknown) continue;
+    if (a.ini === b.ini) out.push({ lv: 'bad', ic: '声', txt: `「${a.ch}${b.ch}」声母相同（${a.ini === '∅' ? '零声母 ' + a.glide : a.ini}-${b.ini === '∅' ? b.glide : b.ini}）`, sub: '同一个起始动作连做两次，是绕口令的基本手法。' });
+    else if (a.place === b.place && a.ini !== '∅') out.push({ lv: 'warn', ic: '声', txt: `「${a.ch}${b.ch}」声母同部位（${a.place}：${a.ini}、${b.ini}）`, sub: '只差发音方法，影响比完全相同小得多。' });
+  }
+  // 韵母
+  for (let i = 0; i < syls.length - 1; i++) { const a = syls[i], b = syls[i + 1]; if (a.unknown || b.unknown) continue;
+    if (a.fin === b.fin) out.push({ lv: 'warn', ic: '韵', txt: `「${a.ch}${b.ch}」韵母相同（${a.fin}）`, sub: '两字押韵，读起来像顺口溜，多数人会觉得单调。' });
+  }
+  const opens = known.map(s => s.open[0]);
+  if (known.length >= 2 && new Set(opens).size === 1) out.push({ lv: 'info', ic: '口', txt: `韵腹开口度一致（都是${known[0].open}）`, sub: opens[0] === '高' ? '全是闭口音，整体偏含蓄；配响亮的姓氏可以平衡。' : '全是开口音，读起来响亮。' });
+  else if (known.length >= 2) out.push({ lv: 'ok', ic: '口', txt: `开口度有变化（${known.map(s => s.open[0]).join('→')}）`, sub: '一放一收，口诀里的「开口配闭口」。' });
+  // 响音 / 阻塞音
+  const sons = known.map(s => s.son);
+  if (known.length >= 2 && sons.every(x => x) ) out.push({ lv: 'info', ic: '响', txt: '声母全是响音（m n l r 或零声母）', sub: '整体柔和；笔记想说的「清浊对比」在这里并不存在。' });
+  else if (known.length >= 2 && sons.every(x => !x)) out.push({ lv: 'info', ic: '响', txt: '声母全是阻塞音（清音）', sub: '整体干脆；普通话里它们全是清音，差别只在送气与否。' });
+  else if (known.length >= 2) out.push({ lv: 'ok', ic: '响', txt: '响音与阻塞音搭配', sub: '气流通畅与受阻交替，这才是笔记里「清浊对比」的正确说法。' });
+  syls.filter(s => s.unknown).forEach(s => out.push({ lv: 'info', ic: '?', txt: `「${s.ch}」不在字库里`, sub: '可改用拼音输入，如 li3 bai2。' }));
+  return out;
+}
+
+/* ======================================================================
+   声调曲线
+   ====================================================================== */
+const CONTOUR = { 1: [[0, 5], [1, 5]], 2: [[0, 3], [1, 5]], 3: [[0, 2], [0.55, 1], [1, 4]], 4: [[0, 5], [1, 1]], 0: [[0.3, 3], [0.7, 2.6]] };
+const TONE_COLOR = { 1: 'var(--p)', 2: 'var(--t)', 3: 'var(--o)', 4: 'var(--r)', 0: 'var(--muted)' };
+function tonePath(tone, x0, w, y0, h) { // y: 5→顶
+  const pts = CONTOUR[tone].map(([fx, v]) => [x0 + fx * w, y0 + h - (v - 1) / 4 * h]);
+  if (pts.length === 2) return `M${pts[0][0]},${pts[0][1]} L${pts[1][0]},${pts[1][1]}`;
+  const [a, b, c] = pts; return `M${a[0]},${a[1]} Q${b[0]},${b[1] + 10} ${c[0]},${c[1]}`;
+}
+function toneSVG(syls, tones, opts = {}) {
+  const W = Math.max(260, syls.length * 120 + 40), H = 150, pad = 20, cw = (W - pad * 2) / Math.max(1, syls.length);
+  const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: `max-width:${W}px` });
+  for (let v = 1; v <= 5; v++) { const y = 20 + 90 - (v - 1) / 4 * 90; s.append(svg('line', { x1: pad, x2: W - pad, y1: y, y2: y, class: 'gr' }), svg('text', { x: pad - 6, y: y + 4, class: 'lbl m', 'text-anchor': 'end', 'font-size': 10 }, v)); }
+  syls.forEach((sy, i) => {
+    const x0 = pad + i * cw + 18, w = cw - 36, tn = tones[i];
+    if (sy.unknown || tn == null) { s.append(svg('text', { x: x0 + w / 2, y: 70, class: 'lbl mid' }, '?')); return; }
+    const p = svg('path', { d: tonePath(tn, x0, w, 20, 90), fill: 'none', stroke: TONE_COLOR[tn], 'stroke-width': tn === 0 ? 4 : 5, 'stroke-linecap': 'round', class: 'tcurve' });
+    s.append(p);
+    s.append(svg('text', { x: x0 + w / 2, y: 128, class: 'lbl big mid', 'font-size': 18 }, sy.ch));
+    s.append(svg('text', { x: x0 + w / 2, y: 144, class: 'lbl mid m', 'font-size': 11 }, mark(sy.body, tn) + (tn !== sy.tone ? ` (${sy.tone}→${tn})` : '')));
+    if (opts.pz) s.append(svg('text', { x: x0 + w / 2, y: 14, class: 'lbl mid', fill: PZ(tn) === '平' ? 'var(--t)' : 'var(--o)', 'font-weight': 700, 'font-size': 12 }, PZ(tn) + (tn ? ' · ' + TONE_NAME[tn] : ' · 轻声')));
+  });
+  return s;
+}
+function animatePaths(root) {
+  if (RM) return;
+  root.querySelectorAll('path.tcurve').forEach((p, i) => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; p.style.transition = 'none'; requestAnimationFrame(() => { p.style.transition = `stroke-dashoffset .7s ${i * .25}s ease`; p.style.strokeDashoffset = 0; }); });
+}
+
+/* ======================================================================
+   Hero：音节拆解轮播
+   ====================================================================== */
+reg('hero', (node) => {
+  const names = ['李白', '王维', '一诺', '沐宸', '苏轼', '若汐'];
+  let k = 0;
+  const box = el('div', { style: 'display:grid;gap:12px' });
+  const top = el('div', { style: 'display:flex;flex-wrap:wrap;gap:18px;align-items:center;justify-content:center;min-height:64px' });
+  const chart = el('div', { style: 'display:flex;justify-content:center' });
+  box.append(top, chart); node.append(box);
+  const show = () => {
+    const syls = toSyls(names[k]); const { t } = sandhi(syls);
+    top.replaceChildren(...syls.map((s, i) => el('div', { class: 'syl' },
+      el('span', { style: 'font-size:28px;font-weight:700;margin-right:8px' }, s.ch),
+      el('span', { class: 'pc ' + (s.ini === '∅' ? 'z' : 'i'), title: '声母 ' + s.place }, s.ini === '∅' ? '∅' : s.ini),
+      el('span', { class: 'pc f', title: '韵母 ' + s.hu }, s.fin),
+      el('span', { class: 'pc t', title: '声调 ' + TONE_NAME[t[i]] }, String(t[i] || '轻')))));
+    chart.replaceChildren(toneSVG(syls, t, { pz: true })); animatePaths(chart);
+  };
+  show();
+  const tm = every(2600, () => { k = (k + 1) % names.length; show(); });
+  node.append(el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p-soft)' }), '声母'), el('span', {}, el('i', { style: 'background:var(--t-soft)' }), '韵母'), el('span', {}, el('i', { style: 'background:var(--o-soft)' }), '声调（已按连读变调）')));
+  return { start: () => tm.start(), stop: () => tm.stop() };
+});
+
+/* ======================================================================
+   01 四声图
+   ====================================================================== */
+reg('tonechart', (node) => {
+  const W = 640, H = 200; const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  for (let v = 1; v <= 5; v++) { const y = 30 + 110 - (v - 1) / 4 * 110; s.append(svg('line', { x1: 40, x2: W - 10, y1: y, y2: y, class: 'gr' }), svg('text', { x: 30, y: y + 4, class: 'lbl m', 'text-anchor': 'end' }, v)); }
+  s.append(svg('text', { x: 12, y: 24, class: 'lbl', 'font-size': 11 }, '音高'));
+  const items = [[1, 'ā 阴平 55', '平'], [2, 'á 阳平 35', '平'], [3, 'ǎ 上声 214', '仄'], [4, 'à 去声 51', '仄']];
+  const groups = items.map(([tn, lab, pz], i) => {
+    const x0 = 60 + i * 145, w = 100;
+    const g = svg('g', { style: 'cursor:pointer' });
+    g.append(svg('rect', { x: x0 - 12, y: 20, width: w + 24, height: 150, rx: 10, fill: 'transparent', class: 'tbg' }));
+    g.append(svg('path', { d: tonePath(tn, x0, w, 30, 110), fill: 'none', stroke: TONE_COLOR[tn], 'stroke-width': 6, 'stroke-linecap': 'round', class: 'tcurve' }));
+    g.append(svg('text', { x: x0 + w / 2, y: 188, class: 'lbl big mid' }, lab));
+    g.append(svg('text', { x: x0 + w / 2, y: 14, class: 'lbl mid', fill: pz === '平' ? 'var(--t)' : 'var(--o)', 'font-weight': 700 }, pz));
+    g.addEventListener('click', () => { groups.forEach(q => q.querySelector('.tbg').setAttribute('fill', 'transparent')); g.querySelector('.tbg').setAttribute('fill', 'var(--surface-2)'); const p = g.querySelector('path'); const L = p.getTotalLength(); p.style.transition = 'none'; p.style.strokeDasharray = L; p.style.strokeDashoffset = L; requestAnimationFrame(() => { p.style.transition = 'stroke-dashoffset .8s ease'; p.style.strokeDashoffset = 0; }); });
+    s.append(g); return g;
+  });
+  node.append(el('div', { class: 'scrollx' }, s));
+  node.append(el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--t)' }), '平：阴平、阳平'), el('span', {}, el('i', { style: 'background:var(--o)' }), '仄：上声、去声'), el('span', {}, '轻声：短而弱，音高随前字变化，不计平仄')));
+  return { start() { animatePaths(s); } };
+});
+
+/* ======================================================================
+   02 试验台（也被 09、12 复用）
+   ====================================================================== */
+const Bench = { setters: [] };
+function renderVerdict(container, syls) {
+  const res = analyze(syls);
+  container.replaceChildren(...res.map(r => el('div', { class: 'row ' + (r.lv === 'info' ? '' : r.lv) }, el('span', { class: 'ic' }, r.ic), el('span', {}, r.txt, r.sub ? el('small', {}, r.sub) : null))));
+}
+reg('bench', (node) => {
+  const wrap = el('div', { class: 'bench' });
+  const left = el('div'), right = el('div', { class: 'verdict' });
+  const input = el('input', { type: 'text', value: '李白', 'aria-label': '输入名字', maxlength: 24 });
+  const chart = el('div', { style: 'margin-top:10px' });
+  const pz = el('div', { class: 'pz' });
+  const parts = el('div', { style: 'display:flex;flex-wrap:wrap;gap:12px;margin-top:6px' });
+  const chips = el('div', { class: 'chips' });
+  const examples = ['李白', '王维', '苏轼', '周瑜', '杜甫', '李雨', '一诺', '李晓雨', '丽丽', '汪文威', '李梨', '兰珊', '海涛', '雅琪', '宝龙', '丹婷', '明丽'];
+  const run = (v) => {
+    input.value = v; const syls = toSyls(v); const { t } = sandhi(syls);
+    chart.replaceChildren(toneSVG(syls, t, { pz: true })); animatePaths(chart);
+    pz.replaceChildren(...syls.map((s, i) => el('span', { class: s.unknown ? 'qing' : PZ(t[i]) === '平' ? 'ping' : PZ(t[i]) === '仄' ? 'ze' : 'qing' }, s.unknown ? '?' : PZ(t[i]))));
+    parts.replaceChildren(...syls.filter(s => !s.unknown).map(s => el('div', { class: 'syl' }, el('span', { style: 'margin-right:6px;font-weight:700' }, s.ch), el('span', { class: 'pc ' + (s.ini === '∅' ? 'z' : 'i') }, s.ini === '∅' ? '∅' : s.ini), el('span', { class: 'pc f' }, s.fin), el('span', { class: 'pc t' }, String(s.tone)))));
+    renderVerdict(right, syls);
+    chips.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.textContent === v));
+  };
+  Bench.run = run;
+  input.addEventListener('input', () => run(input.value));
+  chips.append(...examples.map(x => el('button', { type: 'button', class: 'chip', onclick: () => run(x) }, x)));
+  left.append(el('div', { class: 'in' }, el('span', { style: 'font-size:13px;color:var(--muted)' }, '名字'), input, el('span', { style: 'font-size:12px;color:var(--muted)' }, '或拼音：li3 bai2')), chips, chart, el('div', { class: 'cap', style: 'margin:6px 0 0' }, '平仄模式（按实际读音）'), pz, parts);
+  wrap.append(left, right); node.append(wrap);
+  run('李白');
+  return {};
+});
+
+/* ======================================================================
+   03 变调演示
+   ====================================================================== */
+reg('sandhi', (node) => {
+  const cases = [
+    { title: '三声 + 三声', a: '李雨', note: '字典：lǐ yǔ（3·3）→ 实际：lí yǔ（2·3）' },
+    { title: '「一」的变调', a: '一诺', note: '字典：yī nuò（1·4）→ 实际：yí nuò（2·4）' },
+    { title: '叠字轻声', a: '丽丽', note: '字典：lì lì（4·4）→ 实际：lì li（4·轻）' },
+    { title: '三个三声', a: '李晓雨', note: '字典：3·3·3 → 实际：lǐ xiáo yǔ（3·2·3）' },
+  ];
+  const grid = el('div', { class: 'grid2' });
+  const cards = cases.map(c => {
+    const before = el('div'), after = el('div');
+    const card = el('div', { class: 'card' }, el('div', { class: 'k' }, c.title), el('div', { class: 'cap', style: 'margin:4px 0' }, '字典声调'), before, el('div', { class: 'cap', style: 'margin:6px 0 4px' }, '实际读音'), after, el('p', { style: 'margin-top:6px' }, c.note));
+    const syls = toSyls(c.a); const { t } = sandhi(syls);
+    before.append(toneSVG(syls, syls.map(s => s.tone)));
+    after.append(toneSVG(syls, t));
+    grid.append(card); return card;
+  });
+  node.append(el('div', { class: 'ctrl' }, el('button', { type: 'button', class: 'btn primary', onclick: () => cards.forEach(animatePaths) }, '播放')), grid);
+  return { start() { cards.forEach(animatePaths); } };
+});
+
+/* ======================================================================
+   数据：公安部前十名单
+   ====================================================================== */
+const MPS = {
+  2019: { m: ['浩宇', '浩然', '宇轩', '宇航', '铭泽', '子墨', '梓豪', '子睿', '子轩', '梓睿'], f: ['一诺', '依诺', '欣怡', '梓涵', '诗涵', '欣妍', '雨桐', '佳怡', '佳琪', '梓萱'] },
+  2020: { m: ['奕辰', '宇轩', '浩宇', '亦辰', '宇辰', '子墨', '宇航', '浩然', '梓豪', '亦宸'], f: ['一诺', '依诺', '欣怡', '梓涵', '语桐', '欣妍', '可欣', '语汐', '雨桐', '梦瑶'] },
+  2021: { m: ['沐宸', '浩宇', '沐辰', '茗泽', '奕辰', '宇泽', '浩然', '奕泽', '宇轩', '沐阳'], f: ['若汐', '一诺', '艺涵', '依诺', '梓涵', '苡沫', '雨桐', '欣怡', '语桐', '语汐'] },
+};
+const QMT = { m: [['yìchén', '奕辰、逸辰、奕宸'], ['yǔchén', '宇辰、宇宸、宇晨'], ['hàoyǔ', '浩宇、皓宇、昊宇'], ['zǐmò', '子墨、梓墨、梓默'], ['zǐchén', '子宸、梓晨、梓辰']],
+  f: [['yǔtóng', '雨彤、雨桐、语彤'], ['xīnyuè', '欣悦、欣玥、馨悦'], ['yǔxī', '雨汐、语熙、羽兮'], ['yīnuò', '一诺、依诺、伊诺'], ['xīnyí', '欣怡、心怡、馨怡']] };
+const tonePat = (name) => toSyls(name).map(s => s.tone).join('');
+
+/* ======================================================================
+   04 声调组合统计
+   ====================================================================== */
+reg('tally', (node) => {
+  const all = []; Object.values(MPS).forEach(y => { all.push(...y.m, ...y.f); });
+  const pat = {}, second = { 1: 0, 2: 0, 3: 0, 4: 0 }, first = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  all.forEach(n => { const p = tonePat(n); pat[p] = (pat[p] || 0) + 1; second[p[1]]++; first[p[0]]++; });
+  const pats = Object.entries(pat).sort((a, b) => b[1] - a[1]);
+  const mk = (title, rows, max, cls) => {
+    const box = el('div', {}, el('div', { class: 'cap' }, el('b', {}, title)));
+    const bars = el('div', { class: 'bars' });
+    rows.forEach(([lab, v]) => bars.append(el('div', { class: 'bar' }, el('span', { class: 'lab' }, lab), el('div', { class: 'tr' }, el('div', { class: 'fl ' + cls, 'data-w': (v / max * 100) })), el('span', { class: 'v' }, v + ' 个'))));
+    box.append(bars); return box;
+  };
+  const left = mk('声调组合（首字·末字）', pats.map(([p, v]) => [`${p[0]}·${p[1]}  ${PZ(+p[0])}${PZ(+p[1])}`, v]), pats[0][1], '');
+  const right = el('div', {}, mk('末字声调', [1, 2, 3, 4].map(t => [`${t} ${TONE_NAME[t]}`, second[t]]), Math.max(...Object.values(second)), 't'), el('div', { style: 'height:12px' }), mk('首字声调', [1, 2, 3, 4].map(t => [`${t} ${TONE_NAME[t]}`, first[t]]), Math.max(...Object.values(first)), 'o'));
+  node.append(el('div', { class: 'grid2' }, left, right));
+  const t3 = [...new Set(all.filter(n => tonePat(n)[1] === '3'))];
+  const sameIni = [...new Set(all.filter(n => { const s = toSyls(n); return s[0].ini === s[1].ini; }))];
+  const sameFin = [...new Set(all.filter(n => { const s = toSyls(n); return s[0].fin === s[1].fin; }))];
+  node.append(el('p', { class: 'small-note' }, `共 ${all.length} 个名字（三年 × 男女 × 前十，含重复上榜）。「一诺」按字典声调计为 1·4，实际读 yí nuò（2·4）。末字为上声（三声）的只有${t3.map(n => '「' + n + '」').join('')}${t3.length === 1 ? '一个' : ''}；两字声母相同的有 ${sameIni.length} 个，韵母相同的有 ${sameFin.length} 个。`));
+  const fire = () => node.querySelectorAll('.fl').forEach(f => { f.style.width = f.dataset.w + '%'; });
+  return { start: fire };
+});
+
+/* ======================================================================
+   05 声母矩阵
+   ====================================================================== */
+const PLACES = ['双唇', '唇齿', '舌尖前', '舌尖中', '舌尖后', '舌面', '舌根'];
+const MANNERS = ['塞·不送气', '塞·送气', '塞擦·不送气', '塞擦·送气', '擦', '鼻', '边', '浊擦/近音'];
+function initialTable() {
+  const tb = el('table', { class: 'mat' });
+  const head = el('tr', {}, el('th', { class: 'rh' }, '方法 ＼ 部位'), ...PLACES.map(p => el('th', {}, p)));
+  tb.append(head);
+  const cells = {};
+  MANNERS.forEach(m => { const tr = el('tr', {}, el('th', { class: 'rh' }, m)); PLACES.forEach(p => { const ini = INI.find(i => PLACE[i] === p && MANNER[i] === m); const td = el('td', { class: ini && SONORANT.has(ini) ? 'son' : '' }, ini || ''); if (ini) cells[ini] = td; tr.append(td); }); tb.append(tr); });
+  return { tb, cells };
+}
+reg('initials', (node) => {
+  const { tb, cells } = initialTable();
+  const zero = el('div', { class: 'small-note' }, '零声母（y、w 开头或纯元音）不在表内：汉语拼音方案只规定 21 个声母。');
+  const examples = ['李白', '汪文威', '李梨', '宝龙', '丹婷', '明丽', '张伟', '沐宸', '若汐', '周瑜', '苏轼'];
+  const chips = el('div', { class: 'chips' });
+  const info = el('div', { class: 'verdict', style: 'margin-top:10px' });
+  const pick = (name) => {
+    chips.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.textContent === name));
+    Object.values(cells).forEach(td => { td.className = td.className.replace(/\b(hit|hit2|same|dim)\b/g, '').trim(); });
+    const syls = toSyls(name);
+    const inis = syls.map(s => s.ini);
+    Object.entries(cells).forEach(([ini, td]) => { if (!inis.includes(ini)) td.classList.add('dim'); });
+    syls.forEach((s, i) => { const td = cells[s.ini]; if (td) td.classList.add(i === 0 ? 'hit' : 'hit2'); });
+    for (let i = 0; i < syls.length - 1; i++) { const a = syls[i], b = syls[i + 1]; if (a.place === b.place && cells[a.ini] && cells[b.ini]) { cells[a.ini].classList.add('same'); cells[b.ini].classList.add('same'); } }
+    info.replaceChildren(...syls.map(s => el('div', { class: 'row' }, el('span', { class: 'ic' }, s.ch), el('span', {}, s.ini === '∅' ? `零声母（${s.glide || '纯元音'} 开头，不是辅音）` : `${s.ini}：${s.place}，${s.manner}，${s.son ? '响音（浊）' : '阻塞音（清）'}`))));
+  };
+  chips.append(...examples.map(x => el('button', { type: 'button', class: 'chip', onclick: () => pick(x) }, x)));
+  node.append(chips, el('div', { class: 'scrollx', style: 'margin-top:10px' }, tb), zero, el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), '姓'), el('span', {}, el('i', { style: 'background:var(--o)' }), '名'), el('span', {}, el('i', { style: 'border:2px dashed var(--r)' }), '相邻字同部位'), el('span', {}, el('i', { style: 'background:var(--t)' }), '响音 m n l r')), info);
+  pick('李白');
+  return {};
+});
+
+/* ======================================================================
+   06 韵母：四呼 × 开口度 + 响度条
+   ====================================================================== */
+const FINALS = {
+  '开口呼': { '低（开）': ['a', 'ai', 'ao', 'an', 'ang'], '中': ['e', 'o', 'ei', 'ou', 'en', 'eng', 'er'], '高（闭）': ['ɿ (zi/zhi 的 i)'] },
+  '齐齿呼': { '低（开）': ['ia', 'iao', 'ian', 'iang'], '中': ['ie', 'iou'], '高（闭）': ['i', 'in', 'ing', 'iong'] },
+  '合口呼': { '低（开）': ['ua', 'uai', 'uan', 'uang'], '中': ['uo', 'uei', 'uen', 'ueng'], '高（闭）': ['u', 'ong'] },
+  '撮口呼': { '低（开）': ['üan'], '中': ['üe'], '高（闭）': ['ü', 'ün'] },
+};
+const HUS = Object.keys(FINALS), OPENS = ['低（开）', '中', '高（闭）'];
+reg('finals', (node) => {
+  const tb = el('table', { class: 'mat' });
+  tb.append(el('tr', {}, el('th', { class: 'rh' }, '韵腹开口度 ＼ 四呼'), ...HUS.map(h => el('th', {}, h))));
+  const cells = {};
+  OPENS.forEach(o => { const tr = el('tr', {}, el('th', { class: 'rh' }, o)); HUS.forEach(h => { const td = el('td', { style: 'font-size:12px;line-height:1.5' }, FINALS[h][o].join(' ')); cells[h + o] = td; tr.append(td); }); tb.append(tr); });
+  // 响度条
+  const sonW = 640, sonH = 120; const sv = svg('svg', { viewBox: `0 0 ${sonW} ${sonH}`, width: '100%' });
+  const levels = [['塞音', 'b p d t g k'], ['擦/塞擦', 'f s sh x h z c…'], ['鼻音', 'm n'], ['流音', 'l r'], ['滑音', '韵头 i u ü'], ['高元音', 'i u ü'], ['中元音', 'e o'], ['低元音', 'a']];
+  const bw = (sonW - 20) / levels.length;
+  levels.forEach(([lab, ex], i) => { const h = 20 + i * 10; const x = 10 + i * bw; sv.append(svg('rect', { x, y: sonH - 30 - h, width: bw - 4, height: h, rx: 4, fill: i >= 5 ? 'var(--t)' : i >= 2 ? 'var(--p)' : 'var(--muted)', opacity: .35 + i * .08, class: 'sonbar' })); sv.append(svg('text', { x: x + bw / 2 - 2, y: sonH - 14, class: 'lbl mid', 'font-size': 11 }, lab)); sv.append(svg('text', { x: x + bw / 2 - 2, y: sonH - 2, class: 'lbl mid m', 'font-size': 9 }, ex)); });
+  sv.append(svg('text', { x: 10, y: 14, class: 'lbl', 'font-size': 11 }, '响度 →  越右越响、越像元音'));
+  const chips = el('div', { class: 'chips' }); const info = el('div', { class: 'verdict', style: 'margin-top:10px' });
+  const examples = ['海涛', '雅琪', '兰珊', '晓妍', '佳悦', '李白', '一诺', '沐宸', '若汐', '周瑜'];
+  const pick = (name) => {
+    chips.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.textContent === name));
+    Object.values(cells).forEach(td => td.classList.remove('hit', 'hit2', 'same'));
+    const syls = toSyls(name);
+    syls.forEach((s, i) => { const td = cells[s.hu + s.open]; if (td) td.classList.add(i === 0 ? 'hit' : 'hit2'); });
+    for (let i = 0; i < syls.length - 1; i++) if (syls[i].fin === syls[i + 1].fin) { const td = cells[syls[i].hu + syls[i].open]; td && td.classList.add('same'); }
+    info.replaceChildren(...syls.map(s => el('div', { class: 'row' }, el('span', { class: 'ic' }, s.ch), el('span', {}, `${mark(s.body, s.tone)}：韵母 ${s.fin}，${s.hu}，韵腹 ${s.nuc}（${s.open}）`))));
+  };
+  chips.append(...examples.map(x => el('button', { type: 'button', class: 'chip', onclick: () => pick(x) }, x)));
+  node.append(chips, el('div', { class: 'grid2', style: 'margin-top:10px;align-items:start' }, el('div', { class: 'scrollx' }, tb), el('div', { class: 'scrollx' }, sv)), el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p)' }), '姓 / 首字'), el('span', {}, el('i', { style: 'background:var(--o)' }), '名 / 末字'), el('span', {}, el('i', { style: 'border:2px dashed var(--r)' }), '相邻字同韵母')), info);
+  pick('海涛');
+  return {};
+});
+
+/* ======================================================================
+   07 拗口的三种来源
+   ====================================================================== */
+reg('awkward', (node) => {
+  const pairs = [
+    ['汪文威', '王伟', '三字同以 w 起始，声调 1·2·1 也近似；对照「王伟」只撞声母一层'],
+    ['李梨', '李白', '声母 l-l、韵母 i-i 两层相撞；「李白」只有部位相近'],
+    ['兰珊', '晓妍', '韵母 an-an 押韵、声调 2·1 平平；「晓妍」韵母 iao/ian 不同、仄平'],
+    ['丹婷', '宝龙', '笔记当作「部位不同」，其实 d/t 同部位；真正的部位对比是 b（唇）+ l（舌尖）'],
+  ];
+  const grid = el('div', { class: 'pair' }); const out = el('div', { class: 'verdict', style: 'margin-top:12px' });
+  const chart = el('div', { style: 'margin-top:10px' });
+  const show = (name, btn) => { grid.querySelectorAll('.ex').forEach(x => x.classList.toggle('on', x === btn)); const syls = toSyls(name); const { t } = sandhi(syls); chart.replaceChildren(toneSVG(syls, t, { pz: true })); animatePaths(chart); renderVerdict(out, syls); };
+  pairs.forEach(([a, b, why]) => {
+    const mk = (n) => { const syls = toSyls(n); const d = el('div', { class: 'ex', onclick: () => show(n, d) }, el('div', { class: 'nm' }, n), el('div', { class: 'py' }, syls.map(s => mark(s.body, s.tone)).join(' ')), el('div', { class: 'why' }, syls.map(s => `${s.ini === '∅' ? '∅' : s.ini}+${s.fin}`).join(' · '))); return d; };
+    grid.append(mk(a), mk(b));
+    grid.append(el('div', { style: 'grid-column:1/-1;font-size:13px;color:var(--muted);margin:-4px 0 6px' }, why));
+  });
+  node.append(grid, chart, out);
+  show('汪文威', grid.querySelector('.ex'));
+  return {};
+});
+
+/* ======================================================================
+   08 响音 vs 阻塞音
+   ====================================================================== */
+reg('sonority', (node) => {
+  const order = [['b', 'p', 'd', 't', 'g', 'k'], ['z', 'c', 'zh', 'ch', 'j', 'q'], ['f', 's', 'sh', 'x', 'h'], ['r'], ['m', 'n'], ['l'], ['∅']];
+  const labels = ['塞音', '塞擦音', '擦音', '浊擦/近音', '鼻音', '边音', '零声母'];
+  const W = 680, H = 165; const sv = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%' });
+  const bw = (W - 20) / order.length; const pos = {};
+  order.forEach((grp, i) => { const x = 10 + i * bw; const son = i >= 3; sv.append(svg('rect', { x, y: 30, width: bw - 4, height: 70, rx: 8, fill: son ? 'var(--t-soft)' : 'var(--surface-2)', stroke: son ? 'var(--t)' : 'var(--line)' })); sv.append(svg('text', { x: x + bw / 2 - 2, y: 24, class: 'lbl mid', 'font-size': 11 }, labels[i])); grp.forEach((g, j) => { const gx = x + 10 + (j % 3) * ((bw - 20) / 3) + (bw - 20) / 6, gy = 55 + Math.floor(j / 3) * 26; pos[g] = [gx, gy]; sv.append(svg('text', { x: gx, y: gy, class: 'lbl mid m', 'font-size': 15, fill: son ? 'var(--t)' : 'var(--text)', 'data-ini': g }, g)); }); });
+  sv.append(svg('text', { x: 10, y: 140, class: 'lbl', 'font-size': 12 }, '← 气流受阻（阻塞音，普通话里全是清音）'), svg('text', { x: W - 10, y: 140, class: 'lbl', 'text-anchor': 'end', 'font-size': 12 }, '气流通畅（响音，声带振动）→'));
+  sv.append(svg('line', { x1: 10, x2: W - 10, y1: 155, y2: 155, class: 'ax', 'marker-end': 'url(#arr)' }));
+  sv.append(svg('defs', { html: '<marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--muted)"/></marker>' }));
+  const marks = svg('g'); sv.append(marks);
+  const chips = el('div', { class: 'chips' }); const info = el('div', { class: 'verdict', style: 'margin-top:10px' });
+  const examples = ['明丽', '宝龙', '丹丽', '李娜', '张伟', '苏轼', '沐宸', '一诺'];
+  const pick = (name) => {
+    chips.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.textContent === name));
+    marks.replaceChildren(); const syls = toSyls(name);
+    syls.forEach((s, i) => { const p = pos[s.ini]; if (!p) return; marks.append(svg('circle', { cx: p[0], cy: p[1] - 5, r: 16, fill: 'none', stroke: i === 0 ? 'var(--p)' : 'var(--o)', 'stroke-width': 3 }), svg('text', { x: p[0] + (i === 0 ? -10 : 10), y: 118, class: 'lbl mid', fill: i === 0 ? 'var(--p)' : 'var(--o)', 'font-weight': 700 }, s.ch)); });
+    const kinds = syls.map(s => s.son ? '响' : '阻');
+    const verdict = new Set(kinds).size === 1 ? (kinds[0] === '响' ? '全是响音，没有「通畅 / 受阻」的对比' : '全是阻塞音（清音），没有对比') : '阻塞音 + 响音，形成通畅与受阻的交替';
+    info.replaceChildren(el('div', { class: 'row ' + (new Set(kinds).size === 1 ? 'warn' : 'ok') }, el('span', { class: 'ic' }, '响'), el('span', {}, verdict)), ...syls.map(s => el('div', { class: 'row' }, el('span', { class: 'ic' }, s.ch), el('span', {}, s.ini === '∅' ? '零声母：以元音或半元音起始，归入响音一侧' : `${s.ini}：${s.manner}，${s.son ? '响音，声带振动（浊）' : '阻塞音，清音' + (/送气$/.test(s.manner) ? '，送气' : '')}`))));
+  };
+  chips.append(...examples.map(x => el('button', { type: 'button', class: 'chip', onclick: () => pick(x) }, x)));
+  node.append(chips, el('div', { class: 'scrollx', style: 'margin-top:8px' }, sv), info);
+  pick('明丽');
+  return {};
+});
+
+/* ======================================================================
+   09 热门读音榜
+   ====================================================================== */
+reg('hot', (node) => {
+  const top = el('div', { class: 'grid2' });
+  const mkQ = (title, rows, cls) => { const b = el('div', {}, el('div', { class: 'cap' }, el('b', {}, title))); const bars = el('div', { class: 'bars' }); rows.forEach(([py, chars], i) => { const sy = py.replace(/([a-zü]+)/g, '$1 ').trim().split(' '); bars.append(el('div', { class: 'bar', style: 'grid-template-columns:6em 1fr 8em' }, el('span', { class: 'lab' }, py), el('div', { class: 'tr' }, el('div', { class: 'fl ' + cls, 'data-w': 100 - i * 16 })), el('span', { class: 'v', style: 'font-family:inherit;white-space:nowrap' }, chars))); }); b.append(bars, el('div', { class: 'small-note' }, '条长只表示名次，报告未公布各读音占比。')); return b; };
+  top.append(mkQ('男宝读音 Top 5（2018）', QMT.m, ''), mkQ('女宝读音 Top 5（2018）', QMT.f, 'o'));
+  const tabs = el('div', { class: 'tabs' }); const list = el('div', { class: 'grid2' });
+  const years = Object.keys(MPS);
+  const showYear = (y) => {
+    tabs.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', c.textContent.startsWith(y)));
+    list.replaceChildren(...['m', 'f'].map(g => { const box = el('div', {}, el('div', { class: 'cap' }, el('b', {}, `${y} 年${g === 'm' ? '男' : '女'}性新生儿前十`))); const nl = el('div', { class: 'namelist' }); MPS[y][g].forEach((n, i) => { const syls = toSyls(n); const { t } = sandhi(syls); nl.append(el('button', { type: 'button', class: 'nm', title: '送入试验台', onclick: () => { Bench.run?.(n); document.getElementById('bench').scrollIntoView({ behavior: RM ? 'auto' : 'smooth' }); } }, el('span', { style: 'color:var(--muted);font-size:11px' }, i + 1), n, el('span', { class: 'tp' }, syls.map(s => s.tone).join('·') + ' ' + syls.map(s => PZ(s.tone)).join('') + (t.join('') !== syls.map(s => s.tone).join('') ? ' →' + t.join('·') : '')))); }); box.append(nl); return box; }));
+  };
+  tabs.append(...years.map(y => el('button', { type: 'button', class: 'chip', onclick: () => showYear(y) }, y + ' 年')));
+  node.append(top, el('div', { style: 'height:14px' }), tabs, list, el('div', { class: 'small-note' }, '2021 年榜首「沐宸」2.3 万人、「若汐」1.8 万人；其余名次报告未给出人数。角标：字典声调 · 平仄；箭头后为实际读音。'));
+  showYear('2021');
+  return { start() { node.querySelectorAll('.fl').forEach(f => f.style.width = f.dataset.w + '%'); } };
+});
+
+/* ======================================================================
+   10 用字趋势
+   ====================================================================== */
+const TREND = {
+  m: { 2013: '宇轩梓子嘉泽宸浩博睿', 2014: '宇轩子宸泽睿辰梓浩铭', 2015: '宇轩子梓睿泽浩铭俊宸', 2016: '梓子宇轩泽浩睿宸辰俊', 2017: '宇子梓轩泽浩睿辰宸博', 2018: '宇泽子梓轩浩睿宸俊博' },
+  f: { 2013: '梓涵怡欣雅思萱雨馨佳', 2014: '涵萱雨梓怡诗馨佳欣子', 2015: '涵萱梓雨馨诗欣若子妍', 2016: '梓涵雨欣佳萱馨子诗怡', 2017: '梓涵雨欣佳子萱诗彤馨', 2018: '梓涵雨欣佳诗语子妍思' },
+};
+reg('trend', (node) => {
+  const W = 680, H = 300, L = 40, R = 60, T = 20, B = 40;
+  const years = ['2013', '2014', '2015', '2016', '2017', '2018'];
+  const wrap = el('div', { class: 'scrollx' }); const sv = svg('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', class: 'bump' }); wrap.append(sv);
+  const palette = ['#4f46e5', '#0f9d8a', '#e8731f', '#d64550', '#c9a227', '#8e44ad', '#2c7fb8', '#7f8c8d', '#16a085', '#d35400', '#e84393', '#5c6bc0'];
+  const draw = (g) => {
+    sv.replaceChildren();
+    const xs = years.map((y, i) => L + i * (W - L - R) / (years.length - 1));
+    const ys = (rank) => T + (rank - 1) * (H - T - B) / 9;
+    for (let r = 1; r <= 10; r++) sv.append(svg('line', { x1: L, x2: W - R, y1: ys(r), y2: ys(r), class: 'gr' }), svg('text', { x: L - 8, y: ys(r) + 4, class: 'lbl m', 'text-anchor': 'end', 'font-size': 10 }, r));
+    years.forEach((y, i) => sv.append(svg('text', { x: xs[i], y: H - 14, class: 'lbl mid m' }, y)));
+    const chars = [...new Set(years.flatMap(y => [...TREND[g][y]]))];
+    const keep = chars.filter(c => years.filter(y => TREND[g][y].includes(c)).length >= 3);
+    keep.forEach((c, ci) => {
+      const col = palette[ci % palette.length];
+      const pts = years.map((y, i) => { const k = TREND[g][y].indexOf(c); return k >= 0 ? [xs[i], ys(k + 1)] : null; });
+      let d = '', prev = null; const dashed = [];
+      pts.forEach((p, i) => { if (!p) { prev = null; return; } if (prev) d += ` L${p[0]},${p[1]}`; else { if (i > 0 && pts.slice(0, i).some(Boolean)) { const last = [...pts.slice(0, i)].reverse().find(Boolean); dashed.push(`M${last[0]},${last[1]} L${p[0]},${p[1]}`); } d += ` M${p[0]},${p[1]}`; } prev = p; });
+      sv.append(svg('path', { d: d.trim(), fill: 'none', stroke: col, 'stroke-width': 3, 'stroke-linecap': 'round', class: 'tcurve', opacity: .9 }));
+      dashed.forEach(dd => sv.append(svg('path', { d: dd, fill: 'none', stroke: col, 'stroke-width': 2, 'stroke-dasharray': '4 4', opacity: .5 })));
+      pts.forEach(p => p && sv.append(svg('circle', { cx: p[0], cy: p[1], r: 4, fill: col })));
+      const last = [...pts].reverse().find(Boolean); sv.append(svg('text', { x: last[0] + 10, y: last[1] + 4, class: 'lbl', fill: col, 'font-weight': 700, 'font-size': 13 }, c));
+    });
+    animatePaths(sv);
+  };
+  const sg = seg(['男宝十大用字', '女宝十大用字'], (i) => draw(i === 0 ? 'm' : 'f'));
+  node.append(el('div', { class: 'ctrl' }, sg), wrap, el('div', { class: 'small-note' }, '只画出至少三年进入前十的字。来源：起名通 2019 中国姓名大数据报告。手机上图可左右滑动。'));
+  draw('m');
+  return { start() { animatePaths(sv); } };
+});
+
+/* ======================================================================
+   11 修正清单
+   ====================================================================== */
+reg('fixes', (node) => {
+  const items = [
+    { say: '清音如 b、p、f、d、t…，浊音如 m、n、l、r；「明丽」是浊音 m 配清音 l。', ok: 'l 是浊音。普通话 17 个阻塞音声母全是清音，m n l r 是响音（浊）。笔记想说的对比应叫<b>「阻塞音 vs 响音」</b>，「明丽」两个字都是响音，不构成对比；「宝龙」「丹丽」才是。', lv: 'bad' },
+    { say: '发音部位不同的声母组合，如 d 和 t（丹婷），让名字发音更清晰。', ok: 'd、t 是<b>同一部位</b>（舌尖抵上齿龈），只差送气。「丹婷」顺口是因为韵母 an / ing 和声调 1 / 2 都不同。', lv: 'bad' },
+    { say: '叠字名字的第二个字读音多为平声。', ok: '口语里叠字名第二字读<b>轻声</b>，又短又弱，不属于任何一个平声。百万人名语料研究也按轻声处理。', lv: 'bad' },
+    { say: '开口音如 a、o、e 开头的字，闭口音如 i、u、ü 开头的字。', ok: '这里混用了两套标准。按<b>四呼</b>，i/u/ü 开头是齐齿、合口、撮口呼；按<b>开口度</b>看的是韵腹。「雅」yǎ 按四呼是齐齿呼，按韵腹是低元音 a。口诀说的「响亮」看韵腹即可。', lv: 'amber' },
+    { say: '避免拗口的声母组合，如 z、c、s 与 zh、ch、sh 连在一起。', ok: '方向对，机制更简单：相邻字声母<b>完全相同</b>或<b>同部位同方法</b>才明显绕口，「平舌 + 翘舌」只是相近。热门名里「子轩」（z + x）、「梓豪」（z + h）都很顺。', lv: 'amber' },
+    { say: '平仄相间的名字读起来朗朗上口，如李白（仄平）、王维（平仄）。', ok: '「李白」是仄平没错；「王维」wáng wéi 两字都是阳平，是<b>平平</b>，不是平仄。它甚至连声母都相同（都是零声母 w），顺口全靠韵母 ang / ei 的差别。这反而说明：三层里只撞一两层，名字照样可以好听。', lv: 'bad' },
+    { say: '从统计学角度看，没有大规模针对名字平仄规律的严格样本调查。', ok: '确实缺少专门的「平仄」调查，但<b>声调模式的大样本统计是有的</b>：百万人名语料（2002）发现偏好明显；Lingua（2020）发现名字里二声偏多；公司名语料发现回避三声。', lv: 'amber' },
+    { say: '2018 年最受欢迎的男宝宝名读音有 yìchén 和 yǔchén，女宝宝名读音有 yǔtóng 和 xīnyuè。', ok: '核实无误，出自起名通《2019 姓名全景报告》。补充：该报告的数据基础是平台 2016～2018 年约 1800 万条起名记录，与公安部按户籍登记统计的榜单口径不同，两者的榜首也不一样。', lv: 'ok' },
+  ];
+  node.append(...items.map(it => el('div', { class: 'fix ' + (it.lv === 'amber' ? 'amber' : it.lv === 'ok' ? 'amber' : '') , style: it.lv === 'ok' ? 'border-left-color:var(--t)' : '' }, el('div', { class: 'say' }, (it.lv === 'ok' ? '✓ ' : it.lv === 'amber' ? '△ ' : '✕ ') + it.say), el('div', { class: 'ok', html: it.ok }))));
+  return {};
+});
+
+/* ======================================================================
+   12 检查清单
+   ====================================================================== */
+reg('checklist', (node) => {
+  const input = el('input', { type: 'text', value: '张梓涵', maxlength: 24, 'aria-label': '输入名字' });
+  const list = el('div', { class: 'check', style: 'margin-top:10px' });
+  const items = [
+    ['相邻字声母不同', '同声母连读最绕口（汪文威、李梨）。', (s) => s.length < 2 ? null : s.every((x, i) => i === 0 || x.ini !== s[i - 1].ini)],
+    ['相邻字韵母不同', '同韵母会押韵、显单调（兰珊）。', (s) => s.length < 2 ? null : s.every((x, i) => i === 0 || x.fin !== s[i - 1].fin)],
+    ['声调不全相同', '三个字同调缺少起伏；三个三声还要变调。', (s) => s.length < 2 ? null : new Set(s.map(x => x.tone)).size > 1],
+    ['实际读音平仄有变化', '按变调后的读音判断，而不是字典声调。', (s) => { if (s.length < 2) return null; const { t } = sandhi(s); const p = t.filter(x => x != null && x !== 0).map(PZ); return new Set(p).size > 1 || p.length < 2; }],
+    ['末字不是上声', '热门名几乎不用三声收尾，公司名语料也回避。', (s) => s.length ? s[s.length - 1].tone !== 3 : null],
+    ['韵腹开口度有变化', '一放一收更有节奏；全闭口偏含蓄，全开口偏响亮，都不算错。', (s) => s.length < 2 ? null : new Set(s.map(x => x.open)).size > 1],
+    ['响音与阻塞音搭配', '通畅与受阻交替，口感有层次；不是硬性要求。', (s) => s.length < 2 ? null : new Set(s.map(x => x.son)).size > 1],
+  ];
+  const run = () => {
+    const syls = toSyls(input.value).filter(s => !s.unknown);
+    list.replaceChildren(...items.map(([t, sub, fn]) => { const r = fn(syls); const cls = r === null ? 'skip' : r ? 'pass' : 'fail'; return el('div', { class: 'it ' + cls }, el('span', { class: 'box' }, r === null ? '–' : r ? '✓' : '✕'), el('span', {}, t, el('small', {}, sub))); }));
+    const n = items.filter(([, , fn]) => fn(syls) === false).length;
+    summary.textContent = syls.length < 2 ? '请输入至少两个字（含姓）。' : n === 0 ? '七项全过：读音层面没有明显撞车。' : n === 1 ? '一项未过：通常仍可接受，看是否介意。' : `${n} 项未过：读音层面撞车较多，建议换字。`;
+  };
+  const summary = el('div', { class: 'final', style: 'margin-top:12px;font-size:16px' });
+  const chips = el('div', { class: 'chips' }); ['张梓涵', '王一诺', '李沐宸', '汪文威', '李梨', '兰珊', '周瑜', '李晓雨'].forEach(x => chips.append(el('button', { type: 'button', class: 'chip', onclick: () => { input.value = x; run(); } }, x)));
+  input.addEventListener('input', run);
+  node.append(el('div', { class: 'bench', style: 'grid-template-columns:1fr' }, el('div', { class: 'in' }, el('span', { style: 'font-size:13px;color:var(--muted)' }, '连姓一起输入'), input), chips), list, summary);
+  run();
+  return {};
+});
+/* ======================================================================
+   启动：导航、进度条、视口触发
+   ====================================================================== */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((s, i) => {
+  const t = s.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + s.id, 'data-id': s.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + s.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+const navIO = new IntersectionObserver((es) => { es.forEach(e => { if (e.isIntersecting) { side.querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.id === e.target.id)); } }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach(s => navIO.observe(s));
+
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach(node => {
+  const f = Demos[node.dataset.demo];
+  if (!f) { console.warn('no demo:', node.dataset.demo); return; }
+  try { instances.set(node, f(node) || {}); } catch (err) { console.error('demo failed:', node.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => {
+  es.forEach(e => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); });
+}, { threshold: 0.15 });
+instances.forEach((_, node) => demoIO.observe(node));
+const seenIO = new IntersectionObserver((es) => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach(s => seenIO.observe(s));
+})();
+</script>
+</body>
+</html>

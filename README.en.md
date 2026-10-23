@@ -73,6 +73,12 @@ Illustrated, animated visual explainers of articles, made for beginners. Content
 | --- | --- | --- | --- |
 | How Does the Leap from 0 to 1 Happen? | Zhihu answerer 高大早, and another answer to the same question | [`philosophy/general/from-zero-to-one-singularity/`](philosophy/general/from-zero-to-one-singularity/index.html) | Von Neumann ordinals build 0 and 1 from the empty set; Lacan reads 0 as the system's self-reference. |
 
+### Language (`language/`)
+
+| Title | Original author / source | Page | Summary |
+| --- | --- | --- | --- |
+| What Makes a Chinese Name Sound Good? Tones, Initials and Finals | Personal study note, drawing on the Ministry of Public Security national name reports 2019–2021, Cao et al. (2002), van de Weijer et al. (2020) and others | [`language/chinese-name-phonetics/`](language/chinese-name-phonetics/index.html) | A tone sandbox for any name, initial/final matrices, tone statistics of popular names: pingze, tone sandhi, the three sources of tongue-twisting, and corrections to common myths like "voiced vs voiceless contrast". |
+
 ### Design (`design/`)
 
 | Title | Original author / source | Page | Summary |
