@@ -1,0 +1,1918 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>科幻电影里的电脑：银幕背后是什么，又改变了什么</title>
+<meta name="description" content="从《异形》的废料面板到《少数派报告》的手势界面：十一台银幕电脑哪些是真机、哪些是道具，以及电影与现实的双向影响。含线框地形、放大镜、代码雨、电话扫描等十余个可操作演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+/* ===== 本页组件 ===== */
+.sub-h{font-size:clamp(18px,2.8vw,22px);margin:34px 0 4px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sub-h .yr{font-family:var(--mono);font-size:12px;font-weight:400;color:var(--muted)}
+.ch > p{margin:8px 0 12px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.verdict{display:inline-block;font-size:12px;font-weight:700;padding:2px 10px;border-radius:999px;align-self:flex-start}
+.verdict.real{background:var(--t-soft);color:var(--t)}
+.verdict.half{background:var(--y-soft);color:var(--y)}
+.verdict.prop{background:var(--r-soft);color:var(--r)}
+.verdict.hint{background:var(--p-soft);color:var(--p)}
+.flag{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;border:1px solid var(--o);color:var(--o);margin-right:4px}
+.flag.ok{border-color:var(--t);color:var(--t)}
+.flag.q{border-color:var(--r);color:var(--r)}
+/* 荧光屏 */
+.screen{background:#0a0c0a;border-radius:10px;border:6px solid var(--ink);overflow:hidden}
+.screen canvas{width:100%;height:auto}
+/* 放大镜 */
+.lens-stage{position:relative;height:200px;background:#14110d;overflow:hidden;border-radius:10px;border:6px solid var(--ink);touch-action:none;cursor:grab;outline:none}
+.lens-stage:focus-visible{box-shadow:0 0 0 2px var(--p)}
+.lens-txt{position:absolute;left:0;top:0;padding:10px;font:7px/1.5 var(--mono);color:#7dffa0;white-space:pre;pointer-events:none}
+.lens{position:absolute;width:98px;height:98px;border-radius:50%;overflow:hidden;border:3px solid var(--y);box-shadow:0 0 0 2px #14110d,0 6px 18px rgba(0,0,0,.5);background:#14110d;pointer-events:none}
+.lens .lens-txt{transform:scale(3);transform-origin:0 0}
+/* 选项卡 */
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.tab{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 12px;cursor:pointer;font-size:13px}
+.tab.on{background:var(--p);border-color:var(--p);color:#fff}
+/* 时间线 */
+.tlbar{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.tlnode{flex:0 0 auto;min-width:92px;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:13px}
+.tlnode b{display:block;font-family:var(--mono);color:var(--p)}
+.tlnode small{display:block;color:var(--muted);font-size:11px}
+.tlnode.on{border-color:var(--p);background:var(--p-soft)}
+.tldetail{margin-top:10px;padding:12px 14px;border-radius:10px;background:var(--surface-2);font-size:14px;min-height:80px}
+.tldetail h4{margin:0 0 4px;font-size:15px}
+/* 对话 */
+.chat{background:var(--surface-2);border-radius:10px;padding:10px;min-height:120px;max-height:220px;overflow:auto;font-size:14px;display:flex;flex-direction:column;gap:6px}
+.chat .u{align-self:flex-end;background:var(--p);color:#fff;border-radius:12px 12px 2px 12px;padding:4px 10px;max-width:85%}
+.chat .m{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:12px 12px 12px 2px;padding:4px 10px;max-width:85%}
+.tin{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--text);border-radius:999px;padding:7px 14px;flex:1;min-width:140px}
+/* 镜头对比 */
+.lensfig{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:center}
+/* 手势舞台 */
+.gstage{position:relative;height:280px;background:#0b1620;border-radius:10px;border:6px solid var(--ink);overflow:hidden;touch-action:none}
+.gp{position:absolute;left:0;top:0;width:120px;height:90px;border:1px solid #6fd3ff;background:rgba(111,211,255,.1);border-radius:6px;cursor:grab;outline:none;transform-origin:50% 50%}
+.gp.sel{box-shadow:0 0 0 2px #fff,0 0 16px #6fd3ff}
+.gp svg{width:100%;height:100%}
+/* HUD */
+.hudbox{background:#050b12;border-radius:10px;border:6px solid var(--ink);padding:6px}
+.hudbox svg{max-width:420px;margin:0 auto}
+.hudbox.read{background:var(--surface)}
+.spin{transform-origin:200px 130px;animation:spin 40s linear infinite}
+.spin.rev{animation-direction:reverse;animation-duration:26s}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 表格 */
+.tbl{width:100%;min-width:560px;border-collapse:collapse;font-size:13px}
+.tbl td:last-child{white-space:nowrap}
+.tbl th,.tbl td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+.tbl th{color:var(--muted);font-weight:600;font-size:12px}
+.tbl tr[hidden]{display:none}
+.kv{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+@media (min-width:640px){ .kv{grid-template-columns:1fr 1fr} }
+.kv > div{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:13px}
+.kv b{display:block;margin-bottom:2px;font-size:13px}
+.dial{font-family:var(--mono);font-size:13px;background:#0a0c0a;color:#7dffa0;border-radius:10px;padding:10px 12px;min-height:200px;border:6px solid var(--ink);white-space:pre;overflow:hidden}
+.dial .hit{color:#ffd24a;font-weight:700}
+.tbl-wrap{overflow-x:auto}
+
+/* ===== 插画与动画调色盘：物件和荧光屏本身的固定颜色（亮暗主题下一致），全部以变量形式给 SVG/canvas 使用 ===== */
+:root{
+  --k-cream:#e8e0c8; --k-cream-hi:#fbf6e4; --k-cream-lo:#b9ae8e; --k-cream-sh:#7a705a; --k-glass:#ffffff;
+  --k-or:#e8621a; --k-or-hi:#ff9a52; --k-or-lo:#a8380c; --k-or-sh:#5a1c06;
+  --k-red:#d3241c; --k-red-hi:#ff6f58; --k-red-lo:#7a0c0a;
+  --k-blk:#0c0c10; --k-blk-hi:#30303a; --k-steel:#8c959b; --k-steel-hi:#dde3e6; --k-steel-lo:#444b52;
+  --k-gold:#c8a43f; --k-gold-hi:#f2cf62; --k-wall:#2a1c12; --k-wall-hi:#68422a; --k-amber:#ffb347;
+  --k-screen:#070a07; --k-phos:#33ff66; --k-phos-hi:#e8fff0; --k-phos-lo:#0f5a2a;
+  --k-sky:#8fb8d8; --k-sky-lo:#2a4a62; --k-ink:#2a2a30; --k-bgt:#10202a; --k-bgt2:#1a2a30; --k-navy:#0a1a2c; --k-cyan:#6fd3ff; --k-blue:#4a6cff;
+  --k-hal-core:#fff3b8; --k-hal-hot:#ff9a2a; --k-hal-dark:#3a0505;
+  --k-lc-or:#ff9900; --k-lc-pk:#ffcc99; --k-lc-pu:#cc99cc; --k-lc-bl:#9999cc; --k-lc-lb:#9999ff; --k-lc-rd:#cc6666; --k-lc-tn:#ff9966;
+}
+
+/* 导览翻面卡片：3D 翻转 */
+.cards{display:grid;grid-template-columns:1fr;gap:14px;margin-top:12px}
+@media (min-width:640px){ .cards{grid-template-columns:1fr 1fr} }
+.flip .face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.flip .back{background:var(--surface)}
+.flip h3{font-size:16px}
+.flip p{font-size:13px;color:var(--muted)}
+.flip p b{color:var(--text)}
+.flip .tip{margin-top:auto;font-size:12px;color:var(--p)}
+.flip[hidden]{display:none}
+.cards{perspective:1600px}
+.flip{perspective:1200px;cursor:pointer;min-height:350px;outline:none;-webkit-tap-highlight-color:transparent}
+.flip .in{position:relative;width:100%;height:100%;min-height:350px;transition:transform .85s cubic-bezier(.45,.05,.2,1);transform-style:preserve-3d;will-change:transform}
+.flip:hover .in{transform:rotateY(7deg) rotateX(2deg)}
+.flip.on .in{transform:rotateY(180deg)}
+.flip.on:hover .in{transform:rotateY(173deg) rotateX(2deg)}
+.flip.lift{animation:lift .85s cubic-bezier(.45,.05,.2,1)}
+@keyframes lift{0%,100%{transform:scale(1)}45%{transform:scale(1.045)}}
+.flip .face{overflow:hidden;box-shadow:0 1px 0 rgba(255,255,255,.35) inset,var(--shadow);transform:translateZ(.5px)}
+.flip .back{transform:rotateY(180deg) translateZ(.5px)}
+.flip .face::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.16) 48%,transparent 62%);opacity:0;transition:opacity .4s}
+.flip:hover .face::after{opacity:1}
+.flip .art{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px;margin:2px 0 4px}
+.flip .art svg{max-height:150px;margin:0 auto;border-radius:7px}
+.flip:focus-visible .face{border-color:var(--p);box-shadow:0 0 0 2px var(--p)}
+@media (prefers-reduced-motion: reduce){ .flip .in{transition:none} .flip.lift{animation:none} .flip:hover .in,.flip.on:hover .in{transform:none} .flip.on:hover .in{transform:rotateY(180deg)} }
+
+/* 荧光屏：扫描线 + 暗角 */
+.screen{position:relative}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px),radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.45) 100%)}
+.screen canvas{filter:drop-shadow(0 0 2px var(--k-phos))}
+
+/* 洛基图集 */
+.gal{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:640px){ .gal{grid-template-columns:1fr 1fr} }
+.gal figure{margin:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2);display:flex;flex-direction:column}
+.gal .art{display:block;width:100%;border:0;padding:0;margin:0;background:var(--k-blk);cursor:pointer;position:relative;outline:none}
+.gal .art svg{width:100%;height:auto}
+.gal .art:focus-visible{box-shadow:0 0 0 3px var(--p) inset}
+.gal .art .zoom{position:absolute;right:8px;bottom:8px;font-size:11px;background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:2px 9px;pointer-events:none;transition:opacity .2s}
+.gal figure.open .zoom{opacity:0}
+.gal figcaption{padding:10px 12px 12px;font-size:13px;color:var(--muted);flex:1}
+.gal figcaption b{display:block;color:var(--text);font-size:14px;margin-bottom:2px}
+.gal figcaption .why{display:none;margin-top:6px;color:var(--text)}
+.gal figure.open figcaption .why{display:block}
+.gal figure.open{border-color:var(--p)}
+
+/* HAL 之眼 */
+.haleye{width:100%;max-width:240px;margin:0 auto}
+.haleye svg{width:100%;height:auto;overflow:visible}
+.hal .halo,.hal .core{transform-box:fill-box;transform-origin:center}
+.hal .halo{animation:halbreath 4.6s ease-in-out infinite}
+.hal .core{animation:halcore 4.6s ease-in-out infinite;transition:transform .5s}
+.hal .lens{transition:filter .5s}
+@keyframes halbreath{0%,100%{opacity:.55;transform:scale(.96)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes halcore{0%,100%{opacity:.7}50%{opacity:1}}
+.hal.think .core{transform:scale(1.9)}
+.hal.flare .lens{animation:halflare .9s ease-out}
+.hal.flare .halo{animation:halflare2 .9s ease-out}
+@keyframes halflare{0%{filter:brightness(2.2) saturate(1.3)}100%{filter:brightness(1)}}
+@keyframes halflare2{0%{opacity:1;transform:scale(1.25)}100%{opacity:.55;transform:scale(.96)}}
+.hal.idle .halo,.hal.idle .core{animation-play-state:paused}
+.hal.still .halo,.hal.still .core{animation:none}
+@media (prefers-reduced-motion: reduce){ .hal .halo,.hal .core,.hal.flare .lens,.hal.flare .halo{animation:none} .hal .core,.hal .lens{transition:none} }
+.haldemo{display:flex;flex-wrap:wrap;gap:20px 28px;align-items:center;justify-content:center}
+.haldemo .big{flex:0 1 220px;min-width:150px;cursor:pointer;border:0;background:none;padding:0;border-radius:18px}
+.haldemo .big:focus-visible{outline:3px solid var(--p);outline-offset:4px}
+.haldemo .cmp{display:flex;gap:18px;align-items:flex-end;flex:0 1 auto}
+.haldemo .cmp figure{margin:0;text-align:center;font-size:12px;color:var(--muted)}
+.chatrow{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+@media (min-width:560px){ .chatrow{grid-template-columns:96px 1fr} }
+.chatrow .haleye{max-width:96px}
+.hudbox.paused .spin{animation-play-state:paused}
+
+/* 星际迷航 LCARS：肘形条、圆角色块、窄体大写 */
+.lc{background:#000;border-radius:14px;padding:10px 10px 10px 0;display:grid;grid-template-columns:116px minmax(0,1fr);grid-template-rows:26px 1fr 22px;font-family:"Antonio","Oswald","Bahnschrift","Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow","Roboto Condensed",var(--font);font-stretch:condensed;text-transform:uppercase;letter-spacing:.07em;color:var(--k-lc-pk);overflow:hidden}
+.lc-elbow{grid-area:1/1;background:var(--k-lc-or);border-radius:46px 0 0 0;height:64px;margin-bottom:-38px;position:relative;z-index:1;transition:background .3s}
+.lc-top{grid-area:1/2;display:flex;gap:6px;height:26px;position:relative}
+.lc-top::before{content:"";position:absolute;left:0;top:100%;width:28px;height:28px;z-index:2;background:radial-gradient(circle at 100% 100%,transparent 27px,var(--lcf,var(--k-lc-or)) 28px);transition:filter .3s}
+.lc-title{flex:1;background:var(--k-lc-or);color:#000;font-weight:700;font-size:15px;line-height:26px;padding:0 14px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:background .3s}
+.lc-top i{display:block;height:26px;width:34px;background:var(--k-lc-pu);transition:background .3s}
+.lc-top i:nth-of-type(2){width:54px;background:var(--k-lc-bl)}
+.lc-top i:last-of-type{width:22px;border-radius:0 13px 13px 0;background:var(--k-lc-tn)}
+.lc-rail{grid-area:2/1;display:flex;flex-direction:column;gap:4px;padding-top:42px;min-height:0}
+.lc-rail button{flex:1 1 auto;min-height:36px;border:0;color:#000;font:inherit;font-weight:700;font-size:13px;text-align:right;padding:6px 10px;cursor:pointer;letter-spacing:.08em;position:relative;overflow:hidden;transition:filter .15s,transform .1s}
+.lc-rail button small{display:block;font-size:10px;font-weight:400;opacity:.7;letter-spacing:.12em}
+.lc-rail button:nth-child(1){flex-grow:1.4}.lc-rail button:nth-child(3){flex-grow:1.8}.lc-rail button:nth-child(5){flex-grow:1.2}
+.lc-rail button:hover{filter:brightness(1.12)}
+.lc-rail button:active{transform:translateX(3px)}
+.lc-rail button.on{filter:brightness(1.15);box-shadow:inset -8px 0 0 #000,inset -12px 0 0 var(--k-lc-pk)}
+.lc-rail button:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+.lc-rail button.flash{animation:lcflash .42s ease-out}
+@keyframes lcflash{0%{filter:brightness(3) saturate(.2)}60%{filter:brightness(1.6)}100%{filter:brightness(1.15)}}
+.lc-disp{grid-area:2/2;background:#000;margin-top:34px;padding:6px 8px 8px 14px;min-height:240px;position:relative}
+.lc-disp h4{margin:0 0 6px;font-size:clamp(22px,5vw,34px);font-weight:700;letter-spacing:.08em;color:var(--k-lc-or);line-height:1.1;transition:color .3s}
+.lc-bar{height:10px;border-radius:5px;margin:2px 0 12px;background:var(--k-lc-or);transition:background .3s,width .5s;width:100%}
+.lc-body{text-transform:none;letter-spacing:.02em;font-family:var(--font);font-stretch:normal;font-size:14px;line-height:1.7;color:var(--k-lc-pk)}
+.lc-body b{color:#fff}
+.lc-body sup.c{color:var(--k-lc-pu)}
+.lc-swap{animation:lcswap .45s ease-out}
+@keyframes lcswap{0%{opacity:0;transform:translateX(18px);clip-path:inset(0 0 0 100%)}100%{opacity:1;transform:none;clip-path:inset(0)}}
+.lc-read{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.lc-read span{font-size:12px;background:var(--k-lc-bl);color:#000;border-radius:11px;padding:2px 12px;font-weight:700;transition:background .3s}
+.lc-read span:nth-child(2){background:var(--k-lc-pu)}.lc-read span:nth-child(3){background:var(--k-lc-tn)}
+.lc-foot{grid-area:3/1;background:var(--k-lc-or);border-radius:0 0 0 22px;margin-top:6px;transition:background .3s}
+.lc-foot2{grid-area:3/2;margin-top:6px;display:flex;gap:6px}
+.lc-foot2 i{display:block;flex:1;background:var(--k-lc-or);transition:background .3s}
+.lc-foot2 i:nth-child(1){flex:0 0 60px;background:var(--k-lc-pu)}.lc-foot2 i:nth-child(3){flex:0 0 40px;background:var(--k-lc-bl);border-radius:0 11px 11px 0}
+@media (prefers-reduced-motion: reduce){ .lc-swap,.lc-rail button.flash{animation:none} .lc *{transition:none !important} }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">科幻电影里的电脑</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">文化 · 影视 · 计算机史</div>
+  <h1>科幻电影里的电脑：银幕背后是什么，又改变了什么</h1>
+  <p class="sub">从《异形》的废料面板到《少数派报告》的手势界面：银幕上的电脑，哪些背后有真机和真研究，哪些只是道具，影响又怎样反过来流回现实。</p>
+  <div class="thesis">银幕上的电脑有三种来路：真机改装（如《洛基》大厅的终端）、真实研究与真实程序（如《2001 太空漫游》、《创》、《异形》的地形），以及纯粹为拍摄做的道具。影响也是双向的：电影启发产品，研究者走进片场，甚至（据称）推动了立法。<sup class="c">[1][14][26]</sup></div>
+  <div class="legend">
+    <span class="verdict real">真实</span><span class="verdict half">半真</span><span class="verdict prop">纯道具</span>
+  </div>
+  <p class="src">标签是本页自拟的粗分类：<b>真实</b>＝银幕上的画面确由真实计算机或真实技术产生；<b>半真</b>＝一部分是真机或真研究，一部分是道具或设定；<b>纯道具</b>＝机器与画面都是为拍摄做的。</p>
+  <div class="authors"><span class="au"><i>R</i>本仓库整理</span></div>
+  <p class="meta">本页为本仓库整理的原创综述，非某篇文章的转述；事实均来自页脚参考文献，只写查到来源的内容，单一来源或没抓到一手资料的细节标为「待核实」或「存疑」，不当作事实。《洛基》一节只是摘要，详见本仓库<a href="../loki-computer-terminals/">《洛基》里那些很酷的电脑终端</a>。所有声音都需要你点击按钮才会播放。</p>
+</header>
+
+<section class="ch" id="guide" data-title="导览：真的还是道具">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>导览：十一台银幕电脑，真的还是道具？</h2>
+    <p class="lead">先摊牌：这一页要讲的每一台电脑，正面是银幕上的样子，翻过来是它背后真正的东西，你能猜对几台？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>点卡片翻面</b>，看背后是真机、半真半假还是纯道具；上方按钮可以按标签筛选。正面图都是本页的示意重绘，不是剧照。</div>
+    <div data-demo="cards"></div>
+  </div>
+</section>
+
+<section class="ch" id="retro" data-title="复古未来终端">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>复古未来终端：用旧东西造出的「未来」</h2>
+    <p class="lead">为什么这么多银幕电脑看起来又笨重又老旧，却依然像「未来」？</p>
+  </div>
+
+  <h3 class="sub-h">《异形》MU/TH/UR 6000 <span class="yr">1979</span> <span class="verdict half">半真</span></h3>
+  <p>飞船「诺斯特罗莫号」的主机界面，符号出自 Ron Cobb 设计的一套 Semiotic Standard 符号，公司名 Weyland-Yutani 也是他的设计；Roger Christian 用废料拼装布景。ASC（美国电影摄影师协会）的幕后文章称，舰桥上约 40 块屏幕的画面来自一个「中央视频中心」，用旧飞机、汽车、收音机、电视零件拼装而成。Propstore 拍卖过的 MU/TH/UR 面板，实物是木板、真空成型的黄色塑料和麦粒灯。<sup class="c">[1][2][3]</sup></p>
+  <p>真的计算机出现在另一处：登陆 LV-426 时的地形线框，是 Alan Sutcliffe 写的程序，跑在 Prime 300 小型机上，用 III 公司的 FR 80 图形记录仪直接画到胶片上；程序约 14 页 FORTRAN，调用了 C. Emmett 的 Frolic 动画库。这些细节出自 Creative Computing（1981）的文章，本页经 Retro Computing Forum 的转述读到。<sup class="c">[2]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>飞越 Sutcliffe 式的线框地形</b>：一排排折线自远向近绘制、缓慢逼近，近处的一排用背景色遮住后面的线（隐藏线消除）。可以暂停，调飞行速度、行数、起伏和视角，再点「换一块地形」。这是本页自写的示意，不是原程序。</div>
+    <div data-demo="terrain"></div>
+  </div>
+  <div class="note-add"><b>待核实</b>：Wikipedia《异形》条目对舰桥屏幕画面的措辞（偏向「全是 CGI」）与 ASC 的「中央视频中心」说法不一致，本页采用 ASC 的说法，没有裁决二者的差别。<sup class="c">[1][4]</sup></div>
+
+  <h3 class="sub-h">《妙想天开》Brazil <span class="yr">1985</span> <span class="verdict prop">纯道具</span></h3>
+  <p>美术指导是 Norman Garwood。BFI Screenonline 的说法是：电脑是「在电动打字机上搭建」的，整体混合 1930 年代风格、战后紧缩时期和斯大林式建筑；Wikipedia 引 Jeunet 和 Caro 的话，称这是 retro-futurism（复古未来主义）。灵感来源包括 Fritz Lang、黑色电影、德国表现主义和 W. Heath Robinson 的漫画式机械，影片里还有气送管。<sup class="c">[5][6]</sup></p>
+  <p>它的影响能一路追到《洛基》：美术指导 Kasra Farahani 与导演 Kate Herron 把《妙想天开》当作参照（Six Colors 转引 The Verge）。<sup class="c">[13]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>拖动放大镜</b>（或点住舞台后用方向键）：整块屏幕只有 7 像素的字，放大球把它放大三倍。屏幕上的文字是本页虚构的。</div>
+    <div data-demo="lens"></div>
+  </div>
+  <div class="note-add"><b>待核实</b>：「小屏幕被注水球体放大」这一细节只在 Sightlines 一处看到，没找到第二个来源，所以这个放大镜演示只是示意。<sup class="c">[7]</sup></div>
+
+  <h3 class="sub-h">《辐射》Pip-Boy <span class="yr">游戏系列</span> <span class="verdict prop">纯道具</span></h3>
+  <p>Interplay 时期的 Leonard Boyarsky 偏好老旧笨重的科技，Pip-Boy 被形容为「勉强拼凑」的东西，由 Anthony Postma 设计布局；Bethesda 后来把 Pip-Boy 3000 改成 Streamline Moderne 风格。整个设定是 atompunk：1950 年代的美国，用真空管而不是晶体管。Chris Taylor 提到的灵感有《莱博维茨的赞歌》（A Canticle for Leibowitz）、《疯狂的麦克斯 2》和《失落之城》。<sup class="c">[8][9]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>切换两个世界</b>：同一个「戴在手腕上的信息设备」，在晶体管世界和真空管世界里是什么样？示意图，非官方设计稿。</div>
+    <div data-demo="world"></div>
+  </div>
+  <p>然后是反向流动：2015 年 Fallout 4 收藏版附带的 Pip-Boy 是塑料外壳，里面装手机（Engadget 的评语是 glorified smartphone case，「高级手机壳」）；Todd Howard 说自己太喜欢这个设备，所以做了个真的。2024 年 The Wand Company 推出剧版 Pip-Boy 3000 Mk V 的复制品，带 TFT 屏幕。<sup class="c">[8][10]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点三个标签</b>，看这个虚构设备怎样一步步变成真东西。</div>
+    <div data-demo="pipprod"></div>
+  </div>
+
+  <h3 class="sub-h">《洛基》TVA <span class="yr">2021</span> <span class="verdict half">半真</span></h3>
+  <p>本仓库已有一篇专门的讲解页，这里只摘要。PCMag 的 Sascha Segan（2021-06-10）判断，TVA 大厅里的橙色终端是重新喷漆的 Lear Siegler ADM-3A；全息投影仪的键盘第一行是 QWERTYUIO，没有 P 键，也没有数字行，所以是道具。美术指导 Farahani 的说法是：「数字技术从未存在，模拟技术一路更精密。」<sup class="c">[11][13]</sup> 想看终端模拟器、少了 P 的键盘和可调的 CRT 效果，请去 <a href="../loki-computer-terminals/">《洛基》里那些很酷的电脑终端，哪台是真的？</a></p>
+  <div class="fig">
+    <div class="cap"><b>图集：PCMag 原文配图的高还原重绘</b>。下面每一张都是本页用内联 SVG 重画的示意，构图与配色参照原文的配图（页面里没有任何原图像素，也没有人物）；点图看它画的是什么、依据哪一张配图。</div>
+    <div data-demo="lokigallery"></div>
+    <p class="src">原文还提到电梯里有一台「肯定不存在」的设备，但文中没有配这台设备的图，所以图集里没有画它；缺 P 键的键盘那张是依据正文和配图画的示意，不是配图原样。</p>
+  </div>
+  <p>结尾一个反向的例子：Yanko Design（Gaurav Sood，2021-12-04）介绍了设计师 JK Captain 做的粉丝概念渲染「TVA Multifunctional Computer」。它只是渲染图，没有发售。<sup class="c">[12]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点这台概念机的各个部件</b>（球体、磁带机、键盘），看渲染图里包含了什么。图是本页参照 Yanko Design 报道里的概念渲染重绘的示意，不是原渲染图；<a href="https://www.yankodesign.com/2021/12/04/this-retro-futuristic-computer-from-the-loki-series-is-worth-every-marvel-fans-appreciation/">来源：Yanko Design</a>。</div>
+    <div data-demo="yanko"></div>
+  </div>
+  <div class="note-add"><b>粉丝把虚构道具反向做成了产品概念</b>：这正是本页后面要说的「银幕和现实互相影响」的一个轻量例子，但它没有量产，别把它当产品。</div>
+</section>
+
+<section class="ch" id="hal" data-title="HAL 9000">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>HAL 9000：一台虚构电脑，背后有多少真研究</h2>
+    <p class="lead">1968 年的 HAL 是凭空想象，还是站在真实的计算机研究上？</p>
+  </div>
+  <p>《2001 太空漫游》的顾问和设计者里有 Fred Ordway（顾问）、Harry Lange（美术）和人工智能先驱 Marvin Minsky（顾问）。片中的 HAL 配音是 Douglas Rain。HAL 的视觉由 Graphic Films（Trumbull、Novros、Con Pederson）参与：1965 年 Pederson 的一封电报预言，计算机十年内会变成「无特征的魔法盒子」，他主张「优雅的简洁」，当时 HAL 还叫 Athena。<sup class="c">[14][15][16]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点时间线上的节点</b>，看 HAL 前后发生了什么。</div>
+    <div data-demo="haltl"></div>
+  </div>
+  <p>NASM 的 Paul Ceruzzi 列出了四项与 HAL 对应的真实研究：ELIZA（1966）、Winograd 的积木程序、ILLIAC-IV（HAL 自称在 Urbana 造出，对应 ILLIAC-IV）、以及 1961 年 Bell Labs 用 IBM 7094 唱出的《Daisy Bell》。HAL 与 IBM 只差一个字母，Ceruzzi 认为「很可能是巧合」；IBM 同意参与的前提，是故障不与自家产品挂钩。<sup class="c">[14]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>和一个极简的「ELIZA 式」程序聊几句</b>：它只做关键词匹配加模板回复；左边的红色镜头会在「思考」时发亮、回复时闪一下。这是本页自写的示意，不是 1966 年的原程序，也不是 HAL。</div>
+    <div data-demo="eliza"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>让它降速唱《Daisy Bell》</b>：点「播放」才会出声，镜头随音符闪动，速度越慢镜头越暗。旋律是本页凭记忆简化的示意音，不是 1961 年的合成实录；速度越慢，音也越低。</div>
+    <div data-demo="daisy"></div>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>红色镜头有多大</b>：片中 HAL 视角镜头是 Cinerama 的 Fairchild-Curtis 160° 广角镜头，直径约 20 厘米；拍到的道具眼直径约 7.6 厘米。下图两个圆按这个比例画；左边的镜头可以点，也可以调亮度。</div>
+    <div data-demo="eye"></div>
+  </div>
+  <div class="note-add"><b>存疑</b>：流传说法称 HAL 的视角镜头其实是 Nikkor 8mm 鱼眼，本页没有找到可靠的一手来源，不当作事实。<sup class="c">[14][15]</sup></div>
+  <p>HAL 的回声也在产业里：Apple 在 1999 年有一则 "It was a bug, Dave" 的广告；Ceruzzi 把 Siri、Alexa 与 HAL 对比。2012 年 Samsung 想把《2001》里的平板电脑片段当证据，Judge Koh 以提交过晚为由拒绝了，所以它只是「被拿来当过法庭话题」，没有任何判决说《2001》决定了平板的设计。<sup class="c">[14][17]</sup></p>
+</section>
+
+<section class="ch" id="fui" data-title="未来感界面">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>未来感界面（FUI）：好看和好用，哪个优先</h2>
+    <p class="lead">电影里的界面是为谁设计的：观众的眼睛，还是操作者的手？</p>
+  </div>
+
+  <h3 class="sub-h">《少数派报告》<span class="yr">2002</span> <span class="verdict half">半真</span></h3>
+  <p>John Underkoffler 是科技顾问，设计了大部分界面。Spielberg 的要求是「像指挥乐团」。Alex McDowell 写了 80 页的「2054 圣经」；1999 年还开过一个三天的 15 位专家会议，由 Peter Schwartz、Stewart Brand 主持，含 Jaron Lanier。Underkoffler 在 MIT 媒体实验室做过 I/O Bulb、Luminous Room，后来联合创办 Oblong Industries，产品叫 g-speak。研究者进片场，电影反过来成了他的技术名片。<sup class="c">[18][19][20]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>用鼠标「指挥」面板</b>：选「移动」模式，拖动面板；选「缩放」模式，在面板上向上拖放大、向下拖缩小。选中面板后也可以用方向键移动，加减号缩放。这回答的是：这类手势到底在做什么。</div>
+    <div data-demo="gesture"></div>
+  </div>
+  <div class="note-add"><b>待核实</b>：Oblong 的具体创办年份没有核对，本页不写；也没有核对它与 Kinect 之类消费产品的关联，因此不下结论。<sup class="c">[19][20]</sup></div>
+
+  <h3 class="sub-h">《钢铁侠》系列的 HUD <span class="yr">《复仇者联盟》等</span> <span class="verdict half">半真</span></h3>
+  <p>Jayse Hansen 设计了《复仇者联盟》里 Mark VI/VII 头盔的 HUD。他咨询过 A-10 飞行员 Johnnie Green：真实的 HUD 本来就信息过载，飞行员学会了过滤。他还借用了 Circos 这类真实的数据可视化，立体拍摄则迫使界面重新布局。《钢铁侠 2》里 Stark 的 PDA 和家用电脑界面则由 Perception 制作（Gizmodo）。第一部电影的界面是谁做的，本页没查到，不写。<sup class="c">[21][22]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一份（虚构的）数据，两种画法</b>：切换「电影版」和「可读版」，对照哪种让你更快读出数字。数据是本页编的，只为对比。</div>
+    <div data-demo="hud"></div>
+  </div>
+
+  <h3 class="sub-h">《星际迷航》LCARS <span class="verdict prop">纯道具</span></h3>
+  <p>LCARS 由 Michael Okuda 设计，全称 Library Computer Access/Retrieval System，有个昵称叫 Okudagram。Gene Roddenberry 要求面板「不要太多活动」；而预算让剧组用背光的印刷塑料片代替实体按钮，这个思路借自《Logan's Run》。后来 PADD 常被拿来和 iPad 相比；CBS 也曾向 Google 发过 DMCA 通知，针对一款使用 LCARS 界面的安卓应用 Tricorder。<sup class="c">[23][24]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点左边的色块按钮</b>，读 LCARS 面板上的六条要点；按下时按钮会闪一下，肘形条和顶栏跟着换色，读数和已读进度也会变。配色是仿 LCARS 的圆角肘形条风格，不是官方素材。</div>
+    <div data-demo="lcars"></div>
+  </div>
+</section>
+
+<section class="ch" id="hack" data-title="黑客屏幕">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>黑客屏幕：绿色代码雨和电话扫描器</h2>
+    <p class="lead">黑客电影里那些屏幕，哪些是设计出来的视觉，哪些是真能造成后果的东西？</p>
+  </div>
+
+  <h3 class="sub-h">《黑客帝国》代码雨 <span class="verdict prop">纯道具</span></h3>
+  <p>代码字形由 Simon Whiteley 设计，用的是半角假名的镜像，加上拉丁字母和数字。官方之外，它的影响是非官方的：XScreenSaver 的 GLMatrix 和 cmatrix 这类屏保与终端程序都在模仿它。<sup class="c">[25]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>调速度、列数，开关镜像</b>：每一列的深度、速度和长度都不同，头部发白、尾部渐隐、字符不停随机变化；关掉镜像，你会发现这些字符其实是普通的半角假名。</div>
+    <div data-demo="rain"></div>
+  </div>
+  <div class="note-add"><b>存疑</b>：广为流传的说法是，代码字形的灵感来自一份日本寿司食谱。据称这是 Whiteley 在 2017 年对 CNET 说的，但有争议，本页不当作事实。<sup class="c">[25]</sup></div>
+
+  <h3 class="sub-h">《战争游戏》WarGames <span class="yr">1983</span> <span class="verdict half">半真</span></h3>
+  <p>制片设计 Geoffrey Kirkland 把 WOPR 做成早期制表机加上 1940 到 1950 年代军用金属家具的风格，Angelo P. Graham 绘图；道具里有人往 Apple II 里输入命令，主角 Lightman 用的则是 IMSAI 8080。NORAD 的大屏动画由 Colin Cantwell 用 HP 9845C 驱动 HP 1345A 矢量显示器，逐帧拍摄，用 16mm 背投放映，所以屏幕上的动画是逐帧拍好、背投放映的。「war dialing」（电话号码扫描）这个词也源于此片。<sup class="c">[26]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>启动电话扫描</b>：按顺序拨一段虚构的 555 号段，看有多少会被调制解调器接起。号码是虚构的，接通概率是本页设定的演示值。</div>
+    <div data-demo="wardial"></div>
+  </div>
+  <p>更特别的是它后来的故事。据称（来自 Wikipedia）里根看完电影，问参联会：这种事真的可能吗？答复是前提技术上可行。据称这件事促成了 NSDD-145 和 1986 年的 CFAA（Computer Fraud and Abuse Act）。<sup class="c">[26]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点「下一步」</b>，把「从电影到法律」这条链一步步揭示。</div>
+    <div data-demo="warlaw"></div>
+  </div>
+  <div class="note-add"><b>据称</b>：「电影促成 NSDD-145 与 CFAA」一说，本页只引自 Wikipedia 的表述，没有逐一查到一手的法案文件，因此都用「据称」。<sup class="c">[26]</sup></div>
+</section>
+
+<section class="ch" id="tron" data-title="《创》：真电脑做的动画">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>《创》：这一次，屏幕上的东西是真电脑算出来的</h2>
+    <p class="lead">1982 年的计算机动画，一帧要算多久，一部片子要算多久？</p>
+  </div>
+  <p>《创》（Tron，1982）由四家图形公司分工制作：Information International、MAGI、Robert Abel and Associates 和 Digital Effects。当时的内存只有 2 MB，没法实时动画，只能逐帧生成；全片大约有 15 到 20 分钟的计算机动画。车辆由 Syd Mead 设计，布景与服装由 Moebius 设计。Ken Perlin 后来因为 Perlin 噪声获得 1997 年奥斯卡科技奖；Lasseter 也说过，没有《创》就没有《玩具总动员》。<sup class="c">[27]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>拖滑块假设每帧的计算时间</b>，看这 15 或 20 分钟要算多久。每秒 24 帧是电影的通行帧率，每帧耗时是本页的假设值，不是史实。</div>
+    <div data-demo="tron"></div>
+  </div>
+  <div class="note-add"><b>顺带一提</b>：《银翼杀手》里的 Esper 机器靠语音命令（比如 "enhance"）调看照片，这个概念被评论认为预告了后来的语音助手。它用的真实硬件没有查到来源，所以不展开。<sup class="c">[28]</sup></div>
+</section>
+
+<section class="ch" id="end" data-title="总结：互相影响">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>总结：影响是双向的，但要分清证据的轻重</h2>
+    <p class="lead">哪些「电影改变了现实」有来源，哪些只是流传的说法？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>点上方按钮按类别筛选</b>；最后一列标出本页对这条的把握程度。</div>
+    <div data-demo="summary"></div>
+  </div>
+  <div class="final">银幕上的电脑，一半是用旧零件拼出来的未来，一半是真研究者借电影展示的现在。能流回现实的东西，都经过了有人真去把它做出来这一步：一套复制品、一个公司、一条法律。而「电影影响现实」的说法，尤其要看证据。</div>
+</section>
+
+<footer>
+  <div>本页是本仓库整理的原创综述，没有单一原文；《洛基》一节为摘要，出处是 PCMag 的 Sascha Segan（2021-06-10）。页面里所有机器与画面都是内联 SVG、CSS 和 canvas 的示意重绘，没有使用剧照或外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>The American Society of Cinematographers, 「<a href="https://theasc.com/articles/behind-the-scenes-of-alien">Behind the Scenes of Alien</a>」：Ron Cobb 的符号与 Weyland-Yutani，Roger Christian 的废料布景，舰桥约 40 块屏幕画面来自中央视频中心。</li>
+    <li>Retro Computing Forum, 「<a href="https://retrocomputingforum.com/t/landing-the-nostromo-a-3d-landscape-model-alien-1979/5302">Landing the Nostromo: a 3D landscape model (Alien, 1979)</a>」：转述 Creative Computing（1981）关于 Alan Sutcliffe 的 Prime 300、FR 80 与 FORTRAN 程序、C. Emmett 的 Frolic 库。</li>
+    <li>Propstore, 「<a href="https://propstore.com/product/alien-1979/large-screen-matched-mu-th-ur-6000-panel/">Alien (1979) Large screen-matched MU/TH/UR 6000 panel</a>」：拍卖品的材质描述。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Alien_(film)">Alien (film)</a>：屏幕画面的措辞对照。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Brazil_(1985_film)">Brazil (1985 film)</a>：美术指导、retro-futurism 与灵感来源。</li>
+    <li>BFI Screenonline, 「<a href="http://www.screenonline.org.uk/film/id/514534/index.html">Brazil (1985)</a>」：在电动打字机上搭建的电脑，风格混合。</li>
+    <li>Sightlines, 「<a href="https://www.sightlines.media/film/68/brazil-1985">Brazil (1985)</a>」：放大球屏幕（单一来源，待核实）。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Pip-Boy">Pip-Boy</a>：设计者与风格演变、Fallout 4 收藏版、Engadget 评语与 Todd Howard 的说法。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Fallout_(franchise)">Fallout (franchise)</a>：atompunk、1950 年代美国、真空管，以及 Chris Taylor 提到的灵感。</li>
+    <li>The Wand Company, 「<a href="https://www.thewandcompany.com/fallout-pip-boy/">Fallout Pip-Boy</a>」：2024 年 Pip-Boy 3000 Mk V 复制品。</li>
+    <li>Sascha Segan, 「<a href="https://www.pcmag.com/news/what-are-the-cool-computer-terminals-in-marvels-loki">What Are the Cool Computer Terminals in Marvel's Loki?</a>」, PCMag (2021-06-10)。</li>
+    <li>Gaurav Sood, 「<a href="https://www.yankodesign.com/2021/12/04/this-retro-futuristic-computer-from-the-loki-series-is-worth-every-marvel-fans-appreciation/">This retro-futuristic computer from the Loki series is worth every Marvel fan's appreciation</a>」, Yanko Design (2021-12-04)：JK Captain 的 TVA Multifunctional Computer 概念渲染。</li>
+    <li>Dan Moren, 「<a href="https://sixcolors.com/link/2021/07/the-retro-design-of-lokis-technology/">The retro design of Loki's technology</a>」, Six Colors (2021-07)，转引 The Verge 对 Kasra Farahani 的采访：以《妙想天开》为参照，「数字技术从未存在」。</li>
+    <li>Paul Ceruzzi, 「<a href="https://airandspace.si.edu/stories/editorial/real-technology-behind-2001s-hal">The Real Technology Behind 2001's HAL</a>」, 美国国家航空航天博物馆（NASM）：四项真实研究、IBM 与 HAL、广角镜头尺寸、Apple 广告、Siri/Alexa 对比。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/HAL_9000">HAL 9000</a>：顾问与配音 Douglas Rain。</li>
+    <li>Science &amp; Film, 「<a href="https://scienceandfilm.org/articles/the-design-of-hal-9000/">The Design of HAL 9000</a>」：Graphic Films 与 Pederson 1965 年电报，HAL 的旧名 Athena。</li>
+    <li>TechRadar, 「<a href="https://www.techradar.com/news/mobile-computing/tablets/samsung-denied-citing-movies-as-evidence-in-patent-trial-1091024">Samsung denied citing movies as evidence in patent trial</a>」：Judge Koh 以提交过晚拒绝。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Minority_Report_(film)">Minority Report (film)</a>：Underkoffler、Alex McDowell 的「2054 圣经」、1999 年专家会议。</li>
+    <li>MIT Lemelson, 「<a href="https://lemelson.mit.edu/resources/john-underkoffler">John Underkoffler</a>」：I/O Bulb、Luminous Room、Oblong。</li>
+    <li>TechCrunch, 「<a href="https://techcrunch.com/2008/11/17/oblongs-g-speak-spatial-operating-interface-brings-minority-report-ui-to-life/">Oblong's g-speak spatial operating interface brings Minority Report UI to life</a>」(2008-11-17)。</li>
+    <li>Pushing Pixels, 「<a href="https://www.pushing-pixels.org/2012/06/01/the-craft-of-screen-graphics-and-movie-user-interfaces-conversation-with-jayse-hansen.html">The craft of screen graphics and movie user interfaces: conversation with Jayse Hansen</a>」(2012)：A-10 飞行员 Johnnie Green、Circos、立体拍摄。</li>
+    <li>Gizmodo, 「<a href="https://gizmodo.com/the-spectacular-gadgets-of-iron-man-2-5533327">The Spectacular Gadgets of Iron Man 2</a>」：Perception 制作 Stark PDA 与家用电脑界面。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/LCARS">LCARS</a>：全称、Okudagram、Roddenberry 的要求、印刷塑料片、Tricorder 应用的 DMCA。</li>
+    <li>「<a href="https://www.subtraction.com/2016/09/12/how-star-trek-created-the-ipad/">How Star Trek Created the iPad</a>」, Subtraction.com (2016-09-12)：PADD 与 iPad 的对比（页面本次未能打开核对，仅作延伸阅读）。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Matrix_digital_rain">Matrix digital rain</a>：Simon Whiteley 的字形、寿司食谱说法的争议、GLMatrix 与 cmatrix。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/WarGames">WarGames</a>：制片设计、IMSAI 8080、NORAD 大屏、war dialing、NSDD-145 与 CFAA（据称）。</li>
+    <li>Wikipedia 条目 <a href="https://en.wikipedia.org/wiki/Tron_(film)">Tron (film)</a>：四家图形公司、2 MB 内存、逐帧、Syd Mead、Moebius、Perlin、Lasseter。</li>
+    <li>Engadget, 「<a href="https://www.engadget.com/2004-09-24-movie-gadget-friday-the-voight-kampff-and-esper-machines-from.html">Movie Gadget Friday: the Voight-Kampff and Esper machines from Blade Runner</a>」(2004-09-24)：Esper 与语音命令。</li>
+  </ol>
+  <p>本页由 Claude Code 基于上述公开资料整理生成，仅供学习；事实以参考文献为准，标注「待核实」「存疑」「据称」的内容请自行核对。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const activate = (n, fn) => {
+  n.addEventListener('click', fn);
+  n.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+};
+const sup = (...n) => n.map((x) => `<sup class="c">[${x}]</sup>`).join('');
+const seg = (opts, init, cb) => {
+  const box = el('div', { class: 'seg', role: 'group' });
+  const btns = opts.map(([v, label]) => {
+    const b = el('button', { type: 'button', 'aria-pressed': 'false' }, label);
+    b.addEventListener('click', () => set(v));
+    box.append(b);
+    return [v, b];
+  });
+  function set(v) { btns.forEach(([k, b]) => { b.classList.toggle('on', k === v); b.setAttribute('aria-pressed', k === v); }); cb(v); }
+  set(init);
+  return box;
+};
+const rng = (label, min, max, val, step, fmt, cb) => {
+  const out = el('output', {}, fmt(val));
+  const input = el('input', { type: 'range', min, max, value: val, step, 'aria-label': label });
+  input.addEventListener('input', () => { out.textContent = fmt(+input.value); cb(+input.value); });
+  return { input, wrap: el('label', { class: 'range' }, label, input, out) };
+};
+const mulberry = (a) => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+
+/* ---------- 插画工具：渐变、高光、扫描线；颜色全部走 :root 里的 --k-* 变量 ---------- */
+const sx = (o, c, a) => `<stop offset="${o}" style="stop-color:var(${c})${a == null ? '' : ';stop-opacity:' + a}"/>`;
+const LG = (id, a, st) => `<linearGradient id="${id}" x1="${a[0]}" y1="${a[1]}" x2="${a[2]}" y2="${a[3]}">${st.map((s) => sx(...s)).join('')}</linearGradient>`;
+const RG = (id, a, st) => `<radialGradient id="${id}" cx="${a[0]}" cy="${a[1]}" r="${a[2]}" fx="${a[3] ?? a[0]}" fy="${a[4] ?? a[1]}">${st.map((s) => sx(...s)).join('')}</radialGradient>`;
+const BLUR = (id, d) => `<filter id="${id}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="${d}"/></filter>`;
+const SCAN = (id, op = 0.3) => `<pattern id="${id}" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" style="fill:var(--k-blk);fill-opacity:${op}"/></pattern>`;
+const F = (c, o) => `style="fill:var(${c})${o == null ? '' : ';fill-opacity:' + o}"`;
+const ST = (c, w, o) => `style="stroke:var(${c});stroke-width:${w};fill:none${o == null ? '' : ';stroke-opacity:' + o}"`;
+const SK = (c, w, o) => `style="stroke:var(${c});stroke-width:${w}${o == null ? '' : ';stroke-opacity:' + o}"`;
+const SVG = (label, defs, body, vb = '0 0 480 270') => `<svg viewBox="${vb}" role="img" aria-label="${label}"><defs>${defs}</defs>${body}</svg>`;
+const rr = (x, y, w, h, r, fill, extra = '') => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" ${fill} ${extra}/>`;
+
+/* 1. TVA 大厅（依据 PCMag 配图 "TVA lobby"）：橙色弧形前台、奶油色终端、环形吊顶 */
+const artLobby = () => {
+  const p = 'lb';
+  const defs = [
+    LG(p + 'wall', [0, 0, 0, 1], [[0, '--k-wall'], [1, '--k-wall-hi']]),
+    LG(p + 'ceil', [0, 0, 0, 1], [[0, '--k-cream-lo'], [1, '--k-gold']]),
+    LG(p + 'desk', [0, 0, 1, 0], [[0, '--k-or-sh'], [0.16, '--k-or-lo'], [0.5, '--k-or'], [0.84, '--k-or-lo'], [1, '--k-or-sh']]),
+    LG(p + 'deskv', [0, 0, 0, 1], [[0, '--k-or-hi', 0.5], [0.45, '--k-or', 0], [1, '--k-blk', 0.4]]),
+    LG(p + 'rim', [0, 0, 0, 1], [[0, '--k-or-hi'], [1, '--k-or']]),
+    LG(p + 'red', [0, 0, 0, 1], [[0, '--k-red'], [1, '--k-red-lo']]),
+    LG(p + 'tb', [0, 0, 1, 1], [[0, '--k-cream-hi'], [0.5, '--k-cream'], [1, '--k-cream-lo']]),
+    LG(p + 'ts', [0, 0, 0, 1], [[0, '--k-cream'], [1, '--k-cream-sh']]),
+    LG(p + 'gold', [0, 0, 0, 1], [[0, '--k-gold'], [1, '--k-cream-sh']]),
+    LG(p + 'floor', [0, 0, 0, 1], [[0, '--k-steel-lo'], [1, '--k-blk']]),
+    RG(p + 'lamp', [0.5, 0.5, 0.5], [[0, '--k-cream-hi'], [0.6, '--k-cream'], [1, '--k-cream-lo']]),
+    RG(p + 'vig', [0.5, 0.5, 0.78], [[0.5, '--k-blk', 0], [1, '--k-blk', 0.6]]),
+    RG(p + 'scr', [0.5, 0.5, 0.65], [[0, '--k-amber', 0.9], [1, '--k-screen']]),
+    BLUR(p + 'b', 3), BLUR(p + 'b2', 6), SCAN(p + 'sc'),
+    `<g id="${p}term">
+      <ellipse cx="0" cy="3" rx="66" ry="6" ${F('--k-blk', 0.5)} filter="url(#${p}b)"/>
+      <path d="M-58 0 L-54 -42 Q-52 -62 -34 -64 L34 -64 Q52 -62 55 -42 L64 0 Z" fill="url(#${p}tb)"/>
+      <path d="M-58 0 L64 0 L66 -7 L-60 -7 Z" fill="url(#${p}ts)"/>
+      <path d="M-30 -62 L30 -62" ${ST('--k-cream-hi', 2, 0.8)} stroke-linecap="round"/>
+      <rect x="-35" y="-55" width="70" height="40" rx="8" ${F('--k-blk')}/>
+      <rect x="-31" y="-51" width="62" height="32" rx="6" fill="url(#${p}scr)"/>
+      <g ${F('--k-amber')}><rect x="-6" y="-44" width="12" height="3"/><rect x="-9" y="-40" width="18" height="10"/><rect x="-13" y="-38" width="4" height="6"/><rect x="9" y="-38" width="4" height="6"/><rect x="-6" y="-29" width="4" height="4"/><rect x="2" y="-29" width="4" height="4"/></g>
+      <rect x="-31" y="-51" width="62" height="32" rx="6" fill="url(#${p}sc)"/>
+      <path d="M-27 -49 L-6 -49 L-20 -21 L-30 -21 Z" ${F('--k-glass', 0.14)}/>
+      <circle cx="46" cy="-28" r="5.5" ${F('--k-or')}/><circle cx="46" cy="-28" r="2.4" ${F('--k-cream-hi')}/>
+      <rect x="-44" y="-12" width="86" height="3" rx="1.5" ${F('--k-cream-sh', 0.5)}/>
+    </g>`,
+  ].join('');
+  let lights = '';
+  for (let r = 0; r < 4; r++) for (let i = -1; i < 24; i++) {
+    const x = (i + (r % 2 ? 0.5 : 0)) * 22 + 6, y = 11 + r * 13, rad = 4.5 + r * 0.9;
+    lights += `<circle cx="${x}" cy="${y}" r="${rad}" fill="url(#${p}lamp)" /><circle cx="${x}" cy="${y}" r="${rad}" ${ST('--k-cream-sh', 0.8, 0.5)}/>`;
+  }
+  let panels = '';
+  for (let i = 0; i < 9; i++) panels += `<rect x="${i * 56}" y="70" width="54" height="130" ${F(i % 2 ? '--k-wall-hi' : '--k-wall', 0.35)}/>`;
+  const body = `
+    <rect width="480" height="270" fill="url(#${p}floor)"/>
+    <rect y="62" width="480" height="150" fill="url(#${p}wall)"/>${panels}
+    <rect width="480" height="68" fill="url(#${p}ceil)"/>
+    <ellipse cx="240" cy="-14" rx="250" ry="64" ${F('--k-cream-hi', 0.28)}/>${lights}
+    <rect y="64" width="480" height="7" fill="url(#${p}gold)"/>
+    <g ${F('--k-cream-hi')}><circle cx="62" cy="76" r="2.6"/><circle cx="240" cy="76" r="2.6"/><circle cx="410" cy="76" r="2.6"/></g>
+    <g filter="url(#${p}b2)" ${F('--k-cream-hi', 0.55)}><circle cx="62" cy="80" r="6"/><circle cx="240" cy="80" r="6"/><circle cx="410" cy="80" r="6"/></g>
+    <rect x="96" y="92" width="78" height="56" rx="2" ${F('--k-cream')}/><rect x="101" y="97" width="68" height="46" fill="url(#${p}red)"/>
+    <rect x="101" y="97" width="68" height="14" ${F('--k-or-hi', 0.25)}/>
+    <rect x="378" y="86" width="74" height="118" rx="2" ${F('--k-gold')}/><rect x="383" y="91" width="64" height="113" ${F('--k-blk')}/>
+    <path d="M383 91 L447 91 L447 204 L383 204Z" ${F('--k-wall-hi', 0.35)}/>
+    <g ${F('--k-or')}><circle cx="462" cy="150" r="6"/></g>
+    <path d="M18 196 Q22 258 240 263 Q458 258 462 196 Z" fill="url(#${p}desk)"/>
+    <path d="M18 196 Q22 258 240 263 Q458 258 462 196 Z" fill="url(#${p}deskv)"/>
+    <ellipse cx="240" cy="196" rx="222" ry="16" fill="url(#${p}rim)"/>
+    <path d="M44 200 Q240 226 436 200" ${ST('--k-or-hi', 3, 0.55)} stroke-linecap="round"/>
+    <path d="M120 190 Q240 180 360 190" ${ST('--k-cream-hi', 1.2, 0.25)}/>
+    <use href="#${p}term" transform="translate(348 194) scale(.6)"/>
+    <use href="#${p}term" transform="translate(150 200) scale(1.06)"/>
+    <ellipse cx="240" cy="266" rx="230" ry="9" ${F('--k-or', 0.35)} filter="url(#${p}b2)"/>
+    <rect width="480" height="270" fill="url(#${p}vig)"/>`;
+  return SVG('TVA 大厅示意：橙色弧形前台上的两台奶油色终端，背景是红色壁板和环形吊顶', defs, body);
+};
+
+/* 2. ADM-3A（依据 PCMag 配图 "ADM-3A terminal"，Lear Siegler 产品广告照）：奶油色楔形机身、凹进的屏幕、六边形螺旋 */
+const artAdm = () => {
+  const p = 'ad';
+  let spiral = '';
+  for (let i = 0; i < 40; i++) {
+    const r = 44 * Math.pow(1 - i / 42, 0.95), a0 = i * 6.2 * Math.PI / 180;
+    const pts = Array.from({ length: 6 }, (_, k) => `${(212 + r * Math.cos(a0 + k * Math.PI / 3)).toFixed(1)},${(122 + r * Math.sin(a0 + k * Math.PI / 3)).toFixed(1)}`).join(' ');
+    spiral += `<polygon points="${pts}" ${ST('--k-glass', 0.7, 0.85)}/>`;
+  }
+  let keys = '';
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 16; c++) keys += `<rect x="${128 + c * 11.6 + r * 1.2}" y="${189 + r * 7.2}" width="9.6" height="5.2" rx="1.2" fill="url(#${p}key)"/>`;
+  const defs = [
+    LG(p + 'bg', [0, 0, 0, 1], [[0, '--k-blk'], [0.5, '--k-blk'], [0.8, '--k-cream-hi', 0.85], [1, '--k-glass']]),
+    LG(p + 'fr', [0, 0, 1, 1], [[0, '--k-glass'], [0.35, '--k-cream-hi'], [1, '--k-cream']]),
+    LG(p + 'sd', [0, 0, 1, 0], [[0, '--k-cream'], [0.6, '--k-cream-lo'], [1, '--k-cream-sh']]),
+    LG(p + 'rec', [0, 0, 0, 1], [[0, '--k-cream-sh'], [1, '--k-cream-lo']]),
+    LG(p + 'key', [0, 0, 0, 1], [[0, '--k-blk-hi'], [1, '--k-blk']]),
+    RG(p + 'scr', [0.5, 0.5, 0.75], [[0, '--k-screen'], [1, '--k-blk']]),
+    BLUR(p + 'b', 5), SCAN(p + 'sc', 0.5),
+  ].join('');
+  const body = `
+    <rect width="480" height="270" fill="url(#${p}bg)"/>
+    <ellipse cx="250" cy="236" rx="196" ry="13" ${F('--k-blk', 0.55)} filter="url(#${p}b)"/>
+    <path d="M318 52 Q374 58 398 104 L420 176 Q426 208 394 216 L326 228 Z" fill="url(#${p}sd)"/>
+    <path d="M318 52 Q374 58 398 104" ${ST('--k-glass', 1.6, 0.6)} stroke-linecap="round"/>
+    <path d="M92 78 Q94 46 136 44 L322 50 L332 226 L118 234 Q90 234 88 210 Z" fill="url(#${p}fr)"/>
+    <path d="M100 76 Q102 52 138 50 L318 55" ${ST('--k-glass', 2, 0.8)} stroke-linecap="round"/>
+    <rect x="122" y="64" width="180" height="116" rx="18" fill="url(#${p}rec)"/>
+    <rect x="128" y="70" width="168" height="104" rx="14" ${F('--k-blk')}/>
+    <rect x="136" y="78" width="152" height="88" rx="16" fill="url(#${p}scr)"/>
+    <g>${spiral}</g>
+    <rect x="136" y="78" width="152" height="88" rx="16" fill="url(#${p}sc)"/>
+    <path d="M146 82 L214 82 L168 164 L142 164 Z" ${F('--k-glass', 0.09)}/>
+    <rect x="136" y="78" width="152" height="88" rx="16" ${ST('--k-glass', 1, 0.18)}/>
+    <path d="M114 184 L322 180 L328 210 L120 218 Z" ${F('--k-blk')}/>
+    <g transform="rotate(-1.2 220 198)">${keys}</g>
+    <rect x="99" y="190" width="16" height="22" rx="2" ${F('--k-cream-sh', 0.55)}/>
+    <g ${F('--k-cream-hi', 0.7)}><rect x="102" y="194" width="10" height="2"/><rect x="102" y="199" width="7" height="2"/><rect x="102" y="204" width="10" height="2"/></g>
+    <path d="M118 226 L330 220" ${ST('--k-cream-sh', 1.2, 0.5)}/>`;
+  return SVG('ADM-3A 终端示意：奶油色楔形机身，凹进的屏幕上是六边形螺旋图案，下方是黑色键盘', defs, body);
+};
+
+/* 3. 全息投影仪（依据 PCMag 配图 "Holoprojector"）：红色球体 + 奶油色底座，放在圆桌上；只画设备和场景，不画人物 */
+const artHolo = () => {
+  const p = 'ho';
+  const chair = (x, flip) => `<g transform="translate(${x} 0) scale(${flip ? -1 : 1} 1)" ${ST('--k-steel', 1.2, 0.55)} stroke-linecap="round">
+      <path d="M0 150 L8 112 Q30 98 52 112 L58 150"/><path d="M4 138 L56 138"/><path d="M10 128 L50 128"/><path d="M14 118 L46 118"/>
+      <path d="M8 112 L50 150 M52 112 L10 150"/><path d="M-4 152 Q30 164 64 152"/><path d="M6 152 L-2 252 M58 152 L66 252"/></g>`;
+  const defs = [
+    LG(p + 'bg', [0, 0, 0, 1], [[0, '--k-wall'], [0.6, '--k-wall-hi'], [1, '--k-blk']]),
+    RG(p + 'glow', [0.5, 0.5, 0.5], [[0, '--k-or', 0.9], [1, '--k-or', 0]]),
+    LG(p + 'tp', [0, 0, 0, 1], [[0, '--k-blk-hi'], [1, '--k-blk']]),
+    LG(p + 'st', [0, 0, 1, 0], [[0, '--k-blk'], [0.4, '--k-blk-hi'], [1, '--k-blk']]),
+    RG(p + 'sph', [0.5, 0.5, 0.62, 0.36, 0.3], [[0, '--k-red-hi'], [0.35, '--k-red'], [0.8, '--k-red-lo'], [1, '--k-or-sh']]),
+    LG(p + 'bs', [0, 0, 0, 1], [[0, '--k-cream-hi'], [0.5, '--k-cream'], [1, '--k-cream-sh']]),
+    LG(p + 'can', [0, 0, 1, 0], [[0, '--k-red-lo'], [0.35, '--k-red-hi'], [0.6, '--k-red'], [1, '--k-red-lo']]),
+    LG(p + 'strip', [0, 0, 1, 0], [[0, '--k-gold', 0], [0.5, '--k-gold'], [1, '--k-gold', 0]]),
+    BLUR(p + 'b', 3), BLUR(p + 'b2', 9),
+  ].join('');
+  const body = `
+    <rect width="480" height="270" fill="url(#${p}bg)"/>
+    <rect x="150" y="20" width="170" height="150" fill="url(#${p}glow)" filter="url(#${p}b2)"/>
+    <g ${F('--k-blk', 0.35)}><rect x="352" y="0" width="3" height="200"/><rect x="420" y="0" width="3" height="200"/></g>
+    <rect y="214" width="480" height="56" ${F('--k-blk')}/>
+    <rect x="0" y="228" width="480" height="7" fill="url(#${p}strip)" filter="url(#${p}b)"/><rect x="0" y="252" width="480" height="7" fill="url(#${p}strip)" filter="url(#${p}b)"/>
+    ${chair(26, false)}${chair(454, true)}
+    <path d="M228 176 Q230 236 206 256 L254 256 Q230 236 232 176 Z" fill="url(#${p}st)"/>
+    <ellipse cx="230" cy="258" rx="40" ry="6" ${F('--k-blk-hi')}/>
+    <ellipse cx="230" cy="172" rx="168" ry="15" ${F('--k-blk')}/>
+    <ellipse cx="230" cy="168" rx="168" ry="14" fill="url(#${p}tp)"/>
+    <path d="M90 170 Q230 186 370 170" ${ST('--k-glass', 1.2, 0.28)}/>
+    <path d="M62 166 Q110 156 200 154" ${ST('--k-or-hi', 1.6, 0.3)} stroke-linecap="round"/>
+    <ellipse cx="232" cy="164" rx="52" ry="7" ${F('--k-blk', 0.5)} filter="url(#${p}b)"/>
+    <path d="M182 168 L190 148 Q230 138 276 148 L284 168 Q232 180 182 168Z" fill="url(#${p}bs)"/>
+    <path d="M182 168 Q232 180 284 168 L283 172 Q232 185 183 172Z" ${F('--k-cream-sh')}/>
+    <circle cx="232" cy="112" r="50" fill="url(#${p}sph)"/>
+    <path d="M196 144 Q232 160 270 144" ${ST('--k-blk', 3, 0.35)}/>
+    <ellipse cx="212" cy="86" rx="17" ry="9" transform="rotate(-38 212 86)" ${F('--k-glass', 0.85)} filter="url(#${p}b)"/>
+    <ellipse cx="206" cy="80" rx="8" ry="3.6" transform="rotate(-38 206 80)" ${F('--k-glass', 0.95)}/>
+    <path d="M272 120 Q268 142 246 156" ${ST('--k-red-hi', 2.2, 0.55)} stroke-linecap="round"/>
+    <rect x="285" y="171" width="34" height="3" rx="1.5" ${F('--k-steel-hi', 0.7)}/><path d="M282 172 L322 172" ${ST('--k-blk', 2)}/>
+    <g>
+      <path d="M150 196 L150 172 Q164 168 178 172 L178 196 Q164 202 150 196Z" fill="url(#${p}can)"/>
+      <ellipse cx="164" cy="172" rx="14" ry="4.5" ${F('--k-steel-hi')}/><ellipse cx="164" cy="172" rx="9" ry="2.6" ${F('--k-steel-lo')}/>
+      <rect x="156" y="178" width="3" height="16" ${F('--k-glass', 0.28)}/>
+      <path d="M298 192 L298 170 Q310 166 322 170 L322 192 Q310 198 298 192Z" fill="url(#${p}can)"/>
+      <ellipse cx="310" cy="170" rx="12" ry="4" ${F('--k-steel-hi')}/><ellipse cx="310" cy="170" rx="7.5" ry="2.3" ${F('--k-steel-lo')}/>
+    </g>
+    <path d="M286 176 Q300 190 296 214 Q292 240 310 258" ${ST('--k-blk', 2.6)} stroke-linecap="round"/>
+    <path d="M286 176 Q300 190 296 214 Q292 240 310 258" ${ST('--k-steel', 0.6, 0.35)} stroke-linecap="round"/>`;
+  return SVG('全息投影仪示意：红色玻璃质感的球体，下接奶油色底座，放在黑色圆桌上，旁边两罐可乐，背景是橙红色的墙与地灯', defs, body);
+};
+
+/* 4. 红色泡泡屏近景（依据 PCMag 配图 "keyboard"）：黑色面板里的小 CRT、盘式磁带机，下方白色键盘底座 */
+const artBubble = () => {
+  const p = 'bu';
+  let keys = '';
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 13; c++) {
+    const x = 200 + c * 11 + r * -2.2, y = 218 + r * 7.4 + c * 0.55;
+    keys += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="8.6" height="5" rx="1.4" fill="url(#${p}key)"/>`;
+  }
+  let crowd = '';
+  for (let i = 0; i < 11; i++) crowd += `<rect x="${237 + i * 3.3}" y="${74 + (i % 3) * 3}" width="1.9" height="${16 + (i % 4) * 3}" ${F(i % 2 ? '--k-sky' : '--k-cream-hi', 0.75)}/>`;
+  const defs = [
+    LG(p + 'bg', [0, 0, 1, 1], [[0, '--k-blk'], [1, '--k-wall']]),
+    LG(p + 'wall', [0, 0, 1, 0], [[0, '--k-red', 0], [0.4, '--k-or'], [1, '--k-red']]),
+    RG(p + 'sph', [0.5, 0.5, 0.62, 0.62, 0.22], [[0, '--k-or-hi'], [0.3, '--k-red'], [0.75, '--k-red-lo'], [1, '--k-or-sh']]),
+    LG(p + 'face', [0, 0, 1, 1], [[0, '--k-blk-hi'], [0.5, '--k-blk'], [1, '--k-blk-hi']]),
+    LG(p + 'crt', [0, 0, 0, 1], [[0, '--k-steel-lo'], [1, '--k-blk']]),
+    RG(p + 'scr', [0.5, 0.5, 0.7], [[0, '--k-sky-lo'], [1, '--k-screen']]),
+    LG(p + 'reel', [0, 0, 0, 1], [[0, '--k-cream-hi'], [1, '--k-cream-lo']]),
+    RG(p + 'rl', [0.4, 0.35, 0.7], [[0, '--k-red-hi'], [0.6, '--k-red'], [1, '--k-red-lo']]),
+    LG(p + 'base', [0, 0, 0, 1], [[0, '--k-cream-hi'], [0.55, '--k-cream'], [1, '--k-cream-sh']]),
+    LG(p + 'key', [0, 0, 0, 1], [[0, '--k-glass'], [1, '--k-cream-lo']]),
+    LG(p + 'can', [0, 0, 1, 0], [[0, '--k-red-lo'], [0.4, '--k-red-hi'], [1, '--k-red-lo']]),
+    BLUR(p + 'b', 3), BLUR(p + 'b2', 8), SCAN(p + 'sc', 0.4),
+  ].join('');
+  const body = `
+    <rect width="480" height="270" fill="url(#${p}bg)"/>
+    <rect x="0" y="22" width="300" height="86" fill="url(#${p}wall)" opacity=".85"/>
+    <g ${F('--k-red-lo', 0.55)}>${Array.from({ length: 8 }, (_, i) => `<rect x="${i * 38}" y="22" width="3" height="86"/>`).join('')}</g>
+    <rect y="108" width="480" height="162" ${F('--k-blk')} fill-opacity=".92"/>
+    <circle cx="352" cy="124" r="118" fill="url(#${p}sph)"/>
+    <path d="M300 22 Q380 4 440 48" ${ST('--k-or-hi', 3, 0.45)} stroke-linecap="round" />
+    <ellipse cx="392" cy="56" rx="30" ry="12" transform="rotate(-28 392 56)" ${F('--k-glass', 0.55)} filter="url(#${p}b)"/>
+    <ellipse cx="270" cy="124" rx="86" ry="108" transform="rotate(-5 270 124)" fill="url(#${p}face)"/>
+    <ellipse cx="270" cy="124" rx="86" ry="108" transform="rotate(-5 270 124)" ${ST('--k-red-hi', 1.6, 0.5)}/>
+    <rect x="222" y="58" width="72" height="62" rx="13" fill="url(#${p}crt)"/>
+    <rect x="229" y="65" width="58" height="48" rx="9" fill="url(#${p}scr)"/>${crowd}
+    <rect x="229" y="65" width="58" height="48" rx="9" fill="url(#${p}sc)"/>
+    <path d="M233 68 L262 68 L240 112 L231 112Z" ${F('--k-glass', 0.14)}/>
+    <rect x="228" y="134" width="64" height="36" rx="3" fill="url(#${p}reel)"/>
+    <rect x="228" y="134" width="64" height="36" rx="3" ${ST('--k-steel-lo', 0.8)}/>
+    ${[246, 274].map((cx) => `<g><circle cx="${cx}" cy="150" r="11.5" fill="url(#${p}rl)"/><circle cx="${cx}" cy="150" r="4" ${F('--k-cream-hi')}/>${[0, 120, 240].map((a) => `<path d="M${cx} 150 L${(cx + 10 * Math.cos((a - 90) * Math.PI / 180)).toFixed(1)} ${(150 + 10 * Math.sin((a - 90) * Math.PI / 180)).toFixed(1)}" ${ST('--k-cream-hi', 1.4)}/>`).join('')}<circle cx="${cx}" cy="150" r="1.4" ${F('--k-blk')}/></g>`).join('')}
+    <rect x="236" y="161" width="48" height="5" ${F('--k-blk', 0.3)}/>
+    <g>${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<rect x="${230 + i * 8}" y="178" width="6" height="7" rx="1" ${F(i % 3 === 0 ? '--k-or' : '--k-blk-hi')}/>`).join('')}</g>
+    <circle cx="232" cy="190" r="1.8" ${F('--k-or-hi')}/><circle cx="244" cy="190" r="1.8" ${F('--k-phos')}/><circle cx="256" cy="190" r="1.8" ${F('--k-phos')}/>
+    <path d="M296 182 Q318 200 322 232 M300 184 Q326 206 330 236" ${ST('--k-blk', 2.6)} stroke-linecap="round"/>
+    <path d="M296 182 Q318 200 322 232 M300 184 Q326 206 330 236" ${ST('--k-steel', 0.6, 0.4)} stroke-linecap="round"/>
+    <path d="M150 238 Q168 206 240 206 L376 214 Q424 220 426 238 Q416 262 330 264 L206 266 Q154 264 150 238Z" fill="url(#${p}base)"/>
+    <path d="M160 232 Q176 210 240 210 L376 217" ${ST('--k-glass', 1.6, 0.7)} stroke-linecap="round"/>
+    <path d="M186 232 Q200 214 246 214 L350 220 L352 262 L204 262Z" ${F('--k-steel-lo', 0.9)}/>
+    <g>${keys}</g>
+    <circle cx="184" cy="224" r="3.4" ${F('--k-or')}/><circle cx="184" cy="224" r="1.4" ${F('--k-or-hi')}/>
+    <g><path d="M432 232 L432 262 Q448 268 464 262 L464 232 Z" fill="url(#${p}can)"/><ellipse cx="448" cy="232" rx="16" ry="5" ${F('--k-steel-hi')}/></g>`;
+  return SVG('红色泡泡屏近景示意：红色球体的黑色面板上嵌着小屏幕和两个红色磁带盘，下面是白色键盘底座', defs, body);
+};
+
+/* 5. 缺 P 的键盘（依据 PCMag 配图 "keyboard" 与正文：第一行 QWERTYUIO，没有 P，也没有数字行） */
+const artKeys = () => {
+  const p = 'kb';
+  const rows = [['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O'], ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'], ['Z', 'X', 'C', 'V', 'B', 'N', 'M']];
+  const KW = 30, G = 5, X0 = 70, Y0 = 98, ST_ = KW + G;
+  let keys = '';
+  const keyCap = (x, y, w, fillId, label) => `<g><rect x="${x}" y="${y + 3}" width="${w}" height="${KW}" rx="7" ${F('--k-cream-sh')}/><rect x="${x}" y="${y}" width="${w}" height="${KW}" rx="7" fill="url(#${p}${fillId})"/><rect x="${x + 4}" y="${y + 2.5}" width="${w - 8}" height="8" rx="4" ${F('--k-glass', 0.35)}/>${label ? `<text x="${x + w / 2}" y="${y + 21}" text-anchor="middle" font-size="13" font-weight="700" font-family="var(--font)" ${F('--k-ink')}>${label}</text>` : ''}</g>`;
+  rows.forEach((row, r) => row.forEach((ch, c) => { keys += keyCap(X0 + r * 11 + c * ST_, Y0 + r * ST_, KW, 'key', ch); }));
+  const px = X0 + 9 * ST_, py = Y0;
+  keys += `<rect x="${px}" y="${py}" width="${KW}" height="${KW}" rx="7" style="fill:none;stroke:var(--r);stroke-width:2;stroke-dasharray:5 4"/><text x="${px + KW / 2}" y="${py + 20}" text-anchor="middle" font-size="14" font-weight="700" font-family="var(--font)" style="fill:var(--r)">P?</text>`;
+  keys += keyCap(X0 + 11 + 9 * ST_, Y0 + ST_, KW, 'ok', '');
+  keys += keyCap(X0 + 22 + 7 * ST_, Y0 + 2 * ST_, 56, 'ok', '');
+  keys += keyCap(X0 + 40, Y0 + 3 * ST_, KW * 6 + G * 5, 'key', '');
+  const defs = [
+    LG(p + 'bg', [0, 0, 0, 1], [[0, '--k-wall'], [1, '--k-blk']]),
+    LG(p + 'base', [0, 0, 0, 1], [[0, '--k-cream-hi'], [1, '--k-cream-lo']]),
+    LG(p + 'key', [0, 0, 0, 1], [[0, '--k-glass'], [1, '--k-cream']]),
+    LG(p + 'ok', [0, 0, 0, 1], [[0, '--k-or-hi'], [1, '--k-or']]),
+    LG(p + 'well', [0, 0, 0, 1], [[0, '--k-steel-lo'], [1, '--k-blk-hi']]),
+    BLUR(p + 'b', 6),
+  ].join('');
+  const body = `
+    <rect width="480" height="270" fill="url(#${p}bg)"/>
+    <ellipse cx="240" cy="258" rx="210" ry="10" ${F('--k-blk', 0.6)} filter="url(#${p}b)"/>
+    <path d="M24 70 Q24 40 56 40 L424 40 Q456 40 456 70 L470 224 Q472 252 440 252 L40 252 Q8 252 10 224 Z" fill="url(#${p}base)"/>
+    <path d="M40 48 L440 48" ${ST('--k-glass', 2, 0.8)} stroke-linecap="round"/>
+    <rect x="52" y="62" width="376" height="176" rx="18" fill="url(#${p}well)"/>
+    <text x="240" y="84" text-anchor="middle" font-size="11" font-family="var(--mono)" ${F('--k-cream-hi', 0.8)}>QWERTYUIO  (P ?)</text>
+    ${keys}
+    <text x="240" y="30" text-anchor="middle" font-size="11" font-family="var(--font)" ${F('--k-cream')}>QWERTYUIO 之上本该有一排数字键，这里没有</text>`;
+  return SVG('缺 P 键的键盘示意：第一行 QWERTYUIO，P 的位置是一个虚线空位，键盘上没有数字行', defs, body);
+};
+
+/* 6. 能玩纸牌的电脑（依据 PCMag 配图 "Solitaire endures."）：鹅颈支架上的小 CRT、琥珀色纸牌画面、拨码控制盒、拉丝金属墙；不画人物 */
+const artSolitaire = () => {
+  const p = 'so';
+  let wall = '';
+  for (let i = 0; i < 5; i++) wall += `<rect x="${i * 100 - 10}" y="0" width="98" height="270" fill="url(#${p}pan${i % 2})"/><g ${F('--k-steel-hi', 0.55)}><circle cx="${i * 100 + 6}" cy="14" r="2"/><circle cx="${i * 100 + 80}" cy="14" r="2"/><circle cx="${i * 100 + 6}" cy="256" r="2"/><circle cx="${i * 100 + 80}" cy="256" r="2"/></g>`;
+  let cards = '';
+  for (let c = 0; c < 7; c++) for (let k = 0; k <= c; k++) {
+    const x = 61 + c * 15.6, y = 98 + k * 4.4 + (k === c ? 1 : 0);
+    cards += `<rect x="${x}" y="${y}" width="12.4" height="15" rx="1.4" style="fill:${k === c ? 'var(--k-amber)' : 'var(--k-or-sh)'};stroke:var(--k-amber);stroke-width:.7;fill-opacity:${k === c ? 0.85 : 0.9}"/>`;
+  }
+  let found = '';
+  for (let i = 0; i < 4; i++) found += `<rect x="${106 + i * 15.6}" y="75" width="12.4" height="15" rx="1.4" style="fill:none;stroke:var(--k-amber);stroke-width:.8"/>`;
+  found += `<rect x="61" y="75" width="12.4" height="15" rx="1.4" style="fill:var(--k-or-sh);stroke:var(--k-amber);stroke-width:.8"/><rect x="77" y="75" width="12.4" height="15" rx="1.4" style="fill:none;stroke:var(--k-amber);stroke-width:.8;stroke-dasharray:2 1.5"/>`;
+  let synth = '';
+  for (let i = 0; i < 16; i++) synth += `<rect x="${14 + i * 5.4}" y="${i % 3 === 1 ? 193 : 193}" width="4.2" height="${i % 3 === 1 ? 7 : 13}" rx="1" ${F(i % 3 === 1 ? '--k-blk' : '--k-cream')}/>`;
+  const defs = [
+    LG(p + 'pan0', [0, 0, 1, 0], [[0, '--k-steel-lo'], [0.5, '--k-steel'], [1, '--k-steel-lo']]),
+    LG(p + 'pan1', [0, 0, 1, 0], [[0, '--k-steel-lo'], [0.45, '--k-steel-hi'], [1, '--k-steel-lo']]),
+    RG(p + 'glow', [0.5, 0.5, 0.5], [[0, '--k-amber', 0.55], [1, '--k-amber', 0]]),
+    LG(p + 'case', [0, 0, 1, 1], [[0, '--k-blk-hi'], [0.5, '--k-blk'], [1, '--k-blk-hi']]),
+    RG(p + 'scr', [0.5, 0.5, 0.75], [[0, '--k-amber', 0.55], [0.7, '--k-or-sh'], [1, '--k-screen']]),
+    LG(p + 'box', [0, 0, 0, 1], [[0, '--k-blk-hi'], [1, '--k-blk']]),
+    LG(p + 'paper', [0, 0, 0, 1], [[0, '--k-glass'], [1, '--k-cream-lo']]),
+    LG(p + 'mug', [0, 0, 1, 0], [[0, '--k-blk'], [0.5, '--k-blk-hi'], [1, '--k-blk']]),
+    BLUR(p + 'b', 4), BLUR(p + 'b2', 10), SCAN(p + 'sc', 0.45),
+  ].join('');
+  const body = `
+    ${wall}
+    <rect width="480" height="270" ${F('--k-blk', 0.25)}/>
+    <path d="M150 0 L150 270" ${ST('--k-blk', 3, 0.5)}/>
+    <rect x="20" y="30" width="200" height="170" fill="url(#${p}glow)" filter="url(#${p}b2)"/>
+    <ellipse cx="412" cy="150" rx="46" ry="30" fill="url(#${p}glow)" filter="url(#${p}b2)"/>
+    <path d="M396 92 L428 92 L438 150 L386 150 Z" ${F('--k-blk-hi')}/><path d="M396 92 L428 92 L430 104 L394 104Z" ${F('--k-steel')} opacity=".5"/>
+    <ellipse cx="412" cy="150" rx="26" ry="5" ${F('--k-amber', 0.9)}/>
+    <path d="M412 152 L412 200" ${ST('--k-blk', 4)}/>
+    <path d="M112 134 Q124 190 98 222 L90 232" ${ST('--k-blk', 9)} stroke-linecap="round"/>
+    <path d="M112 134 Q124 190 98 222 L90 232" ${ST('--k-gold', 3.4, 0.9)} stroke-linecap="round" stroke-dasharray="3 1.6"/>
+    <path d="M168 120 Q214 130 196 188 Q184 226 150 232" ${ST('--k-blk', 3)} stroke-linecap="round"/>
+    <rect x="20" y="40" width="168" height="112" rx="18" fill="url(#${p}case)"/>
+    <rect x="20" y="40" width="168" height="112" rx="18" ${ST('--k-gold', 3)}/>
+    <path d="M32 46 L170 46" ${ST('--k-steel-hi', 2, 0.55)} stroke-linecap="round"/>
+    <rect x="44" y="60" width="124" height="82" rx="12" ${F('--k-blk')}/>
+    <rect x="49" y="65" width="114" height="72" rx="9" fill="url(#${p}scr)"/>
+    ${found}${cards}
+    <text x="64" y="132" font-size="6.5" font-family="var(--mono)" ${F('--k-amber')}>SOLITAIRE</text>
+    <rect x="49" y="65" width="114" height="72" rx="9" fill="url(#${p}sc)"/>
+    <path d="M54 68 L102 68 L72 136 L53 136Z" ${F('--k-glass', 0.09)}/>
+    <circle cx="178" cy="62" r="3" ${F('--k-or')}/>
+    <ellipse cx="94" cy="240" rx="46" ry="9" ${F('--k-blk')}/><path d="M48 236 L48 242 Q94 258 140 242 L140 236Z" ${F('--k-blk')}/>
+    <path d="M52 236 Q94 248 136 236" ${ST('--k-steel', 1, 0.6)}/>
+    <rect x="12" y="186" width="104" height="38" rx="5" fill="url(#${p}box)"/><rect x="12" y="186" width="104" height="38" rx="5" ${ST('--k-steel', 1, 0.5)}/>
+    ${synth}
+    <g>${[0, 1, 2, 3].map((i) => `<circle cx="${26 + i * 20}" cy="214" r="4.2" ${F('--k-steel-hi')}/><path d="M${26 + i * 20} 214 l2.2 -2.6" ${ST('--k-blk', 1)}/>`).join('')}</g>
+    <path d="M168 258 L216 226 L322 226 L330 270 L150 270Z" fill="url(#${p}paper)"/>
+    <path d="M168 258 L216 226 L322 226" ${ST('--k-glass', 1.4, 0.9)}/>
+    <g ${F('--k-cream-sh', 0.5)}><rect x="232" y="238" width="70" height="2"/><rect x="226" y="246" width="82" height="2"/><rect x="220" y="254" width="90" height="2"/></g>
+    <path d="M340 204 L408 204 L404 258 Q372 266 344 258Z" fill="url(#${p}mug)"/><ellipse cx="374" cy="204" rx="34" ry="7" ${F('--k-or-hi')}/><ellipse cx="374" cy="204" rx="30" ry="5" ${F('--k-or-sh')}/>
+    <path d="M408 214 Q432 216 426 236 Q420 248 406 246" ${ST('--k-or', 5)} stroke-linecap="round"/>
+    <path d="M346 216 L348 252" ${ST('--k-glass', 2.4, 0.18)} stroke-linecap="round"/>`;
+  return SVG('能玩纸牌的电脑示意：鹅颈支架上的小型 CRT，屏幕里是琥珀色的纸牌接龙，旁边是控制盒、马克杯和台灯', defs, body);
+};
+
+/* 7. Yanko Design：JK Captain 的 "TVA Multifunctional Computer"（依据 Yanko 报道里的概念渲染图），部件可点 */
+const artYanko = (interactive) => {
+  const p = interactive ? 'yi' : 'yk';
+  const g = (id, inner, lab, first) => `<g class="yk" data-id="${id}"${interactive ? (first ? ` tabindex="0" role="button" aria-label="${lab}"` : ' aria-hidden="true"') : ''} style="${interactive ? 'cursor:pointer' : ''}">${inner}</g>`;
+  let keys = '';
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 11; c++) {
+    const x = 131 + c * 9.6 + r * 2.6, y = 217 + r * 7.2 - c * 0.52;
+    const orange = (r === 0 && (c === 0 || c === 10)) || (r === 2 && c === 10);
+    keys += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="7.6" height="5.4" rx="1.6" fill="url(#${p}${orange ? 'ok' : 'key'})"/>`;
+  }
+  keys += `<path d="M134 241 L206 236 L208 240 L136 245Z" fill="url(#${p}ok)"/><rect x="190" y="217" width="12" height="7" rx="2" fill="url(#${p}tog)" transform="rotate(-8 196 220)"/><rect x="204" y="213" width="12" height="7" rx="2" fill="url(#${p}tog)" transform="rotate(-8 210 216)"/>`;
+  let grille = '';
+  for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) if (i * i + j * j <= 9.5) grille += `<circle cx="${356 + i * 5.3}" cy="${146 + j * 5.3}" r="1.2" ${F('--k-or-sh', 0.85)}/>`;
+  const reel = (cx) => `<g><circle cx="${cx}" cy="162" r="9.5" fill="url(#${p}rl)"/><circle cx="${cx}" cy="162" r="3.3" ${F('--k-steel-hi')}/>${[0, 120, 240].map((a) => `<path d="M${cx} 162 L${(cx + 8 * Math.cos((a - 90) * Math.PI / 180)).toFixed(1)} ${(162 + 8 * Math.sin((a - 90) * Math.PI / 180)).toFixed(1)}" ${ST('--k-steel-hi', 1.2)}/>`).join('')}</g>`;
+  const defs = [
+    LG(p + 'bg', [0, 0, 1, 0], [[0, '--k-bgt'], [0.6, '--k-bgt2'], [1, '--k-wall']]),
+    LG(p + 'wood', [0, 0, 0, 1], [[0, '--k-wall-hi'], [1, '--k-blk']]),
+    LG(p + 'base', [0, 0, 0, 1], [[0, '--k-cream-hi'], [0.6, '--k-cream'], [1, '--k-cream-sh']]),
+    RG(p + 'sph', [0.5, 0.5, 0.6, 0.66, 0.24], [[0, '--k-or-hi'], [0.35, '--k-or'], [0.8, '--k-or-lo'], [1, '--k-or-sh']]),
+    LG(p + 'face', [0, 0, 1, 1], [[0, '--k-blk-hi'], [0.5, '--k-blk'], [1, '--k-blk-hi']]),
+    RG(p + 'scr', [0.5, 0.5, 0.7], [[0, '--k-phos-lo'], [1, '--k-screen']]),
+    LG(p + 'plate', [0, 0, 0, 1], [[0, '--k-steel-hi'], [1, '--k-steel']]),
+    RG(p + 'rl', [0.4, 0.35, 0.7], [[0, '--k-red-hi'], [0.6, '--k-red'], [1, '--k-red-lo']]),
+    LG(p + 'key', [0, 0, 0, 1], [[0, '--k-glass'], [1, '--k-cream-lo']]),
+    LG(p + 'ok', [0, 0, 0, 1], [[0, '--k-gold-hi'], [1, '--k-or']]),
+    LG(p + 'tog', [0, 0, 0, 1], [[0, '--k-red-hi'], [1, '--k-red-lo']]),
+    LG(p + 'well', [0, 0, 0, 1], [[0, '--k-steel-lo'], [1, '--k-blk-hi']]),
+    RG(p + 'dial', [0.4, 0.35, 0.7], [[0, '--k-steel'], [1, '--k-blk']]),
+    BLUR(p + 'b', 3), BLUR(p + 'b2', 9), SCAN(p + 'sc', 0.35),
+  ].join('');
+  const body = `
+    <rect width="480" height="270" fill="url(#${p}bg)"/>
+    <path d="M0 192 Q240 160 480 184 L480 270 L0 270Z" fill="url(#${p}wood)"/>
+    <ellipse cx="260" cy="258" rx="210" ry="10" ${F('--k-blk', 0.7)} filter="url(#${p}b2)"/>
+    ${g('keys', `<path d="M58 226 Q64 198 140 192 L330 180 Q426 178 434 214 Q426 258 336 260 L148 266 Q66 262 58 226Z" fill="url(#${p}base)"/>
+      <path d="M70 218 Q80 200 142 196 L328 184" ${ST('--k-glass', 1.8, 0.75)} stroke-linecap="round"/>`, '白色底座与键盘', true)}
+    ${g('bubble', `<circle cx="296" cy="112" r="104" fill="url(#${p}sph)"/>
+      <path d="M232 36 Q300 4 372 38" ${ST('--k-or-hi', 3, 0.45)} stroke-linecap="round"/>
+      <ellipse cx="338" cy="50" rx="30" ry="11" transform="rotate(-22 338 50)" ${F('--k-glass', 0.5)} filter="url(#${p}b)"/>
+      <circle cx="356" cy="146" r="22" ${F('--k-or-lo', 0.9)}/>${grille}
+      <ellipse cx="248" cy="116" rx="80" ry="100" transform="rotate(-7 248 116)" fill="url(#${p}face)"/>
+      <ellipse cx="248" cy="116" rx="80" ry="100" transform="rotate(-7 248 116)" ${ST('--k-or-hi', 1.4, 0.55)}/>
+      <rect x="206" y="48" width="84" height="64" rx="15" ${F('--k-blk-hi')}/>
+      <rect x="213" y="55" width="70" height="50" rx="10" fill="url(#${p}scr)"/>
+      <path d="M222 60 L258 60 Q244 76 250 104 L220 104Z" ${F('--k-glass', 0.2)}/>
+      <rect x="213" y="55" width="70" height="50" rx="10" fill="url(#${p}sc)"/>
+      <g ${F('--k-blk')}><rect x="172" y="56" width="6" height="64" rx="3"/><rect x="316" y="62" width="6" height="64" rx="3"/></g>
+      <g ${F('--k-steel-hi')}><rect x="170" y="70" width="10" height="5" rx="1.5"/><rect x="170" y="94" width="10" height="5" rx="1.5"/><rect x="314" y="80" width="10" height="5" rx="1.5"/><rect x="314" y="102" width="10" height="5" rx="1.5"/></g>`, '橙色球形显示器', false)}
+    ${g('reel', `<rect x="206" y="146" width="84" height="38" rx="4" fill="url(#${p}plate)"/><rect x="206" y="146" width="84" height="38" rx="4" ${ST('--k-steel-lo', 0.8)}/>
+      ${reel(228)}${reel(268)}
+      <rect x="236" y="176" width="24" height="5" ${F('--k-blk', 0.35)}/>
+      <circle cx="192" cy="136" r="4" ${F('--k-red')}/><circle cx="192" cy="136" r="1.6" ${F('--k-red-hi')}/><circle cx="312" cy="140" r="4" ${F('--k-phos')}/><circle cx="312" cy="140" r="1.6" ${F('--k-glass')}/>
+      ${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${212 + i * 12}" y="190" width="9" height="9" rx="1.5" fill="url(#${p}${i < 3 ? 'ok' : 'key'})"/>`).join('')}`, '盘式磁带机与控制键', false)}
+    <path d="M232 202 Q226 226 214 242 M240 204 Q238 230 226 246 M248 204 Q252 230 240 248" ${ST('--k-blk', 2.6)} stroke-linecap="round"/>
+    <g ${F('--k-steel-hi')}><rect x="210" y="240" width="8" height="8" rx="1.5"/><rect x="222" y="244" width="8" height="8" rx="1.5"/><rect x="236" y="246" width="8" height="8" rx="1.5"/></g>
+    ${g('keys', `<path d="M118 232 Q122 214 156 210 L268 200 Q284 202 280 214 L262 246 Q200 256 140 250 Q116 246 118 232Z" fill="url(#${p}well)"/>
+      ${keys}
+      <circle cx="96" cy="222" r="10" fill="url(#${p}dial)"/><ellipse cx="94" cy="219" rx="4" ry="2" ${F('--k-glass', 0.3)}/>
+      <circle cx="374" cy="224" r="11" fill="url(#${p}dial)"/><ellipse cx="372" cy="221" rx="4.5" ry="2" ${F('--k-glass', 0.3)}/>`, '白色键盘与旋钮', false)}`;
+  return SVG('JK Captain 的 TVA 多功能电脑概念渲染示意：橙色球形显示器、黑色面板里的小屏幕和红色磁带盘、白色底座上的键盘与两个红色拨杆', defs, body);
+};
+
+/* ---------- HAL 9000 的眼睛：金属外框、红色镜头、镜面高光，可呼吸、可被对话和唱歌触发 ---------- */
+const halSVG = (p, label, still) => {
+  const defs = [
+    LG(p + 'plate', [0, 0, 1, 1], [[0, '--k-blk-hi'], [0.5, '--k-blk'], [1, '--k-blk-hi']]),
+    LG(p + 'ring', [0, 0, 1, 1], [[0, '--k-steel-hi'], [0.35, '--k-steel-lo'], [0.6, '--k-steel'], [1, '--k-steel-lo']]),
+    LG(p + 'ring2', [1, 1, 0, 0], [[0, '--k-steel-hi'], [0.5, '--k-blk'], [1, '--k-steel']]),
+    RG(p + 'lens', [0.5, 0.5, 0.5, 0.46, 0.44], [[0, '--k-hal-core'], [0.1, '--k-gold-hi'], [0.2, '--k-hal-hot'], [0.52, '--k-red'], [0.85, '--k-red-lo'], [1, '--k-hal-dark']]),
+    RG(p + 'halo', [0.5, 0.5, 0.5], [[0.5, '--k-red', 0.55], [1, '--k-red', 0]]),
+    RG(p + 'rf', [0.5, 0.5, 0.5], [[0, '--k-glass', 0.22], [1, '--k-glass', 0]]),
+    LG(p + 'cres', [0, 0, 1, 1], [[0, '--k-glass', 0.85], [1, '--k-glass', 0]]),
+    BLUR(p + 'b', 2.2), BLUR(p + 'b2', 10),
+  ].join('');
+  const body = `
+    <rect x="8" y="8" width="224" height="224" rx="22" fill="url(#${p}plate)"/>
+    <rect x="8" y="8" width="224" height="224" rx="22" ${ST('--k-steel-lo', 1.5, 0.8)}/>
+    <g ${F('--k-steel')}><circle cx="24" cy="24" r="3"/><circle cx="216" cy="24" r="3"/><circle cx="24" cy="216" r="3"/><circle cx="216" cy="216" r="3"/></g>
+    <circle cx="120" cy="120" r="104" fill="url(#${p}ring)"/>
+    <circle cx="120" cy="120" r="97" fill="url(#${p}ring2)"/>
+    <circle cx="120" cy="120" r="90" ${F('--k-blk')}/>
+    <circle cx="120" cy="120" r="90" ${ST('--k-steel-lo', 1.2, 0.9)}/>
+    <g class="halo"><circle cx="120" cy="120" r="112" fill="url(#${p}halo)" filter="url(#${p}b2)"/></g>
+    <g class="lens"><circle cx="120" cy="120" r="82" fill="url(#${p}lens)"/>
+      <circle cx="120" cy="120" r="64" ${ST('--k-red-lo', 1, 0.35)}/><circle cx="120" cy="120" r="46" ${ST('--k-red-lo', 1, 0.3)}/>
+      <g class="core"><circle cx="119" cy="119" r="14" ${F('--k-hal-core', 0.9)} filter="url(#${p}b)"/><circle cx="119" cy="119" r="5" ${F('--k-glass', 0.95)}/></g>
+    </g>
+    <path d="M62 96 Q74 58 118 46" ${ST('--k-glass', 7, 0.55)} stroke-linecap="round" filter="url(#${p}b)"/>
+    <path d="M58 100 Q70 56 120 42 Q80 56 68 104Z" fill="url(#${p}cres)" opacity=".75"/>
+    <ellipse cx="86" cy="76" rx="9" ry="4.2" transform="rotate(-42 86 76)" ${F('--k-glass', 0.92)}/>
+    <ellipse cx="150" cy="168" rx="28" ry="15" transform="rotate(-38 150 168)" fill="url(#${p}rf)"/>
+    <path d="M168 176 Q186 156 190 130" ${ST('--k-hal-hot', 2, 0.4)} stroke-linecap="round"/>
+    <circle cx="120" cy="120" r="82" ${ST('--k-blk', 3, 0.7)}/>`;
+  return `<svg class="hal${still ? ' still' : ''}" viewBox="0 0 240 240" role="img" aria-label="${label}"><defs>${defs}</defs>${body}</svg>`;
+};
+const lensOnly = (p, label) => `<svg viewBox="0 0 100 100" role="img" aria-label="${label}"><defs>${RG(p + 'l', [0.5, 0.5, 0.5, 0.44, 0.4], [[0, '--k-hal-core'], [0.14, '--k-hal-hot'], [0.55, '--k-red'], [1, '--k-hal-dark']])}${LG(p + 'r', [0, 0, 1, 1], [[0, '--k-steel-hi'], [1, '--k-steel-lo']])}</defs><circle cx="50" cy="50" r="48" fill="url(#${p}r)"/><circle cx="50" cy="50" r="44" fill="url(#${p}l)"/><ellipse cx="34" cy="30" rx="12" ry="5" transform="rotate(-40 34 30)" ${F('--k-glass', 0.85)}/></svg>`;
+const HAL = {
+  eyes: new Set(),
+  make(id, label) {
+    const wrap = el('div', { class: 'haleye', html: halSVG(id, label) });
+    const svg = wrap.firstChild, lens = svg.querySelector('.lens'), halo = svg.querySelector('.halo');
+    let t = 0;
+    const eye = {
+      node: wrap,
+      flare() { svg.classList.remove('flare'); void svg.getBoundingClientRect(); svg.classList.add('flare'); clearTimeout(t); t = setTimeout(() => svg.classList.remove('flare'), 900); },
+      level(v) { const b = (0.35 + 0.65 * v).toFixed(2); lens.style.filter = `brightness(${b})`; halo.style.opacity = (0.25 + 0.75 * v).toFixed(2); },
+      think(on) { svg.classList.toggle('think', on); },
+      live(on) { svg.classList.toggle('idle', !on); },
+      on(kind, v) { if (kind === 'flare') eye.flare(); else if (kind === 'think') eye.think(!!v); else if (kind === 'level') eye.level(v); },
+    };
+    svg.classList.add('idle'); HAL.eyes.add(eye);
+    return eye;
+  },
+  emit(kind, v) { HAL.eyes.forEach((e) => e.on(kind, v)); },
+};
+
+/* ---------- 导览卡片的正面插画（200x110，示意重绘） ---------- */
+const cardArt = () => {
+  const V = '0 0 200 110';
+  const out = [];
+  /* 1 异形 MU/TH/UR：黄色真空成型面板 + 麦粒灯 + 绿屏 */
+  {
+    const p = 'c1';
+    let bulbs = '';
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 9; c++) bulbs += `<ellipse cx="${34 + c * 16.5}" cy="${24 + r * 14}" rx="4.2" ry="3.2" fill="url(#${p}bu)"/><ellipse cx="${34 + c * 16.5}" cy="${24 + r * 14}" rx="7" ry="6" ${F('--k-amber', 0.18)}/>`;
+    out.push(SVG('黄色真空成型面板、成排的麦粒灯和一块绿色小屏幕', [
+      LG(p + 'pl', [0, 0, 1, 1], [[0, '--k-gold-hi'], [0.5, '--k-gold'], [1, '--k-or-lo']]),
+      RG(p + 'bu', [0.5, 0.4, 0.6], [[0, '--k-glass'], [0.4, '--k-amber'], [1, '--k-or']]),
+      LG(p + 'sc', [0, 0, 0, 1], [[0, '--k-blk-hi'], [1, '--k-blk']]), BLUR(p + 'b', 3), SCAN(p + 'sn', 0.4),
+    ].join(''), `
+      <ellipse cx="100" cy="102" rx="84" ry="5" ${F('--k-blk', 0.35)} filter="url(#${p}b)"/>
+      <path d="M18 18 Q18 8 30 8 L170 8 Q182 8 182 18 L184 88 Q184 98 172 98 L28 98 Q16 98 16 88Z" fill="url(#${p}pl)"/>
+      <path d="M24 14 L176 14" ${ST('--k-glass', 1.6, 0.6)} stroke-linecap="round"/>
+      <path d="M24 90 L176 90" ${ST('--k-or-sh', 1.4, 0.5)}/>
+      ${bulbs}
+      <rect x="30" y="68" width="62" height="24" rx="3" fill="url(#${p}sc)"/><g ${F('--k-phos')}><rect x="35" y="73" width="30" height="2.4"/><rect x="35" y="79" width="44" height="2.4"/><rect x="35" y="85" width="22" height="2.4"/></g><rect x="30" y="68" width="62" height="24" rx="3" fill="url(#${p}sn)"/>
+      <g ${F('--k-or-sh', 0.8)}><rect x="104" y="72" width="26" height="4" rx="2"/><rect x="104" y="82" width="40" height="4" rx="2"/></g>
+      <g ${F('--k-steel-hi')}><circle cx="26" cy="16" r="1.6"/><circle cx="174" cy="16" r="1.6"/><circle cx="26" cy="90" r="1.6"/><circle cx="174" cy="90" r="1.6"/></g>`, V));
+  }
+  /* 2 妙想天开：电动打字机改的电脑，圆键帽 + 小 CRT */
+  {
+    const p = 'c2';
+    let keys = '';
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 9; c++) { const x = 42 + c * 13 + r * 4, y = 66 + r * 10; keys += `<circle cx="${x}" cy="${y + 1.5}" r="5" ${F('--k-blk')}/><circle cx="${x}" cy="${y}" r="5" fill="url(#${p}key)"/><circle cx="${x}" cy="${y}" r="3.2" ${ST('--k-steel-lo', 0.6, 0.6)}/>`; }
+    out.push(SVG('打字机式的电脑：圆形键帽、卷纸轴，上方架着一台小屏幕', [
+      LG(p + 'bd', [0, 0, 0, 1], [[0, '--k-steel-hi'], [0.5, '--k-steel'], [1, '--k-steel-lo']]),
+      RG(p + 'key', [0.4, 0.35, 0.7], [[0, '--k-cream-hi'], [1, '--k-cream-sh']]),
+      LG(p + 'cr', [0, 0, 0, 1], [[0, '--k-blk-hi'], [1, '--k-blk']]),
+      RG(p + 'sc', [0.5, 0.5, 0.7], [[0, '--k-phos-lo'], [1, '--k-screen']]), BLUR(p + 'b', 3), SCAN(p + 'sn', 0.4),
+    ].join(''), `
+      <ellipse cx="100" cy="102" rx="86" ry="5" ${F('--k-blk', 0.35)} filter="url(#${p}b)"/>
+      <path d="M22 98 L34 52 Q36 46 44 46 L156 46 Q164 46 166 52 L178 98 Q178 102 172 102 L28 102 Q22 102 22 98Z" fill="url(#${p}bd)"/>
+      <path d="M36 52 L164 52" ${ST('--k-glass', 1.2, 0.6)}/>
+      ${keys}
+      <rect x="54" y="38" width="92" height="8" rx="4" ${F('--k-blk')}/><rect x="54" y="38" width="92" height="3" rx="1.5" ${F('--k-steel-hi', 0.6)}/>
+      <path d="M60 36 L60 26 M140 36 L140 26" ${ST('--k-steel-lo', 3)}/>
+      <rect x="64" y="4" width="72" height="30" rx="7" fill="url(#${p}cr)"/>
+      <rect x="69" y="8" width="62" height="22" rx="4" fill="url(#${p}sc)"/><g ${F('--k-phos')}><rect x="74" y="13" width="30" height="2"/><rect x="74" y="18" width="20" height="2"/><rect x="74" y="23" width="36" height="2"/></g>
+      <rect x="69" y="8" width="62" height="22" rx="4" fill="url(#${p}sn)"/>
+      <path d="M72 9 L96 9 L82 29 L70 29Z" ${F('--k-glass', 0.12)}/>`, V));
+  }
+  /* 3 Pip-Boy：绿屏腕戴设备，旋钮与拨轮 */
+  {
+    const p = 'c3';
+    out.push(SVG('腕戴式绿屏设备：厚重的机身、弧形屏幕、两个旋钮', [
+      LG(p + 'bd', [0, 0, 0, 1], [[0, '--k-cream-hi'], [0.5, '--k-cream-lo'], [1, '--k-cream-sh']]),
+      LG(p + 'st', [0, 0, 0, 1], [[0, '--k-blk-hi'], [1, '--k-blk']]),
+      RG(p + 'sc', [0.5, 0.5, 0.7], [[0, '--k-phos-lo'], [1, '--k-screen']]),
+      RG(p + 'kn', [0.4, 0.35, 0.7], [[0, '--k-steel-hi'], [1, '--k-blk']]), BLUR(p + 'b', 3), SCAN(p + 'sn', 0.4),
+    ].join(''), `
+      <path d="M0 30 L28 28 L28 80 L0 78Z M172 28 L200 30 L200 78 L172 80Z" fill="url(#${p}st)"/>
+      <g ${F('--k-steel', 0.7)}><circle cx="12" cy="40" r="2"/><circle cx="12" cy="52" r="2"/><circle cx="12" cy="64" r="2"/><circle cx="188" cy="40" r="2"/><circle cx="188" cy="52" r="2"/><circle cx="188" cy="64" r="2"/></g>
+      <ellipse cx="100" cy="102" rx="78" ry="5" ${F('--k-blk', 0.35)} filter="url(#${p}b)"/>
+      <path d="M22 28 Q22 8 44 8 L156 8 Q178 8 178 28 L178 80 Q178 100 156 100 L44 100 Q22 100 22 80Z" fill="url(#${p}bd)"/>
+      <path d="M34 14 L166 14" ${ST('--k-glass', 1.6, 0.7)} stroke-linecap="round"/>
+      <rect x="32" y="20" width="102" height="68" rx="14" ${F('--k-blk')}/>
+      <rect x="37" y="25" width="92" height="58" rx="10" fill="url(#${p}sc)"/>
+      <g ${F('--k-phos')}><rect x="46" y="34" width="52" height="3"/><rect x="46" y="42" width="66" height="3"/><rect x="46" y="50" width="38" height="3"/><rect x="46" y="58" width="58" height="3"/><rect x="46" y="66" width="30" height="3"/></g>
+      <rect x="37" y="25" width="92" height="58" rx="10" fill="url(#${p}sn)"/>
+      <path d="M42 27 L84 27 L58 82 L40 82Z" ${F('--k-glass', 0.1)}/>
+      <circle cx="154" cy="36" r="13" fill="url(#${p}kn)"/><path d="M154 36 l5 -8" ${ST('--k-blk', 2)} stroke-linecap="round"/>
+      <circle cx="154" cy="70" r="9" fill="url(#${p}kn)"/><path d="M154 70 l-4 -6" ${ST('--k-blk', 2)} stroke-linecap="round"/>
+      <rect x="140" y="86" width="26" height="6" rx="3" ${F('--k-or')}/>`, V));
+  }
+  /* 4 洛基 TVA 终端：奶油色 ADM-3A 式机身 + 橙色徽标 */
+  {
+    const p = 'c4';
+    out.push(SVG('奶油色的 ADM-3A 式终端，屏幕里有一个小图标，侧面有橙色圆形徽标', [
+      LG(p + 'bd', [0, 0, 1, 1], [[0, '--k-cream-hi'], [0.5, '--k-cream'], [1, '--k-cream-lo']]),
+      LG(p + 'ft', [0, 0, 0, 1], [[0, '--k-cream'], [1, '--k-cream-sh']]),
+      RG(p + 'sc', [0.5, 0.5, 0.65], [[0, '--k-amber', 0.9], [1, '--k-screen']]), BLUR(p + 'b', 3), SCAN(p + 'sn', 0.45),
+    ].join(''), `
+      <ellipse cx="100" cy="102" rx="82" ry="6" ${F('--k-blk', 0.35)} filter="url(#${p}b)"/>
+      <path d="M26 98 L32 46 Q35 12 70 10 L130 10 Q165 12 168 46 L176 98Z" fill="url(#${p}bd)"/>
+      <path d="M26 98 L176 98 L178 90 L24 90Z" fill="url(#${p}ft)"/>
+      <path d="M52 14 L148 14" ${ST('--k-glass', 1.8, 0.8)} stroke-linecap="round"/>
+      <rect x="44" y="24" width="94" height="52" rx="10" ${F('--k-blk')}/>
+      <rect x="49" y="29" width="84" height="42" rx="7" fill="url(#${p}sc)"/>
+      <g ${F('--k-amber')}><rect x="85" y="36" width="12" height="4"/><rect x="80" y="41" width="22" height="13"/><rect x="74" y="44" width="5" height="8"/><rect x="103" y="44" width="5" height="8"/><rect x="83" y="55" width="6" height="6"/><rect x="93" y="55" width="6" height="6"/></g>
+      <rect x="49" y="29" width="84" height="42" rx="7" fill="url(#${p}sn)"/>
+      <path d="M52 31 L88 31 L62 70 L50 70Z" ${F('--k-glass', 0.14)}/>
+      <circle cx="152" cy="64" r="7" ${F('--k-or')}/><circle cx="152" cy="64" r="3" ${F('--k-cream-hi')}/>
+      <rect x="40" y="80" width="100" height="4" rx="2" ${F('--k-cream-sh', 0.45)}/>`, V));
+  }
+  /* 5 HAL：直接用眼睛（静态） */
+  out.push(halSVG('c5', 'HAL 9000 的红色镜头：金属外框里的红色镜头与高光', true));
+  /* 6 少数派报告：悬浮的半透明面板 + 手套手势（抽象） */
+  {
+    const p = 'c6';
+    out.push(SVG('悬浮的半透明面板和一只戴手套的手', [
+      LG(p + 'bg', [0, 0, 0, 1], [[0, '--k-navy'], [1, '--k-blk']]),
+      LG(p + 'pa', [0, 0, 1, 1], [[0, '--k-cyan', 0.35], [1, '--k-cyan', 0.08]]),
+      LG(p + 'pb', [0, 0, 1, 1], [[0, '--k-cyan', 0.28], [1, '--k-blue', 0.08]]),
+      LG(p + 'gl', [0, 0, 0, 1], [[0, '--k-steel-hi'], [1, '--k-steel-lo']]), BLUR(p + 'b', 3),
+    ].join(''), `
+      <rect width="200" height="110" fill="url(#${p}bg)"/>
+      <g filter="url(#${p}b)" ${F('--k-cyan', 0.35)}><rect x="16" y="16" width="70" height="42"/><rect x="108" y="30" width="76" height="50"/></g>
+      <path d="M14 14 L88 20 L86 60 L14 56Z" fill="url(#${p}pa)" ${SK('--k-cyan', 1.2, 0.95)}/>
+      <path d="M110 28 L186 22 L186 76 L110 82Z" fill="url(#${p}pb)" ${SK('--k-cyan', 1.2, 0.95)}/>
+      <g ${ST('--k-cyan', 1, 0.7)}><path d="M22 26 L50 28 M22 34 L64 36 M22 42 L40 43"/><path d="M118 36 L172 32 M118 46 L158 43 M118 56 L168 52"/></g>
+      <path d="M64 112 L66 80 Q66 70 74 70 Q82 70 82 78 L82 62 Q82 54 89 54 Q96 54 96 62 L96 58 Q96 50 103 50 Q110 50 110 58 L110 66 Q118 66 118 74 L118 90 Q118 104 112 112Z" fill="url(#${p}gl)" ${SK('--k-steel-lo', 1.2)}/>
+      <g ${ST('--k-cyan', 1, 0.9)}><path d="M82 66 L82 78 M96 60 L96 70 M110 62 L110 70"/></g>
+      <g ${F('--k-cyan')}><circle cx="89" cy="54" r="2"/><circle cx="103" cy="50" r="2"/><circle cx="74" cy="70" r="2"/></g>`, V));
+  }
+  /* 7 钢铁侠 HUD：青色圆环、刻度、准星 */
+  {
+    const p = 'c7';
+    let ticks = '';
+    for (let i = 0; i < 60; i++) { const a = i / 60 * Math.PI * 2, r0 = 46, r1 = i % 5 ? 49 : 53; ticks += `<line x1="${100 + r0 * Math.cos(a)}" y1="${55 + r0 * Math.sin(a)}" x2="${100 + r1 * Math.cos(a)}" y2="${55 + r1 * Math.sin(a)}" ${ST('--k-cyan', 1, 0.8)}/>`; }
+    const arc = (r, a0, a1) => `M${(100 + r * Math.cos(a0)).toFixed(1)} ${(55 + r * Math.sin(a0)).toFixed(1)} A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${(100 + r * Math.cos(a1)).toFixed(1)} ${(55 + r * Math.sin(a1)).toFixed(1)}`;
+    out.push(SVG('青色同心圆环、刻度和中央准星组成的头盔显示界面', [
+      RG(p + 'bg', [0.5, 0.5, 0.7], [[0, '--k-navy'], [1, '--k-blk']]), BLUR(p + 'b', 2.4),
+    ].join(''), `
+      <rect width="200" height="110" fill="url(#${p}bg)"/>
+      <g filter="url(#${p}b)" ${ST('--k-cyan', 3, 0.7)}><path d="${arc(36, -2.4, 0.6)}"/><path d="${arc(28, 0.8, 4.2)}"/><path d="${arc(20, -0.4, 2.8)}"/></g>
+      <g ${ST('--k-cyan', 2.2, 0.95)}><path d="${arc(36, -2.4, 0.6)}"/><path d="${arc(28, 0.8, 4.2)}"/><path d="${arc(20, -0.4, 2.8)}"/></g>
+      ${ticks}
+      <circle cx="100" cy="55" r="12" ${ST('--k-cyan', 1, 0.9)} stroke-dasharray="3 3"/>
+      <path d="M100 4 V14 M100 96 V106 M44 55 H54 M146 55 H156" ${ST('--k-cyan', 1.6)} />
+      <circle cx="100" cy="55" r="3" ${F('--k-amber')}/>
+      <g font-family="var(--mono)" font-size="5.5" ${F('--k-cyan', 0.85)}><text x="10" y="14">SYS 0x3F2A</text><text x="148" y="14">LNK 38.2</text><text x="10" y="102">MARK VII</text><text x="150" y="102">00:14:07</text></g>
+      <g ${F('--k-cyan', 0.7)}><rect x="10" y="44" width="22" height="2"/><rect x="10" y="50" width="16" height="2"/><rect x="10" y="56" width="26" height="2"/><rect x="168" y="44" width="22" height="2"/><rect x="174" y="50" width="16" height="2"/><rect x="164" y="56" width="26" height="2"/></g>`, V));
+  }
+  /* 8 LCARS：肘形条 + 圆角色块 */
+  {
+    out.push(SVG('星际迷航风格的肘形色条与圆角色块', '', `
+      <rect width="200" height="110" ${F('--k-blk')}/>
+      <path d="M8 102 L8 40 Q8 14 34 14 L186 14 Q192 14 192 20 L192 30 L60 30 Q46 30 46 44 L46 102 Z" ${F('--k-lc-or')}/>
+      <rect x="8" y="76" width="38" height="12" ${F('--k-lc-pk')}/><rect x="8" y="90" width="38" height="12" rx="0" ${F('--k-lc-bl')}/>
+      <rect x="54" y="42" width="54" height="16" rx="8" ${F('--k-lc-pu')}/><rect x="112" y="42" width="38" height="16" rx="8" ${F('--k-lc-pk')}/><rect x="154" y="42" width="36" height="16" rx="8" ${F('--k-lc-or')}/>
+      <rect x="54" y="64" width="26" height="16" rx="8" ${F('--k-lc-bl')}/><rect x="84" y="64" width="62" height="16" rx="8" ${F('--k-lc-pk')}/><rect x="150" y="64" width="40" height="16" rx="8" ${F('--k-lc-or')}/>
+      <rect x="54" y="86" width="84" height="16" rx="8" ${F('--k-lc-or')}/><rect x="142" y="86" width="48" height="16" rx="8" ${F('--k-lc-pu')}/>
+      <g font-family="var(--font)" font-size="7" font-weight="700" ${F('--k-blk')}><text x="60" y="53">47-1701</text><text x="118" y="53">02</text><text x="92" y="75">3 3 8</text><text x="60" y="97">LCARS</text></g>`, V));
+  }
+  /* 9 黑客帝国：字符雨，头部白绿、尾部渐隐 */
+  {
+    const p = 'c9';
+    let cols = '';
+    const ch = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄ0123456789';
+    for (let c = 0; c < 16; c++) {
+      const head = 20 + ((c * 37) % 70), len = 5 + (c * 5) % 6;
+      for (let k = 0; k < len; k++) {
+        const y = head - k * 11;
+        if (y < 6) continue;
+        const a = k === 0 ? 1 : Math.max(0.12, 1 - k / len);
+        cols += `<text x="${8 + c * 12}" y="${y}" font-size="10" font-family="var(--mono)" ${F(k === 0 ? '--k-phos-hi' : '--k-phos', a)}${k === 0 ? ` filter="url(#${p}b)"` : ''}>${ch[(c * 7 + k * 3) % ch.length]}</text>`;
+      }
+    }
+    out.push(SVG('从上落下的绿色字符，每一列头部发白、尾部渐隐', BLUR(p + 'b', 1.4), `<rect width="200" height="110" ${F('--k-screen')}/>${cols}<rect width="200" height="110" ${F('--k-blk', 0.0)}/>`, V));
+  }
+  /* 10 战争游戏：NORAD 世界地图大屏 + 控制台 */
+  {
+    const p = 'c10';
+    out.push(SVG('带发光地图的大屏幕，上面有弧形的导弹轨迹，下方是控制台', [
+      LG(p + 'bg', [0, 0, 0, 1], [[0, '--k-navy'], [1, '--k-blk']]), LG(p + 'dk', [0, 0, 0, 1], [[0, '--k-steel'], [1, '--k-steel-lo']]),
+      RG(p + 'sc', [0.5, 0.5, 0.7], [[0, '--k-phos-lo'], [1, '--k-screen']]), BLUR(p + 'b', 2), SCAN(p + 'sn', 0.45),
+    ].join(''), `
+      <rect width="200" height="110" fill="url(#${p}bg)"/>
+      <rect x="10" y="8" width="180" height="70" rx="3" style="fill:var(--k-blk);stroke:var(--k-steel);stroke-width:2"/>
+      <rect x="13" y="11" width="174" height="64" rx="2" fill="url(#${p}sc)"/>
+      <g ${ST('--k-phos', 1.1, 0.9)} filter="url(#${p}b)" stroke-linejoin="round"><path d="M24 30 Q34 22 48 26 L62 28 Q70 36 62 44 L52 46 Q44 58 38 50 Q28 44 24 30Z"/><path d="M82 24 Q96 20 110 24 L124 30 Q130 42 120 50 L110 58 Q100 66 94 54 Q86 44 86 36Z"/><path d="M130 34 Q150 28 168 34 Q176 46 164 54 Q148 56 136 48Z"/></g>
+      <g ${ST('--k-phos', 1, 0.6)} stroke-dasharray="2 2"><path d="M48 34 Q110 -2 150 40"/><path d="M62 42 Q90 22 104 36"/></g>
+      <g ${ST('--k-amber', 1.3)}><path d="M48 34 Q80 8 104 14"/></g>
+      <circle cx="104" cy="14" r="2.4" ${F('--k-amber')}/><circle cx="48" cy="34" r="2" ${F('--k-red-hi')}/><circle cx="150" cy="40" r="2" ${F('--k-red-hi')}/>
+      <rect x="13" y="11" width="174" height="64" rx="2" fill="url(#${p}sn)"/>
+      <path d="M10 94 L22 80 L178 80 L190 94 L190 104 L10 104Z" fill="url(#${p}dk)"/>
+      <g>${Array.from({ length: 12 }, (_, i) => `<rect x="${26 + i * 12}" y="85" width="8" height="5" rx="1" ${F(i % 4 === 0 ? '--k-or' : '--k-blk-hi')}/>`).join('')}</g>
+      <g>${Array.from({ length: 8 }, (_, i) => `<circle cx="${30 + i * 20}" cy="98" r="2" ${F(i % 3 ? '--k-phos' : '--k-red-hi')}/>`).join('')}</g>`, V));
+  }
+  /* 11 创：透视网格、光迹、发光圆盘 */
+  {
+    const p = 'c11';
+    let grid = '';
+    for (let i = -8; i <= 8; i++) grid += `<line x1="${100 + i * 6}" y1="46" x2="${100 + i * 30}" y2="110" ${ST('--k-cyan', 0.8, 0.55)}/>`;
+    for (let k = 0; k < 7; k++) { const y = 46 + Math.pow(k / 6, 1.7) * 64; grid += `<line x1="0" y1="${y.toFixed(1)}" x2="200" y2="${y.toFixed(1)}" ${ST('--k-cyan', 0.8, 0.55)}/>`; }
+    out.push(SVG('透视网格地面上两条发光的光迹，远处有一个发光的圆盘', [
+      LG(p + 'bg', [0, 0, 0, 1], [[0, '--k-blk'], [0.42, '--k-navy'], [1, '--k-blk']]), RG(p + 'sun', [0.5, 0.5, 0.5], [[0, '--k-cyan', 0.9], [1, '--k-cyan', 0]]), BLUR(p + 'b', 2.2),
+    ].join(''), `
+      <rect width="200" height="110" fill="url(#${p}bg)"/>
+      <circle cx="100" cy="44" r="30" fill="url(#${p}sun)"/>
+      <ellipse cx="100" cy="34" rx="22" ry="5" ${ST('--k-cyan', 1.6)}/><ellipse cx="100" cy="34" rx="22" ry="5" ${ST('--k-glass', 0.6, 0.9)}/>
+      ${grid}
+      <g filter="url(#${p}b)"><path d="M100 46 L44 100" ${ST('--k-cyan', 4)}/><path d="M100 46 L168 90" ${ST('--k-or', 4)}/></g>
+      <path d="M100 46 L44 100" ${ST('--k-glass', 1.4, 0.95)}/><path d="M100 46 L168 90" ${ST('--k-amber', 1.4, 0.95)}/>
+      <g><path d="M30 104 Q40 88 56 90 L70 94 Q74 100 66 104Z" style="fill:var(--k-blk-hi);stroke:var(--k-cyan);stroke-width:1.2"/><circle cx="64" cy="100" r="1.8" ${F('--k-cyan')}/></g>`, V));
+  }
+  return out;
+};
+
+/* ---------- 1. 翻牌：真的还是道具 ---------- */
+reg('cards', (node) => {
+  const arts = cardArt();
+  const data = [
+    { k: 'half', t: '《异形》MU/TH/UR 6000', where: '1979 · 诺斯特罗莫号',
+      back: '面板是<b>木板、真空成型黄塑料和麦粒灯</b>；舰桥约 40 块屏幕画面来自中央视频中心（ASC）。但登陆地形线框确由 <b>Prime 300 小型机上的 FORTRAN 程序</b>画出。' + sup(1, 2, 3) },
+    { k: 'prop', t: '《妙想天开》的电脑', where: '1985 · Brazil',
+      back: 'BFI 的说法：电脑是<b>在电动打字机上搭建的</b>，整体混合 1930 年代、战后紧缩与斯大林式建筑；美术指导 Norman Garwood。' + sup(5, 6) },
+    { k: 'prop', t: '《辐射》Pip-Boy', where: '游戏系列',
+      back: '游戏里的虚构设备，设计偏爱老旧笨重科技（真空管而非晶体管）。但它<b>后来真被做成了产品</b>：2015 收藏版（手机外壳）、2024 年 The Wand Company 的复制品。' + sup(8, 9, 10) },
+    { k: 'half', t: '《洛基》TVA 终端', where: '2021 · 时间变异管理局',
+      back: '大厅里的终端，PCMag 判断是<b>重新喷漆的 Lear Siegler ADM-3A</b>（真机）；全息投影仪的键盘缺 P 键和数字行，是道具。详见本仓库《洛基》那篇。' + sup(11) },
+    { k: 'half', t: '《2001》HAL 9000', where: '1968 · 发现号',
+      back: 'HAL 是虚构的，但 NASM 的 Ceruzzi 指出片中对应<b>四项真实研究</b>：ELIZA、Winograd 积木程序、ILLIAC-IV、1961 年 Bell Labs 的《Daisy Bell》。' + sup(14) },
+    { k: 'half', t: '《少数派报告》手势界面', where: '2002',
+      back: '界面主要由科技顾问 <b>John Underkoffler</b> 设计，他在 MIT 媒体实验室做过 I/O Bulb 和 Luminous Room，后来联合创办 Oblong，产品叫 g-speak。' + sup(18, 19, 20) },
+    { k: 'half', t: '《钢铁侠》系列的 HUD', where: 'Mark VI / VII 头盔',
+      back: 'Jayse Hansen 咨询过<b>真正的 A-10 飞行员</b>，借用了 Circos 这类数据可视化；画面本身是特效，不是实用的仪表。' + sup(21, 22) },
+    { k: 'prop', t: '《星际迷航》LCARS', where: '星际迷航',
+      back: 'Michael Okuda 设计；预算让剧组用<b>背光的印刷塑料片</b>代替实体按钮，思路借自《Logan\'s Run》。' + sup(23) },
+    { k: 'prop', t: '《黑客帝国》代码雨', where: '代码字形',
+      back: '代码字形由 Simon Whiteley 设计：<b>半角假名的镜像</b>加拉丁字母和数字。「寿司食谱」之说有争议，存疑。' + sup(25) },
+    { k: 'half', t: '《战争游戏》WOPR', where: '1983 · NORAD',
+      back: '主角用的是真机 <b>IMSAI 8080</b>；NORAD 大屏动画用 HP 9845C 驱动 HP 1345A 矢量显示器，<b>逐帧拍摄</b>，16mm 背投。' + sup(26) },
+    { k: 'real', t: '《创》Tron', where: '1982',
+      back: '这一回屏幕上的东西<b>确由计算机生成</b>：四家图形公司分工，内存仅 2 MB、无法实时，逐帧生成，全片约 15 至 20 分钟计算机动画。' + sup(27) },
+  ];
+  data.forEach((d, i) => { d.art = arts[i]; });
+  const label = { real: '真实', half: '半真', prop: '纯道具' };
+  const status = el('div', { class: 'status' });
+  const opened = new Set();
+  const cards = data.map((d, i) => {
+    const f = el('div', { class: 'flip', tabindex: '0', role: 'button', 'aria-pressed': 'false', 'aria-label': d.t + '：点击翻面' },
+      el('div', { class: 'in' },
+        el('div', { class: 'face front' }, el('span', { class: 'verdict hint' }, '银幕上'), el('h3', {}, d.t), el('p', {}, d.where), el('div', { class: 'art', html: d.art }), el('div', { class: 'tip' }, '点击翻面 ↻')),
+        el('div', { class: 'face back' }, el('span', { class: 'verdict ' + d.k }, '现实中：' + label[d.k]), el('h3', {}, d.t), el('p', { html: d.back }), el('div', { class: 'tip' }, '再点翻回 ↺'))));
+    activate(f, () => {
+      const on = f.classList.toggle('on'); f.setAttribute('aria-pressed', on); if (on) opened.add(i); upd();
+      if (!RM) { f.classList.remove('lift'); void f.offsetWidth; f.classList.add('lift'); setTimeout(() => f.classList.remove('lift'), 900); }
+    });
+    return f;
+  });
+  let filter = 'all';
+  function upd() {
+    const n = data.filter((d) => filter === 'all' || d.k === filter).length;
+    status.innerHTML = `当前显示 <b>${n}</b> / ${data.length} 张，已翻开 <b>${opened.size}</b> 张。`;
+  }
+  const bar = seg([['all', '全部'], ['real', '真实'], ['half', '半真'], ['prop', '纯道具']], 'all', (v) => {
+    filter = v; cards.forEach((c, i) => { c.hidden = !(v === 'all' || data[i].k === v); }); upd();
+  });
+  node.append(el('div', { class: 'ctrl' }, bar), el('div', { class: 'cards' }, ...cards), status);
+});
+
+/* ---------- 2. 异形：线框地形（缓慢飞越） ---------- */
+reg('terrain', (node) => {
+  const W = 640, H = 300, DPR = Math.min(2, window.devicePixelRatio || 1);
+  const cv = el('canvas', { width: W * DPR, height: H * DPR, role: 'img', 'aria-label': '绿色线框地形，一排排折线自远向近缓慢飞越' });
+  const ctx = cv.getContext('2d'); ctx.scale(DPR, DPR);
+  const css = getComputedStyle(document.documentElement);
+  const cBg = css.getPropertyValue('--k-screen').trim(), cLine = css.getPropertyValue('--k-phos').trim(), cHi = css.getPropertyValue('--k-phos-hi').trim();
+  let rows = 26, amp = 42, tilt = 0.3, speed = 1, seed = 7, s = 0, userPaused = false, inView = false, raf = 0, last = 0, lastSt = 0;
+  const cols = 56, N = 32;
+  const status = el('div', { class: 'status' });
+  function make() {
+    const r = mulberry(seed), g = Array.from({ length: N }, () => Array.from({ length: N }, r));
+    return (u, w) => {
+      let v = 0, a = 1, f = 1.5, t = 0;
+      for (let o = 0; o < 3; o++) {
+        const x = u * f * 2 + o * 3.1, y = w * f * 0.33 + o * 1.7, xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+        const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+        const i0 = ((xi % N) + N) % N, i1 = (i0 + 1) % N, j0 = ((yi % N) + N) % N, j1 = (j0 + 1) % N;
+        const a0 = g[j0][i0] + (g[j0][i1] - g[j0][i0]) * sx, a1 = g[j1][i0] + (g[j1][i1] - g[j1][i0]) * sx;
+        v += (a0 + (a1 - a0) * sy) * a; t += a; a *= 0.5; f *= 2;
+      }
+      return v / t - 0.5;
+    };
+  }
+  let height = make();
+  function draw() {
+    ctx.fillStyle = cBg; ctx.fillRect(0, 0, W, H);
+    const horizon = H * tilt, base = H + 6, a = Math.floor(s), frac = s - a;
+    ctx.lineJoin = 'round'; ctx.shadowColor = cLine;
+    const flick = RM ? 1 : 0.93 + Math.random() * 0.07;
+    for (let i = 0; i < rows; i++) {
+      const t = (i + frac) / rows, id = i - a;
+      const y0 = horizon + (base - horizon) * Math.pow(t, 1.7), sc = 0.28 + 0.72 * t, ha = amp * (0.2 + 0.8 * t) * 2.3;
+      const xs = new Array(cols), ys = new Array(cols);
+      for (let c = 0; c < cols; c++) { const u = c / (cols - 1); xs[c] = W / 2 + (u - 0.5) * W * 1.15 * sc; ys[c] = y0 - height(u, id) * ha; }
+      ctx.beginPath(); ctx.moveTo(xs[0], ys[0]);
+      for (let c = 1; c < cols; c++) ctx.lineTo(xs[c], ys[c]);
+      ctx.lineTo(xs[cols - 1], H + 4); ctx.lineTo(xs[0], H + 4); ctx.closePath();
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.fillStyle = cBg; ctx.fill();
+      ctx.beginPath(); ctx.moveTo(xs[0], ys[0]);
+      for (let c = 1; c < cols; c++) ctx.lineTo(xs[c], ys[c]);
+      ctx.globalAlpha = Math.min(1, 0.12 + t * 1.5) * flick;
+      ctx.lineWidth = 0.8 + t * 1.1; ctx.strokeStyle = t > 0.9 ? cHi : cLine; ctx.shadowBlur = 5; ctx.stroke();
+    }
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    ctx.fillStyle = cLine; ctx.font = '10px ui-monospace,Menlo,monospace';
+    ctx.fillText('NOSTROMO  DESCENT  LV-426', 12, 18);
+    ctx.fillText('ROW ' + String(Math.floor(s)).padStart(4, '0'), W - 84, 18);
+    ctx.strokeStyle = cLine; ctx.globalAlpha = 0.5; ctx.lineWidth = 1; ctx.strokeRect(6, 6, W - 12, H - 12); ctx.globalAlpha = 1;
+  }
+  function say() {
+    status.innerHTML = `共 <b>${rows}</b> 排 × <b>${cols}</b> 列 = <b>${rows * cols}</b> 个顶点；起伏 ${amp}，地平线高度 ${Math.round(tilt * 100)}%；${RM ? '已按系统设置关闭自动动画，可点「前进一步」' : userPaused ? '已暂停' : '正在飞越，速度 ' + speed.toFixed(1) + '×'}；已飞越 <b>${Math.floor(s)}</b> 排。`;
+  }
+  function frame(t) {
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    s += dt * speed * 1.5; draw();
+    if (t - lastSt > 300) { lastSt = t; say(); }
+  }
+  function sync() {
+    const run = inView && !userPaused && !RM && speed > 0;
+    if (run && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+    if (!run && raf) { cancelAnimationFrame(raf); raf = 0; }
+    say();
+  }
+  const redraw = () => { if (!raf) draw(); say(); };
+  const r1 = rng('行数', 8, 40, rows, 1, (v) => v, (v) => { rows = v; redraw(); });
+  const r2 = rng('起伏', 0, 80, amp, 1, (v) => v, (v) => { amp = v; redraw(); });
+  const r3 = rng('视角', 10, 60, 30, 1, (v) => v + '%', (v) => { tilt = v / 100; redraw(); });
+  const r4 = rng('飞行速度', 0, 300, 100, 5, (v) => (v / 100).toFixed(1) + '×', (v) => { speed = v / 100; sync(); });
+  const pause = el('button', { class: 'btn', type: 'button', 'aria-pressed': 'false' }, RM ? '动画已关闭' : '暂停');
+  if (RM) pause.disabled = true;
+  pause.addEventListener('click', () => { userPaused = !userPaused; pause.textContent = userPaused ? '继续飞越' : '暂停'; pause.setAttribute('aria-pressed', userPaused); sync(); });
+  const step = el('button', { class: 'btn', type: 'button', onclick: () => { s += 1; draw(); say(); } }, '前进一步');
+  const btn = el('button', { class: 'btn primary', type: 'button', onclick: () => { seed = (seed * 7 + 3) % 997; height = make(); redraw(); } }, '换一块地形');
+  node.append(el('div', { class: 'screen' }, cv), el('div', { class: 'ctrl' }, pause, step, btn), el('div', { class: 'ctrl' }, r4.wrap, r1.wrap, r2.wrap, r3.wrap), status);
+  draw(); say();
+  return { start() { inView = true; sync(); }, stop() { inView = false; sync(); } };
+});
+
+/* ---------- 3. 妙想天开：放大镜 ---------- */
+reg('lens', (node) => {
+  const txt = ['FORM 27B/6 -- REQUEST FOR CORRECTION', 'APPLICANT ............ PENDING', 'REF NO. 4471-A-0093', 'ROUTED VIA PNEUMATIC TUBE 12', 'STATUS: AWAITING STAMP', '', 'PLEASE DO NOT FOLD, SPINDLE', 'OR MUTILATE THIS DOCUMENT', 'THANK YOU FOR YOUR PATIENCE', '(本页虚构的示意文字)'].join('\n');
+  const base = el('div', { class: 'lens-txt' }, txt), big = el('div', { class: 'lens-txt' }, txt);
+  const lens = el('div', { class: 'lens' }, big);
+  const stage = el('div', { class: 'lens-stage', tabindex: '0', role: 'application', 'aria-label': '小屏幕与放大球，可拖动或用方向键移动' }, base, lens);
+  const status = el('div', { class: 'status' }, '拖动放大球，读出屏幕上的小字。');
+  let x = 120, y = 70, drag = false;
+  const place = () => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    x = Math.max(0, Math.min(w, x)); y = Math.max(0, Math.min(h, y));
+    lens.style.left = (x - 49) + 'px'; lens.style.top = (y - 49) + 'px';
+    big.style.width = w + 'px'; base.style.width = w + 'px';
+    big.style.left = (lens.clientWidth / 2 - x * 3) + 'px'; big.style.top = (lens.clientHeight / 2 - y * 3) + 'px';
+    status.innerHTML = `放大球在 (<b>${Math.round(x)}</b>, <b>${Math.round(y)}</b>)：把 7 像素的字放大到约 <b>21</b> 像素。`;
+  };
+  const pos = (e) => { const r = stage.getBoundingClientRect(); x = e.clientX - r.left - 6; y = e.clientY - r.top - 6; place(); };
+  stage.addEventListener('pointerdown', (e) => { drag = true; stage.setPointerCapture(e.pointerId); stage.style.cursor = 'grabbing'; pos(e); });
+  stage.addEventListener('pointermove', (e) => { if (drag) pos(e); });
+  stage.addEventListener('pointerup', () => { drag = false; stage.style.cursor = ''; });
+  stage.addEventListener('keydown', (e) => {
+    const d = { ArrowLeft: [-12, 0], ArrowRight: [12, 0], ArrowUp: [0, -12], ArrowDown: [0, 12] }[e.key];
+    if (d) { e.preventDefault(); x += d[0]; y += d[1]; place(); }
+  });
+  node.append(stage, status);
+  new ResizeObserver(place).observe(stage);
+  place();
+});
+
+/* ---------- 4. 辐射：两个世界 ---------- */
+reg('world', (node) => {
+  const slab = `<rect x="85" y="14" width="70" height="112" rx="12" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><rect x="92" y="26" width="56" height="84" rx="4" fill="var(--t-soft)"/><circle cx="120" cy="118" r="3" fill="var(--muted)"/><g fill="var(--t)"><rect x="98" y="36" width="30" height="4" rx="2"/><rect x="98" y="46" width="44" height="4" rx="2"/><rect x="98" y="56" width="22" height="4" rx="2"/></g>`;
+  const tube = `<rect x="30" y="24" width="180" height="104" rx="10" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="3"/><rect x="44" y="36" width="92" height="64" rx="8" fill="#0a0c0a"/><g fill="#33ff66"><rect x="54" y="48" width="56" height="4"/><rect x="54" y="60" width="40" height="4"/><rect x="54" y="72" width="64" height="4"/></g><g>${[0, 1, 2].map((i) => `<rect x="${150 + i * 18}" y="34" width="12" height="34" rx="6" fill="var(--o-soft)" stroke="var(--o)" stroke-width="2"/><circle cx="${156 + i * 18}" cy="60" r="3" fill="var(--o)"/>`).join('')}</g><circle cx="166" cy="96" r="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><circle cx="196" cy="96" r="10" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><path d="M166 96 L170 90 M196 96 L192 90" stroke="var(--ink)" stroke-width="2"/>`;
+  const box = el('div', { style: 'max-width:300px;margin:0 auto' });
+  const status = el('div', { class: 'status' });
+  const bar = seg([['t', '现实：晶体管与薄板'], ['v', '《辐射》：真空管与笨重']], 'v', (v) => {
+    box.innerHTML = `<svg viewBox="0 0 240 150" role="img" aria-label="${v === 't' ? '一块薄薄的智能手机式设备' : '带真空管和旋钮的笨重腕上设备'}">${v === 't' ? slab : tube}</svg>`;
+    status.innerHTML = v === 't'
+      ? '今天我们熟悉的样子：<b>一块薄板</b>。作对照用，不是《辐射》里的设定。'
+      : '《辐射》的设定：<b>atompunk，1950 年代的美国，用真空管而不是晶体管</b>，设计者偏爱老旧笨重的科技。' + sup(8, 9);
+  });
+  node.append(el('div', { class: 'ctrl' }, bar), box, status);
+  return { start() { box.classList.remove('paused'); }, stop() { box.classList.add('paused'); } };
+});
+
+/* ---------- 5. 辐射：Pip-Boy 变成真东西 ---------- */
+reg('pipprod', (node) => {
+  const items = [
+    ['游戏里', '虚构设备', '<rect x="60" y="30" width="120" height="80" rx="10" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="3"/><rect x="74" y="42" width="92" height="52" rx="4" fill="#0a0c0a"/><g fill="#33ff66"><rect x="82" y="52" width="50" height="4"/><rect x="82" y="64" width="34" height="4"/></g>', '在游戏里它是一个虚构的腕上设备：Anthony Postma 布局，偏爱老旧笨重的科技，Bethesda 后来改成 Streamline Moderne 风格。' + sup(8)],
+    ['2015', 'Fallout 4 收藏版', '<rect x="60" y="30" width="120" height="80" rx="10" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="3"/><rect x="82" y="36" width="76" height="68" rx="8" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/><rect x="90" y="44" width="60" height="42" rx="3" fill="var(--t-soft)"/><circle cx="120" cy="96" r="3" fill="var(--muted)"/>', '收藏版 Pip-Boy 是<b>塑料外壳，里面装手机</b>。Engadget 评为 glorified smartphone case；Todd Howard 说自己太爱这个设备，所以做了个真的。' + sup(8)],
+    ['2024', 'Mk V 复制品', '<rect x="60" y="30" width="120" height="80" rx="10" fill="var(--surface-2)" stroke="var(--ink)" stroke-width="3"/><rect x="74" y="42" width="92" height="52" rx="4" fill="#0a0c0a"/><g fill="#33ff66"><rect x="82" y="52" width="50" height="4"/><rect x="82" y="64" width="34" height="4"/><rect x="82" y="76" width="64" height="4"/></g><rect x="74" y="98" width="30" height="6" rx="3" fill="var(--o)"/>', 'The Wand Company 推出的剧版 Pip-Boy 3000 Mk V 复制品，<b>带 TFT 屏</b>。' + sup(10)],
+  ];
+  const art = el('div', { style: 'max-width:240px;margin:0 auto' }), status = el('div', { class: 'status' });
+  const tabs = el('div', { class: 'tabs', role: 'group' });
+  const bs = items.map((it, i) => {
+    const b = el('button', { class: 'tab', type: 'button', 'aria-pressed': 'false' }, it[0] + ' · ' + it[1]);
+    b.addEventListener('click', () => show(i)); tabs.append(b); return b;
+  });
+  function show(i) {
+    bs.forEach((b, k) => { b.classList.toggle('on', k === i); b.setAttribute('aria-pressed', k === i); });
+    art.innerHTML = `<svg viewBox="0 0 240 140" role="img" aria-label="${items[i][1]}示意">${items[i][2]}</svg>`;
+    status.innerHTML = items[i][3];
+  }
+  node.append(tabs, art, status); show(0);
+});
+
+/* ---------- 6. 洛基：高还原重绘图集 ---------- */
+reg('lokigallery', (node) => {
+  const PC = 'https://www.pcmag.com/news/what-are-the-cool-computer-terminals-in-marvels-loki';
+  const YK = 'https://www.yankodesign.com/2021/12/04/this-retro-futuristic-computer-from-the-loki-series-is-worth-every-marvel-fans-appreciation/';
+  const items = [
+    [artLobby(), 'TVA 大厅：橙色前台与终端', 'pc', 'TVA lobby', '正文说大厅里是「漂亮的橙色终端」；配图里看到的是奶油色机身的终端放在橙色弧形前台上，所以这里按配图画。PCMag 判断它们是重新喷漆的 Lear Siegler ADM-3A。' + sup(11)],
+    [artAdm(), 'Lear Siegler ADM-3A', 'pc', 'ADM-3A terminal', '原文放的是 Lear Siegler 的产品广告照：1970 年代中期最流行的哑终端之一，可接个人计算机或大型机。屏幕上的六边形螺旋来自这张广告照，这里是示意重绘。' + sup(11)],
+    [artHolo(), '全息投影仪：红色球体与白色底座', 'pc', 'Holoprojector', '原文说 TVA 的全息投影仪是红色球形 CPU 兼显示单元，下面是贴合它形状的白色键盘底座；配图里它摆在审讯桌上。只画设备与场景，没有画人物。' + sup(11)],
+    [artBubble(), '红色泡泡屏近景', 'pc', 'keyboard', '这张配图是设备近景：红色泡泡里嵌着很小的屏幕，还能看到盘式磁带机样的部件。Segan 认为红色泡泡屏唤起了 50 年的红色泡泡电视，但没找到屏幕这么小的真机。' + sup(11)],
+    [artKeys(), '缺 P 键、没有数字行的键盘', 'pc', 'keyboard', '正文：第一行读作 QWERTYUIO，没有 P 键，也没有数字行，所以这不是真键盘。这张是依据正文与配图画的示意俯视图，不是配图原样。' + sup(11)],
+    [artSolitaire(), '能玩纸牌的电脑', 'pc', 'Solitaire endures.', '配图里一台小型 CRT 架在鹅颈支架上，跑着纸牌接龙。PCMag 的话是：这台电脑也不存在，但纸牌值得加分。只画设备与场景，没有画人物。' + sup(11)],
+    [artYanko(false), 'JK Captain 的 TVA Multifunctional Computer（概念）', 'yk', '', '设计师 JK Captain 的粉丝概念渲染：橙色球形显示器、白色键盘与黄橙点缀、盘式磁带机、音量键、麦克风与各种旋钮。只是渲染图，没有发售。' + sup(12)],
+  ];
+  const grid = el('div', { class: 'gal' });
+  const figs = items.map(([svg, title, src, alt, why]) => {
+    const art = el('button', { class: 'art', type: 'button', 'aria-expanded': 'false', 'aria-label': title + '：点击展开说明', html: svg + '<span class="zoom">点击看说明</span>' });
+    const from = src === 'pc'
+      ? `重绘自 PCMag 原文配图「${alt}」（示意）· <a href="${PC}">PCMag 原文</a>`
+      : `重绘自 Yanko Design 报道中的概念渲染（示意）· <a href="${YK}">Yanko Design 原文</a>`;
+    const f = el('figure', {}, art, el('figcaption', {}, el('b', {}, title), el('div', { html: from }), el('div', { class: 'why', html: why })));
+    art.addEventListener('click', () => {
+      const on = !f.classList.contains('open');
+      figs.forEach((x) => { x.classList.remove('open'); x.querySelector('.art').setAttribute('aria-expanded', 'false'); });
+      f.classList.toggle('open', on); art.setAttribute('aria-expanded', on);
+      status.innerHTML = on ? `<b>${title}</b>：${why}` : '点任意一张图，看它画的是什么、依据原文哪张配图。';
+    });
+    grid.append(f); return f;
+  });
+  const status = el('div', { class: 'status' }, '点任意一张图，看它画的是什么、依据原文哪张配图。');
+  node.append(grid, status);
+});
+
+
+/* ---------- 6b. 洛基：Yanko 概念机（点部件） ---------- */
+reg('yanko', (node) => {
+  const parts = [
+    ['bubble', '橙色球形泡泡显示器', '渲染图的主体：一个橙色的球形泡泡显示器，黑色面板里嵌着小屏幕。'],
+    ['keys', '白色键盘，黄橙点缀', '白色键盘带黄橙色点缀，完整的 QWERTY 布局，另有旋钮。'],
+    ['reel', '盘式磁带录音机', '渲染里还有盘式磁带录音机，配音量键、麦克风和播放控制键。'],
+  ];
+  const status = el('div', { class: 'status' }, '点一个部件（球体、磁带机或键盘）。仅为渲染图概念（JK Captain，Yanko Design 2021-12-04 报道），没有发售。');
+  status.insertAdjacentHTML('beforeend', sup(12));
+  const svg = el('div', { style: 'max-width:520px;margin:0 auto', html: artYanko(true) });
+  const sel = (id) => {
+    svg.querySelectorAll('.yk').forEach((n) => { n.style.opacity = n.dataset.id === id ? '1' : '.4'; n.style.filter = n.dataset.id === id ? 'drop-shadow(0 0 6px var(--k-amber))' : 'none'; n.style.transition = 'opacity .25s,filter .25s'; });
+    const p = parts.find((x) => x[0] === id);
+    status.innerHTML = `<b>${p[1]}</b>：${p[2]}` + sup(12);
+  };
+  svg.querySelectorAll('.yk').forEach((n) => activate(n, () => sel(n.dataset.id)));
+  node.append(svg, status);
+});
+
+/* ---------- 7. HAL 时间线 ---------- */
+reg('haltl', (node) => {
+  const items = [
+    ['1961', 'Bell Labs', '<h4>1961：IBM 7094 唱《Daisy Bell》</h4>Bell Labs 用 IBM 7094 合成演唱《Daisy Bell》，被 Ceruzzi 列为 HAL 背后的真实研究之一。' + sup(14)],
+    ['1965', 'Pederson 电报', '<h4>1965：Athena</h4>Graphic Films 的 Con Pederson 在电报里预言，计算机十年内会变成「无特征的魔法盒子」，主张「优雅的简洁」。那时 HAL 叫 Athena。' + sup(16)],
+    ['1966', 'ELIZA', '<h4>1966：ELIZA</h4>Ceruzzi 列出的另一项真实研究：ELIZA（1966）。同一份名单里还有 Winograd 的积木程序，以及 HAL 自称出生地对应的 ILLIAC-IV。' + sup(14)],
+    ['1968', '电影上映', '<h4>1968：HAL 登场</h4>《2001 太空漫游》上映，Douglas Rain 配音。HAL 与 IBM 差一个字母，Ceruzzi 认为「很可能是巧合」；IBM 同意的前提是故障不与自家产品挂钩。' + sup(14, 15)],
+    ['1999', 'Apple 广告', '<h4>1999：It was a bug, Dave</h4>Apple 投放了一则借 HAL 玩梗的广告 "It was a bug, Dave"。' + sup(14)],
+    ['2012', 'Samsung 官司', '<h4>2012：被拿来当法庭话题</h4>Samsung 想用《2001》里的平板片段作证据，Judge Koh 以提交过晚拒绝。只是证据被拒，并不代表任何关于设计来源的裁决。' + sup(17)],
+  ];
+  const detail = el('div', { class: 'tldetail', html: '点上面的节点。' });
+  const bar = el('div', { class: 'tlbar' });
+  const ns = items.map((it, i) => {
+    const b = el('button', { class: 'tlnode', type: 'button', 'aria-pressed': 'false' }, el('b', {}, it[0]), el('small', {}, it[1]));
+    b.addEventListener('click', () => { ns.forEach((x, k) => { x.classList.toggle('on', k === i); x.setAttribute('aria-pressed', k === i); }); detail.innerHTML = it[2]; });
+    bar.append(b); return b;
+  });
+  node.append(bar, detail);
+});
+
+/* ---------- 8. ELIZA 式小对话（HAL 的眼睛会反应） ---------- */
+reg('eliza', (node) => {
+  const swap = (s) => s.replace(/我/g, '#').replace(/你/g, '我').replace(/#/g, '你').replace(/[。！？!?.]+$/, '');
+  const rules = [
+    [/(妈|爸|家人|父亲|母亲)/, () => '多说说你的家人。', '家人'],
+    [/因为(.+)/, () => '这是真正的原因吗？', '因为'],
+    [/我想(.+)/, (m) => `你为什么想${swap(m[1])}？`, '我想…'],
+    [/我是(.+)/, (m) => `你为什么说你是${swap(m[1])}？`, '我是…'],
+    [/我(?:觉得|感到|很)(.+)/, (m) => `你经常这样${swap(m[1])}吗？`, '我觉得…'],
+    [/(不|没有|没)/, () => '为什么这么否定？', '否定词'],
+  ];
+  const eye = HAL.make('hz', '红色镜头：对话时会亮起');
+  const log = el('div', { class: 'chat', 'aria-live': 'polite' }, el('div', { class: 'm' }, '你好，请说说你的想法。'));
+  const status = el('div', { class: 'status' }, '输入一句话，或点下面的示例。左边的红色镜头会随对话亮起（本页自拟的小动画，不是电影原画）。');
+  const reply = (t) => {
+    for (const [re, f, name] of rules) { const m = t.match(re); if (m) return [f(m), name]; }
+    return ['请继续说。', '无匹配（默认回复）'];
+  };
+  let pend = 0;
+  const send = (t) => {
+    t = t.trim(); if (!t) return;
+    const [r, name] = reply(t);
+    log.append(el('div', { class: 'u' }, t)); log.scrollTop = log.scrollHeight;
+    HAL.emit('think', true);
+    clearTimeout(pend);
+    pend = setTimeout(() => {
+      HAL.emit('think', false); HAL.emit('flare');
+      log.append(el('div', { class: 'm' }, r)); log.scrollTop = log.scrollHeight;
+      status.innerHTML = `命中规则：<b>${name}</b>。程序没有「理解」，只是匹配了关键词。`;
+    }, RM ? 0 : 450);
+  };
+  const inp = el('input', { class: 'tin', type: 'text', placeholder: '例如：我想去月球', 'aria-label': '输入一句话' });
+  const go = el('button', { class: 'btn primary', type: 'button', onclick: () => { send(inp.value); inp.value = ''; } }, '发送');
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go.click(); });
+  const ex = ['我想去月球', '我是一台电脑', '我觉得很孤独', '因为妈妈不同意', '今天天气不错'].map((t) => el('button', { class: 'btn', type: 'button', onclick: () => send(t) }, t));
+  node.append(el('div', { class: 'chatrow' }, eye.node, el('div', {}, log, el('div', { class: 'ctrl' }, inp, go))), el('div', { class: 'ctrl' }, ...ex), status);
+  return { start() { eye.live(true); }, stop() { eye.live(false); } };
+});
+
+/* ---------- 9. Daisy Bell（点按钮才出声；眼睛随音符闪、随速度变暗） ---------- */
+reg('daisy', (node) => {
+  const notes = [[392, 2], [329.6, 2], [261.6, 2], [196, 2], [220, 1], [246.9, 1], [261.6, 2], [220, 1], [261.6, 1], [196, 4]];
+  let ac = null, rate = 1, playing = [], timer = null, flares = [];
+  const eye = HAL.make('hd', '红色镜头：唱歌时随音符闪动，速度越慢越暗');
+  const status = el('div', { class: 'status' }, '点「播放」才会出声。');
+  const r = rng('速度', 30, 100, 100, 1, (v) => v + '%', (v) => { rate = v / 100; HAL.emit('level', 0.3 + 0.7 * rate); });
+  const play = el('button', { class: 'btn primary', type: 'button' }, '播放');
+  const stopB = el('button', { class: 'btn', type: 'button', disabled: '' }, '停止');
+  function stop() {
+    playing.forEach((o) => { try { o.stop(); } catch (e) { /* 已停止 */ } });
+    playing = []; clearTimeout(timer); flares.forEach(clearTimeout); flares = []; play.disabled = false; stopB.disabled = true;
+  }
+  play.addEventListener('click', () => {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    ac.resume();
+    stop();
+    let t = ac.currentTime + 0.05, ms = 50;
+    const pitch = 0.5 + 0.5 * rate;
+    notes.forEach(([f, b]) => {
+      const d = b * 0.4 / rate;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'triangle'; o.frequency.value = f * pitch;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.18, t + 0.03); g.gain.exponentialRampToValueAtTime(0.0005, t + d * 0.95);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); playing.push(o);
+      flares.push(setTimeout(() => HAL.emit('flare'), ms)); ms += d * 1000;
+      t += d;
+    });
+    play.disabled = true; stopB.disabled = false;
+    HAL.emit('level', 0.3 + 0.7 * rate);
+    status.innerHTML = `正在播放，速度 <b>${Math.round(rate * 100)}%</b>，速度越慢音越低、镜头也越暗（电影里 HAL 也是越唱越慢；旋律为简化示意）。`;
+    timer = setTimeout(() => { stop(); status.textContent = '播放完毕，可以换个速度再试。'; }, (t - ac.currentTime) * 1000 + 100);
+  });
+  stopB.addEventListener('click', () => { stop(); status.textContent = '已停止。'; });
+  node.append(el('div', { class: 'chatrow' }, eye.node, el('div', {}, el('div', { class: 'ctrl' }, r.wrap, play, stopB), status)));
+  return { start() { eye.live(true); }, stop() { eye.live(false); if (playing.length) { stop(); status.textContent = '离开视口，已停止。'; } } };
+});
+
+/* ---------- 10. HAL 的眼睛：大小对比 + 可触发的镜头 ---------- */
+reg('eye', (node) => {
+  const eye = HAL.make('hb', 'HAL 9000 的红色镜头，点击会亮起');
+  const big = el('button', { class: 'big', type: 'button', 'aria-label': '点击让镜头亮起' }, eye.node);
+  const status = el('div', { class: 'status', html: `面积比约 <b>${((20 / 7.6) ** 2).toFixed(1)}</b> 倍（直径比 ${(20 / 7.6).toFixed(2)}，按两个数字现场计算）。点左边的镜头，让它亮一下。` + sup(14) });
+  big.addEventListener('click', () => { HAL.emit('flare'); status.innerHTML = '镜头被触发：亮度瞬间拉高，再回到呼吸节奏（本页自拟动画）。直径比 ' + (20 / 7.6).toFixed(2) + '，面积比约 <b>' + ((20 / 7.6) ** 2).toFixed(1) + '</b> 倍。' + sup(14); });
+  const k = 7.6;
+  const cmp = el('div', { class: 'cmp', html: `
+    <figure><div style="width:${20 * k}px;max-width:36vw">${lensOnly('ea', '直径约 20 厘米的镜头')}</div><figcaption>POV 镜头 约 20 cm</figcaption></figure>
+    <figure><div style="width:${7.6 * k}px;max-width:14vw">${lensOnly('eb', '直径约 7.6 厘米的镜头')}</div><figcaption>道具眼 约 7.6 cm</figcaption></figure>` });
+  const lv = rng('镜头亮度', 20, 100, 100, 1, (v) => v + '%', (v) => HAL.emit('level', v / 100));
+  node.append(el('div', { class: 'haldemo' }, big, cmp), el('div', { class: 'ctrl' }, lv.wrap), status);
+  return { start() { eye.live(true); }, stop() { eye.live(false); } };
+});
+
+/* ---------- 11. 手势面板 ---------- */
+reg('gesture', (node) => {
+  const stage = el('div', { class: 'gstage' });
+  const status = el('div', { class: 'status' }, '选一块面板，试试拖动和缩放。');
+  const pics = [
+    '<svg viewBox="0 0 120 90"><path d="M0 70 L30 40 L55 60 L85 25 L120 55 V90 H0Z" fill="#6fd3ff" opacity=".35"/><circle cx="92" cy="20" r="8" fill="#6fd3ff"/></svg>',
+    '<svg viewBox="0 0 120 90"><g fill="#6fd3ff" opacity=".55"><rect x="14" y="50" width="16" height="30"/><rect x="38" y="30" width="16" height="50"/><rect x="62" y="40" width="16" height="40"/><rect x="86" y="16" width="16" height="64"/></g></svg>',
+    '<svg viewBox="0 0 120 90"><g fill="none" stroke="#6fd3ff" stroke-width="2" opacity=".8"><circle cx="60" cy="45" r="30"/><circle cx="60" cy="45" r="18"/><path d="M60 8V82M18 45H102"/></g></svg>',
+  ];
+  const st = [{ x: 24, y: 24, s: 1 }, { x: 170, y: 90, s: 1 }, { x: 40, y: 150, s: 1 }];
+  let mode = 'move', selI = 0, drag = null;
+  const ps = pics.map((p, i) => el('div', { class: 'gp', tabindex: '0', role: 'button', 'aria-label': '面板 ' + (i + 1), html: p }));
+  const lay = () => ps.forEach((p, i) => {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    st[i].x = Math.max(-40, Math.min(w - 80, st[i].x)); st[i].y = Math.max(-30, Math.min(h - 60, st[i].y));
+    p.style.transform = `translate(${st[i].x}px,${st[i].y}px) scale(${st[i].s})`;
+    p.classList.toggle('sel', i === selI);
+  });
+  const say = () => { const s = st[selI]; status.innerHTML = `模式「${mode === 'move' ? '移动' : '缩放'}」；面板 ${selI + 1}：位置 (<b>${Math.round(s.x)}</b>, <b>${Math.round(s.y)}</b>)，缩放 <b>${s.s.toFixed(2)}×</b>。`; };
+  ps.forEach((p, i) => {
+    p.addEventListener('pointerdown', (e) => { selI = i; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; p.setPointerCapture(e.pointerId); lay(); say(); });
+    p.addEventListener('pointermove', (e) => {
+      if (!drag || drag.id !== e.pointerId) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+      if (mode === 'move') { st[i].x += dx; st[i].y += dy; } else { st[i].s = Math.max(0.5, Math.min(2.2, st[i].s * Math.exp(-dy * 0.01))); }
+      lay(); say();
+    });
+    p.addEventListener('pointerup', () => { drag = null; });
+    p.addEventListener('focus', () => { selI = i; lay(); say(); });
+    p.addEventListener('keydown', (e) => {
+      const m = { ArrowLeft: () => st[i].x -= 12, ArrowRight: () => st[i].x += 12, ArrowUp: () => st[i].y -= 12, ArrowDown: () => st[i].y += 12, '+': () => st[i].s = Math.min(2.2, st[i].s * 1.1), '=': () => st[i].s = Math.min(2.2, st[i].s * 1.1), '-': () => st[i].s = Math.max(0.5, st[i].s / 1.1) }[e.key];
+      if (m) { e.preventDefault(); m(); lay(); say(); }
+    });
+    stage.append(p);
+  });
+  const bar = seg([['move', '移动'], ['zoom', '缩放']], 'move', (v) => { mode = v; say(); });
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { [[24, 24], [170, 90], [40, 150]].forEach((a, i) => { st[i] = { x: a[0], y: a[1], s: 1 }; }); lay(); say(); } }, '复位');
+  node.append(el('div', { class: 'ctrl' }, bar, reset), stage, status);
+  new ResizeObserver(lay).observe(stage); lay(); say();
+});
+
+/* ---------- 12. HUD：电影版 vs 可读版 ---------- */
+reg('hud', (node) => {
+  const data = [['ALT 高度', 78, '7 800 m'], ['SPD 速度', 62, 'Mach 1.2'], ['PWR 电量', 41, '41 %'], ['TMP 温度', 87, '87 °C'], ['SIG 信号', 55, '-62 dBm'], ['RNG 距离', 23, '2.3 km']];
+  const box = el('div', { class: 'hudbox' }), status = el('div', { class: 'status' });
+  const arc = (r, p, a0) => {
+    const a1 = a0 + p / 100 * Math.PI * 1.7, x0 = 200 + r * Math.cos(a0), y0 = 130 + r * Math.sin(a0), x1 = 200 + r * Math.cos(a1), y1 = 130 + r * Math.sin(a1);
+    return `M${x0.toFixed(1)} ${y0.toFixed(1)} A${r} ${r} 0 ${p / 100 * 1.7 > 1 ? 1 : 0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+  };
+  function movie() {
+    const rings = data.map((d, i) => `<path d="${arc(24 + i * 14, d[1], -1 + i * 0.7)}" fill="none" stroke="#6fd3ff" stroke-width="${3 + (i % 2)}" opacity="${0.55 + (i % 3) * 0.15}"/><text x="${200 + (24 + i * 14) * Math.cos(-1 + i * 0.7) - 4}" y="${130 + (24 + i * 14) * Math.sin(-1 + i * 0.7)}" font-size="5.5" fill="#bfeaff" font-family="ui-monospace,Menlo,monospace">${d[0].split(' ')[0]} ${d[2]}</text>`).join('');
+    const ticks = Array.from({ length: 72 }, (_, i) => { const a = i / 72 * Math.PI * 2, r0 = 122, r1 = i % 6 ? 126 : 132; return `<line x1="${200 + r0 * Math.cos(a)}" y1="${130 + r0 * Math.sin(a)}" x2="${200 + r1 * Math.cos(a)}" y2="${130 + r1 * Math.sin(a)}" stroke="#6fd3ff" opacity=".6"/>`; }).join('');
+    return `<svg viewBox="0 0 400 260" role="img" aria-label="电影版 HUD：层层同心圆环与细小文字叠在一起"><g class="spin">${ticks}</g><g class="spin rev"><circle cx="200" cy="130" r="112" fill="none" stroke="#6fd3ff" stroke-dasharray="3 7" opacity=".6"/><circle cx="200" cy="130" r="100" fill="none" stroke="#6fd3ff" stroke-dasharray="26 5" opacity=".5"/></g>${rings}<path d="M200 20V34M200 226V240M60 130H74M326 130H340" stroke="#6fd3ff" stroke-width="2"/><circle cx="200" cy="130" r="5" fill="#ffd24a"/><g font-size="6" fill="#6fd3ff" font-family="ui-monospace,Menlo,monospace" opacity=".7"><text x="20" y="40">SYS 0x3F2A OK</text><text x="300" y="40">LNK 38.2 MB/s</text><text x="20" y="236">MARK VII // 4412</text><text x="300" y="236">ΔT 00:14:07</text></g></svg>`;
+  }
+  function readable() {
+    const bars = data.map((d, i) => { const y = 24 + i * 38; return `<text x="12" y="${y + 12}" class="lbl big">${d[0]}</text><rect x="120" y="${y}" width="200" height="16" rx="8" fill="var(--surface-2)" stroke="var(--line)"/><rect x="120" y="${y}" width="${2 * d[1]}" height="16" rx="8" fill="${d[1] > 80 ? 'var(--r)' : 'var(--t)'}"/><text x="394" y="${y + 13}" text-anchor="end" class="lbl big">${d[2]}</text>`; }).join('');
+    return `<svg viewBox="0 0 400 260" role="img" aria-label="可读版：六根横向条形，逐项标明数值，温度一项偏高标红">${bars}</svg>`;
+  }
+  const bar = seg([['m', '电影版'], ['r', '可读版']], 'm', (v) => {
+    box.classList.toggle('read', v === 'r'); box.innerHTML = v === 'm' ? movie() : readable();
+    status.innerHTML = v === 'm'
+      ? '电影版：圆环、刻度和小字叠成一团，<b>很难在两秒内读出温度是多少</b>。这是为画面服务的。'
+      : '可读版：同样六个数，<b>温度偏高一眼可见</b>。真实的 HUD 也信息过载，但飞行员学会了过滤。' + sup(21);
+  });
+  node.append(el('div', { class: 'ctrl' }, bar), box, status);
+});
+
+/* ---------- 13. LCARS ---------- */
+reg('lcars', (node) => {
+  const items = [
+    ['--k-lc-or', '全称', '01-1', 'LCARS 是 <b>Library Computer Access/Retrieval System</b> 的缩写，设计者是 Michael Okuda。' + sup(23)],
+    ['--k-lc-pu', 'Okudagram', '02-4', '这类界面图有个昵称叫 <b>Okudagram</b>。' + sup(23)],
+    ['--k-lc-lb', '不要太活跃', '03-2', 'Gene Roddenberry 要求面板「不要太多活动」，不要让屏幕一直在闪。' + sup(23)],
+    ['--k-lc-pk', '塑料片', '04-7', '预算有限，剧组用<b>背光的印刷塑料片</b>代替实体按钮，这个思路借自《Logan\'s Run》。' + sup(23)],
+    ['--k-lc-tn', 'PADD', '05-3', 'PADD 常被拿来和 iPad 相比（有文章以此为题）。拿它当「预言」要谨慎，这里只是类比。' + sup(24)],
+    ['--k-lc-rd', 'DMCA', '06-9', 'CBS 曾向 Google 发过 DMCA 通知，针对一款使用 LCARS 界面的安卓应用 Tricorder。' + sup(23)],
+  ];
+  const rand = mulberry(2364);
+  const elbow = el('div', { class: 'lc-elbow' }), title = el('div', { class: 'lc-title' }, 'LCARS 47-1701 · 待命');
+  const pills = [el('i'), el('i'), el('i')];
+  const top = el('div', { class: 'lc-top' }, title, ...pills);
+  const disp = el('div', { class: 'lc-disp' }), rail = el('div', { class: 'lc-rail' });
+  const foot = el('div', { class: 'lc-foot' }), foot2 = el('div', { class: 'lc-foot2' }, el('i'), el('i'), el('i'));
+  const status = el('div', { class: 'status' }, '点左侧的色块按钮。');
+  const seen = new Set(); let seq = 0;
+  const col = (v) => `var(${v})`;
+  const bs = items.map((it, i) => {
+    const b = el('button', { type: 'button', style: `background:${col(it[0])}`, 'aria-pressed': 'false' }, it[1], el('small', {}, it[2]));
+    b.addEventListener('click', () => {
+      bs.forEach((x, k) => { x.classList.toggle('on', k === i); x.setAttribute('aria-pressed', k === i); });
+      seen.add(i); seq++;
+      if (!RM) { b.classList.remove('flash'); void b.offsetWidth; b.classList.add('flash'); }
+      const c = col(it[0]);
+      elbow.style.background = c; foot.style.background = c;
+      title.style.background = c; top.style.setProperty('--lcf', c);
+      title.textContent = `LCARS 47-1701 · ${it[1]} · ${it[2]}`;
+      pills[0].style.background = col(items[(i + 1) % 6][0]); pills[1].style.background = col(items[(i + 2) % 6][0]); pills[2].style.background = col(items[(i + 3) % 6][0]);
+      foot2.children[1].style.background = c;
+      const n1 = String(Math.floor(rand() * 9000 + 1000)), n2 = (rand() * 90 + 10).toFixed(1), n3 = String(seq).padStart(4, '0');
+      disp.innerHTML = `<div class="lc-swap"><div class="lc-bar" style="background:${c}"></div><h4 style="color:${c}">${it[1]}</h4><div class="lc-body">${it[3]}</div><div class="lc-read"><span>SEQ ${n3}</span><span>${n1}-${n2}</span><span>已读 ${seen.size}/6</span></div></div>`;
+      status.innerHTML = `已切换到「<b>${it[1]}</b>」，已读 <b>${seen.size}</b> / 6 条，共点击 ${seq} 次。`;
+    });
+    rail.append(b); return b;
+  });
+  disp.innerHTML = '<div class="lc-bar"></div><h4>待命</h4><div class="lc-body">点左侧色块。面板配色和圆角肘形条是仿 LCARS 的风格，不是官方素材。</div><div class="lc-read"><span>SEQ 0000</span><span>STANDBY</span><span>已读 0/6</span></div>';
+  node.append(el('div', { class: 'lc' }, elbow, top, rail, disp, foot, foot2), status);
+});
+
+/* ---------- 14. 代码雨：深度、速度各不相同，头部白绿、尾部渐隐、字符随机变化 ---------- */
+reg('rain', (node) => {
+  const W = 640, H = 300, DPR = Math.min(2, window.devicePixelRatio || 1);
+  const cv = el('canvas', { width: W * DPR, height: H * DPR, role: 'img', 'aria-label': '绿色字符从上往下落的代码雨，头部发白，尾部渐隐' });
+  const ctx = cv.getContext('2d'); ctx.scale(DPR, DPR);
+  const css = getComputedStyle(document.documentElement);
+  const cBg = css.getPropertyValue('--k-screen').trim(), cG = css.getPropertyValue('--k-phos').trim(), cHi = css.getPropertyValue('--k-phos-hi').trim();
+  const kana = Array.from({ length: 56 }, (_, i) => String.fromCharCode(0xFF66 + i)), latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'.split('');
+  const pool = kana.concat(latin);
+  const pick = () => pool[(Math.random() * pool.length) | 0];
+  let mirror = true, speed = 1, density = 64, streams = [], raf = 0, last = 0, userPaused = false, inView = false, lastSt = 0;
+  const status = el('div', { class: 'status' });
+  const sayS = () => { status.innerHTML = `镜像假名：<b>${mirror ? '开' : '关'}</b>；速度 <b>${speed.toFixed(1)}×</b>；<b>${density}</b> 列，字号 9–20 px 不等（近大远小、近亮远暗）；${RM ? '已按系统设置关闭自动动画' : userPaused ? '已暂停' : '正在下落'}。字符池：${kana.length} 个半角假名 + ${latin.length} 个拉丁字母与数字。` + sup(25); };
+  function spawn(s, initial) {
+    const d = Math.random(); s.d = d; s.fs = Math.round(9 + d * 11); s.rows = Math.ceil(H / s.fs) + 2;
+    s.len = 8 + ((Math.random() * 18) | 0); s.v = (7 + d * 14) * (0.7 + Math.random() * 0.6);
+    s.chars = Array.from({ length: s.rows }, pick);
+    s.head = initial ? -s.len + Math.random() * (s.rows + s.len) : -Math.random() * 12;
+    return s;
+  }
+  function build() {
+    streams = Array.from({ length: density }, (_, c) => { const s = spawn({ x: (c + Math.random() * 0.8) * (W / density) }, true); return s; });
+    streams.sort((a, b) => a.d - b.d);
+  }
+  function glyph(ch, x, y, fs) {
+    if (mirror && ch.charCodeAt(0) >= 0xFF66 && ch.charCodeAt(0) <= 0xFF9F) { ctx.save(); ctx.translate(x + fs * 0.9, y); ctx.scale(-1, 1); ctx.fillText(ch, 0, 0); ctx.restore(); } else ctx.fillText(ch, x, y);
+  }
+  function draw() {
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.fillStyle = cBg; ctx.fillRect(0, 0, W, H);
+    ctx.textBaseline = 'top';
+    for (const s of streams) {
+      ctx.font = `${s.fs}px ui-monospace,Menlo,monospace`;
+      const hr = Math.floor(s.head), depthA = 0.3 + 0.7 * s.d;
+      for (let k = s.len - 1; k >= 0; k--) {
+        const row = hr - k; if (row < 0 || row >= s.rows) continue;
+        const y = row * s.fs; if (y > H) continue;
+        const ch = s.chars[row];
+        if (k === 0) { ctx.shadowColor = cG; ctx.shadowBlur = 6 + s.d * 8; ctx.globalAlpha = Math.min(1, depthA + 0.25); ctx.fillStyle = cHi; glyph(ch, s.x, y, s.fs); ctx.shadowBlur = 0; }
+        else if (k === 1) { ctx.globalAlpha = depthA; ctx.fillStyle = cHi; glyph(ch, s.x, y, s.fs); }
+        else { ctx.globalAlpha = depthA * Math.pow(1 - k / s.len, 1.6) * 0.95; ctx.fillStyle = cG; glyph(ch, s.x, y, s.fs); }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function advance(dt) {
+    for (const s of streams) {
+      s.head += s.v * speed * dt;
+      const hr = Math.floor(s.head);
+      for (let k = 0; k < s.len; k++) { const row = hr - k; if (row >= 0 && row < s.rows && Math.random() < (k === 0 ? 0.6 : 0.03)) s.chars[row] = pick(); }
+      if (s.head - s.len > s.rows) spawn(s, false);
+    }
+  }
+  function frame(t) {
+    raf = requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (t - last) / 1000); last = t;
+    advance(dt); draw();
+    if (t - lastSt > 500) { lastSt = t; sayS(); }
+  }
+  function sync() {
+    const run = inView && !userPaused && !RM;
+    if (run && !raf) { last = performance.now(); raf = requestAnimationFrame(frame); }
+    if (!run && raf) { cancelAnimationFrame(raf); raf = 0; }
+    sayS();
+  }
+  build(); draw();
+  const m = el('button', { class: 'btn', type: 'button', 'aria-pressed': 'true', onclick: () => { mirror = !mirror; m.setAttribute('aria-pressed', mirror); m.textContent = mirror ? '镜像假名：开' : '镜像假名：关'; if (!raf) draw(); sayS(); } }, '镜像假名：开');
+  const pz = el('button', { class: 'btn', type: 'button', 'aria-pressed': 'false' }, RM ? '动画已关闭' : '暂停');
+  if (RM) pz.disabled = true;
+  pz.addEventListener('click', () => { userPaused = !userPaused; pz.textContent = userPaused ? '继续' : '暂停'; pz.setAttribute('aria-pressed', userPaused); sync(); });
+  const r = rng('速度', 3, 30, 10, 1, (v) => (v / 10).toFixed(1) + '×', (v) => { speed = v / 10; sayS(); });
+  const rd = rng('列数', 24, 100, density, 2, (v) => v, (v) => { density = v; build(); if (!raf) draw(); sayS(); });
+  node.append(el('div', { class: 'screen' }, cv), el('div', { class: 'ctrl' }, pz, m, r.wrap, rd.wrap), status);
+  sayS();
+  return { start() { inView = true; sync(); }, stop() { inView = false; sync(); } };
+});
+
+/* ---------- 15. 战争游戏：电话扫描 ---------- */
+reg('wardial', (node) => {
+  const out = el('div', { class: 'dial', role: 'log', 'aria-label': '电话扫描输出' }), status = el('div', { class: 'status' });
+  const rnd = mulberry(1983);
+  let n = 0, hits = 0, timer = null, userPaused = true, speed = 6;
+  const lines = [];
+  const tick = () => {
+    const num = '555-' + String(n).padStart(4, '0'); n++;
+    const r = rnd(); let res, cls = '';
+    if (r < 0.12) { res = 'CARRIER / 调制解调器应答'; cls = 'hit'; hits++; } else if (r < 0.3) res = 'BUSY'; else res = 'NO ANSWER';
+    lines.push(`<span class="${cls}">${num}  ${res}</span>`); if (lines.length > 9) lines.shift();
+    out.innerHTML = lines.join('\n');
+    status.innerHTML = `已拨 <b>${n}</b> 个号码，其中 <b>${hits}</b> 个有调制解调器应答（演示概率约 12%）。`;
+  };
+  const stopT = () => { clearInterval(timer); timer = null; };
+  const runT = () => { stopT(); timer = setInterval(tick, 1000 / speed); };
+  const b = el('button', { class: 'btn primary', type: 'button', onclick: () => { userPaused = !userPaused; b.textContent = userPaused ? '开始扫描' : '暂停'; userPaused ? stopT() : runT(); } }, '开始扫描');
+  const r = rng('速度', 1, 20, speed, 1, (v) => v + ' 个/秒', (v) => { speed = v; if (timer) runT(); });
+  out.textContent = '点「开始扫描」。';
+  node.append(out, el('div', { class: 'ctrl' }, b, r.wrap), status);
+  return { stop() { stopT(); }, start() { if (!userPaused) runT(); } };
+});
+
+/* ---------- 16. 战争游戏：从电影到法律 ---------- */
+reg('warlaw', (node) => {
+  const steps = [
+    ['电影上映（1983）', '《战争游戏》上映。片中的少年用电话扫描号码、拨进军事计算机。' + sup(26)],
+    ['里根的提问', '据称（Wikipedia）里根看完电影，问参联会：这种事真的可能吗？' + sup(26)],
+    ['答复', '参联会的答复：前提在技术上可行。' + sup(26)],
+    ['NSDD-145（据称）', '据称这件事促成了 NSDD-145。以 Wikipedia 为唯一来源，故用「据称」。' + sup(26)],
+    ['CFAA（1986，据称）', '据称也促成了 1986 年的 Computer Fraud and Abuse Act（CFAA）。同样仅引 Wikipedia 的表述。' + sup(26)],
+  ];
+  const items = steps.map(([f, p], i) => el('div', { class: 'tl-step' }, el('span', { class: 'i' }, i + 1), el('div', {}, el('b', {}, f), el('p', { html: p }))));
+  let k = 0;
+  const status = el('div', { class: 'status' }, '点「下一步」开始。');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    if (k < items.length) { items[k++].classList.add('on'); status.textContent = `已揭示 ${k} / ${items.length}`; }
+    if (k >= items.length) next.disabled = true;
+  } }, '下一步');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { items.forEach((x) => x.classList.remove('on')); k = 0; next.disabled = false; status.textContent = '已重置。'; } }, '重置');
+  node.append(el('div', { class: 'steps' }, ...items), el('div', { class: 'ctrl' }, next, reset), status);
+});
+
+/* ---------- 17. 创：渲染时间 ---------- */
+reg('tron', (node) => {
+  let min = 15, sec = 60;
+  const res = el('div', { class: 'eq' }), status = el('div', { class: 'status' });
+  const upd = () => {
+    const frames = min * 60 * 24, total = frames * sec, h = total / 3600, d = h / 24;
+    res.textContent = `${min} 分钟 × 60 × 24 帧 = ${frames.toLocaleString('en-US')} 帧；× ${sec} 秒 = ${h.toLocaleString('en-US', { maximumFractionDigits: 0 })} 小时 ≈ ${d.toFixed(1)} 天`;
+    status.innerHTML = `如果只有<b>一台机器</b>、一帧耗时 <b>${sec} 秒</b>，要连续算约 <b>${d.toFixed(1)} 天</b>。四家公司分头做，就是把这个数除以大致的工作分摊。` + sup(27);
+  };
+  const seg1 = seg([[15, '15 分钟'], [20, '20 分钟']], 15, (v) => { min = v; upd(); });
+  const r = rng('每帧耗时', 5, 600, 60, 5, (v) => v + ' 秒', (v) => { sec = v; upd(); });
+  node.append(el('div', { class: 'ctrl' }, seg1, r.wrap), el('div', { class: 'scrollx' }, res), status);
+  upd();
+});
+
+/* ---------- 18. 总结表 ---------- */
+reg('summary', (node) => {
+  const rows = [
+    ['p', '电影启发产品', 'Pip-Boy 收藏版与复制品', '《辐射》', '游戏设备被做成真产品（2015、2024）', 'ok', [8, 10]],
+    ['p', '电影启发产品', 'Apple "It was a bug, Dave" 广告', '《2001》', '1999 年的广告借 HAL 玩梗', 'ok', [14]],
+    ['p', '电影启发产品', '用 LCARS 界面的安卓应用', '《星际迷航》', 'CBS 曾向 Google 发 DMCA', 'ok', [23]],
+    ['p', '电影启发产品', 'TVA Multifunctional Computer', '《洛基》', '粉丝概念渲染，从未发售', 'ok', [12]],
+    ['r', '研究者进片场', 'Underkoffler 与 g-speak', '《少数派报告》', '科技顾问设计界面，后来联合创办 Oblong；Oblong 的创办年份与 Kinect 关联待核实', 'ok', [18, 19, 20]],
+    ['r', '研究者进片场', 'HAL 对应的四项研究', '《2001》', 'ELIZA、Winograd、ILLIAC-IV、Daisy Bell', 'ok', [14]],
+    ['r', '研究者进片场', 'Hansen 与 A-10 飞行员', '《复仇者联盟》', '咨询真实飞行员，借用 Circos', 'ok', [21]],
+    ['r', '研究者进片场', 'Sutcliffe 的地形程序', '《异形》', 'Prime 300 上的 FORTRAN，画到胶片；二手转述', 'q', [2]],
+    ['r', '研究者进片场', '四家图形公司与 Perlin', '《创》', '逐帧计算机动画；Perlin 噪声后获 1997 年奥斯卡科技奖', 'ok', [27]],
+    ['l', '电影推动立法', 'NSDD-145 与 CFAA', '《战争游戏》', '据称，仅引 Wikipedia', 'q', [26]],
+    ['x', '流传但无证据', 'Samsung 与 2001 平板', '《2001》', '只是证据因提交过晚被拒，不是裁决', 'ok', [17]],
+    ['x', '流传但无证据', '代码雨来自寿司食谱', '《黑客帝国》', '有争议，存疑', 'q', [25]],
+    ['x', '流传但无证据', 'HAL 镜头是 Nikkor 8mm', '《2001》', '没找到可靠的一手来源，存疑', 'q', [14, 15]],
+    ['x', '流传但无证据', '放大球屏幕', '《妙想天开》', '仅 Sightlines 单一来源，待核实', 'q', [7]],
+  ];
+  const nameOf = { p: '电影启发产品', r: '研究者进片场', l: '电影推动立法', x: '流传但无证据' };
+  const status = el('div', { class: 'status' });
+  const tb = el('tbody');
+  const trs = rows.map((r) => {
+    const flag = r[5] === 'ok' ? '<span class="flag ok">有来源</span>' : '<span class="flag q">待核实 / 存疑</span>';
+    const tr = el('tr', { html: `<td>${r[2]}</td><td>${r[3]}</td><td>${r[4]}${sup(...r[6])}</td><td>${flag}</td>` });
+    tb.append(tr); return tr;
+  });
+  const bar = seg([['all', '全部'], ['p', '启发产品'], ['r', '进片场'], ['l', '推动立法'], ['x', '无证据']], 'all', (v) => {
+    let n = 0; rows.forEach((r, i) => { const on = v === 'all' || r[0] === v; trs[i].hidden = !on; if (on) n++; });
+    status.innerHTML = v === 'all' ? `共 <b>${n}</b> 条。` : `「${nameOf[v]}」共 <b>${n}</b> 条。`;
+  });
+  node.append(el('div', { class: 'ctrl' }, bar), el('div', { class: 'tbl-wrap' }, el('table', { class: 'tbl' }, el('thead', {}, el('tr', {}, el('th', {}, '案例'), el('th', {}, '作品'), el('th', {}, '发生了什么'), el('th', {}, '把握程度'))), tb)), status);
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

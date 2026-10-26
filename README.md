@@ -118,6 +118,7 @@
 | 《洛基》里那些很酷的电脑终端，哪台是真的？ | Sascha Segan，PCMag（2021-06-10） | [`culture/loki-computer-terminals/`](culture/loki-computer-terminals/index.html) | TVA 大厅的橙色终端原型 ADM-3A、少了 P 键的全息投影仪，附终端模拟器与复古 CRT 效果台。 |
 | 绝命航线：Wager 号沉船与叛乱 | Alan Bellows，Damn Interesting（2019-09）/ 宝玉译，baoyu.io（2025-05-10） | [`culture/hms-wager-shipwreck-and-mutiny/`](culture/hms-wager-shipwreck-and-mutiny/index.html) | 1741 年 Wager 号在智利外海触礁，幸存者分裂为舰长与炮手两派各自返航：航线地图、死算模拟、人物关系与人数点阵。 |
 | 祖先的「决定」：未接触部落是「原始」还是「选择」 | fivestone，fieldnotes（anthropology.fivest.one，2020-05-11）；本页重新组织 | [`culture/ancestors-decision-anthropology/`](culture/ancestors-decision-anthropology/index.html) | 从一张亚马逊隔绝村落航拍照出发，核对「两万年前」说法，看隔绝如何是祖辈在压力下的选择。 |
+| 科幻电影里的电脑：银幕背后是什么，又改变了什么 | 本仓库整理，参考：ASC、Propstore、BFI Screenonline、NASM（Ceruzzi）、PCMag、Yanko Design、Wikipedia 等 | [`culture/sci-fi-movie-computers/`](culture/sci-fi-movie-computers/index.html) | 《异形》的废料面板与线框地形、《妙想天开》、Pip-Boy、HAL 9000、《少数派报告》、LCARS、代码雨、《战争游戏》、《创》：哪些是真机、哪些是道具，以及电影与现实的双向影响；含线框地形、放大镜、手势面板、代码雨、电话扫描等演示。 |
 
 ### 社会（`society/`）
 
