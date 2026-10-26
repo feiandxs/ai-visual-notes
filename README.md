@@ -24,6 +24,9 @@
 | 拆解 Cline 的系统提示词 | Cline 项目，GitHub cline/cline，src/core/prompts/system.ts（剪藏于 2025-04-26） | [`ai/cline-system-prompt-anatomy/`](ai/cline-system-prompt-anatomy/index.html) | 把 Cline 的系统提示词拆成结构图：工具定义、XML 调用协议、编辑规则、模式、规则与目标循环。 |
 | Manus 的六条上下文工程法则 | @frxiaobei，X（2025-07-21） | [`ai/manus-context-engineering-six-laws/`](ai/manus-context-engineering-six-laws/index.html) | KV 缓存、工具掩码、文件系统外置、todo 复述、保留错误、避免少样本模仿，六条智能体上下文法则各配一个可操作实验。 |
 | R1-Zero 的纯 RL，为什么看起来像监督学习？ | 本仓库整理，参考：卡卡罗特（知乎）问题摘要、DeepSeek-R1 论文、DeepSeekMath（GRPO）、Liu 等（2025）、Yue 等（2025） | [`ai/deepseek-r1-zero-rl-or-supervised-learning/`](ai/deepseek-r1-zero-rl-or-supervised-learning/index.html) | 数据流对比、GRPO 组内优势演示、RL 推成加权 SFT、on-policy 玩具模拟：R1-Zero 与 SFT 的同与不同。 |
+| Transformer：大语言模型背后的机器 | 3Blue1Brown，YouTube《Transformers, the tech behind LLMs》（深度学习第 5 章） | [`ai/transformers-3b1b-tech-behind-llms/`](ai/transformers-3b1b-tech-behind-llms/index.html) | 逐词采样、词嵌入与语义方向、点积、上下文长度、softmax 与温度，并现场算出 GPT-3 的 1750 亿参数花在哪些矩阵上；10 个可操作的演示。 |
+| 注意力机制：词与词之间怎样互相“更新” | 3Blue1Brown，YouTube《Attention in transformers, step-by-step》（深度学习第 6 章） | [`ai/attention-in-transformers-3b1b/`](ai/attention-in-transformers-3b1b/index.html) | 改写自 3Blue1Brown 第 6 章，用可拖动的 Query/Key、因果遮罩热力图、逐步更新演示、多头切换和参数量计算器弄清注意力。 |
+| 智能体循环到底是什么：目标、校验与停止条件 | Nate Herk \| AI Automation，YouTube《Finally. Agent Loops Clearly Explained.》 | [`ai/agent-loops-clearly-explained/`](ai/agent-loops-clearly-explained/index.html) | 从「写循环，不写提示词」讲起：质量曲线、推理-行动-观察逐步模拟、三种形态、停止条件与失败模式、八个要素，以及不必 24/7 的时长标尺。 |
 
 ### 软件（`software/`）
 

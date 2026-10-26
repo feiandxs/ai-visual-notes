@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>智能体循环讲清楚</title>
+<meta name="description" content="把「写循环，不写提示词」讲清楚：循环的定义、质量曲线、可逐步执行的推理-行动-观察模拟、三种形态、停止条件与失败模式、八个要素和不必 24/7 的时长标尺。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+/* 目录：桌面侧栏 + 手机底部抽屉 */
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease}
+.toc-sheet.open{transform:none}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(14px,2.4vw,17px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.range input{accent-color:var(--p);width:150px;max-width:50vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3em}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+/* SVG 通用：颜色一律走变量，深色模式自动跟随 */
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+
+/* ===== 本页补充（非原文）：虚线橙框，所有补充内容必须放进这个块 ===== */
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* 组件：步骤播放器 */
+.tl-step{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface-2);opacity:.45;transition:opacity .4s,border-color .4s}
+.tl-step.on{opacity:1;border-color:var(--p)}
+.tl-step .i{font-family:var(--mono);font-size:12px;color:#fff;background:var(--p);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.tl-step p{font-size:13px;color:var(--muted)}
+.steps{display:grid;gap:8px}
+/* 组件：SVG 可点选 */
+.pick{cursor:pointer}
+.pick circle{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .2s,stroke .2s}
+.pick:hover circle,.pick:focus circle{stroke:var(--p);outline:none}
+.pick.sel circle{fill:var(--p);stroke:var(--p)}
+.pick text{font-size:13px;text-anchor:middle;dominant-baseline:central;fill:var(--text);pointer-events:none}
+.pick.sel text{fill:#fff}
+
+/* 页脚与参考文献 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+
+/* 入场动画（由 IntersectionObserver 加 .seen） */
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+
+/* ===== 本页专用 ===== */
+.bx rect{fill:var(--surface-2);stroke:var(--line);stroke-width:1.5;transition:fill .25s,stroke .25s,opacity .25s}
+.bx text{fill:var(--text);font-size:12px;text-anchor:middle;font-family:var(--font);pointer-events:none}
+.bx text.s{fill:var(--muted);font-size:10.5px}
+.bx.on rect{fill:var(--p-soft);stroke:var(--p)}
+.bx.ok.on rect{fill:var(--t-soft);stroke:var(--t)}
+.bx.warn.on rect{fill:var(--o-soft);stroke:var(--o)}
+.bx.dim{opacity:.3}
+.bx.ghost rect{stroke-dasharray:4 3}
+.ln{stroke:var(--muted);stroke-width:1.5;fill:none;transition:stroke .25s}
+.ln.on{stroke:var(--p);stroke-width:2.5}
+.ln.dash{stroke-dasharray:4 4}
+.bar{fill:var(--p);transition:fill .2s}
+.bar.hit{fill:var(--t)}
+.bar.cap{fill:var(--o)}
+.pt{fill:var(--surface);stroke-width:2.5}
+.gl{stroke:var(--grid);stroke-width:1}
+.axis{stroke:var(--muted);stroke-width:1.2}
+.log{display:grid;gap:4px;max-height:230px;overflow:auto;margin-top:8px;font-size:13px}
+.log .row{display:grid;grid-template-columns:54px 1fr;gap:8px;padding:4px 8px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line)}
+.log .row.cur{border-color:var(--p)}
+.log .row .k{font-family:var(--mono);font-size:11px;color:var(--p)}
+.log .row.C .k{color:var(--o)}
+.log .row.S .k{color:var(--t)}
+.log .row.skip{opacity:.6;font-style:italic}
+.info{display:grid;gap:6px;font-size:13px;margin:8px 0;padding:10px 12px;background:var(--surface-2);border-radius:10px}
+.info b{color:var(--muted);font-weight:600;margin-right:6px}
+.chk{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin:8px 0}
+.chk button{border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:8px 10px;text-align:left;cursor:pointer;font-size:13px}
+.chk button[aria-pressed="true"]{border-color:var(--t);background:var(--t-soft)}
+.chk button[aria-pressed="false"]{border-color:var(--r);background:var(--r-soft);text-decoration:line-through;color:var(--muted)}
+.chk button:focus-visible,.btn:focus-visible,.seg button:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.mlist{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+.mlist li{margin:4px 0}
+.mlist .nm{font-weight:600;color:var(--r)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin:4px 0}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;vertical-align:middle;margin-right:5px}
+.rk{cursor:pointer}.rk:focus{outline:none}.rk:focus rect,.rk:hover rect{stroke:var(--p) !important}
+[data-demo] svg{max-width:640px;margin-left:auto;margin-right:auto}
+.fork{transition:transform .5s ease}
+@media (prefers-reduced-motion: reduce){ .fork{transition:none} }
+
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">智能体循环讲清楚</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 智能体 · 循环工程</div>
+  <h1>智能体循环到底是什么：目标、校验与停止条件</h1>
+  <p class="sub">从「我每天给编程智能体发提示词」到「我设计一个能自己看结果、自己再来一轮的循环」，这一步到底换掉了什么，又不必跟风到什么程度。</p>
+  <div class="thesis">循环不是更炫的架构，而是把「目标 + 校验 + 停止条件」交给智能体，让它代你完成「看结果、提意见、再来一轮」；循环能做多好，只取决于「完成」怎么定义、怎么检查。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <span class="au"><i>N</i>Nate Herk | AI Automation（YouTube 频道）</span>
+  </div>
+  <p class="meta">原视频：<a href="https://www.youtube.com/watch?v=EuzYhzB0vbI">Finally. Agent Loops Clearly Explained.</a>（约 14 分半）。本页档位为「改写」：以视频字幕为骨架，重排为八个问题，演示里的分数、曲线为示意数字，凡改写与补充处都用橙色虚线框标注。</p>
+</header>
+
+<!-- 1 -->
+<section class="ch" id="s1" data-title="循环是什么">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>「写循环，不写提示词」是什么意思</h2>
+    <p class="lead">视频里先后出现了三种说法，它们说的是同一个东西的哪几块？</p>
+  </div>
+  <div class="fig">
+    <div class="cap"><b>切换三种说法</b>，看图里哪些部分被点亮。视频开头引用的是 Boris Cherny 与 Peter Steinberger 的话：他们不再给编码智能体写提示词，而是写循环。</div>
+    <div data-demo="defs"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：三种说法在视频中并排出现，没有编号；本页把它们并列成可切换的三项，图中的方框是对口头描述的重绘。作者的立场是：他想先把这个词讲清楚，因为「每个人都有自己的版本，对每个人的适用性也很不同」。</div>
+</section>
+
+<!-- 2 -->
+<section class="ch" id="s2" data-title="为什么要循环">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>把反馈环外包给智能体，曲线为什么更高</h2>
+    <p class="lead">AI 从来不会一次做对，那「看结果、提修改」这件事由谁来做，差别在哪？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">横轴是尝试次数，纵轴是成品质量。<b>拖动滑块</b>逐次揭示两条曲线：人工反馈 与 智能体校验循环。</div>
+    <div data-demo="curve"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频里是作者手画的示意图，只说「第一次大约到 50%，每次再涨五到十个百分点，直到你满意的 90%～95%」，智能体版本「第一次就更高，三四次时已远超没有校验循环的情形」。图中每个点的具体数值是本页为画图而取的示意数字，不是实测。</div>
+</section>
+
+<!-- 3 -->
+<section class="ch" id="s3" data-title="一圈三步">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>推理、行动、观察：一圈到底走什么</h2>
+    <p class="lead">视频里的三个真实案例，每走一圈分别做了什么、凭什么决定再来或停下？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一个案例，点<b>下一步</b>逐步执行（也可自动播放）。右侧图高亮当前阶段，下方日志记录每一步；每圈结尾的「完成了吗」决定继续还是停。</div>
+    <div data-demo="loopsim"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：三个案例都来自视频中作者在 Claude Code 里用 /goal 跑的实例（字幕里写作 Cloud Code、slash goal、3.js，本页按语义写为 Claude Code、/goal、Three.js）。视频没有展示每一轮的内部推理，步骤文字是按他的讲解归纳的；缩略图与飞机两例的中间轮数视频没有给出，图中不虚构。关于单个智能体循环如何逐轮调用工具，可对照<a href="../how-cline-works/index.html">《Cline 是怎么工作的》</a>与<a href="../deepseek-r1-cline-autonomous-coding/index.html">《DeepSeek R1 + Cline 自动编程》</a>。</div>
+</section>
+
+<!-- 4 -->
+<section class="ch" id="s4" data-title="三种形态">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>单兵、制作人加检查员、经理带一队帮手</h2>
+    <p class="lead">有人说循环是「推理-行动-观察」，有人说是模型与工具来回，有人说是无人值守的目标，有人说是智能体套智能体：它们是同一件事吗？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">作者把这些说法收拢到<b>推理、行动、观察</b>这根主干上，只要有一个主智能体在统筹，就能有很多种搭法。选一种形态，点<b>传递</b>看信息怎么流动。</div>
+    <div data-demo="shapes"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频把多智能体比作俄罗斯套娃，并说自己最常用的是单兵循环，大多数任务并不需要庞大的智能体架构，一个终端会话加一个好提示词就够了。更系统的编排模式可看<a href="../ai-agent-architecture-guide-for-pms/index.html">《产品经理的 AI 智能体架构指南》</a>，Anthropic 对智能体架构的看法见<a href="../anthropic-podcast-building-agents/index.html">《构建高效 Claude 智能体》</a>。</div>
+</section>
+
+<!-- 5 -->
+<section class="ch" id="s5" data-title="停止条件">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>什么时候该停：完成定义决定循环的命运</h2>
+    <p class="lead">同一个循环，换一种「完成」的写法，会停在哪里，还是根本停不下来？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">选一种停止条件，点<b>运行</b>，看每一轮的得分条和最终为什么停。得分为示意数字，用来演示停止的逻辑。</div>
+    <div data-demo="stopsim"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：对应视频中缩略图案例的「直到你满意」（主观）、Abbey Road 案例的「平均分不低于 9 就停，且最多 8 轮」，以及作者说自己跑过 12 小时以上却没多大用的循环。「标准过高永远够不到」是视频里「完成标准也很难、可能根本达不到则会一直跑」的情形；「重掷」按钮只是为了展示主观判断的不稳定，视频并未做这个实验。</div>
+</section>
+
+<!-- 6 -->
+<section class="ch" id="s6" data-title="校验因任务而异">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>造循环之前先问两件事：完成是什么，怎么检查</h2>
+    <p class="lead">不同的任务，「检查」长什么样？智能体需要什么工具才查得了？</p>
+  </div>
+  <div class="grid2">
+    <div class="fig">
+      <div class="cap"><b>蛋糕测试</b>：烤蛋糕时把叉子插进去，拔出来没有面糊就算熟。点按钮插一次。</div>
+      <div data-demo="cake"></div>
+    </div>
+    <div class="fig">
+      <div class="cap">选一个任务，看视频里它需要哪些检查。</div>
+      <div data-demo="checks"></div>
+    </div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：蛋糕的比喻是作者用来说明「怎样告诉智能体尽可能客观的停止标准」。作者原话还强调：最好的循环是直接写「一直迭代，直到某个指标等于某个结果」；做不到时才退而求其次，写「直到你有十足把握」。视频中的 HyperFrames 字幕写作 hyper frames，这里按产品名习惯写为 HyperFrames，细节以视频为准。</div>
+</section>
+
+<!-- 7 -->
+<section class="ch" id="s7" data-title="八个要素">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>一个循环真正好用，需要哪八样东西</h2>
+    <p class="lead">缺了其中一样，会出什么问题？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">八个要素默认全部具备。<b>点掉一项</b>，看缺了它视频里对应的是什么风险；有些要素视频只点了名、没有展开，页面会如实标出。</div>
+    <div data-demo="eight"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频里八个要素是一口气念完的清单，下面的「缺失后果」只采用视频其它位置的相关论述，没有的就写「视频仅点名」。记忆、日志一类的实践，可参考<a href="../manus-context-engineering-six-laws/index.html">《Manus 的六条上下文工程法则》</a>与<a href="../cline-system-prompt-anatomy/index.html">《拆解 Cline 的系统提示词》</a>，那些是本仓库其它文章的内容，并非本视频所讲。</div>
+</section>
+
+<!-- 8 -->
+<section class="ch" id="s8" data-title="不必 24/7">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>别人 24/7 跑循环，你也必须这样吗</h2>
+    <p class="lead">视频里的循环到底跑多久才算有用，作者为什么说这种焦虑「极其虚假」？</p>
+  </div>
+  <div class="fig">
+    <div class="cap">对数时间轴上标出视频里提到的几种时长，<b>点任一条</b>看作者怎么说；下方切换三种处境看他的建议。</div>
+    <div data-demo="ruler"></div>
+  </div>
+  <div class="final">好的循环不是跑得最久的，而是「完成」写得最清楚、检查做得最到位的：先想清楚怎样算完，再想清楚怎么查。</div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 YouTube 频道 Nate Herk | AI Automation 发布的视频 <a href="https://www.youtube.com/watch?v=EuzYhzB0vbI">Finally. Agent Loops Clearly Explained.</a> 制作，以其双语字幕为准；视频中的屏幕画面（引用推文、曲线图、案例截图与流程图）均用内联 SVG 与 JS 重绘，未引用任何外链图片。视频提到的 Boris Cherny、Peter Steinberger、Matthew Berman（循环库）的原始发言本页未逐一核对，均按视频转述呈现；字幕里 Steinberger 先后写作 Steinberg 与 Steinberger，这里统一为后者。演示中的分数与曲线均为示意。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>Nate Herk | AI Automation, 《Finally. Agent Loops Clearly Explained.》, YouTube。<a href="https://www.youtube.com/watch?v=EuzYhzB0vbI">视频链接</a></li>
+    <li>频道名称取自 YouTube oEmbed 返回的 author_name 字段（本页补充核对）。</li>
+  </ol>
+  <p>本页由 Claude Code 基于视频字幕生成，仅供学习；以视频为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+
+const clearEl = (n) => { while (n.firstChild) n.removeChild(n.firstChild); };
+const arrowDefs = (id) => svg('defs', {},
+  svg('marker', { id: id, viewBox: '0 0 10 10', refX: '8', refY: '5', markerWidth: '7', markerHeight: '7', orient: 'auto-start-reverse' },
+    svg('path', { d: 'M0 0L10 5L0 10z', style: 'fill:var(--muted)' })));
+const box = (x, y, w, h, l1, l2, cls = '') => {
+  const g = svg('g', { class: 'bx ' + cls });
+  g.append(svg('rect', { x, y, width: w, height: h, rx: 9 }));
+  if (l2) { g.append(svg('text', { x: x + w / 2, y: y + h / 2 - 3 }, l1), svg('text', { class: 's', x: x + w / 2, y: y + h / 2 + 12 }, l2)); }
+  else g.append(svg('text', { x: x + w / 2, y: y + h / 2 + 4 }, l1));
+  return g;
+};
+const segGroup = (labels, onPick, start = 0) => {
+  const wrap = el('div', { class: 'seg', role: 'group' });
+  const btns = labels.map((t, i) => el('button', { type: 'button', 'aria-pressed': String(i === start), class: i === start ? 'on' : '', onclick: () => {
+    btns.forEach((b, j) => { b.classList.toggle('on', i === j); b.setAttribute('aria-pressed', String(i === j)); });
+    onPick(i);
+  } }, t));
+  wrap.append(...btns);
+  return wrap;
+};
+const mkPick = (g, fn) => {
+  g.setAttribute('tabindex', '0'); g.setAttribute('role', 'button'); g.classList.add('rk');
+  g.addEventListener('click', fn);
+  g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(); } });
+};
+
+/* ---------- 1. 三种说法 ---------- */
+reg('defs', (node) => {
+  const root = svg('svg', { viewBox: '0 0 460 224', role: 'img', 'aria-label': '循环示意图：触发、行动、终止条件，以及目标与校验，和被替换的人' });
+  root.append(arrowDefs('ar1'));
+  const L = (d, cls = '') => svg('path', { d, class: 'ln ' + cls, 'marker-end': 'url(#ar1)' });
+  root.append(L('M114 122 L178 122'), L('M280 122 L344 122'), L('M230 52 L230 93'), L('M214 150 L214 168'), L('M246 168 L246 150'),
+    L('M124 40 L180 100', 'dash'));
+  const els = {
+    human: box(14, 14, 110, 46, '你 · 敲键盘', '手动发提示词', 'ghost'),
+    goal: box(175, 14, 110, 38, '目标 Goal', '', ''),
+    trigger: box(14, 100, 100, 44, '触发 Trigger', '时间或事件'),
+    action: box(180, 94, 100, 56, '行动 Action', '智能体推理并执行'),
+    stop: box(346, 100, 100, 44, '终止 Stop', '达到停止条件'),
+    verify: box(175, 170, 110, 38, '校验 Verify', ''),
+  };
+  Object.values(els).forEach((g) => root.append(g));
+  const defs = [
+    { keys: ['trigger', 'action', 'stop'], t: '说法一（Boris Cherny 与 Peter Steinberger）：不再给编码智能体写提示词，而是写循环；一个循环有三要素，触发条件、行动和终止条件。还在写死板提示词去直接指挥智能体，就有些落后了。' },
+    { keys: ['goal', 'verify', 'action'], t: '说法二（递归的目标）：你定义一个目的，AI 反复迭代直到完成。最重要的两根支柱是目标（最好客观而非主观）和校验（它怎么知道该停，怎么检查并继续迭代）。' },
+    { keys: ['human', 'action'], t: '说法三（取代你自己）：循环工程本质上就是替代那个坐在键盘前不断给智能体发提示词的人；由你设计一套系统，代劳原本由你手动执行的操作。图中左上角的「你」变成了虚线框。' },
+  ];
+  const status = el('div', { class: 'status' });
+  const show = (i) => {
+    const d = defs[i];
+    for (const [k, g] of Object.entries(els)) { const on = d.keys.includes(k); g.classList.toggle('on', on); g.classList.toggle('dim', !on); }
+    status.textContent = d.t;
+  };
+  node.append(segGroup(['三要素', '目标 + 校验', '取代你自己'], show), root, status);
+  show(0);
+});
+
+/* ---------- 2. 质量曲线 ---------- */
+reg('curve', (node) => {
+  const H = [50, 57, 63, 69, 75, 81, 86, 90], A = [62, 80, 90, 94, 95, 96, 96, 96];
+  const X0 = 44, X1 = 440, Y0 = 212, Y1 = 22;
+  const xs = (i) => X0 + (X1 - X0) * i / (H.length - 1), ys = (v) => Y0 - (Y0 - Y1) * v / 100;
+  const root = svg('svg', { viewBox: '0 0 460 250', role: 'img', 'aria-label': '尝试次数与成品质量的示意曲线，人工反馈较慢，智能体校验循环更快接近 90% 到 95%' });
+  [0, 25, 50, 75, 100].forEach((v) => { root.append(svg('line', { class: 'gl', x1: X0, x2: X1, y1: ys(v), y2: ys(v) }), svg('text', { class: 'lbl', x: X0 - 6, y: ys(v) + 4, 'text-anchor': 'end' }, v + '%')); });
+  root.append(svg('rect', { x: X0, y: ys(95), width: X1 - X0, height: ys(90) - ys(95), style: 'fill:var(--t-soft);opacity:.7' }),
+    svg('text', { class: 'lbl', x: X1, y: ys(95) - 3, 'text-anchor': 'end' }, '90%~95%：你可以接受的水平'),
+    svg('line', { class: 'axis', x1: X0, x2: X1, y1: Y0, y2: Y0 }));
+  H.forEach((_, i) => root.append(svg('text', { class: 'lbl mid', x: xs(i), y: Y0 + 16 }, i + 1)));
+  root.append(svg('text', { class: 'lbl mid', x: (X0 + X1) / 2, y: 246 }, '尝试次数 Attempts'));
+  const mk = (arr, col) => {
+    const line = svg('polyline', { fill: 'none', 'stroke-width': 3, 'stroke-linejoin': 'round', style: 'stroke:var(--' + col + ')' });
+    const dots = arr.map((v, i) => svg('circle', { class: 'pt', cx: xs(i), cy: ys(v), r: 5, style: 'stroke:var(--' + col + ')' }));
+    root.append(line, ...dots);
+    return { line, dots, arr };
+  };
+  const h = mk(H, 'o'), a = mk(A, 't');
+  const out = el('output', {}, '1');
+  const input = el('input', { type: 'range', min: '1', max: '8', value: '1', step: '1', 'aria-label': '尝试次数' });
+  const status = el('div', { class: 'status' });
+  const upd = () => {
+    const n = +input.value; out.textContent = n;
+    [h, a].forEach((s) => { s.line.setAttribute('points', s.arr.slice(0, n).map((v, i) => xs(i) + ',' + ys(v)).join(' ')); s.dots.forEach((d, i) => { d.style.display = i < n ? '' : 'none'; }); });
+    const firstH = H.findIndex((v) => v >= 90) + 1, firstA = A.findIndex((v) => v >= 90) + 1;
+    let tail = '';
+    if (n >= firstA && n < firstH) tail = ` 智能体循环已在第 ${firstA} 次进入可接受区，人工版还在 ${H[n - 1]}%。`;
+    else if (n >= firstH) tail = ` 人工版直到第 ${firstH} 次才进入可接受区，而智能体第 ${firstA} 次就到了。`;
+    status.innerHTML = `第 <b>${n}</b> 次：人工反馈 <b>${H[n - 1]}%</b>（你亲手给了 ${n - 1} 次反馈），智能体校验循环 <b>${A[n - 1]}%</b>（你给了 0 次）。${tail}`;
+  };
+  input.addEventListener('input', upd);
+  node.append(el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--o)' }), '人工反馈与迭代'), el('span', {}, el('i', { style: 'background:var(--t)' }), '智能体校验循环（示意）')),
+    root, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '尝试次数', input, out)), status);
+  upd();
+});
+
+/* ---------- 3. 循环模拟器 ---------- */
+reg('loopsim', (node) => {
+  const R = (t) => ['R', t], A = (t) => ['A', t], O = (t) => ['O', t], C = (t, s) => ['C', t, s ? 'stop' : 'loop'], K = (t) => ['K', t];
+  const CASES = [
+    { name: '缩略图（/goal）', time: '约 27 分钟', done: '「直到你满意」，主观', check: '按评分标准给 10 个概念打分：小尺寸下是否清晰、好奇心、情绪拉力、视觉对比',
+      steps: [R('规划：先出 10 个缩略图概念，并对标 MrBeast 缩略图，按评分标准逐个打分'), A('执行：做出 1 到 10 号概念'), O('观察：给每个概念打分，选出前三名（1、2、8 号）'),
+        C('完成了吗？还没有让它满意的版本，继续'), R('规划：找出每个入选概念最弱的一环'), A('执行：改出 1、2、8 号的 V2'), O('观察：重新打分，8 号最好'),
+        C('完成了吗？还不满意，聚焦最强的 8 号继续'), R('规划：再针对 8 号的短板调整'), A('执行：做出 8 号 V3'), O('观察：再评分'), C('满意了，停止并交付 8 号 V3（共 27 分钟）。作者指出：这里的打分是主观的', 1)] },
+    { name: 'Three.js 飞机', time: '约 37 分钟', done: '按提示词里的标准（取自 Matthew Berman 的循环库）', check: '用浏览器打开，旋转缩放，看是否正常渲染',
+      steps: [R('规划：用 Three.js 做一架飞机'), A('执行：写出场景与模型代码'), O('观察：打开浏览器，旋转它，看能不能用、渲染是否正常'), C('完成了吗？还有问题，继续'),
+        K('……中间的若干轮：视频没有逐轮展示……'), O('观察：再次在浏览器里检查'), C('停止，交付一架可缩放、可拖动旋转的飞机（共 37 分钟）。作者说它仍不完美：本想做成半透明以便看到内部，但比不用 /goal 与标准好得多', 1)] },
+    { name: 'Abbey Road 复刻', time: '轮数明确：到 v7 停', done: '平均分 ≥ 9 就停；另有 8 轮硬上限', check: '每个版本放进浏览器截图，与参考图对比打分',
+      steps: [R('规划：只用 HTML/CSS 之类的代码（不用图像生成）复刻披头士 Abbey Road 那张照片'), A('执行：写出 v1'), O('观察：放进浏览器截图，对照参考图'), C('完成了吗？平均分不到 9，也没到 8 轮，继续'),
+        R('规划：判断它为什么还不像参考图'), A('执行：改出 v2'), O('观察：再截图、对比'), C('完成了吗？还没到，继续'), K('……v3 到 v6：每一轮都是同样的截图与对比……'),
+        A('执行：改出 v7'), O('观察：截图对比'), C('停止（v7）。视频说这一轮已接近 8 轮上限，最终成品仍和原图相去甚远，但每一轮确实有截图在校验，可看到逐版变好', 1)] },
+  ];
+  let ci = 0, k = 0, timer = null;
+  const root = svg('svg', { viewBox: '0 0 360 226', role: 'img', 'aria-label': '推理、行动、观察三步和完成判断构成的循环图' });
+  root.append(arrowDefs('ar3'));
+  const L = (d, cls = '') => svg('path', { d, class: 'ln ' + cls, 'marker-end': 'url(#ar3)' });
+  root.append(L('M120 44 L236 44'), L('M290 66 L290 108'), L('M236 130 L120 130'), L('M70 108 L70 66', 'dash'), L('M120 140 L148 190'));
+  root.append(svg('text', { class: 'lbl', x: 74, y: 90 }, '否：再来一圈'), svg('text', { class: 'lbl', x: 134, y: 172 }, '是'));
+  const nd = { R: box(20, 24, 100, 40, '推理 Reason', ''), A: box(236, 24, 108, 40, '行动 Act', ''), O: box(236, 108, 108, 40, '观察 Observe', ''), C: box(20, 108, 100, 40, '完成了吗？', '', 'warn'), S: box(110, 190, 130, 30, '停止并交付', '', 'ok') };
+  Object.values(nd).forEach((g) => root.append(g));
+  const info = el('div', { class: 'info' });
+  const log = el('div', { class: 'log', 'aria-live': 'polite' });
+  const status = el('div', { class: 'status' });
+  const passes = el('span', { class: 'tag' }, '第 0 圈');
+  const next = el('button', { class: 'btn primary', type: 'button', onclick: () => step() }, '下一步');
+  const auto = el('button', { class: 'btn', type: 'button', onclick: () => { timer ? halt() : play(); } }, '自动播放');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { halt(); k = 0; render(); } }, '重置');
+  const labelOf = { R: '推理', A: '行动', O: '观察', C: '判断', K: '省略', S: '停止' };
+  function halt() { if (timer) { clearInterval(timer); timer = null; } auto.textContent = '自动播放'; }
+  function play() { if (k >= CASES[ci].steps.length) { k = 0; render(); } auto.textContent = '暂停'; timer = setInterval(() => { step(); }, RM ? 600 : 1300); }
+  function step() { const s = CASES[ci].steps; if (k < s.length) { k++; render(); } if (k >= s.length) halt(); }
+  function render() {
+    const c = CASES[ci], cur = c.steps[k - 1];
+    Object.values(nd).forEach((g) => g.classList.remove('on'));
+    if (cur) { if (cur[2] === 'stop') nd.S.classList.add('on'); if (nd[cur[0]]) nd[cur[0]].classList.add('on'); }
+    clearEl(log);
+    c.steps.slice(0, k).forEach((s, i) => {
+      const isStop = s[2] === 'stop';
+      log.append(el('div', { class: 'row ' + (isStop ? 'S' : s[0]) + (s[0] === 'K' ? ' skip' : '') + (i === k - 1 ? ' cur' : '') }, el('span', { class: 'k' }, isStop ? labelOf.S : labelOf[s[0]]), el('span', {}, s[1])));
+    });
+    log.scrollTop = log.scrollHeight;
+    passes.textContent = '第 ' + c.steps.slice(0, k).filter((s) => s[0] === 'C').length + ' 次判断';
+    next.disabled = k >= c.steps.length;
+    status.innerHTML = k === 0 ? '点「下一步」，从第一次推理开始。' : (k >= c.steps.length ? '已走完：<b>循环自己停了</b>，并不是人喊停。' : '当前阶段：<b>' + labelOf[cur[0]] + '</b>');
+    clearEl(info);
+    info.append(el('div', {}, el('b', {}, '耗时'), c.time), el('div', {}, el('b', {}, '完成定义'), c.done), el('div', {}, el('b', {}, '校验手段'), c.check));
+  }
+  const pick = segGroup(CASES.map((c) => c.name), (i) => { halt(); ci = i; k = 0; render(); });
+  node.append(pick, el('div', { class: 'grid2', style: 'align-items:start;margin-top:10px' }, root, el('div', {}, info, el('div', { class: 'ctrl' }, next, auto, reset, passes), status)), log);
+  render();
+  return { stop: halt };
+});
+
+/* ---------- 4. 三种形态 ---------- */
+reg('shapes', (node) => {
+  const SH = [
+    { name: '单兵循环', hint: '作者自己最常用：一个智能体自己推理、行动、观察，然后重复。',
+      nodes: { a: box(150, 70, 160, 56, '一个智能体', '推理 · 行动 · 观察') },
+      edges: { loop: 'M310 86 C400 40, 400 156, 310 112' },
+      steps: [{ on: ['a'], ed: [], t: '推理：想清楚下一步做什么，先规划。' }, { on: ['a'], ed: [], t: '行动：动手实现。' }, { on: ['a'], ed: [], t: '观察：看结果，可能是肉眼校验，也可能是跑一次测试。' }, { on: ['a'], ed: ['loop'], t: '没达到完成定义就再来一圈；达到了，就回来告诉你「做完了」。' }] },
+    { name: '制作者 + 检查员', hint: '一个智能体做事，另一个智能体打分并给反馈。',
+      nodes: { m: box(40, 80, 140, 56, '制作者 Maker', '做出成果'), c: box(280, 80, 140, 56, '检查员 Checker', '评分并给反馈') },
+      edges: { mc: 'M180 96 L278 96', cm: 'M280 122 L182 122' },
+      steps: [{ on: ['m'], ed: [], t: '制作者做出一版成果。' }, { on: ['m', 'c'], ed: ['mc'], t: '成果交给检查员。' }, { on: ['c'], ed: [], t: '检查员评分、指出问题；这是一个独立的评分者，不是做事的人自己打分。' }, { on: ['m', 'c'], ed: ['cm'], t: '反馈回到制作者，据此再改一版。达标则交付。' }] },
+    { name: '经理 + 一队帮手', hint: '一个主智能体统筹，派活给多个帮手；帮手还可以再带帮手，像套娃。',
+      nodes: { g: box(160, 14, 140, 50, '经理', '主智能体统筹'), h1: box(14, 150, 120, 52, '帮手 1', ''), h2: box(170, 150, 120, 52, '帮手 2', ''), h3: box(326, 150, 120, 52, '帮手 3', '') },
+      edges: { d1: 'M190 66 L90 148', d2: 'M230 66 L230 148', d3: 'M270 66 L370 148' },
+      steps: [{ on: ['g'], ed: [], t: '经理看目标，决定怎么拆。' }, { on: ['g', 'h1', 'h2', 'h3'], ed: ['d1', 'd2', 'd3'], t: '把子任务派给各个帮手。' }, { on: ['h1', 'h2', 'h3'], ed: [], t: '帮手们各自行动。' }, { on: ['g'], ed: [], t: '结果汇总回经理，由经理判断完成了没有；没有就继续派活。只要有一个主智能体在统筹，就能这样搭。' }] },
+  ];
+  let si = 0, ti = -1;
+  const holder = el('div');
+  const status = el('div', { class: 'status' });
+  let els = null;
+  function build() {
+    clearEl(holder); ti = -1;
+    const s = SH[si];
+    const root = svg('svg', { viewBox: '0 0 460 216', role: 'img', 'aria-label': s.name + '示意图' });
+    root.append(arrowDefs('ar4'));
+    const ed = {};
+    for (const [k, d] of Object.entries(s.edges)) { const p = svg('path', { d, class: 'ln', 'marker-end': 'url(#ar4)' }); ed[k] = p; root.append(p); }
+    for (const g of Object.values(s.nodes)) root.append(g);
+    els = { nodes: s.nodes, ed };
+    holder.append(root);
+    status.textContent = s.hint + ' 点「传递」逐步看。';
+  }
+  function paint() {
+    const s = SH[si], st = s.steps[ti];
+    for (const [k, g] of Object.entries(els.nodes)) g.classList.toggle('on', !!st && st.on.includes(k));
+    for (const [k, p] of Object.entries(els.ed)) p.classList.toggle('on', !!st && st.ed.includes(k));
+    status.innerHTML = st ? `第 ${ti + 1} / ${s.steps.length} 步：${st.t}` : s.hint;
+  }
+  const go = el('button', { class: 'btn primary', type: 'button', onclick: () => { ti = (ti + 1) % SH[si].steps.length; paint(); } }, '传递');
+  const rs = el('button', { class: 'btn', type: 'button', onclick: () => { ti = -1; paint(); } }, '重置');
+  node.append(segGroup(SH.map((s) => s.name), (i) => { si = i; build(); }), holder, el('div', { class: 'ctrl' }, go, rs), status);
+  build();
+});
+
+/* ---------- 5. 停止条件模拟 ---------- */
+reg('stopsim', (node) => {
+  const over = (n) => +(8.4 * (1 - Math.exp(-n / 2.5))).toFixed(1);
+  const SC = [
+    { name: '客观指标', thr: 9, cap: 8, scores: [4.2, 5.8, 7.0, 7.9, 8.6, 9.2], rule: '「平均分 ≥ 9 就停」' },
+    { name: '直到你满意', thr: null, cap: null, scores: [5.0, 6.4, 7.2, 7.8, 8.1, 8.3, 8.4, 8.5], rule: '「直到你满意」（没有数值）' },
+    { name: '标准过高、无上限', thr: 9, cap: null, scores: Array.from({ length: 14 }, (_, i) => over(i + 1)), rule: '「平均分 ≥ 9 就停」，但这个任务最高只能到约 8.4，也没设上限' },
+    { name: '标准过高 + 硬上限', thr: 9, cap: 8, scores: Array.from({ length: 14 }, (_, i) => over(i + 1)), rule: '同上，但设了「最多 8 轮」' },
+  ];
+  let si = 0, shown = 0, timer = null, subjStop = 4;
+  const W = 460, X0 = 40, Y0 = 190, Y1 = 14, BW = 22, GAP = 10;
+  const ys = (v) => Y0 - (Y0 - Y1) * v / 10;
+  const root = svg('svg', { viewBox: '0 0 460 226', role: 'img', 'aria-label': '每一轮的得分条，以及停止条件' });
+  const holder = svg('g'); root.append(holder);
+  const status = el('div', { class: 'status' });
+  const run = el('button', { class: 'btn primary', type: 'button', onclick: () => start() }, '运行');
+  const reroll = el('button', { class: 'btn', type: 'button', onclick: () => { subjStop = 2 + Math.floor(Math.random() * 5); start(); } }, '重掷评分者的判断');
+  function halt() { if (timer) { clearInterval(timer); timer = null; } }
+  function stopAt() {
+    const s = SC[si];
+    if (si === 1) return subjStop;
+    for (let i = 0; i < s.scores.length; i++) {
+      if (s.thr != null && s.scores[i] >= s.thr) return i + 1;
+      if (s.cap != null && i + 1 >= s.cap) return i + 1;
+    }
+    return null;
+  }
+  function draw() {
+    const s = SC[si]; clearEl(holder);
+    const total = si === 2 ? 14 : s.scores.length;
+    [0, 5, 10].forEach((v) => holder.append(svg('line', { class: 'gl', x1: X0, x2: W - 10, y1: ys(v), y2: ys(v) }), svg('text', { class: 'lbl', x: X0 - 6, y: ys(v) + 4, 'text-anchor': 'end' }, v)));
+    if (s.thr != null) holder.append(svg('line', { x1: X0, x2: W - 10, y1: ys(s.thr), y2: ys(s.thr), style: 'stroke:var(--t);stroke-width:1.5;stroke-dasharray:5 4' }), svg('text', { class: 'lbl', x: W - 10, y: ys(s.thr) - 4, 'text-anchor': 'end' }, '达标线 ' + s.thr));
+    if (s.cap != null) { const cx = X0 + (s.cap - 1) * (BW + GAP) + BW + GAP / 2; holder.append(svg('line', { x1: cx, x2: cx, y1: Y1, y2: Y0, style: 'stroke:var(--o);stroke-width:1.5;stroke-dasharray:3 3' }), svg('text', { class: 'lbl', x: cx + 4, y: Y1 + 8 }, '硬上限 ' + s.cap + ' 轮')); }
+    const sp = stopAt();
+    for (let i = 0; i < shown && i < total; i++) {
+      const x = X0 + i * (BW + GAP) + GAP / 2, v = s.scores[i];
+      const isLast = sp === i + 1;
+      const cls = 'bar' + (isLast ? (si === 3 || (si === 1) ? ' cap' : ' hit') : '');
+      holder.append(svg('rect', { class: cls, x, y: ys(v), width: BW, height: Y0 - ys(v), rx: 3 }));
+      holder.append(svg('text', { class: 'lbl mid', x: x + BW / 2, y: Y0 + 14 }, i + 1));
+      if (si !== 1) holder.append(svg('text', { class: 'lbl mid', x: x + BW / 2, y: ys(v) - 3, style: 'font-size:9px' }, v));
+      else holder.append(svg('text', { class: 'lbl mid', x: x + BW / 2, y: ys(v) - 3, style: 'font-size:10px' }, '?'));
+    }
+    holder.append(svg('text', { class: 'lbl mid', x: (X0 + W) / 2, y: 222 }, '第几轮（得分为示意）'));
+    const done = sp != null && shown >= sp;
+    if (done) {
+      const i = sp - 1, x = X0 + i * (BW + GAP) + GAP / 2 + BW / 2;
+      holder.append(svg('text', { class: 'lbl big mid', x: Math.min(x, W - 40), y: Math.max(ys(s.scores[i]) - 16, 12) }, '停'));
+    } else if (si === 2 && shown >= total) {
+      holder.append(svg('text', { class: 'lbl big', x: W - 120, y: Y1 + 34 }, '……仍在跑'));
+    }
+  }
+  function message() {
+    const s = SC[si], sp = stopAt();
+    if (shown === 0) return '规则：' + s.rule + '。点「运行」。';
+    if (sp != null && shown >= sp) {
+      if (si === 0) return `第 <b>${sp}</b> 轮得分 ${s.scores[sp - 1]}，达到 9：<b>客观指标达标，循环自己停下</b>。这是作者推荐的写法：直到某指标等于某结果。`;
+      if (si === 1) return `评分者在第 <b>${sp}</b> 轮觉得「满意」，就停了。没有数值判据，停在哪里取决于评分者当下的判断（点「重掷」换个轮次）。作者的改进方向：把评分尽量客观，单设专职评分子智能体并先用评测验证它。`;
+      return `跑满 <b>${sp}</b> 轮仍只有 ${s.scores[sp - 1]}，没到 9，但硬上限把它<b>拉停了</b>。结果未达标，需要你来看，而不是让它白烧。`;
+    }
+    if (si === 2 && shown >= 14) return `已经 <b>14</b> 轮，分数停在 8.4 上下，永远到不了 9，又没有上限：它会一直跑下去。作者说自己有过跑 12 小时以上、价值不大的循环。`;
+    return `第 <b>${shown}</b> 轮，得分 ${si === 1 ? '？' : s.scores[shown - 1]}……`;
+  }
+  function start() {
+    halt(); shown = 0; draw(); status.innerHTML = message();
+    const total = SC[si].scores.length, sp = stopAt();
+    if (RM) { shown = sp || total; draw(); status.innerHTML = message(); return; }
+    timer = setInterval(() => {
+      shown++; draw(); status.innerHTML = message();
+      if ((sp != null && shown >= sp) || shown >= total) halt();
+    }, 450);
+  }
+  const seg = segGroup(SC.map((s) => s.name), (i) => { halt(); si = i; shown = 0; reroll.style.display = i === 1 ? '' : 'none'; draw(); status.innerHTML = message(); });
+  node.append(seg, root, el('div', { class: 'ctrl' }, run, reroll), status);
+  reroll.style.display = 'none';
+  draw(); status.innerHTML = message();
+  return { stop: halt };
+});
+
+/* ---------- 6a. 蛋糕测试 ---------- */
+reg('cake', (node) => {
+  let bake = 0, forkIn = false;
+  const root = svg('svg', { viewBox: '0 0 240 170', role: 'img', 'aria-label': '蛋糕与叉子测试示意图' });
+  root.append(svg('rect', { x: 40, y: 90, width: 160, height: 50, rx: 8, style: 'fill:var(--y-soft);stroke:var(--y);stroke-width:2' }),
+    svg('rect', { x: 40, y: 78, width: 160, height: 18, rx: 8, style: 'fill:var(--o-soft);stroke:var(--o);stroke-width:2' }));
+  const fork = svg('g', { class: 'fork' });
+  fork.append(svg('line', { x1: 120, x2: 120, y1: -20, y2: 40, style: 'stroke:var(--ink);stroke-width:3;stroke-linecap:round' }),
+    svg('line', { x1: 112, x2: 128, y1: 40, y2: 40, style: 'stroke:var(--ink);stroke-width:3;stroke-linecap:round' }));
+  [112, 120, 128].forEach((x) => fork.append(svg('line', { x1: x, x2: x, y1: 40, y2: 56, style: 'stroke:var(--ink);stroke-width:3;stroke-linecap:round' })));
+  const batter = svg('g', {}, [112, 120, 128].map((x) => svg('circle', { cx: x, cy: 60, r: 4, style: 'fill:var(--o)' })));
+  fork.append(batter);
+  root.append(fork);
+  const status = el('div', { class: 'status' });
+  const stick = el('button', { class: 'btn primary', type: 'button', onclick: () => { forkIn = !forkIn; upd(); } }, '插入叉子');
+  const more = el('button', { class: 'btn', type: 'button', onclick: () => { bake = Math.min(3, bake + 1); forkIn = false; upd(); } }, '再烤一会儿');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { bake = 0; forkIn = false; upd(); } }, '重置');
+  function upd() {
+    fork.style.transform = forkIn ? 'translateY(80px)' : 'translateY(0)';
+    batter.style.display = bake < 3 ? '' : 'none';
+    stick.textContent = forkIn ? '拔出叉子' : '插入叉子';
+    status.innerHTML = !forkIn ? `已烤 ${bake} 段。叉子在外面，还不知道熟没熟。` : (bake < 3 ? '叉子上沾着面糊：<b>没熟，继续</b>。' : '叉子是干净的：<b>熟了，停</b>。');
+  }
+  node.append(root, el('div', { class: 'ctrl' }, stick, more, reset), status,
+    el('div', { class: 'src' }, '叉子就是校验：一个任何人都看得懂的「做完」信号。'));
+  upd();
+});
+
+/* ---------- 6b. 不同任务的检查 ---------- */
+reg('checks', (node) => {
+  const T = [
+    { n: '做一个游戏', done: '一个能在电脑上打开并玩的游戏', chk: ['视觉上检查画面', '功能上检查各项是否可用', '真的去玩关卡，看有没有哪里坏'], tool: '要能运行游戏、截图、操作并玩关卡的手段' },
+    { n: '写脚本', done: '一篇文稿', chk: ['不需要看画面', '检查行文是否通顺（flow）', '检查是否像你自己的语气'], tool: '以文本为主，检查靠阅读与对照风格' },
+    { n: '用 HyperFrames 剪视频', done: '一支渲染好的视频', chk: ['取得文字稿', '剪掉口误和停顿，做出并同步节拍，再渲染', '校验所有节拍都在范围内、并与文字稿正确对齐'], tool: '作者最常用的循环：丢进去、敲一个 /goal，其余全交给它，所以才能看到「一个提示词一次成」' },
+    { n: '复刻 Abbey Road 图', done: '用代码画出的、尽量像参考图的页面', chk: ['每个版本放进浏览器并截图', '拿截图对比参考图，指出哪里仍不像', '平均分 ≥ 9 就停，另设 8 轮上限'], tool: '要有浏览器和截图能力；作者说成品虽离原图很远，但校验确实在起作用' },
+    { n: '做 Three.js 飞机', done: '一个能旋转、缩放的三维飞机', chk: ['在浏览器里打开', '旋转它，看是否正常渲染', '不满意就继续迭代'], tool: '要有能打开页面并交互的浏览器' },
+  ];
+  const out = el('div', { class: 'info' });
+  const status = el('div', { class: 'status' });
+  const show = (i) => {
+    const t = T[i]; clearEl(out);
+    out.append(el('div', {}, el('b', {}, '做完 = '), t.done), el('div', {}, el('b', {}, '怎么检查')), el('ul', { class: 'mlist' }, ...t.chk.map((c) => el('li', {}, c))), el('div', {}, el('b', {}, '需要的工具 '), t.tool));
+    status.innerHTML = '同样叫「校验」，<b>' + t.n + '</b>的检查和别的任务完全不同：智能体必须带上能做这些检查的工具。';
+  };
+  const wrap = el('div', { class: 'chk' });
+  const btns = T.map((t, i) => el('button', { type: 'button', 'aria-pressed': 'true', onclick: () => { btns.forEach((b, j) => b.setAttribute('aria-pressed', String(i === j))); show(i); } }, t.n));
+  btns.forEach((b, j) => b.setAttribute('aria-pressed', String(j === 0)));
+  wrap.append(...btns);
+  node.append(wrap, out, status);
+  show(0);
+});
+
+/* ---------- 7. 八个要素 ---------- */
+reg('eight', (node) => {
+  const E = [
+    ['可检验的目标', '没有客观目标，只能写「直到你满意」，评分就变主观（缩略图案例）。作者建议尽量写成「一直迭代直到某指标等于某结果」。'],
+    ['硬上限', '没有硬上限，标准又很高时循环可能一直跑；作者有过 12 小时以上、价值不大的循环。Abbey Road 例子里就设了 8 轮上限。'],
+    ['好工具', '智能体没有合适的工具就查不了：截图、浏览器、跑测试……让它带上做检查的工具是你的责任。'],
+    ['记忆', '视频仅点名，未展开。'],
+    ['独立的检查者', '让做事的人自己打分容易主观；作者的改进思路是单设一个专职评分子智能体，并用一批评测去验证它，才更放心。'],
+    ['先规划', '视频只在讲主干时说到：先推理、规划，再开始实现；除此未展开。'],
+    ['日志', '视频仅点名，未展开。'],
+    ['成本合理', '循环可能跑得很久；作者的典型时长是 35 分钟到几小时，不需要连跑 4 天，12 小时以上的几次对他价值不大。'],
+  ];
+  const on = E.map(() => true);
+  const wrap = el('div', { class: 'chk' });
+  const out = el('div');
+  const status = el('div', { class: 'status' });
+  const btns = E.map((e, i) => el('button', { type: 'button', 'aria-pressed': 'true', onclick: () => { on[i] = !on[i]; upd(); } }, (i + 1) + '. ' + e[0]));
+  wrap.append(...btns);
+  function upd() {
+    btns.forEach((b, i) => b.setAttribute('aria-pressed', String(on[i])));
+    const miss = E.filter((_, i) => !on[i]);
+    clearEl(out);
+    if (miss.length) out.append(el('ul', { class: 'mlist' }, ...miss.map((e) => el('li', {}, el('span', { class: 'nm' }, e[0] + '：'), e[1]))));
+    status.innerHTML = `具备 <b>${on.filter(Boolean).length} / 8</b>。` + (miss.length ? '下面是缺失项在视频里对应的问题。' : '八项齐全。点任一项试试把它去掉。');
+  }
+  node.append(wrap, status, out);
+  upd();
+});
+
+/* ---------- 8. 时长标尺 ---------- */
+reg('ruler', (node) => {
+  const LO = 10, HI = 6000;
+  const X0 = 20, X1 = 440;
+  const px = (m) => X0 + (X1 - X0) * Math.log(m / LO) / Math.log(HI / LO);
+  const IT = [
+    { n: '缩略图 /goal', a: 27, b: 27, ok: 1, t: '缩略图案例跑了约 27 分钟。' },
+    { n: 'Three.js 飞机 /goal', a: 37, b: 37, ok: 1, t: '飞机案例跑了约 37 分钟。' },
+    { n: '典型：35 分钟到几小时', a: 35, b: 180, ok: 1, t: '作者平时跑的、让他觉得有用的循环，多半是 35 分钟左右到几个小时。' },
+    { n: '睡前扔一个大循环', a: 240, b: 480, ok: 1, t: '有大目标时，他会在睡前放一个「厚实」的循环，醒来得到跑了 4 到 8 小时的结果。这更偏实验性质，他再把这份产出丢回循环，或自己人工迭代。' },
+    { n: '12 小时以上', a: 720, b: 720, ok: 0, t: '他有几个循环跑了 12 小时以上，对他并不太有用；常见原因是目标很难、完成标准也很难，根本达不到。' },
+    { n: '连跑 4 天', a: 5760, b: 5760, ok: 0, t: '他不需要连跑四天的循环，也不去搞那种跑三天三夜的花式运行。' },
+  ];
+  const root = svg('svg', { viewBox: '0 0 460 190', role: 'img', 'aria-label': '视频中各种循环时长在对数时间轴上的位置' });
+  [[10, '10 分'], [60, '1 小时'], [240, '4 小时'], [720, '12 小时'], [1440, '1 天'], [5760, '4 天']].forEach(([m, t]) => {
+    root.append(svg('line', { class: 'gl', x1: px(m), x2: px(m), y1: 6, y2: 150 }), svg('text', { class: 'lbl mid', x: Math.min(Math.max(px(m), 22), 438), y: 168 }, t));
+  });
+  root.append(svg('line', { class: 'axis', x1: X0, x2: X1, y1: 152, y2: 152 }));
+  const status = el('div', { class: 'status' }, '点任一条。');
+  const gs = IT.map((it, i) => {
+    const y = 10 + i * 23, x1 = px(it.a), x2 = Math.max(px(it.b), x1 + 8);
+    const g = svg('g', { 'aria-label': it.n });
+    const col = it.ok ? 'var(--t)' : 'var(--o)';
+    const r = svg('rect', { x: x1, y, width: x2 - x1, height: 14, rx: 4, style: 'fill:' + col + ';opacity:.85;stroke:transparent;stroke-width:2' });
+    const left = x1 > 260;
+    const tx = svg('text', { class: 'lbl', x: left ? x1 - 5 : x2 + 5, y: y + 11, 'text-anchor': left ? 'end' : 'start' }, it.n);
+    g.append(r, tx);
+    mkPick(g, () => { gs.forEach((q) => q.firstChild.style.stroke = 'transparent'); r.style.stroke = 'var(--text)'; status.innerHTML = `<b>${it.n}</b>：${it.t}`; });
+    root.append(g);
+    return g;
+  });
+  const SD = [
+    { n: '个人知识工作', t: '作者的做法：让智能体按固定节奏（cadence）或由事件触发去做事；纯为了「自动化」让它通宵空转没有好处。大目标就睡前放一个循环，醒来再接着迭代，不去跑三天。他是用 Claude Code 做知识工作，而不是大规模重构代码库、天天做应用。' },
+    { n: '成熟大团队', t: '作者的看法：如果是和成熟的大团队共同维护一个代码库、持续迭代、不断合入各种东西，那么持续运行的循环也许更说得通，但这并不适用于他本人。' },
+    { n: '看到别人 24/7 很焦虑', t: '作者认为这种焦虑「极其虚假」：不理解自己在做什么就扩大规模，只会放大问题，留下一堆 bug 以后再修。Steinberger 是硬核程序员，在 OpenAI 工作，那样的做法也许让他效率翻了十倍，但不意味着直接适用于你。可以关注，不必立刻放下一切，也不必永久接入每个 Claude Code 会话。' },
+  ];
+  const stance = el('div', { class: 'status' });
+  node.append(root, status, el('div', { class: 'cap', style: 'margin-top:14px' }, '再看看你属于哪种处境：'), segGroup(SD.map((s) => s.n), (i) => { stance.textContent = SD[i].t; }), stance);
+  stance.textContent = SD[0].t;
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+/* 入场 + 目录高亮 + 演示的可视区启停：全部用 IntersectionObserver */
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>

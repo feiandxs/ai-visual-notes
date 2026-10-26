@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>Transformer：大语言模型背后的机器</title>
+<meta name="description" content="基于 3Blue1Brown《Transformers, the tech behind LLMs》的可视化讲解：逐词采样、词嵌入与语义方向、点积、上下文长度、softmax 与温度，以及 GPT-3 的 1750 亿参数到底花在哪。含 10 个可操作的演示。">
+<style>
+/* ================= 设计令牌 ================= */
+:root{
+  --bg:#f6f5f0; --surface:#ffffff; --surface-2:#edece5; --text:#1c1c1e; --muted:#6b6b72; --line:#dcdad1;
+  --p:#4f46e5; --p-soft:#e3e5ff; --t:#0f9d8a; --t-soft:#cdf1ea; --o:#e8731f; --o-soft:#fde3cc; --r:#d64550; --r-soft:#fbd9dc; --y:#c9a227; --y-soft:#f7edc4;
+  --ink:#2b2b33; --grid:#e6e4dc; --shadow:0 1px 2px rgba(0,0,0,.05),0 8px 24px rgba(20,20,40,.06);
+  --radius:14px; --font:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans CJK SC","Source Han Sans SC","Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+    --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+    --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1115; --surface:#171a21; --surface-2:#1f232c; --text:#e8e8ec; --muted:#9b9ba6; --line:#2c303a;
+  --p:#8f8aff; --p-soft:#2a2a5e; --t:#33d2ba; --t-soft:#0f3f38; --o:#ff9c52; --o-soft:#4a2b12; --r:#ff6b76; --r-soft:#4a1d22; --y:#e6c454; --y-soft:#4a3d10;
+  --ink:#e2e2ea; --grid:#262a34; --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+}
+
+/* ================= 基础 ================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{line-height:1.25;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}
+button{font:inherit;color:inherit}
+svg{display:block;max-width:100%;height:auto}
+canvas{display:block;max-width:100%}
+.mono{font-family:var(--mono)}
+a{color:var(--p)}
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--p),var(--t));z-index:50;transition:width .1s linear}
+
+.layout{display:grid;grid-template-columns:1fr;max-width:1180px;margin:0 auto;padding:0 16px}
+@media (min-width:1024px){ .layout{grid-template-columns:230px minmax(0,1fr);gap:40px;padding:0 24px} }
+main{min-width:0}
+
+nav.side{display:none}
+@media (min-width:1024px){
+  nav.side{display:block;position:sticky;top:0;height:100vh;overflow:auto;padding:28px 0 40px;font-size:13px}
+  nav.side ol{list-style:none;margin:0;padding:0}
+  nav.side li a{display:flex;gap:8px;padding:6px 10px;border-radius:8px;color:var(--muted);text-decoration:none;align-items:baseline}
+  nav.side li a .n{font-family:var(--mono);font-size:11px;opacity:.7;min-width:18px}
+  nav.side li a:hover{background:var(--surface-2);color:var(--text)}
+  nav.side li a.active{background:var(--p-soft);color:var(--p);font-weight:600}
+  nav.side .brand{font-weight:700;font-size:14px;padding:0 10px 14px;color:var(--text)}
+}
+.toc-btn{position:fixed;right:14px;bottom:14px;z-index:40;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:10px 16px;box-shadow:var(--shadow);cursor:pointer;font-size:14px}
+@media (min-width:1024px){ .toc-btn{display:none} }
+.toc-sheet{position:fixed;inset:auto 0 0 0;z-index:45;background:var(--surface);border-radius:18px 18px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.25);max-height:70vh;overflow:auto;padding:12px 16px 24px;transform:translateY(105%);transition:transform .3s ease;visibility:hidden}
+.toc-sheet.open{transform:none;visibility:visible}
+.toc-sheet ol{list-style:none;margin:0;padding:0}
+.toc-sheet li a{display:block;padding:9px 6px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.toc-sheet .n{font-family:var(--mono);color:var(--muted);margin-right:8px;font-size:12px}
+.toc-mask{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:44;opacity:0;pointer-events:none;transition:opacity .3s}
+.toc-mask.open{opacity:1;pointer-events:auto}
+
+/* ================= 标题区 ================= */
+.hero{padding:56px 0 24px}
+.hero .kicker{color:var(--p);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase}
+.hero h1{font-size:clamp(26px,5vw,42px);margin:10px 0 14px}
+.hero .sub{color:var(--muted);font-size:clamp(15px,2.2vw,18px);max-width:680px}
+.hero .thesis{margin-top:22px;padding:16px 18px;border-left:4px solid var(--t);background:var(--surface);border-radius:0 var(--radius) var(--radius) 0;box-shadow:var(--shadow);font-size:clamp(15px,2.2vw,17px)}
+.hero .meta{margin-top:14px;font-size:13px;color:var(--muted)}
+.authors{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.authors .au{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px}
+.authors .au i{width:22px;height:22px;border-radius:50%;display:inline-block;font-style:normal;color:#fff;font-size:11px;line-height:22px;text-align:center;font-weight:700;background:var(--p)}
+.authors a.au{color:var(--text);text-decoration:none}
+.prevnext{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;font-size:14px}
+.prevnext a{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;text-decoration:none}
+.prevnext a:hover{border-color:var(--p)}
+.authors a.au:hover{border-color:var(--p)}
+
+/* ================= 章节与图块 ================= */
+.ch{padding:48px 0 8px;scroll-margin-top:12px}
+.ch + .ch{border-top:1px solid var(--line)}
+.ch-head{margin-bottom:18px}
+.ch-head .num{display:inline-block;font-family:var(--mono);font-size:12px;color:var(--p);background:var(--p-soft);border-radius:6px;padding:2px 8px;margin-bottom:10px}
+.ch-head h2{font-size:clamp(22px,3.6vw,30px)}
+.ch-head .lead{margin-top:8px;font-size:clamp(15px,2.3vw,18px);font-weight:500}
+.prose{font-size:15px;margin:0 0 14px;max-width:760px}
+.prose b{color:var(--text)}
+.fig{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;overflow:hidden}
+.fig + .fig{margin-top:14px}
+.fig .cap{font-size:13px;color:var(--muted);margin-bottom:10px}
+.fig .cap b{color:var(--text)}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+sup.c{font-size:10px;color:var(--p);margin-left:1px}
+.grid2{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){ .grid2{grid-template-columns:1fr 1fr} }
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.eq{font-family:var(--mono);font-size:clamp(13px,2.4vw,16px);background:var(--surface-2);border-radius:10px;padding:10px 14px;margin:8px 0;overflow-x:auto;white-space:nowrap}
+.eq.m{font-family:var(--font);font-size:clamp(15px,2.6vw,18px)}
+.frac{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 4px;line-height:1.35}
+.frac .n{border-bottom:1.5px solid currentColor;padding:0 6px 2px}
+.frac .d{padding:2px 6px 0}
+.quote{border-left:3px solid var(--o);padding:8px 14px;background:var(--o-soft);border-radius:0 10px 10px 0;font-size:14px;margin:8px 0}
+.final{margin-top:18px;padding:18px 20px;border-radius:var(--radius);background:linear-gradient(135deg,var(--p-soft),var(--t-soft));font-size:clamp(16px,2.6vw,20px);font-weight:600;line-height:1.6}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--muted);margin:8px 0}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+/* 控件 */
+.ctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0}
+.btn{border:1px solid var(--line);background:var(--surface-2);border-radius:999px;padding:7px 14px;cursor:pointer;font-size:14px;transition:background .15s,transform .05s}
+.btn:hover{background:var(--line)}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible,.cell:focus-visible,.cand:focus-visible,.stg:focus-visible,.tk:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}
+.btn[disabled]{opacity:.5;cursor:default}
+.seg{display:inline-flex;max-width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:999px;background:var(--surface-2)}
+.seg button{border:0;background:transparent;padding:6px 12px;cursor:pointer;font-size:13px;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--p);color:#fff}
+.range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.range input[type=range]{accent-color:var(--p);width:180px;max-width:46vw}
+.range output{font-family:var(--mono);color:var(--text);min-width:3.2em}
+.numin{width:7.5em;max-width:40vw;border:1px solid var(--line);background:var(--surface-2);color:var(--text);border-radius:8px;padding:5px 8px;font:inherit;font-family:var(--mono);font-size:13px}
+.status{font-size:14px;min-height:1.6em;margin-top:8px}
+.status b{color:var(--t)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
+
+.lbl{fill:var(--muted);font-size:12px;font-family:var(--font)}
+.lbl.big{font-size:14px;fill:var(--text);font-weight:600}
+.lbl.mid{text-anchor:middle}
+.lbl.sm{font-size:10.5px}
+
+.note-add{border:1px dashed var(--o);border-radius:10px;padding:8px 12px;font-size:12.5px;color:var(--muted);margin-top:10px}
+.note-add b{color:var(--o)}
+
+/* ---- 横条分布 ---- */
+.bar{display:grid;grid-template-columns:minmax(64px,110px) 1fr 58px;gap:8px;align-items:center;font-size:13px;margin:3px 0}
+.bar .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{background:var(--surface-2);height:16px;border-radius:8px;overflow:hidden;position:relative}
+.bar .fl{height:100%;background:var(--p);border-radius:8px;transition:width .25s}
+.bar .pc{font-family:var(--mono);text-align:right;font-size:12px}
+.bar.top .fl{background:var(--t)}
+.bar .mk{position:absolute;top:0;bottom:0;width:3px;background:var(--o);opacity:.9}
+@media (prefers-reduced-motion: reduce){ .bar .fl{transition:none} }
+.cand{display:grid;grid-template-columns:minmax(64px,150px) 1fr 52px;gap:8px;align-items:center;font-size:13px;margin:4px 0;padding:5px 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:pointer;width:100%;text-align:left}
+.cand:hover{border-color:var(--p)}
+.cand .tr{background:var(--surface);height:12px;border-radius:6px;overflow:hidden}
+.cand .fl{height:100%;background:var(--p)}
+.cand .pc{font-family:var(--mono);text-align:right;font-size:12px}
+.gen{font-size:clamp(16px,2.6vw,20px);line-height:2;padding:10px 12px;background:var(--surface-2);border-radius:10px;min-height:3.2em}
+.gen .w{padding:1px 4px;border-radius:5px;margin-right:2px}
+.gen .w.a{background:var(--p-soft)} .gen .w.b{background:var(--t-soft)}
+.gen .w.new{outline:2px solid var(--o)}
+.gen .ask{color:var(--muted);border-bottom:2px dashed var(--o)}
+
+/* ---- 流程 ---- */
+.flowwrap{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:860px){ .flowwrap{grid-template-columns:230px minmax(0,1fr)} }
+.stgs{display:grid;gap:6px;align-content:start}
+@media (max-width:859px){ .stgs{grid-template-columns:repeat(2,1fr)} }
+.stg{display:flex;gap:8px;text-align:left;border:1px solid var(--line);background:var(--surface-2);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:13px;align-items:baseline}
+.stg .i{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.stg.on{border-color:var(--p);background:var(--p-soft);font-weight:600}
+.fdesc{font-size:14px;margin-top:8px;min-height:4.8em;padding:8px 12px;background:var(--surface-2);border-radius:10px}
+
+/* ---- 矩阵 ---- */
+.mxrow{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:flex-start}
+.mxcol{display:grid;gap:4px}
+.mxbox{padding:6px 10px;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:6px}
+.cell{border:1px solid var(--line);border-radius:8px;min-width:40px;height:34px;font-family:var(--mono);font-size:14px;cursor:pointer;background:var(--surface-2);padding:0 6px}
+.cell.w.pos{background:var(--p-soft);color:var(--p);border-color:var(--p)}
+.cell.w.neg{background:var(--r-soft);color:var(--r);border-color:var(--r)}
+.cell.w.zero{background:var(--surface-2);color:var(--muted)}
+.cell.dt{background:var(--surface-2);color:var(--muted);border-style:dashed}
+.cell.sel{box-shadow:0 0 0 2px var(--o)}
+.cell.hl{outline:2px solid var(--o);outline-offset:-2px}
+.cell.out{cursor:pointer;background:var(--surface);color:var(--text)}
+.mxrow .op{font-size:20px;color:var(--muted)}
+.mxgrid{display:grid;gap:4px}
+
+/* tokens */
+.tkrow{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.tk{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:5px 12px;cursor:pointer;font-family:var(--mono);font-size:14px}
+.tk.sel{background:var(--p);color:#fff;border-color:var(--p)}
+.we{display:grid;gap:3px;font-family:var(--mono);font-size:11px;min-width:420px}
+.we .ch0{text-align:center;color:var(--muted);padding-bottom:2px}
+.we .c{padding:3px 4px;border-radius:4px;text-align:center;background:var(--surface-2);color:var(--muted)}
+.we .c.on{background:var(--p-soft);color:var(--p);font-weight:700}
+.we .c.hd.on{background:var(--p);color:#fff}
+
+/* svg 交互 */
+.drag{cursor:grab;touch-action:none}
+.drag:focus-visible circle.hit{stroke:var(--p);stroke-width:3}
+svg.touchnone{touch-action:none}
+
+/* 账本 */
+table.led{border-collapse:collapse;width:100%;font-size:13px;min-width:640px}
+table.led th,table.led td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+table.led th:first-child,table.led td:first-child{text-align:left}
+table.led th{color:var(--muted);font-weight:600;font-size:12px}
+table.led tr.sup td{background:var(--o-soft)}
+table.led tr.tot td{font-weight:700;border-top:2px solid var(--ink)}
+table.led td.mono{font-family:var(--mono)}
+.stack{display:flex;height:22px;border-radius:11px;overflow:hidden;background:var(--surface-2);border:1px solid var(--line);margin:10px 0 4px}
+.stack i{display:block;height:100%;transition:width .3s}
+@media (prefers-reduced-motion: reduce){ .stack i{transition:none} }
+
+/* 页脚 */
+footer{padding:40px 0 60px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px}
+footer a{color:var(--p)}
+footer ol{padding-left:20px;margin:8px 0}
+.recap{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.recap li{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:10px 12px;background:var(--surface-2);border-radius:10px;font-size:14px}
+.recap .k{font-family:var(--mono);color:var(--p);font-weight:700}
+
+.ch .fig,.ch .ch-head{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+.ch.seen .fig,.ch.seen .ch-head{opacity:1;transform:none}
+@media (prefers-reduced-motion: reduce){
+  .ch .fig,.ch .ch-head{opacity:1;transform:none;transition:none}
+  *{animation-duration:.001s !important;animation-iteration-count:1 !important}
+}
+[data-demo=analogy] .lbl{font-size:14px}
+[data-demo=flow] .lbl{font-size:15px}
+[data-demo=ctx] .lbl{font-size:10px}
+[data-demo=dotgeo] .lbl.big{font-size:16px}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<div class="layout">
+<nav class="side" aria-label="目录">
+  <div class="brand">Transformer 与 LLM</div>
+  <ol id="sidenav"></ol>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="kicker">AI · 深度学习 · Transformer</div>
+  <h1>大语言模型背后的机器：<br>从“猜下一个词”到 1750 亿个参数</h1>
+  <p class="sub">一个只会预测下一个词的模型，为什么能写故事、答问题？数据在 Transformer 里怎么流动？那 1750 亿个参数，到底花在了哪些矩阵上？</p>
+  <div class="thesis">核心观点：GPT 的本质是一个“给定一段文字，输出下一个词元的概率分布”的函数；反复<b>采样、追加、再预测</b>，就得到了长文本。而其内部几乎全部是<b>矩阵与向量的乘法</b>，唯一需要分清的是：<b>权重</b>是训练出来的“大脑”，<b>数据</b>只是流过它的东西。<sup class="c">[1]</sup></div>
+  <div class="authors">
+    <a class="au" href="https://www.youtube.com/watch?v=wjZofJX0v4M" rel="noopener"><i>3B</i>3Blue1Brown · 深度学习第 5 章 · 观看原视频</a>
+  </div>
+  <div class="prevnext"><a href="../attention-in-transformers-3b1b/">下一章：第 6 章 注意力机制 →</a></div>
+  <p class="meta">原文：3Blue1Brown 的 YouTube 视频《Transformers, the tech behind LLMs | Deep Learning Chapter 5》（时长 27 分 14 秒；以官方中英文字幕为原文）。本页属于<b>“改写”</b>：沿用视频的叙述主线，但把画面全部重绘为内联图形，并增加了若干视频里没有的交互演示。凡属本页新增的内容，都放在虚线框里标明；凡标注“示意”的数据都是本页手工构造的，<b>不是</b>任何真实模型的输出。</p>
+</header>
+
+<!-- ===================== 01 ===================== -->
+<section class="ch" id="s1" data-title="预测下一个词，反复采样">
+  <div class="ch-head">
+    <span class="num">01</span>
+    <h2>预测下一个词，怎么就写出了一篇故事？</h2>
+    <p class="lead">“只预测下一个词”听起来和“生成一段话”差得很远，它们之间隔着哪一步？</p>
+  </div>
+  <p class="prose">GPT 是 Generative Pre-trained Transformer 的缩写：<b>Generative</b> 指它用来生成新文本；<b>Pre-trained</b> 指它先从海量数据里学过一遍，之后还能针对具体任务继续微调；最关键的是最后一个词 <b>Transformer</b>——一种特定的神经网络，也是这一轮 AI 浪潮的核心发明。<sup class="c">[1]</sup> 我们关注的版本接受一段文本（也可以带图像或声音），输出的是“接下来会出现的各种文字片段”的<b>概率分布</b>。把它变成生成器的办法很朴素：<b>按分布随机抽一个样本，追加到文本末尾，再用新文本整个预测一遍</b>，如此重复。</p>
+  <div class="fig">
+    <div class="cap"><b>你来当采样器。</b>下面是一个手工编的玩具“预测器”（只看上一个词元，<b>示意数据，不是 GPT 的真实输出</b>）。点击一个候选词追加它，或用按钮让它按概率抽样；多试几次，同一个开头会写出不同的故事。</div>
+    <div data-demo="sample"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频用 GPT-2 与 GPT-3 各跑了一次同样的“续写故事”：GPT-2 写出的故事基本没有逻辑；换成同一基本模型、规模更大的 GPT-3，故事就变得连贯，甚至暗示那个“π 生物”住在一个充满数学与计算的世界里。上面这个玩具只看上一个词，所以它的故事走向是“局部合理、整体随意”，正好说明为什么真正的模型必须把<b>整段上下文</b>都融入预测（见第 6 章）。把预测器变成聊天机器人，则只需先写一段“用户与一个乐于助人的 AI 助手对话”的场景（即系统提示），再让模型续写助手的回答；实际还需要额外训练才能做好。</div>
+</section>
+
+<!-- ===================== 02 ===================== -->
+<section class="ch" id="s2" data-title="数据如何流过 Transformer">
+  <div class="ch-head">
+    <span class="num">02</span>
+    <h2>一个词是怎么被“算”出来的？</h2>
+    <p class="lead">输入一段文字，到输出一个概率分布，中间依次经过了哪些步骤？</p>
+  </div>
+  <p class="prose">视频先给出一个宏观地图。文本被拆成许多小片段，称为<b>词元（token）</b>：对文本来说通常是单词、单词的一部分或常见字符组合；对图像或声音，则可能是一小块画面或一小段音频。同一套机器还能做语音转文字、文字转语音，以及 2022 年风靡的 DALL·E、Midjourney 一类文字生成图像的工具，它们也都基于 Transformer。最初的 Transformer 由 Google 于 2017 年提出，用来做机器翻译。</p>
+  <div class="fig">
+    <div class="cap"><b>点左侧任意一步，或点“自动走一遍”。</b>图示用 5 个词元代表输入，每列小方块代表该词元的向量（数字本身未画出）。</div>
+    <div data-demo="flow"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频明确说这一章讲“网络开头与结尾发生的事”，注意力块留到下一章，多层感知机（MLP，也叫前馈层）、训练和被略过的归一化等细节留到之后，所以这里每一步只给一句话，不展开。视频还说明：为了讲清楚，后文大多假设“一个词元就是一个完整的单词”，因为人类习惯用单词思考；真实的词元可能只是词的一部分。</div>
+</section>
+
+<!-- ===================== 03 ===================== -->
+<section class="ch" id="s3" data-title="参数、权重与矩阵">
+  <div class="ch-head">
+    <span class="num">03</span>
+    <h2>什么是“参数”？为什么又叫“权重”？</h2>
+    <p class="lead">深度学习模型里那 1750 亿个可调数字，和我们熟悉的“拟合一条直线”有什么关系？</p>
+  </div>
+  <p class="prose">机器学习的核心思想是：不再手写固定的程序去完成“看图说话”“预测下一个词”这类靠直觉的任务，而是搭一个带有<b>可调参数</b>的灵活结构（像一排旋钮），再用大量“输入—期望输出”的例子把旋钮调好。最简单的例子是<b>线性回归</b>：输入、输出都是单个数字（比如房子面积和价格），模型是一条直线，只有<b>斜率</b>和<b>截距</b>两个参数。<sup class="c">[1]</sup> GPT-3 则有 1750 亿个。</p>
+  <div class="fig">
+    <div class="cap"><b>两个旋钮的模型。</b>拖动斜率和截距，让直线贴近数据点；误差越小越好。点“让它自己调”看一个最朴素的训练过程（梯度下降）。数据为示意。</div>
+    <div data-demo="regress"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">深度学习的模型要求：输入是一个<b>实数数组</b>（一维列表、二维数组，或更高维的<b>张量</b>），逐层变换成一层层新的数组，最后一层是输出，比如“所有可能的下一个词”的概率列表。参数之所以叫<b>权重</b>，是因为它们和数据的唯一交互方式就是<b>加权求和</b>；这些加权和通常被打包成<b>矩阵—向量乘积</b>——输出的每个分量都是一个加权和。视频约定：<b>权重</b>（模型的“大脑”，训练得来，决定行为）用蓝色或红色，<b>被处理的数据</b>用灰色。</p>
+  <div class="fig">
+    <div class="cap"><b>矩阵乘向量，就是几个加权和。</b>点任意单元格选中它，再用 ＋／－ 改它的值；点右侧输出的某一行，看它是怎样由那一行权重和数据相乘再相加得到的。</div>
+    <div data-demo="matvec"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：矩阵里的数字取小整数、规模只有 3×4，仅为演示；视频中 GPT-3 的矩阵按类别分成 8 类、总共接近 28,000 个，下一章起会逐类认识它们，第 8 章会把 1750 亿“记一笔账”。</div>
+</section>
+
+<!-- ===================== 04 ===================== -->
+<section class="ch" id="s4" data-title="词嵌入与语义方向">
+  <div class="ch-head">
+    <span class="num">04</span>
+    <h2>词怎么变成向量？空间里的“方向”为什么有意义？</h2>
+    <p class="lead">“国王 − 男人 + 女人 ≈ 女王”这个著名的算式，到底在说什么？</p>
+  </div>
+  <p class="prose">模型有一个预设的词汇表（GPT-3 为 50,257 个词元），第一个矩阵叫<b>嵌入矩阵（embedding matrix）</b>，记作 W<sub>E</sub>：<b>每个词元占一列</b>，这一列就是它转成的向量。W<sub>E</sub> 和其他所有矩阵一样，初始值随机，之后由数据训练。这种“词 → 向量”的做法在 Transformer 之前就很普遍。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>点一个词元，看它是 W<sub>E</sub> 的哪一列。</b>词元的拆法与数字都是示意；真实矩阵有 50,257 列、每列 12,288 个数。</div>
+    <div data-demo="lookup"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">把向量看作高维空间里的点，训练会让<b>空间中的方向</b>带上语义：含义相近的词彼此靠近；woman 与 man 的差，和 queen 与 king 的差很像，所以“king ＋ (woman − man)”附近就应当有 queen。GPT-3 的词向量有 <b>12,288</b> 维；视频里为了动画，在高维空间中取了一个三维“切片”再投影。</p>
+  <div class="fig">
+    <div class="cap"><b>拖动 A、B、C 三个点</b>（也可聚焦后用方向键），看 A − B + C 落在哪儿、离哪个词最近。三组例子都来自视频；坐标是<b>手工摆放的二维示意</b>，不是真实嵌入。</div>
+    <div data-demo="analogy"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频特意提醒：在他用的那个简单模型里，真正的 queen 嵌入其实比这个算式预想的位置<b>更远一些</b>，可能因为训练数据里 queen 并不只是“king 的女性版”，他后来觉得用家族关系来解释更合适。所以上图里 queen 被故意放在离预测点有一小段距离的地方。视频的要点是：训练让模型发现“用空间里的一个方向编码性别”是有利的。另外，视频还提到：cat 离 beast 和 monster 都很近；tower 的最近邻都带着“塔楼感”。</div>
+</section>
+
+<!-- ===================== 05 ===================== -->
+<section class="ch" id="s5" data-title="点积与相似度">
+  <div class="ch-head">
+    <span class="num">05</span>
+    <h2>点积为什么能衡量“是否对齐”？</h2>
+    <p class="lead">两个向量乘一乘加一加，得到的这个数在几何上意味着什么？</p>
+  </div>
+  <p class="prose">这是后面注意力机制要反复用到的数学工具。<b>计算上</b>：对应分量逐一相乘，再求和（所以它和“加权求和”是一回事）。<b>几何上</b>：两个向量指向相近方向时点积为正，垂直时为零，反向时为负。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>拖动橙色向量 b 的箭头</b>（或用下面的角度滑块），a 固定为 (2, 1)。看逐项相乘求和的结果，以及它与“对齐”的关系。</div>
+    <div data-demo="dotgeo"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">视频做了一个实验：用 cats 的向量减去 cat 的向量，也许能得到空间中的“复数方向”。为了验证，拿这个方向分别和一些单数名词、复数名词的向量做点积：复数名词的点积通常更高。再对 one、two、three…… 这些数词做同样的事，数值会<b>逐个增大</b>，仿佛能量化“模型觉得这个词有多复数”。嵌入方式同样是从数据里学来的。</p>
+  <div class="fig">
+    <div class="cap"><b>“复数方向”测量仪。</b>默认方向取玩具坐标里的 cats − cat；拖动角度，看哪些词的点积变正、变负。词向量为<b>手工设定的二维示意</b>，并非真实嵌入。</div>
+    <div data-demo="plural"></div>
+  </div>
+</section>
+
+<!-- ===================== 06 ===================== -->
+<section class="ch" id="s6" data-title="上下文与上下文长度">
+  <div class="ch-head">
+    <span class="num">06</span>
+    <h2>一个词的意思从哪来？为什么长对话会“迷路”？</h2>
+    <p class="lead">向量一开始只代表“这个词本身”，之后怎样吸收周围的语境？模型一次又最多能看多少？</p>
+  </div>
+  <p class="prose">第一步，输入文本的每个向量都是直接从嵌入矩阵里取出的，所以起初只代表单个词的含义，不含周围信息。网络的目标是让向量在流动中变得更丰富：比如一个最初代表 king 的向量，经过各层之后，也许会指向一个更具体、更微妙的方向——<b>一位住在苏格兰、杀死前任国王夺得王位、被写成莎士比亚式语言的国王</b>。词的含义很大程度上由所处环境决定，有时甚至来自很远的上下文。向量还会携带词的位置信息，细节留待之后。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>同一个词 model，两种上下文。</b>点按钮选择语境，看这个向量（橙色）被“拉”向哪一边。位置为示意。</div>
+    <div data-demo="meaning"></div>
+  </div>
+  <p class="prose" style="margin-top:16px">网络一次只能处理固定数量的向量，叫<b>上下文大小（context size）</b>。GPT-3 训练时的上下文大小是 <b>2048</b>：数据在网络里流动时，永远是 2048 列的数组，每列 12,288 维（视频口头说“约 12000”）。它限制了模型预测下一个词时能纳入的文本量，这也是为什么和早期版本的 ChatGPT 聊得很长之后，会觉得它似乎“迷失”了方向。</p>
+  <div class="fig">
+    <div class="cap"><b>拖动对话长度。</b>每个小格代表 64 个词元（示意缩放）；模型只能看到最右边 2048 个词元，更早的内容掉出了窗口。</div>
+    <div data-demo="ctx"></div>
+  </div>
+</section>
+
+<!-- ===================== 07 ===================== -->
+<section class="ch" id="s7" data-title="Unembedding、softmax 与温度">
+  <div class="ch-head">
+    <span class="num">07</span>
+    <h2>一堆任意的数，怎么变成概率？“温度”调的是什么？</h2>
+    <p class="lead">网络末端为什么只用最后一个向量？softmax 怎么把任意实数变成合法的分布？</p>
+  </div>
+  <p class="prose">最终目标是产出下一个词元的概率分布。举例：上下文里有“哈利·波特”，句尾是“最不喜欢的老师”，最后一个词是“教授”。一个对哈利·波特世界足够了解的网络，会给“斯内普”很高的权重。这分两步：先用一个矩阵——<b>unembedding 矩阵</b> W<sub>U</sub>——把上下文中<b>最后一个</b>向量映射成一个含 50,000 多个值的列表，词汇表里每个词元对应一个值；再用 <b>softmax</b> 把这些值变成概率分布。只用最后一个向量做预测，是因为训练时让最终层的每一个向量都去预测它后面的内容，效率更高。W<sub>U</sub> 与 W<sub>E</sub> 很像，只是行列倒过来：每个词元占一<b>行</b>，每行与嵌入维度一样长。<sup class="c">[1]</sup></p>
+  <p class="prose">为什么需要 softmax？要成为概率，每个数要在 0 到 1 之间，且总和为 1；而矩阵乘出来的结果可能为负、远大于 1、加起来也几乎不会是 1。softmax 的做法：先对每个数取 e 的指数（得到一组正数），求和，再各自除以总和。最大的数会占主导，较小的趋近 0，但它又比“直接选最大”细腻：当其他数也接近最大值时，也能分到可观的份额，而且输入连续变化时，输出也连续变化。</p>
+  <div class="eq m" role="math" aria-label="softmax 公式：p_i 等于 e 的 x_i 除以 T 次方，除以所有 j 的 e 的 x_j 除以 T 次方之和"><span>p<sub>i</sub> = </span><span class="frac"><span class="n">e<sup>x<sub>i</sub> / T</sup></span><span class="d">Σ<sub>j</sub> e<sup>x<sub>j</sub> / T</sup></span></span><span>　（T = 1 就是普通 softmax；x 称为 logits，p 是概率）</span></div>
+  <div class="fig">
+    <div class="cap"><b>调温度 T，看分布怎么变。</b>x 是“最不喜欢的老师是……”的候选词元的 logits，<b>数值为示意，不是 GPT-3 的真实输出</b>。T 越大分布越平，T 越小越集中，T = 0 时全部权重都落在最大值上。</div>
+    <div data-demo="softmax"></div>
+  </div>
+  <div class="note-add"><b>本页改写（非原文）</b>：视频的温度实验：用 GPT-3 续写以“从前，有一个 A”开头的故事。温度为 0 时总选最可预测的词，结果是个陈词滥调的“金发姑娘”故事；温度较高时，开头较有原创性（讲韩国的一位年轻网页艺术家），但很快变得毫无意义。API 不允许选大于 2 的温度，这个上限没有数学依据，只是人为限制。视频动画的做法：取 GPT-3 给出的概率最高的前 20 个词元，按 1/5 的指数调整它们的概率（视频原话：an exponent of 1/5）。“温度”这个名字，因它的作用在某种程度上和热力学方程里的温度相似。术语：softmax 的输出称“概率”，输入称 <i>logits</i>；机器学习里，与 unembedding 矩阵相乘得到的原始、未归一化的输出，就是下一个词预测的 logits。</div>
+</section>
+
+<!-- ===================== 08 ===================== -->
+<section class="ch" id="s8" data-title="1750 亿参数的账本">
+  <div class="ch-head">
+    <span class="num">08</span>
+    <h2>1750 亿参数，一笔一笔花在哪了？</h2>
+    <p class="lead">视频一路“累计计数”：到这一章结束时，我们数到了多少？还差多少？</p>
+  </div>
+  <p class="prose">GPT-3 的权重被组织成<b>将近 28,000 个不同的矩阵</b>，分成 <b>8 类</b>。视频的做法是随着每认识一类矩阵，就把它的参数数目加进累计里，最终应得到 1750 亿。本章结束时只认识了前两类：嵌入矩阵 W<sub>E</sub>（50,257 个词元 × 12,288 维 ≈ 6.17 亿权重）和 unembedding 矩阵 W<sub>U</sub>（同样大小，再加 6.17 亿），累计已经超过 10 亿，不过只是 1750 亿的一小部分。<sup class="c">[1]</sup></p>
+  <div class="fig">
+    <div class="cap"><b>现场计算。</b>下面的数字全部由你输入的超参数即时算出。默认只显示视频已经讲到的两类；展开后能看到其余 6 类（本页补充）。</div>
+    <div data-demo="ledger"></div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：其余 6 类矩阵（注意力的 Query、Key、Value、Output，以及 MLP 的升维、降维矩阵）是视频后续章节的内容，本章并未给出数字。这里用 GPT-3 论文公布的超参数——96 层、嵌入维度 12,288、每层 96 个注意力头、每头 128 维、MLP 隐层为 4 倍宽——现场算出，不含偏置项和归一化参数，结果落在约 1751.8 亿，与“1750 亿”一致。<sup class="c">[3]</sup> 其中矩阵个数的算法：Q、K、V 各 96×96，O 与升维、降维矩阵各 96 个，再加 W<sub>E</sub>、W<sub>U</sub>，共 27,938 个，恰好是视频所说的“将近 28,000”。注意力头与 MLP 的细节本页不展开，留给视频的下一章。</div>
+</section>
+
+<!-- ===================== 09 ===================== -->
+<section class="ch" id="s9" data-title="回顾与下一章">
+  <div class="ch-head">
+    <span class="num">09</span>
+    <h2>回到全貌：这一章的“基本功”</h2>
+    <p class="lead">学完这些，下一章的注意力机制为什么会变得容易？</p>
+  </div>
+  <div class="fig">
+    <ol class="recap">
+      <li><span class="k">1</span><span>模型输出的是<b>概率分布</b>；生成 = 采样 → 追加 → 再预测，一直重复。（第 1 章）</span></li>
+      <li><span class="k">2</span><span>词元 → <b>向量</b>（嵌入矩阵的一列）；向量里的<b>方向</b>带着语义，如性别、复数。（第 4 章）</span></li>
+      <li><span class="k">3</span><span><b>点积</b>衡量两个向量有多“对齐”，同时恰好就是一个加权和。（第 5 章）</span></li>
+      <li><span class="k">4</span><span>几乎所有计算都是<b>矩阵乘向量</b>：权重（蓝/红）是训练出来的“大脑”，数据（灰）是流过的内容。（第 3 章）</span></li>
+      <li><span class="k">5</span><span>向量在网络里吸收上下文；一次只能容纳 <b>2048</b>（GPT-3）个词元。（第 6 章）</span></li>
+      <li><span class="k">6</span><span>用最后一个向量经 <b>unembedding + softmax</b>（可带<b>温度</b>）得到下一个词元的分布。（第 7 章）</span></li>
+    </ol>
+    <div class="final">视频的收尾：对词嵌入、softmax、点积如何衡量相似度有深入理解，并清楚“大部分计算都是填满可调参数的矩阵乘法”，那么现代 AI 浪潮的关键技术——注意力机制——学起来就应该会比较容易。</div>
+  </div>
+  <div class="note-add"><b>本页补充（非原文）</b>：想看同一话题的另一种讲法？本仓库的 <a href="../wolfram-what-is-chatgpt-doing/">《ChatGPT 在做什么，为什么它有效？》</a> 从 Stephen Wolfram 的视角讲神经网络、训练与语言规律，与本页侧重矩阵、向量和 softmax 的路线互补。</div>
+  <div class="prevnext"><a href="../attention-in-transformers-3b1b/">下一章：第 6 章 注意力机制 →</a></div>
+</section>
+
+<footer>
+  <div>来源与署名：本页根据 3Blue1Brown 的 YouTube 视频《<a href="https://www.youtube.com/watch?v=wjZofJX0v4M" rel="noopener">Transformers, the tech behind LLMs | Deep Learning Chapter 5</a>》制作（以其官方中英文字幕为原文）。章节顺序大体沿用视频，交互演示、玩具数据与标注“本页改写／补充”的内容为本页新增。视频画面均已用内联 SVG／HTML 重绘，未使用任何截图或外链图片。</div>
+  <b style="display:block;margin-top:14px">参考文献</b>
+  <ol id="refs">
+    <li>3Blue1Brown，《Transformers, the tech behind LLMs | Deep Learning Chapter 5》，YouTube（时长 27 分 14 秒）。<a href="https://www.youtube.com/watch?v=wjZofJX0v4M" rel="noopener">https://www.youtube.com/watch?v=wjZofJX0v4M</a></li>
+    <li>本页补充：Vaswani 等 (2017). Attention Is All You Need. <i>NeurIPS</i>。即视频提到的 Google 2017 年最初的 Transformer。<a href="https://arxiv.org/abs/1706.03762" rel="noopener">arXiv:1706.03762</a>（未逐字核对）</li>
+    <li>本页补充：Brown 等 (2020). Language Models are Few-Shot Learners. <i>NeurIPS</i>，表 2.1 给出 175B 模型的层数、维度、头数。<a href="https://arxiv.org/abs/2005.14165" rel="noopener">arXiv:2005.14165</a>（超参数凭记忆写入，未逐字核对；总数由本页 JS 现场计算）</li>
+  </ol>
+  <div class="prevnext"><a href="../attention-in-transformers-3b1b/">下一章：第 6 章 注意力机制 →</a></div>
+  <p>视频发布日期与讲解者署名未在字幕中给出，本页不作标注。本页由 Claude Code 基于视频字幕生成，仅供学习；技术细节以视频与论文为准。</p>
+</footer>
+</main>
+</div>
+<button class="toc-btn" id="tocBtn" type="button">目录</button>
+<div class="toc-mask" id="tocMask"></div>
+<div class="toc-sheet" id="tocSheet"><ol id="tocList"></ol></div>
+
+<script>
+(() => {
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const Demos = {};
+const reg = (name, fn) => { Demos[name] = fn; };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'class') n.className = v;
+    else if (k === 'style') n.style.cssText = v;
+    else if (k === 'html') n.innerHTML = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = (tag, attrs = {}, ...kids) => {
+  const n = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === 'fill' || k === 'stroke') n.style.setProperty(k, v);
+    else if (k === 'style') n.style.cssText += ';' + v;
+    else n.setAttribute(k, v);
+  }
+  for (const c of kids.flat()) if (c != null) n.append(c.nodeType ? c : document.createTextNode(c));
+  return n;
+};
+const fmt = (n) => Math.round(n).toLocaleString('en-US');
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const keyAct = (node, fn) => node.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(e); } });
+const sgn = (v) => (v < 0 ? '−' + Math.abs(v) : '' + v);
+const p1 = (v) => (v * 100).toFixed(1) + '%';
+
+/* =============== 01 逐词采样 =============== */
+reg('sample', (node) => {
+  const ADJ = [['年轻的', .45], ['善良的', .30], ['古怪的', .25]];
+  const JOB = [['画家', .35], ['数学家', .40], ['机器人', .25]];
+  const ACT = [['住在', .40], ['发现了', .35], ['梦见了', .25]];
+  const OBJ = [['。', .60], ['，于是', .40]];
+  const T = { '有一位': ADJ, '住在': [['山顶的塔楼', .5], ['海边的小屋', .3], ['一个数字世界', .2]],
+    '发现了': [['一个秘密', .4], ['一只会说话的猫', .35], ['一个 π 生物', .25]], '梦见了': [['一座城堡', .5], ['一片星海', .5]],
+    '，于是': [['它开始了一段旅程', .5], ['一切都改变了', .5]] };
+  ADJ.forEach(([w]) => { T[w] = JOB; }); JOB.forEach(([w]) => { T[w] = ACT; });
+  ['山顶的塔楼', '海边的小屋', '一个数字世界', '一个秘密', '一只会说话的猫', '一个 π 生物', '一座城堡', '一片星海'].forEach((w) => { T[w] = OBJ; });
+  T['它开始了一段旅程'] = [['。', 1]]; T['一切都改变了'] = [['。', 1]];
+  const START = ['从前，', '有一位'];
+  let toks, timer = null, lastNew = -1;
+  const gen = el('div', { class: 'gen', 'aria-live': 'polite' });
+  const cands = el('div', {});
+  const status = el('div', { class: 'status' });
+  const draw = (msg) => {
+    gen.innerHTML = '';
+    toks.forEach((w, i) => gen.append(el('span', { class: 'w ' + (i % 2 ? 'b' : 'a') + (i === lastNew ? ' new' : '') }, w)));
+    const last = toks[toks.length - 1], nx = T[last];
+    cands.innerHTML = '';
+    if (nx) {
+      gen.append(el('span', { class: 'ask' }, ' ？'));
+      cands.append(el('div', { class: 'cap', style: 'margin:8px 0 2px' }, `模型对“${last}”之后的预测（点一个就选它）：`));
+      nx.forEach(([w, p]) => {
+        const b = el('button', { class: 'cand', type: 'button', onclick: () => pick(w, p) },
+          el('span', {}, w), el('span', { class: 'tr' }, el('div', { class: 'fl', style: `width:${p * 100}%` })), el('span', { class: 'pc' }, p1(p)));
+        cands.append(b);
+      });
+    } else { stop(); }
+    status.innerHTML = (msg ? msg + (nx ? '' : ' <b>写完了</b>，没有后续了，点“重置”再来一遍。') : '') || (nx ? `已有 <b>${toks.length - START.length}</b> 个新词元。点候选、或用下面的按钮继续。` : `<b>写完了</b>（抽到了句号并没有后续）。点“重置”再来一遍。`);
+    btns.forEach((b) => { if (b.dataset.needs) b.disabled = !nx; });
+  };
+  const pick = (w, p) => { toks.push(w); lastNew = toks.length - 1; draw(`追加了“${w}”（它被抽中的概率是 ${p1(p)}）；整段文本现在再预测一遍。`); };
+  const sample = () => { const nx = T[toks[toks.length - 1]]; if (!nx) return; let r = Math.random(), c = 0; for (const [w, p] of nx) { c += p; if (r <= c) return pick(w, p); } const l = nx[nx.length - 1]; pick(l[0], l[1]); };
+  const top = () => { const nx = T[toks[toks.length - 1]]; if (!nx) return; const m = nx.reduce((a, b) => (b[1] > a[1] ? b : a)); pick(m[0], m[1]); };
+  function stop() { if (timer) { clearInterval(timer); timer = null; } if (auto) auto.textContent = '自动连续抽样'; }
+  const reset = () => { stop(); toks = START.slice(); lastNew = -1; draw('已重置。'); };
+  const auto = el('button', { class: 'btn', type: 'button', 'data-needs': '1', onclick: () => {
+    if (timer) { stop(); return; }
+    if (RM) { while (T[toks[toks.length - 1]]) sample(); return; }
+    auto.textContent = '暂停'; timer = setInterval(() => { if (!T[toks[toks.length - 1]]) stop(); else sample(); }, 900);
+  } }, '自动连续抽样');
+  const btns = [el('button', { class: 'btn primary', type: 'button', 'data-needs': '1', onclick: sample }, '按概率抽样一次'),
+    el('button', { class: 'btn', type: 'button', 'data-needs': '1', onclick: top }, '总选最高（相当于温度 0）'), auto,
+    el('button', { class: 'btn', type: 'button', onclick: reset }, '重置')];
+  node.append(gen, cands, el('div', { class: 'ctrl' }, btns), status);
+  toks = START.slice(); draw();
+  return { stop };
+});
+
+/* =============== 02 数据流 =============== */
+reg('flow', (node) => {
+  const S = [
+    ['输入文本', '一段文本进来（可能还带图像或声音）。模型要预测它后面会出现什么。'],
+    ['拆成词元', '输入先被切成许多小片段，称为词元（token）：常是单词、词的一部分或常见字符组合；图像、声音则是一小块画面或一小段音频。'],
+    ['词元 → 向量', '每个词元对应一个向量，也就是一串数字，用来表达这个片段的含义。可把向量看成高维空间中的坐标：含义相近的词，向量彼此接近。'],
+    ['注意力块', '向量序列经过“注意力块”，让向量彼此“交流”、依据别的向量更新自己。例如 model 在“机器学习模型”和“时尚模特”里意思不同，注意力要判断上下文里哪些词与更新哪个词有关，以及怎样更新。'],
+    ['多层感知机', '接着经过多层感知机（MLP，也叫前馈层）：向量不再互相交流，而是并行地各自经历同一种处理，像是对每个向量问一连串问题，再依答案更新它。'],
+    ['重复许多层', '注意力块与 MLP 交替重复，直到文章的核心含义被融入序列的最后一个向量里。这两类操作本质上都是大量矩阵乘法。（视频省略了归一化等中间步骤。）'],
+    ['只看最后一个向量', '对最后一个向量做一次特定操作，产出覆盖所有可能词元的概率分布。'],
+    ['unembedding', '用 unembedding 矩阵把最后一个向量映射成一个有 50,000 多个值的列表（GPT-3 为 50,257），词汇表里每个词元一个值（logits）。'],
+    ['softmax', 'softmax 把这些值变成概率分布：每个数在 0 到 1 之间，总和为 1。'],
+    ['采样并追加', '从分布里抽一个词元，追加到文本末尾，再整个重来一遍。聊天机器人就是这样一个词一个词地“说”出来的。']];
+  const words = ['哈利·波特', '最不喜欢', '的', '教授', '是'];
+  const W = 540, H = 250, X = (i) => 70 + i * 100;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '数据流经 Transformer 各阶段的示意图', style: 'width:100%;max-width:640px;margin:0 auto' });
+  const g = svg('g', {}); root.append(g);
+  const desc = el('div', { class: 'fdesc', 'aria-live': 'polite' });
+  const stgs = el('div', { class: 'stgs' });
+  let k = 0, timer = null;
+  const col = (i, extra = {}) => { for (let j = 0; j < 5; j++) g.append(svg('rect', { x: X(i) - 10, y: 78 + j * 13, width: 20, height: 10, rx: 2, fill: extra.hi ? 'var(--p)' : 'var(--muted)', style: `opacity:${extra.dim ? .25 : extra.hi ? 1 : .55}` })); };
+  const chip = (i, label, hi) => { g.append(svg('rect', { x: X(i) - 46, y: 20, width: 92, height: 30, rx: 8, fill: 'var(--surface-2)', stroke: hi ? 'var(--p)' : 'var(--line)' }), svg('text', { x: X(i), y: 40, class: 'lbl mid big', style: 'font-size:15px' }, label)); };
+  const note = (x, y, t, a) => g.append(svg('text', { x, y, class: 'lbl' + (a ? '' : ' mid'), 'text-anchor': a || 'middle' }, t));
+  const draw = () => {
+    g.innerHTML = '';
+    if (k === 0) { g.append(svg('rect', { x: 40, y: 60, width: 460, height: 50, rx: 10, fill: 'var(--surface-2)', stroke: 'var(--line)' })); note(270, 91, '……哈利·波特……最不喜欢的教授是', 0); note(270, 150, '→ 下一个词元会是什么？', 0); }
+    if (k >= 1 && k <= 6) words.forEach((w, i) => chip(i, w, k === 1 || k === 6 && i === 4));
+    if (k >= 2 && k <= 6) { words.forEach((w, i) => { g.append(svg('line', { x1: X(i), y1: 52, x2: X(i), y2: 74, stroke: 'var(--muted)' })); col(i, { dim: k === 6 && i < 4, hi: k === 6 && i === 4 }); }); note(270, 158, k === 2 ? '每列方块 = 一个词元的向量（一串数字）' : '', 0); }
+    if (k === 3) { for (let a = 0; a < 5; a++) for (let b = a + 1; b < 5; b++) g.append(svg('path', { d: `M${X(a)} 146 Q${(X(a) + X(b)) / 2} ${158 + (b - a) * 20} ${X(b)} 146`, fill: 'none', stroke: 'var(--o)', 'stroke-width': 1.4, style: 'opacity:.7' })); note(270, 232, '向量之间互相“交流”，并更新自己', 0); }
+    if (k === 4 || k === 5) { for (let i = 0; i < 5; i++) { g.append(svg('rect', { x: X(i) - 30, y: 70, width: 60, height: 80, rx: 10, fill: 'none', stroke: 'var(--t)', 'stroke-width': 1.6 })); g.append(svg('path', { d: `M${X(i)} 156 v18`, stroke: 'var(--t)', 'stroke-width': 1.6 })); } note(270, 200, '每列并行、各自独立地经历同一种处理', 0); }
+    if (k === 5) { g.append(svg('rect', { x: 30, y: 208, width: 480, height: 32, rx: 16, fill: 'var(--surface-2)', stroke: 'var(--p)' })); note(270, 229, '注意力 → MLP → 注意力 → MLP → …… 重复许多层', 0); }
+    if (k === 6) note(270, 190, '含义已融入序列最后一个向量', 0);
+    if (k >= 7) {
+      col(0, { hi: true }); g.append(svg('text', { x: 40, y: 168, class: 'lbl' }, '最后一个向量'));
+      const probs = [.02, .5, .03, .12, .01, .2, .02, .1, .001]; const mx = Math.max(...probs);
+      if (k === 7) { g.append(svg('path', { d: 'M90 110 L200 110', stroke: 'var(--muted)', 'marker-end': '' }), svg('text', { x: 100, y: 100, class: 'lbl' }, '× W_U')); for (let j = 0; j < 14; j++) g.append(svg('rect', { x: 215, y: 20 + j * 15, width: 70 + ((j * 37) % 90), height: 10, rx: 3, fill: 'var(--o)', style: 'opacity:.7' })); g.append(svg('text', { x: 215, y: 240, class: 'lbl' }, '50,257 个分数（logits），正负不限')); }
+      if (k >= 8) { const lab = ['的', '斯内普', '他', '一位', '是', '那个', '教授', '很', '…']; probs.forEach((p, j) => { const y = 24 + j * 22; g.append(svg('text', { x: 190, y: y + 10, class: 'lbl', 'text-anchor': 'end' }, lab[j]), svg('rect', { x: 200, y, width: 300 * p / mx, height: 14, rx: 4, fill: k === 9 && j === 1 ? 'var(--t)' : 'var(--p)', style: `opacity:${k === 9 && j !== 1 ? .35 : 1}` })); }); note(200, 232, k === 8 ? '概率分布：总和为 1（柱长为示意）' : '抽中“斯内普”→ 追加到文本末尾，再来一轮', 'start'); }
+    }
+    desc.textContent = `第 ${k + 1} 步：${S[k][0]}。${S[k][1]}`;
+    [...stgs.children].forEach((b, i) => b.classList.toggle('on', i === k));
+  };
+  S.forEach(([t], i) => stgs.append(el('button', { class: 'stg', type: 'button', onclick: () => { stop(); k = i; draw(); } }, el('span', { class: 'i' }, i + 1), t)));
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } if (play) play.textContent = '自动走一遍'; };
+  const play = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    if (timer) { stop(); return; }
+    if (RM) { k = (k + 1) % S.length; draw(); return; }
+    play.textContent = '暂停'; if (k >= S.length - 1) k = -1; k++; draw();
+    timer = setInterval(() => { if (k >= S.length - 1) { stop(); return; } k++; draw(); }, 1800);
+  } }, '自动走一遍');
+  node.append(el('div', { class: 'flowwrap' }, stgs, el('div', {}, root, desc)), el('div', { class: 'ctrl' }, play));
+  draw();
+  return { stop };
+});
+
+/* =============== 03a 线性回归 =============== */
+reg('regress', (node) => {
+  const xs = [50, 70, 90, 110, 130, 150, 170, 190], ys = [118, 150, 205, 222, 270, 300, 352, 380];
+  const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+  const best = { k: xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0) / xs.reduce((s, x) => s + (x - mx) ** 2, 0) };
+  best.b = my - best.k * mx;
+  const W = 360, H = 240, sx = (x) => 40 + (x - 30) * (300 / 180), sy = (y) => 210 - y * (190 / 450);
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '房屋面积与价格的散点图与可调直线', style: 'width:100%;max-width:420px' });
+  root.append(svg('line', { x1: 40, y1: 210, x2: 345, y2: 210, stroke: 'var(--line)' }), svg('line', { x1: 40, y1: 15, x2: 40, y2: 210, stroke: 'var(--line)' }),
+    svg('text', { x: 345, y: 228, class: 'lbl', 'text-anchor': 'end' }, '面积 →'), svg('text', { x: 46, y: 22, class: 'lbl' }, '价格 ↑'));
+  const res = svg('g', {}), line = svg('line', { stroke: 'var(--p)', 'stroke-width': 3, 'stroke-linecap': 'round' });
+  root.append(res, line);
+  xs.forEach((x, i) => root.append(svg('circle', { cx: sx(x), cy: sy(ys[i]), r: 4.5, fill: 'var(--ink)' })));
+  let k = 0.5, b = 150, timer = null;
+  const sk = el('input', { type: 'range', min: '0', max: '4', step: '0.05', value: k, 'aria-label': '斜率' });
+  const sb = el('input', { type: 'range', min: '-100', max: '300', step: '5', value: b, 'aria-label': '截距' });
+  const ok = el('output'), ob = el('output'), status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const err = () => xs.reduce((s, x, i) => s + (k * x + b - ys[i]) ** 2, 0) / n;
+  const draw = () => {
+    sk.value = k; sb.value = b; ok.textContent = k.toFixed(2); ob.textContent = Math.round(b);
+    const y0 = k * 30 + b, y1 = k * 210 + b; line.setAttribute('x1', sx(30)); line.setAttribute('x2', sx(210)); line.setAttribute('y1', sy(y0)); line.setAttribute('y2', sy(y1));
+    res.innerHTML = ''; xs.forEach((x, i) => res.append(svg('line', { x1: sx(x), x2: sx(x), y1: sy(ys[i]), y2: sy(k * x + b), stroke: 'var(--r)', 'stroke-width': 1.5 })));
+    const e = err(), eb = (() => { let s = 0; xs.forEach((x, i) => { s += (best.k * x + best.b - ys[i]) ** 2; }); return s / n; })();
+    status.innerHTML = `平均平方误差 <b>${e.toFixed(0)}</b>（最优直线约 ${eb.toFixed(0)}）。这个模型只有 <b>2</b> 个参数；GPT-3 有 <b>175,000,000,000</b> 个。`;
+  };
+  sk.addEventListener('input', () => { stop(); k = +sk.value; draw(); }); sb.addEventListener('input', () => { stop(); b = +sb.value; draw(); });
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
+  const learn = el('button', { class: 'btn primary', type: 'button', onclick: () => {
+    stop(); if (RM) { k = best.k; b = best.b; draw(); return; }
+    const kx = xs.map((x) => (x - mx) / 60), lr = 0.12; let kk = k * 60, bb = k * mx + b; /* 在中心化坐标里做梯度下降，收敛稳定 */
+    let step = 0; timer = setInterval(() => {
+      let gk = 0, gb = 0; xs.forEach((x, i) => { const u = kx[i], e = kk * u + bb - ys[i]; gk += 2 * e * u / n; gb += 2 * e / n; });
+      kk -= lr * gk; bb -= lr * gb; k = kk / 60; b = bb - k * mx; draw();
+      if (++step > 140) stop();
+    }, 30);
+  } }, '让它自己调（梯度下降）');
+  const rnd = el('button', { class: 'btn', type: 'button', onclick: () => { stop(); k = 3.5; b = -40; draw(); } }, '随便乱设');
+  node.append(root, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '斜率', sk, ok), el('label', { class: 'range' }, '截距', sb, ob)), el('div', { class: 'ctrl' }, learn, rnd), status);
+  draw();
+  return { stop };
+});
+
+/* =============== 03b 矩阵 × 向量 =============== */
+reg('matvec', (node) => {
+  const Wm = [[1, 0, -1, 2], [-2, 1, 1, 0], [0, 2, -1, 1]], x = [2, 1, 3, -1];
+  let sel = { t: 'w', i: 0, j: 0 }, row = 0;
+  const wrap = el('div', { class: 'mxrow' }), status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const cls = (v) => (v > 0 ? 'pos' : v < 0 ? 'neg' : 'zero');
+  const render = () => {
+    wrap.innerHTML = '';
+    const mw = el('div', { class: 'mxbox' }, el('div', { class: 'mxgrid', style: 'grid-template-columns:repeat(4,auto)' }, ...Wm.flatMap((r, i) => r.map((v, j) => el('button', { class: `cell w ${cls(v)}${sel.t === 'w' && sel.i === i && sel.j === j ? ' sel' : ''}${i === row ? ' hl' : ''}`, type: 'button', 'aria-label': `权重 第${i + 1}行第${j + 1}列 值 ${v}`, onclick: () => { sel = { t: 'w', i, j }; render(); } }, sgn(v))))));
+    const mx = el('div', { class: 'mxbox' }, el('div', { class: 'mxgrid' }, ...x.map((v, j) => el('button', { class: `cell dt${sel.t === 'x' && sel.j === j ? ' sel' : ''}`, type: 'button', 'aria-label': `数据 第${j + 1}个分量 值 ${v}`, onclick: () => { sel = { t: 'x', i: 0, j }; render(); } }, sgn(v)))));
+    const y = Wm.map((r) => r.reduce((s, v, j) => s + v * x[j], 0));
+    const my = el('div', { class: 'mxbox' }, el('div', { class: 'mxgrid' }, ...y.map((v, i) => el('button', { class: 'cell out' + (i === row ? ' sel' : ''), type: 'button', 'aria-label': `输出第${i + 1}行 值 ${v}`, onclick: () => { row = i; render(); } }, sgn(v)))));
+    wrap.append(mw, el('span', { class: 'op' }, '×'), mx, el('span', { class: 'op' }, '='), my);
+    const terms = Wm[row].map((v, j) => `<span style="color:var(--${v > 0 ? 'p' : v < 0 ? 'r' : 'muted'})">${sgn(v)}</span>·${sgn(x[j])}`);
+    status.innerHTML = `输出第 ${row + 1} 行 = ${terms.join(' ＋ ')} = <b>${sgn(y[row])}</b>　（一个<b>加权和</b>：权重 × 数据，再相加）`;
+  };
+  const chg = (d) => { if (sel.t === 'w') Wm[sel.i][sel.j] = clamp(Wm[sel.i][sel.j] + d, -3, 3); else x[sel.j] = clamp(x[sel.j] + d, -5, 5); render(); };
+  node.append(el('div', { class: 'legend' }, el('span', {}, el('i', { style: 'background:var(--p-soft);border:1px solid var(--p)' }), '正权重（蓝）'), el('span', {}, el('i', { style: 'background:var(--r-soft);border:1px solid var(--r)' }), '负权重（红）'), el('span', {}, el('i', { style: 'background:var(--surface-2);border:1px dashed var(--muted)' }), '数据（灰）')),
+    el('div', { class: 'scrollx' }, wrap), el('div', { class: 'ctrl' }, el('button', { class: 'btn', type: 'button', onclick: () => chg(1) }, '＋ 选中值'), el('button', { class: 'btn', type: 'button', onclick: () => chg(-1) }, '－ 选中值')), status);
+  render();
+});
+
+/* =============== 04a 嵌入矩阵查列 =============== */
+reg('lookup', (node) => {
+  const toks = ['The', 'un', 'believ', 'ably', 'tall', 'tower'];
+  const seed = (i, j) => { const v = Math.sin((i + 1) * 12.9898 + (j + 1) * 78.233) * 43758.5453; return ((v - Math.floor(v)) * 2 - 1); };
+  let s = 5;
+  const row = el('div', { class: 'tkrow', role: 'group', 'aria-label': '一句话被拆成词元' }), grid = el('div', { class: 'we', style: 'grid-template-columns:repeat(7,1fr)' });
+  const status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const render = () => {
+    row.innerHTML = ''; toks.forEach((t, i) => row.append(el('button', { class: 'tk' + (i === s ? ' sel' : ''), type: 'button', onclick: () => { s = i; render(); } }, t)));
+    grid.innerHTML = ''; toks.forEach((t, i) => grid.append(el('div', { class: 'ch0' }, t))); grid.append(el('div', { class: 'ch0' }, '⋯ 共 50,257 列'));
+    for (let r = 0; r < 5; r++) { toks.forEach((t, i) => grid.append(el('div', { class: 'c' + (i === s ? ' on' : '') }, seed(i, r).toFixed(2)))); grid.append(el('div', { class: 'c' }, '⋯')); }
+    toks.forEach((t, i) => grid.append(el('div', { class: 'c hd' + (i === s ? ' on' : '') }, '⋮'))); grid.append(el('div', { class: 'c' }, '⋮'));
+    const col = [0, 1, 2].map((r) => seed(s, r).toFixed(2).replace('-', '−')).join('，');
+    status.innerHTML = `词元 <b>“${toks[s]}”</b> → 取出 W<sub>E</sub> 的对应那一列，得到一个 12,288 维的向量，开头几个数是：${col}，……（示意数字）。`;
+  };
+  node.append(el('div', { class: 'cap', style: 'margin:0' }, '一句话先被拆成词元（这里 unbelievably 被手工拆成 3 段，示意）：'), row, el('div', { class: 'scrollx' }, grid), status);
+  render();
+});
+
+/* =============== 04b 词向量类比 =============== */
+reg('analogy', (node) => {
+  const SETS = {
+    gender: { name: '性别：king − man + woman', roles: ['A = king', 'B = man', 'C = woman'], fixed: { queen: [71, 24], tower: [88, 62], cat: [44, 9], beast: [36, 14] }, anc: { A: ['king', 60, 58], B: ['man', 22, 55], C: ['woman', 30, 25] } },
+    country: { name: '国家：Italy − Germany + Hitler', roles: ['A = Italy', 'B = Germany', 'C = Hitler'], fixed: { Mussolini: [56, 54], Japan: [88, 12], tower: [86, 58], cat: [40, 8] }, anc: { A: ['Italy', 22, 52], B: ['Germany', 25, 25], C: ['Hitler', 62, 22] } },
+    food: { name: '美食：Germany − Japan + sushi', roles: ['A = Germany', 'B = Japan', 'C = sushi'], fixed: { bratwurst: [73, 47], Italy: [86, 14], tower: [90, 60], cat: [12, 8] }, anc: { A: ['Germany', 30, 50], B: ['Japan', 30, 18], C: ['sushi', 70, 18] } } };
+  const W = 500, H = 380, S = 5;
+  let cur = 'gender', pos, sel = 'A', dragging = null;
+  const sx = (v) => 20 + v * S * 0.92, sy = (v) => 360 - v * S * 0.92;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'touchnone', role: 'img', 'aria-label': '二维词向量平面，可拖动三个锚点词', style: 'width:100%;max-width:560px;margin:0 auto' });
+  const g = svg('g', {}); root.append(g);
+  const status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const seg = el('div', { class: 'seg', role: 'group', 'aria-label': '选择例子' });
+  const init = () => { const a = SETS[cur].anc; pos = { A: [a.A[1], a.A[2]], B: [a.B[1], a.B[2]], C: [a.C[1], a.C[2]] }; };
+  const dist = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+  const draw = () => {
+    const D = SETS[cur]; g.innerHTML = '';
+    for (let i = 0; i <= 10; i++) { g.append(svg('line', { x1: sx(i * 10), y1: sy(0), x2: sx(i * 10), y2: sy(76), stroke: 'var(--grid)' })); if (i <= 7) g.append(svg('line', { x1: sx(0), y1: sy(i * 10), x2: sx(100), y2: sy(i * 10), stroke: 'var(--grid)' })); }
+    const A = pos.A, B = pos.B, C = pos.C, R = [A[0] - B[0] + C[0], A[1] - B[1] + C[1]];
+    const ar = (p, q, col, dash) => g.append(svg('line', { x1: sx(p[0]), y1: sy(p[1]), x2: sx(q[0]), y2: sy(q[1]), stroke: col, 'stroke-width': 2.2, 'stroke-dasharray': dash || '' }));
+    ar(B, C, 'var(--t)'); ar(A, R, 'var(--t)', '5 4');
+    let best = null, bd = 1e9;
+    Object.entries(D.fixed).forEach(([w, p]) => { const d = dist(p, R); if (d < bd) { bd = d; best = w; } });
+    Object.entries(D.fixed).forEach(([w, p]) => { g.append(svg('circle', { cx: sx(p[0]), cy: sy(p[1]), r: w === best ? 7 : 5, fill: w === best ? 'var(--t)' : 'var(--muted)' }), svg('text', { x: sx(p[0]) + 9, y: sy(p[1]) + 4, class: 'lbl', style: w === best ? 'fill:var(--t);font-weight:700' : '' }, w)); });
+    g.append(svg('circle', { cx: sx(R[0]), cy: sy(R[1]), r: 6, fill: 'none', stroke: 'var(--o)', 'stroke-width': 2.5 }), svg('text', { x: sx(R[0]) + 9, y: sy(R[1]) - 8, class: 'lbl', style: 'fill:var(--o);font-weight:700' }, 'A − B + C'));
+    ['A', 'B', 'C'].forEach((r) => {
+      const p = pos[r], gr = svg('g', { class: 'drag', tabindex: '0', role: 'slider', 'aria-label': `${D.anc[r][0]}（${r}），当前位置 ${p[0].toFixed(0)}, ${p[1].toFixed(0)}，方向键移动`, 'data-r': r });
+      gr.append(svg('circle', { class: 'hit', cx: sx(p[0]), cy: sy(p[1]), r: 12, fill: 'var(--p-soft)', stroke: sel === r ? 'var(--o)' : 'var(--p)', 'stroke-width': 2 }), svg('text', { x: sx(p[0]), y: sy(p[1]) + 4, class: 'lbl mid', style: 'fill:var(--p);font-weight:700;pointer-events:none' }, r), svg('text', { x: sx(p[0]), y: sy(p[1]) - 17, class: 'lbl mid big', style: 'font-size:14px;pointer-events:none' }, D.anc[r][0]));
+      gr.addEventListener('pointerdown', (e) => { sel = r; dragging = r; root.setPointerCapture(e.pointerId); e.preventDefault(); });
+      gr.addEventListener('keydown', (e) => { const d = { ArrowLeft: [-2, 0], ArrowRight: [2, 0], ArrowUp: [0, 2], ArrowDown: [0, -2] }[e.key]; if (!d) return; e.preventDefault(); sel = r; pos[r] = [clamp(p[0] + d[0], 0, 100), clamp(p[1] + d[1], 0, 74)]; draw(); root.querySelector(`[data-r="${r}"]`).focus(); });
+      g.append(gr);
+    });
+    const ex = D.fixed[Object.keys(D.fixed)[0]];
+    status.innerHTML = `A − B + C 落在橙圈处，离它最近的词是 <b>${best}</b>（距离 ${bd.toFixed(1)}）。<span class="tag">${D.roles.join('　')}</span>　绿色箭头：B → C 的“差”，被原样搬到 A 上。`;
+  };
+  root.addEventListener('pointermove', (e) => { if (!dragging) return; const rc = root.getBoundingClientRect(), k = W / rc.width; const vx = ((e.clientX - rc.left) * k - 20) / (S * 0.92), vy = (360 - (e.clientY - rc.top) * k) / (S * 0.92); pos[dragging] = [clamp(vx, 0, 100), clamp(vy, 0, 74)]; draw(); });
+  const endDrag = () => { dragging = null; }; root.addEventListener('pointerup', endDrag); root.addEventListener('pointercancel', endDrag);
+  Object.entries(SETS).forEach(([k, v]) => seg.append(el('button', { type: 'button', class: k === cur ? 'on' : '', onclick: (e) => { cur = k; init(); [...seg.children].forEach((b) => b.classList.toggle('on', b === e.currentTarget)); draw(); } }, v.name)));
+  node.append(el('div', { class: 'ctrl' }, seg, el('button', { class: 'btn', type: 'button', onclick: () => { init(); draw(); } }, '还原位置')), root, status);
+  init(); draw();
+});
+
+/* =============== 05a 点积几何 =============== */
+reg('dotgeo', (node) => {
+  const a = [2, 1], U = 50, C = [170, 140], W = 340, H = 280;
+  let b = [1, 1.6], dragging = false;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'touchnone', role: 'img', 'aria-label': '两个向量 a 和 b 的点积示意', style: 'width:100%;max-width:380px' });
+  const g = svg('g', {}); root.append(g);
+  const status = el('div', { class: 'status', 'aria-live': 'polite' }), table = el('div', { class: 'eq' });
+  const X = (v) => C[0] + v * U, Y = (v) => C[1] - v * U;
+  const sl = el('input', { type: 'range', min: '-180', max: '180', step: '1', value: '58', 'aria-label': 'b 的方向角度' }), out = el('output');
+  const len = el('input', { type: 'range', min: '0.3', max: '2.6', step: '0.1', value: '1.9', 'aria-label': 'b 的长度' }), outL = el('output');
+  const draw = () => {
+    g.innerHTML = '';
+    g.append(svg('line', { x1: 10, y1: C[1], x2: W - 10, y2: C[1], stroke: 'var(--grid)' }), svg('line', { x1: C[0], y1: 10, x2: C[0], y2: H - 10, stroke: 'var(--grid)' }));
+    const dot = a[0] * b[0] + a[1] * b[1], na = Math.hypot(...a), nb = Math.hypot(...b), cos = dot / (na * nb || 1);
+    const t = dot / (na * na), pr = [a[0] * t, a[1] * t];
+    g.append(svg('line', { x1: X(b[0]), y1: Y(b[1]), x2: X(pr[0]), y2: Y(pr[1]), stroke: 'var(--muted)', 'stroke-dasharray': '4 3' }), svg('line', { x1: C[0], y1: C[1], x2: X(pr[0]), y2: Y(pr[1]), stroke: dot >= 0 ? 'var(--t)' : 'var(--r)', 'stroke-width': 6, style: 'opacity:.45' }));
+    const arrow = (v, col, lab) => { g.append(svg('line', { x1: C[0], y1: C[1], x2: X(v[0]), y2: Y(v[1]), stroke: col, 'stroke-width': 3, 'stroke-linecap': 'round' }), svg('text', { x: X(v[0]) + 8, y: Y(v[1]) - 8, class: 'lbl big', style: `fill:${col}` }, lab)); };
+    arrow(a, 'var(--p)', 'a'); arrow(b, 'var(--o)', 'b');
+    const gr = svg('g', { class: 'drag', tabindex: '0', role: 'slider', 'aria-label': 'b 向量的箭头，方向键移动' });
+    gr.append(svg('circle', { class: 'hit', cx: X(b[0]), cy: Y(b[1]), r: 12, fill: 'var(--o-soft)', stroke: 'var(--o)', 'stroke-width': 2 })); g.append(gr);
+    gr.addEventListener('pointerdown', (e) => { dragging = true; root.setPointerCapture(e.pointerId); e.preventDefault(); });
+    gr.addEventListener('keydown', (e) => { const d = { ArrowLeft: [-.1, 0], ArrowRight: [.1, 0], ArrowUp: [0, .1], ArrowDown: [0, -.1] }[e.key]; if (!d) return; e.preventDefault(); b = [clamp(b[0] + d[0], -2.7, 2.7), clamp(b[1] + d[1], -2.5, 2.5)]; draw(); g.querySelector('.drag').focus(); });
+    const f = (v) => v.toFixed(1).replace('-', '−');
+    table.innerHTML = `a·b = (${f(a[0])} × ${f(b[0])}) + (${f(a[1])} × ${f(b[1])}) = ${f(a[0] * b[0])} + ${f(a[1] * b[1])} = <b>${f(dot)}</b>`;
+    const rel = Math.abs(cos) < 0.06 ? '接近垂直，点积≈0' : cos > 0 ? '指向相近的方向，点积为正' : '指向相反的方向，点积为负';
+    status.innerHTML = `cos θ = ${cos.toFixed(2).replace('-', '−')}：<b>${rel}</b>。灰色虚线是 b 在 a 上的投影（绿＝同向，红＝反向）。`;
+    const ang = Math.round(Math.atan2(b[1], b[0]) * 180 / Math.PI); sl.value = ang; out.textContent = ang + '°'; len.value = Math.hypot(...b).toFixed(1); outL.textContent = Math.hypot(...b).toFixed(1);
+  };
+  root.addEventListener('pointermove', (e) => { if (!dragging) return; const rc = root.getBoundingClientRect(), k = W / rc.width; b = [clamp(((e.clientX - rc.left) * k - C[0]) / U, -2.7, 2.7), clamp((C[1] - (e.clientY - rc.top) * k) / U, -2.5, 2.5)]; draw(); });
+  const endD = () => { dragging = false; }; root.addEventListener('pointerup', endD); root.addEventListener('pointercancel', endD);
+  const fromSliders = () => { const t = +sl.value * Math.PI / 180, L = +len.value; b = [L * Math.cos(t), L * Math.sin(t)]; draw(); };
+  sl.addEventListener('input', fromSliders); len.addEventListener('input', fromSliders);
+  node.append(root, table, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, 'b 的角度', sl, out), el('label', { class: 'range' }, 'b 的长度', len, outL)), status);
+  draw();
+});
+
+/* =============== 05b 复数方向 =============== */
+reg('plural', (node) => {
+  const WORDS = [['cat', .4, 1.1, 's'], ['dog', .3, -.8, 's'], ['tree', .5, .2, 's'], ['car', .35, -1.6, 's'],
+    ['cats', 1.5, 1.0, 'p'], ['dogs', 1.4, -.9, 'p'], ['trees', 1.7, .3, 'p'], ['cars', 1.45, -1.5, 'p'],
+    ['one', .2, .5, 'n'], ['two', 1.0, -.4, 'n'], ['three', 1.8, .3, 'n'], ['four', 2.6, -.2, 'n'], ['five', 3.2, .4, 'n']];
+  const d0 = Math.atan2(-0.1, 1.1) * 180 / Math.PI;
+  let th = d0;
+  const sl = el('input', { type: 'range', min: '-180', max: '180', step: '1', value: th, 'aria-label': '方向的角度' }), out = el('output');
+  const box = el('div', {}), status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const draw = () => {
+    th = +sl.value; out.textContent = Math.round(th) + '°'; const t = th * Math.PI / 180, d = [Math.cos(t), Math.sin(t)];
+    const vals = WORDS.map(([w, x, y, k]) => [w, x * d[0] + y * d[1], k]); const mx = Math.max(...vals.map((v) => Math.abs(v[1])), 1);
+    box.innerHTML = '';
+    [['s', '单数名词'], ['p', '复数名词'], ['n', '数词（逐个递增）']].forEach(([k, name]) => {
+      box.append(el('div', { class: 'cap', style: 'margin:8px 0 2px' }, name));
+      vals.filter((v) => v[2] === k).forEach(([w, v]) => {
+        const neg = v < 0; const tr = el('div', { class: 'tr', style: 'position:relative' });
+        tr.append(el('div', { style: `position:absolute;top:0;bottom:0;${neg ? 'right' : 'left'}:50%;width:${Math.abs(v) / mx * 50}%;background:var(--${neg ? 'r' : k === 'p' || k === 'n' ? 't' : 'p'});border-radius:8px` }), el('div', { style: 'position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--line)' }));
+        box.append(el('div', { class: 'bar' }, el('span', { class: 'nm' }, w), tr, el('span', { class: 'pc' }, v.toFixed(2).replace('-', '−'))));
+      });
+    });
+    const avg = (k) => { const a = vals.filter((v) => v[2] === k).map((v) => v[1]); return a.reduce((s, v) => s + v, 0) / a.length; };
+    const nums = vals.filter((v) => v[2] === 'n').map((v) => v[1]), inc = nums.every((v, i) => !i || v > nums[i - 1]);
+    status.innerHTML = `单数平均 <b>${avg('s').toFixed(2).replace('-', '−')}</b>，复数平均 <b>${avg('p').toFixed(2).replace('-', '−')}</b>${avg('p') > avg('s') + 0.3 ? '：复数明显更高，这个方向像“复数方向”' : '：复数并没有明显更高，这个方向不像“复数方向”'}；数词 one→five ${inc ? '<b>逐个增大</b>' : '不再逐个增大'}。`;
+  };
+  sl.addEventListener('input', draw);
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '方向角', sl, out), el('button', { class: 'btn', type: 'button', onclick: () => { sl.value = d0; draw(); } }, '用 cats − cat 的方向'), el('button', { class: 'btn', type: 'button', onclick: () => { sl.value = 90; draw(); } }, '换成垂直方向')), box, status);
+  draw();
+});
+
+/* =============== 06a 语境改变含义 =============== */
+reg('meaning', (node) => {
+  const W = 480, H = 240;
+  const root = svg('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '词 model 在不同上下文中被拉向不同语义区域', style: 'width:100%;max-width:560px;margin:0 auto' });
+  const ML = [['neural net', 80, 50], ['training data', 150, 90], ['gradient', 60, 120]], FA = [['runway', 350, 170], ['dress', 395, 120], ['photoshoot', 310, 205]];
+  const style = 'fill:var(--muted)';
+  root.append(svg('ellipse', { cx: 105, cy: 85, rx: 100, ry: 65, fill: 'var(--p-soft)', style: 'opacity:.6' }), svg('ellipse', { cx: 360, cy: 165, rx: 105, ry: 62, fill: 'var(--t-soft)', style: 'opacity:.6' }));
+  ML.concat(FA).forEach(([w, x, y]) => root.append(svg('circle', { cx: x, cy: y, r: 4, fill: 'var(--muted)' }), svg('text', { x: x + 8, y: y + 4, class: 'lbl' }, w)));
+  const dot = svg('circle', { cx: 240, cy: 120, r: 9, fill: 'var(--o)', style: RM ? '' : 'transition:cx .8s ease,cy .8s ease' }), lab = svg('text', { x: 240, y: 152, class: 'lbl mid big' }, 'model');
+  const trail = svg('line', { x1: 240, y1: 120, x2: 240, y2: 120, stroke: 'var(--o)', 'stroke-dasharray': '4 3' });
+  root.append(trail, dot, lab);
+  const status = el('div', { class: 'status', 'aria-live': 'polite' }, '起点：刚从嵌入矩阵取出的“model”，不含任何语境，位于中间。');
+  const go = (x, y, t, txt) => { dot.setAttribute('cx', x); dot.setAttribute('cy', y); lab.setAttribute('x', x); lab.setAttribute('y', y + 32); trail.setAttribute('x2', x); trail.setAttribute('y2', y); status.innerHTML = txt; };
+  node.append(root, el('div', { class: 'ctrl' },
+    el('button', { class: 'btn primary', type: 'button', onclick: () => go(110, 85, 0, '语境：“a machine learning <b>model</b>”。注意力让它吸收“机器学习”的信息，向量被拉向“机器学习”那一片。') }, '… a machine learning model'),
+    el('button', { class: 'btn', type: 'button', onclick: () => go(360, 160, 0, '语境：“a fashion <b>model</b>”。同一个起点，被拉向“时尚”那一片。') }, '… a fashion model'),
+    el('button', { class: 'btn', type: 'button', onclick: () => go(240, 120, 0, '回到起点：嵌入矩阵给出的是不含语境的、单个词的含义。') }, '回到起点')), status);
+});
+
+/* =============== 06b 上下文窗口 =============== */
+reg('ctx', (node) => {
+  const N = 64, CELL = 8, WIN = 32, W = N * CELL + 20;
+  const root = svg('svg', { viewBox: `0 0 ${W} 80`, role: 'img', 'aria-label': '对话长度与上下文窗口', style: 'width:100%' });
+  const sl = el('input', { type: 'range', min: '0', max: '4096', step: '64', value: '3008', 'aria-label': '对话长度（词元数）' }), out = el('output', {}, '3008');
+  const status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const draw = () => {
+    const n = +sl.value; out.textContent = n; root.innerHTML = '';
+    const cells = Math.ceil(n / 64), lost = Math.max(0, cells - WIN);
+    for (let i = 0; i < cells; i++) root.append(svg('rect', { x: 10 + (i % N) * CELL, y: 18, width: CELL - 1.5, height: 30, rx: 2, fill: i < lost ? 'var(--muted)' : 'var(--p)', style: `opacity:${i < lost ? .3 : 1}` }));
+    if (cells) { const x0 = 10 + lost * CELL; root.append(svg('rect', { x: x0 - 2, y: 12, width: Math.min(cells, WIN) * CELL + 2, height: 42, rx: 4, fill: 'none', stroke: 'var(--t)', 'stroke-width': 2 }), svg('text', { x: x0, y: 70, class: 'lbl', style: 'font-size:9px' }, '模型当前能看到的窗口（2048 个词元）')); }
+    if (lost) root.append(svg('text', { x: 10, y: 8, class: 'lbl', style: 'font-size:8px' }, '已掉出窗口'));
+    const over = Math.max(0, n - 2048);
+    status.innerHTML = `对话共 <b>${fmt(n)}</b> 个词元。` + (over ? `模型只能看最近的 2048 个，最早的 <b>${fmt(over)}</b> 个<b>已经看不到了</b>——这就是长对话里它会“迷失方向”的原因。` : '没有超过 2048，整段对话都在窗口里。') + ` 窗口里的数据形状：2048 列 × 12,288 维 = <b>${fmt(2048 * 12288)}</b> 个数。`;
+  };
+  sl.addEventListener('input', draw);
+  node.append(root, el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '对话长度（词元）', sl, out)), status);
+  draw();
+});
+
+/* =============== 07 softmax + 温度 =============== */
+reg('softmax', (node) => {
+  const names = ['斯内普', '乌姆里奇', '奇洛', '洛哈特', '卢平', '麦格', '邓布利多', '香蕉', '的'];
+  const base = [6.1, 4.8, 3.9, 3.5, 1.2, 0.6, 0.2, -1.5, -0.6];
+  let L = base.slice(), T = 1, counts = null, nS = 0;
+  const sT = el('input', { type: 'range', min: '0', max: '2', step: '0.05', value: '1', 'aria-label': '温度 T' }), oT = el('output');
+  const s0 = el('input', { type: 'range', min: '-2', max: '12', step: '0.1', value: base[0], 'aria-label': '斯内普的 logit' }), o0 = el('output');
+  const box = el('div', {}), status = el('div', { class: 'status', 'aria-live': 'polite' });
+  const probs = () => {
+    if (T < 0.01) { const m = Math.max(...L); const c = L.filter((v) => v === m).length; return L.map((v) => (v === m ? 1 / c : 0)); }
+    const m = Math.max(...L), e = L.map((v) => Math.exp((v - m) / T)), s = e.reduce((a, b) => a + b, 0); return e.map((v) => v / s);
+  };
+  const draw = () => {
+    T = +sT.value; L[0] = +s0.value; oT.textContent = T < 0.01 ? '0（取最大）' : T.toFixed(2); o0.textContent = L[0].toFixed(1);
+    const p = probs(), sum = p.reduce((a, b) => a + b, 0), mx = Math.max(...p);
+    box.innerHTML = '';
+    box.append(el('div', { class: 'bar', style: 'font-size:11px;color:var(--muted)' }, el('span', {}, '词元（logit x）'), el('span', {}, '概率 p'), el('span', { style: 'text-align:right' }, '')));
+    names.forEach((n, i) => {
+      const tr = el('div', { class: 'tr' }, el('div', { class: 'fl', style: `width:${p[i] * 100}%` }));
+      if (counts && nS) tr.append(el('div', { class: 'mk', style: `left:${clamp(counts[i] / nS * 100, 0, 99)}%`, title: '抽样频率' }));
+      box.append(el('div', { class: 'bar' + (p[i] === mx ? ' top' : '') }, el('span', { class: 'nm' }, `${n}（${L[i].toFixed(1)}）`), tr, el('span', { class: 'pc' }, p1(p[i]))));
+    });
+    const e = (T < 0.01 ? '—' : '');
+    status.innerHTML = `概率总和 = <b>${sum.toFixed(3)}</b>；最大者“${names[p.indexOf(mx)]}”占 <b>${p1(mx)}</b>。` + (T < 0.01 ? ' T = 0：全部权重落在最大值上，等于“总选最高”，视频里这样续写故事会得到陈词滥调的金发姑娘故事。' : T < 0.7 ? ' T 较小：最大值占优更明显。' : T > 1.4 ? ' T 较大：小值也获得更多权重，分布变平，更容易抽到离谱的词（视频里高温度的故事很快变得毫无意义；API 限制 T ≤ 2）。' : ' T 在 1 附近：就是普通 softmax。') + (nS ? ` 橙色竖线是你已抽的 ${nS} 次的频率。` : '');
+  };
+  const sample = (times) => { const p = probs(); if (!counts) counts = L.map(() => 0); for (let t = 0; t < times; t++) { let r = Math.random(), c = 0, i = 0; for (; i < p.length - 1; i++) { c += p[i]; if (r <= c) break; } counts[i]++; nS++; } draw(); };
+  sT.addEventListener('input', () => { counts = null; nS = 0; draw(); }); s0.addEventListener('input', () => { counts = null; nS = 0; draw(); });
+  node.append(el('div', { class: 'ctrl' }, el('label', { class: 'range' }, '温度 T', sT, oT), el('label', { class: 'range' }, '“斯内普”的 logit', s0, o0)),
+    box, el('div', { class: 'ctrl' }, el('button', { class: 'btn primary', type: 'button', onclick: () => sample(1) }, '抽 1 次'), el('button', { class: 'btn', type: 'button', onclick: () => sample(200) }, '抽 200 次'), el('button', { class: 'btn', type: 'button', onclick: () => { sT.value = 1; s0.value = base[0]; counts = null; nS = 0; draw(); } }, '复位')), status);
+  draw();
+});
+
+/* =============== 08 参数账本 =============== */
+reg('ledger', (node) => {
+  const P = { vocab: 50257, d: 12288, L: 96, H: 96, dh: 128, ff: 4 };
+  const inputs = {};
+  const mk = (key, label) => { const i = el('input', { class: 'numin', type: 'number', min: '1', step: '1', value: P[key], 'aria-label': label }); i.addEventListener('input', () => { P[key] = Math.max(1, Math.floor(+i.value || 1)); render(); }); inputs[key] = i; return el('label', { class: 'range' }, label, i); };
+  const body = el('tbody'), stack = el('div', { class: 'stack' }), status = el('div', { class: 'status', 'aria-live': 'polite' });
+  let open = false;
+  const toggle = el('button', { class: 'btn', type: 'button', onclick: () => { open = !open; toggle.textContent = open ? '收起其余 6 类（本页补充）' : '展开其余 6 类（本页补充）'; render(); } }, '展开其余 6 类（本页补充）');
+  const reset = el('button', { class: 'btn', type: 'button', onclick: () => { Object.assign(P, { vocab: 50257, d: 12288, L: 96, H: 96, dh: 128, ff: 4 }); Object.entries(inputs).forEach(([k, i]) => { i.value = P[k]; }); render(); } }, '恢复 GPT-3 数值');
+  const supctl = el('div', { class: 'ctrl', style: 'display:none' });
+  const rows = () => {
+    const { vocab, d, L, H, dh, ff } = P, f = d * ff;
+    return [
+      { n: 'W_E 嵌入', s: `${fmt(vocab)} × ${fmt(d)}`, c: 1, per: vocab * d, v: 1 },
+      { n: 'W_U unembedding', s: `${fmt(d)} × ${fmt(vocab)}`, c: 1, per: d * vocab, v: 1 },
+      { n: 'W_Q Query', s: `${fmt(d)} × ${fmt(dh)}`, c: H * L, per: d * dh, v: 0 },
+      { n: 'W_K Key', s: `${fmt(d)} × ${fmt(dh)}`, c: H * L, per: d * dh, v: 0 },
+      { n: 'W_V Value', s: `${fmt(d)} × ${fmt(dh)}`, c: H * L, per: d * dh, v: 0 },
+      { n: 'W_O Output（每层合并）', s: `${fmt(H * dh)} × ${fmt(d)}`, c: L, per: H * dh * d, v: 0 },
+      { n: 'MLP 升维', s: `${fmt(d)} × ${fmt(f)}`, c: L, per: d * f, v: 0 },
+      { n: 'MLP 降维', s: `${fmt(f)} × ${fmt(d)}`, c: L, per: f * d, v: 0 }];
+  };
+  const render = () => {
+    const R = rows(), tot = R.reduce((s, r) => s + r.c * r.per, 0), vid = R.filter((r) => r.v).reduce((s, r) => s + r.c * r.per, 0), cnt = R.reduce((s, r) => s + r.c, 0), colors = ['var(--p)', 'var(--t)', 'var(--o)', 'var(--r)', 'var(--y)', 'var(--ink)', 'var(--p)', 'var(--t)'];
+    supctl.style.display = open ? 'flex' : 'none';
+    body.innerHTML = ''; stack.innerHTML = '';
+    let run = 0;
+    R.forEach((r, i) => {
+      if (!r.v && !open) return;
+      const sub = r.c * r.per; run += sub;
+      body.append(el('tr', { class: r.v ? '' : 'sup' }, el('td', {}, r.n + (r.v ? '' : '　（补充）')), el('td', { class: 'mono' }, r.s), el('td', { class: 'mono' }, fmt(r.c)), el('td', { class: 'mono' }, fmt(sub)), el('td', { class: 'mono' }, fmt(run))));
+      stack.append(el('i', { style: `width:${sub / 175000000000 * 100}%;background:${colors[i]}`, title: r.n }));
+    });
+    body.append(el('tr', { class: 'tot' }, el('td', {}, open ? '全部 8 类合计' : '本视频已数到的合计'), el('td', {}, ''), el('td', { class: 'mono' }, fmt(open ? cnt : 2)), el('td', { class: 'mono' }, fmt(open ? tot : vid)), el('td', { class: 'mono' }, '')));
+    const shown = open ? tot : vid;
+    status.innerHTML = open ? `合计 <b>${fmt(tot)}</b> 个权重 ≈ <b>${(tot / 1e8).toFixed(1)}</b> 亿（目标 1750 亿，差 ${Math.abs(tot - 175e9) / 1e8 < 0.5 ? '不到 1 亿' : (Math.abs(tot - 175e9) / 1e8).toFixed(1) + ' 亿'}）；矩阵个数 <b>${fmt(cnt - 0)}</b>（Q、K、V 各 ${fmt(P.H * P.L)} 个）。` :
+      `W_E 为 ${fmt(P.vocab)} × ${fmt(P.d)} = <b>${fmt(P.vocab * P.d)}</b>（≈ ${(Math.floor(P.vocab * P.d / 1e6) / 100).toFixed(2)} 亿），W_U 同样，累计 <b>${fmt(vid)}</b>（≈ ${(vid / 1e8).toFixed(2)} 亿，“超过 10 亿”），占 1750 亿的 <b>${(vid / 175e9 * 100).toFixed(2)}%</b>。`;
+  };
+  const tbl = el('table', { class: 'led' }, el('thead', {}, el('tr', {}, ...['矩阵类别', '形状', '个数', '该类权重数', '累计'].map((t) => el('th', {}, t)))), body);
+  node.append(el('div', { class: 'ctrl' }, mk('vocab', '词汇量'), mk('d', '嵌入维度')), (supctl.append(mk('L', '层数'), mk('H', '注意力头数'), mk('dh', '每头维度'), mk('ff', 'MLP 倍数')), supctl), el('div', { class: 'ctrl' }, toggle, reset), stack, el('div', { class: 'cap', style: 'margin:0 0 6px' }, '条形：各类占 1750 亿的比例（总长 = 1750 亿）'), el('div', { class: 'scrollx' }, tbl), status);
+  render();
+});
+
+/* ======================= 启动 ======================= */
+const sections = [...document.querySelectorAll('section.ch')];
+const side = document.getElementById('sidenav'), toc = document.getElementById('tocList');
+const sheet = document.getElementById('tocSheet'), mask = document.getElementById('tocMask');
+function closeToc() { sheet.classList.remove('open'); mask.classList.remove('open'); }
+sections.forEach((sc, i) => {
+  const t = sc.dataset.title, n = String(i + 1).padStart(2, '0');
+  side.append(el('li', {}, el('a', { href: '#' + sc.id, 'data-id': sc.id }, el('span', { class: 'n' }, n), t)));
+  toc.append(el('li', {}, el('a', { href: '#' + sc.id, onclick: closeToc }, el('span', { class: 'n' }, n), t)));
+});
+document.getElementById('tocBtn').addEventListener('click', () => { sheet.classList.toggle('open'); mask.classList.toggle('open'); });
+mask.addEventListener('click', closeToc);
+const prog = document.getElementById('progress');
+const onScroll = () => { const h = document.documentElement; prog.style.width = (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight) * 100) + '%'; };
+addEventListener('scroll', onScroll, { passive: true }); onScroll();
+const navIO = new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) side.querySelectorAll('a').forEach((a) => a.classList.toggle('active', a.dataset.id === e.target.id)); }); }, { rootMargin: '-35% 0px -55% 0px' });
+sections.forEach((sc) => navIO.observe(sc));
+const instances = new Map();
+document.querySelectorAll('[data-demo]').forEach((nd) => {
+  const f = Demos[nd.dataset.demo];
+  if (!f) { console.warn('no demo:', nd.dataset.demo); return; }
+  try { instances.set(nd, f(nd) || {}); } catch (err) { console.error('demo failed:', nd.dataset.demo, err); }
+});
+const demoIO = new IntersectionObserver((es) => { es.forEach((e) => { const d = instances.get(e.target); if (!d) return; if (e.isIntersecting) d.start?.(); else d.stop?.(); }); }, { threshold: 0.15 });
+instances.forEach((_, nd) => demoIO.observe(nd));
+const seenIO = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('seen'); seenIO.unobserve(e.target); } }), { threshold: 0.05 });
+sections.forEach((sc) => seenIO.observe(sc));
+})();
+</script>
+</body>
+</html>
