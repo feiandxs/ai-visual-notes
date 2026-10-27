@@ -117,6 +117,7 @@
 | 标题 | 原文作者 / 出处 | 页面 | 简介 |
 | --- | --- | --- | --- |
 | 什么是柴油朋克？ | 攀刀，知乎专栏《APAN呼叫地面》（2020-11-26） | [`culture/what-is-dieselpunk/`](culture/what-is-dieselpunk/index.html) | 一战前后的技术情绪曲线、三种朋克对比、真实历史到架空世界、故事骨架拼装、同一艘飞艇三种风格与代表作品。 |
+| 柴油朋克：钢铁、铆钉与爵士时代的另一面 | 本仓库整理，参考：界面新闻、机核 JustCz 上下篇、Wikipedia 等（含完整来源表） | [`culture/dieselpunk-atlas/`](culture/dieselpunk-atlas/index.html) | 《什么是柴油朋克？》的深度篇：1930 年代真实的未来想象、视觉源头、词的诞生、作品谱系图谱、民国上海与东亚版本、伦理反思与原子朋克的余波，含时间线、坐标图与对比滑块。 |
 | 马匹细节与知识的诅咒 | 知乎答主（页面未存档作者名），引马伯庸《知识的诅咒》（2025-01-03） | [`culture/rdr2-horse-detail-curse-of-knowledge/`](culture/rdr2-horse-detail-curse-of-knowledge/index.html) | 从《荒野大镖客 2》的马匹细节之问，到马伯庸笔下越写越细的七版客栈结账：细节做到哪一步算够。 |
 | 《洛基》里那些很酷的电脑终端，哪台是真的？ | Sascha Segan，PCMag（2021-06-10） | [`culture/loki-computer-terminals/`](culture/loki-computer-terminals/index.html) | TVA 大厅的橙色终端原型 ADM-3A、少了 P 键的全息投影仪，附终端模拟器与复古 CRT 效果台。 |
 | 绝命航线：Wager 号沉船与叛乱 | Alan Bellows，Damn Interesting（2019-09）/ 宝玉译，baoyu.io（2025-05-10） | [`culture/hms-wager-shipwreck-and-mutiny/`](culture/hms-wager-shipwreck-and-mutiny/index.html) | 1741 年 Wager 号在智利外海触礁，幸存者分裂为舰长与炮手两派各自返航：航线地图、死算模拟、人物关系与人数点阵。 |
